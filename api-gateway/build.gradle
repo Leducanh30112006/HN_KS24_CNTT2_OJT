@@ -1,0 +1,22 @@
+plugins {
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+}
+
+dependencies {
+    implementation project(':common-library')
+
+    // Spring Cloud Gateway (Reactive)
+    implementation 'org.springframework.cloud:spring-cloud-starter-gateway'
+
+    // Redis Reactive for Rate Limiter
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+
+    // JWT validation
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+    // Actuator for Health checks
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+}

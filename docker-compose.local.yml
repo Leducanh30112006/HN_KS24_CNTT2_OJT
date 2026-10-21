@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: quickshop-local-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_local_data:/var/lib/mysql
+      - ./deployments/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - quickshop-local-net
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: quickshop-local-redis
+    restart: always
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_local_data:/data
+    networks:
+      - quickshop-local-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: quickshop-local-rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-quickshop}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-quickshop123}
+    ports:
+      - "5672:5672"     # AMQP protocol port
+      - "15672:15672"   # Management Web UI
+    volumes:
+      - rabbitmq_local_data:/var/lib/rabbitmq
+    networks:
+      - quickshop-local-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 25s
+
+  minio:
+    image: minio/minio:latest
+    container_name: quickshop-local-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"   # S3 API port
+      - "9001:9001"   # MinIO Web Console
+    volumes:
+      - minio_local_data:/data
+    networks:
+      - quickshop-local-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  mysql_local_data:
+    name: quickshop_mysql_local_data
+  redis_local_data:
+    name: quickshop_redis_local_data
+  rabbitmq_local_data:
+    name: quickshop_rabbitmq_local_data
+  minio_local_data:
+    name: quickshop_minio_local_data
+
+networks:
+  quickshop-local-net:
+    name: quickshop-local-net
+    driver: bridge

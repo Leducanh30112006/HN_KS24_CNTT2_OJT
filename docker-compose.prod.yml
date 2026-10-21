@@ -1,0 +1,261 @@
+version: '3.8'
+
+services:
+  # ==========================================================
+  # 1. INFRASTRUCTURE & MIDDLEWARE
+  # ==========================================================
+  mysql:
+    image: mysql:8.0
+    container_name: quickshop-prod-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - mysql_prod_data:/var/lib/mysql
+      - ./deployments/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - quickshop-prod-net
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: quickshop-prod-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - quickshop-prod-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: quickshop-prod-rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-quickshop}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-quickshop123}
+    volumes:
+      - rabbitmq_prod_data:/var/lib/rabbitmq
+    networks:
+      - quickshop-prod-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: quickshop-prod-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_prod_data:/data
+    networks:
+      - quickshop-prod-net
+
+  # ==========================================================
+  # 2. CORE BACKEND MICROSERVICES
+  # ==========================================================
+  identity-service:
+    image: ${DOCKER_REGISTRY:-quickshop}/identity-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: identity-service
+    container_name: quickshop-identity-service
+    restart: always
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - quickshop-prod-net
+
+  catalog-service:
+    image: ${DOCKER_REGISTRY:-quickshop}/catalog-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: catalog-service
+    container_name: quickshop-catalog-service
+    restart: always
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      MINIO_ENDPOINT: http://minio:9000
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - quickshop-prod-net
+
+  order-service:
+    image: ${DOCKER_REGISTRY:-quickshop}/order-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: order-service
+    container_name: quickshop-order-service
+    restart: always
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - quickshop-prod-net
+
+  payment-service:
+    image: ${DOCKER_REGISTRY:-quickshop}/payment-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: payment-service
+    container_name: quickshop-payment-service
+    restart: always
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      VNP_TMN_CODE: ${VNP_TMN_CODE}
+      VNP_HASH_SECRET: ${VNP_HASH_SECRET}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - quickshop-prod-net
+
+  notification-ai-service:
+    image: ${DOCKER_REGISTRY:-quickshop}/notification-ai-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: notification-ai-service
+    container_name: quickshop-notification-ai-service
+    restart: always
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - quickshop-prod-net
+
+  api-gateway:
+    image: ${DOCKER_REGISTRY:-quickshop}/api-gateway:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: api-gateway
+    container_name: quickshop-api-gateway
+    restart: always
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      CATALOG_SERVICE_URL: http://catalog-service:8082
+      ORDER_SERVICE_URL: http://order-service:8083
+      PAYMENT_SERVICE_URL: http://payment-service:8084
+      NOTIFICATION_SERVICE_URL: http://notification-ai-service:8085
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    depends_on:
+      redis:
+        condition: service_healthy
+      identity-service:
+        condition: service_started
+    networks:
+      - quickshop-prod-net
+
+  # ==========================================================
+  # 3. FRONTEND APPLICATION
+  # ==========================================================
+  frontend:
+    image: ${DOCKER_REGISTRY:-quickshop}/frontend:${IMAGE_TAG:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: quickshop-frontend
+    restart: always
+    networks:
+      - quickshop-prod-net
+
+  # ==========================================================
+  # 4. EDGE REVERSE PROXY (NGINX)
+  # ==========================================================
+  nginx:
+    image: nginx:alpine
+    container_name: quickshop-prod-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deployments/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api-gateway
+      - frontend
+    networks:
+      - quickshop-prod-net
+
+volumes:
+  mysql_prod_data:
+    name: quickshop_mysql_prod_data
+  redis_prod_data:
+    name: quickshop_redis_prod_data
+  rabbitmq_prod_data:
+    name: quickshop_rabbitmq_prod_data
+  minio_prod_data:
+    name: quickshop_minio_prod_data
+
+networks:
+  quickshop-prod-net:
+    name: quickshop-prod-net
+    driver: bridge

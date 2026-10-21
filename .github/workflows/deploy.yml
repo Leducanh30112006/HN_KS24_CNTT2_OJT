@@ -1,0 +1,186 @@
+name: QuickShop CI/CD Deployment Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOCKER_REGISTRY: ${{ secrets.DOCKER_USERNAME || 'quickshop' }}
+
+jobs:
+  # ==========================================================
+  # 1. DETECT CHANGED MICROSERVICES
+  # ==========================================================
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      gateway: ${{ steps.filter.outputs.gateway }}
+      identity: ${{ steps.filter.outputs.identity }}
+      catalog: ${{ steps.filter.outputs.catalog }}
+      order: ${{ steps.filter.outputs.order }}
+      payment: ${{ steps.filter.outputs.payment }}
+      notification: ${{ steps.filter.outputs.notification }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Paths Filter Check
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            gateway:
+              - 'api-gateway/**'
+              - 'common-library/**'
+              - 'build.gradle'
+            identity:
+              - 'identity-service/**'
+              - 'common-library/**'
+              - 'build.gradle'
+            catalog:
+              - 'catalog-service/**'
+              - 'common-library/**'
+              - 'build.gradle'
+            order:
+              - 'order-service/**'
+              - 'common-library/**'
+              - 'build.gradle'
+            payment:
+              - 'payment-service/**'
+              - 'common-library/**'
+              - 'build.gradle'
+            notification:
+              - 'notification-ai-service/**'
+              - 'common-library/**'
+              - 'build.gradle'
+            frontend:
+              - 'frontend/**'
+
+  # ==========================================================
+  # 2. BUILD & PUSH DOCKER IMAGES (CONDITIONAL MATRIX)
+  # ==========================================================
+  build-and-push:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: api-gateway
+            enabled: ${{ needs.detect-changes.outputs.gateway == 'true' }}
+            context: .
+            dockerfile: Dockerfile
+          - service: identity-service
+            enabled: ${{ needs.detect-changes.outputs.identity == 'true' }}
+            context: .
+            dockerfile: Dockerfile
+          - service: catalog-service
+            enabled: ${{ needs.detect-changes.outputs.catalog == 'true' }}
+            context: .
+            dockerfile: Dockerfile
+          - service: order-service
+            enabled: ${{ needs.detect-changes.outputs.order == 'true' }}
+            context: .
+            dockerfile: Dockerfile
+          - service: payment-service
+            enabled: ${{ needs.detect-changes.outputs.payment == 'true' }}
+            context: .
+            dockerfile: Dockerfile
+          - service: notification-ai-service
+            enabled: ${{ needs.detect-changes.outputs.notification == 'true' }}
+            context: .
+            dockerfile: Dockerfile
+          - service: frontend
+            enabled: ${{ needs.detect-changes.outputs.frontend == 'true' }}
+            context: ./frontend
+            dockerfile: ./frontend/Dockerfile
+    steps:
+      - name: Checkout Repository
+        if: matrix.enabled == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        if: matrix.enabled == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: matrix.enabled == 'true' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build & Push Docker Image
+        if: matrix.enabled == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+            ${{ env.DOCKER_REGISTRY }}/${{ matrix.service }}:latest
+          build-args: |
+            SERVICE_NAME=${{ matrix.service }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ==========================================================
+  # 3. CONTINUOUS DEPLOYMENT TO VPS UBUNTU VIA SSH
+  # ==========================================================
+  deploy-vps:
+    needs: [detect-changes, build-and-push]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Rolling Deployment via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          GATEWAY_CHANGED: ${{ needs.detect-changes.outputs.gateway }}
+          IDENTITY_CHANGED: ${{ needs.detect-changes.outputs.identity }}
+          CATALOG_CHANGED: ${{ needs.detect-changes.outputs.catalog }}
+          ORDER_CHANGED: ${{ needs.detect-changes.outputs.order }}
+          PAYMENT_CHANGED: ${{ needs.detect-changes.outputs.payment }}
+          NOTIFICATION_CHANGED: ${{ needs.detect-changes.outputs.notification }}
+          FRONTEND_CHANGED: ${{ needs.detect-changes.outputs.frontend }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: IMAGE_TAG,GATEWAY_CHANGED,IDENTITY_CHANGED,CATALOG_CHANGED,ORDER_CHANGED,PAYMENT_CHANGED,NOTIFICATION_CHANGED,FRONTEND_CHANGED
+          script: |
+            set -e
+            echo "==== Starting Rolling Deployment on VPS Ubuntu ===="
+            cd /opt/quickshop
+
+            git pull origin main
+
+            export IMAGE_TAG=$IMAGE_TAG
+
+            SERVICES_TO_UPDATE=""
+            [ "$GATEWAY_CHANGED" = "true" ] && SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE api-gateway"
+            [ "$IDENTITY_CHANGED" = "true" ] && SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE identity-service"
+            [ "$CATALOG_CHANGED" = "true" ] && SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE catalog-service"
+            [ "$ORDER_CHANGED" = "true" ] && SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE order-service"
+            [ "$PAYMENT_CHANGED" = "true" ] && SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE payment-service"
+            [ "$NOTIFICATION_CHANGED" = "true" ] && SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE notification-ai-service"
+            [ "$FRONTEND_CHANGED" = "true" ] && SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE frontend"
+
+            if [ -n "$SERVICES_TO_UPDATE" ]; then
+              echo "Pulling updated images for:$SERVICES_TO_UPDATE"
+              docker compose -f docker-compose.prod.yml pull $SERVICES_TO_UPDATE
+              
+              echo "Executing zero-downtime rolling update for:$SERVICES_TO_UPDATE"
+              docker compose -f docker-compose.prod.yml up -d --no-deps $SERVICES_TO_UPDATE
+            else
+              echo "No service images changed, verifying container health..."
+              docker compose -f docker-compose.prod.yml ps
+            fi
+
+            echo "Cleaning unused dangling images..."
+            docker image prune -f
+
+            echo "==== Deployment successfully finished! ===="

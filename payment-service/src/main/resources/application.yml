@@ -1,0 +1,22 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: payment-service
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:quickshop}
+    password: ${RABBITMQ_PASSWORD:quickshop123}
+
+vnpay:
+  tmn-code: ${VNP_TMN_CODE:QUICKSHOP}
+  hash-secret: ${VNP_HASH_SECRET:QUICKSHOPSECRETKEYVNPAY2026}
+  payment-url: ${VNP_PAYMENT_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+  return-url: ${VNP_RETURN_URL:http://localhost:5173/payment/vnpay-return}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

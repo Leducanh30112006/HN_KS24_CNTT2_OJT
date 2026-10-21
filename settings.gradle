@@ -1,0 +1,9 @@
+rootProject.name = 'quickshop-microservices'
+
+include 'common-library'
+include 'api-gateway'
+include 'identity-service'
+include 'catalog-service'
+include 'order-service'
+include 'payment-service'
+include 'notification-ai-service'
