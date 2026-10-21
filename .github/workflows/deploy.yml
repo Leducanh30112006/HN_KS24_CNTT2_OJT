@@ -21,6 +21,7 @@ jobs:
       catalog: ${{ steps.filter.outputs.catalog }}
       order: ${{ steps.filter.outputs.order }}
       payment: ${{ steps.filter.outputs.payment }}
+      shipping: ${{ steps.filter.outputs.shipping }}
       notification: ${{ steps.filter.outputs.notification }}
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
@@ -50,6 +51,10 @@ jobs:
               - 'build.gradle'
             payment:
               - 'payment-service/**'
+              - 'common-library/**'
+              - 'build.gradle'
+            shipping:
+              - 'shipping-service/**'
               - 'common-library/**'
               - 'build.gradle'
             notification:
@@ -86,6 +91,10 @@ jobs:
             dockerfile: Dockerfile
           - service: payment-service
             enabled: ${{ needs.detect-changes.outputs.payment == 'true' }}
+            context: .
+            dockerfile: Dockerfile
+          - service: shipping-service
+            enabled: ${{ needs.detect-changes.outputs.shipping == 'true' }}
             context: .
             dockerfile: Dockerfile
           - service: notification-ai-service
@@ -144,13 +153,14 @@ jobs:
           CATALOG_CHANGED: ${{ needs.detect-changes.outputs.catalog }}
           ORDER_CHANGED: ${{ needs.detect-changes.outputs.order }}
           PAYMENT_CHANGED: ${{ needs.detect-changes.outputs.payment }}
+          SHIPPING_CHANGED: ${{ needs.detect-changes.outputs.shipping }}
           NOTIFICATION_CHANGED: ${{ needs.detect-changes.outputs.notification }}
           FRONTEND_CHANGED: ${{ needs.detect-changes.outputs.frontend }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: IMAGE_TAG,GATEWAY_CHANGED,IDENTITY_CHANGED,CATALOG_CHANGED,ORDER_CHANGED,PAYMENT_CHANGED,NOTIFICATION_CHANGED,FRONTEND_CHANGED
+          envs: IMAGE_TAG,GATEWAY_CHANGED,IDENTITY_CHANGED,CATALOG_CHANGED,ORDER_CHANGED,PAYMENT_CHANGED,SHIPPING_CHANGED,NOTIFICATION_CHANGED,FRONTEND_CHANGED
           script: |
             set -e
             echo "==== Starting Rolling Deployment on VPS Ubuntu ===="
@@ -166,6 +176,7 @@ jobs:
             [ "$CATALOG_CHANGED" = "true" ] && SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE catalog-service"
             [ "$ORDER_CHANGED" = "true" ] && SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE order-service"
             [ "$PAYMENT_CHANGED" = "true" ] && SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE payment-service"
+            [ "$SHIPPING_CHANGED" = "true" ] && SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE shipping-service"
             [ "$NOTIFICATION_CHANGED" = "true" ] && SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE notification-ai-service"
             [ "$FRONTEND_CHANGED" = "true" ] && SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE frontend"
 

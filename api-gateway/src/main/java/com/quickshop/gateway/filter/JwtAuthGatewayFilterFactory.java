@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -55,17 +56,11 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
             ServerHttpRequest request = exchange.getRequest();
+            String token = extractToken(request);
 
-            if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
-                return onError(exchange, "Thiếu Authorization Header trong yêu cầu", HttpStatus.UNAUTHORIZED);
+            if (!StringUtils.hasText(token)) {
+                return onError(exchange, "Yêu cầu chưa được xác thực (Thiếu Token hoặc Cookie)", HttpStatus.UNAUTHORIZED);
             }
-
-            String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-            if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
-                return onError(exchange, "Định dạng token không hợp lệ (cần 'Bearer <token>')", HttpStatus.UNAUTHORIZED);
-            }
-
-            String token = authHeader.substring(7);
 
             try {
                 Claims claims = Jwts.parserBuilder()
@@ -78,12 +73,19 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
                 Object userId = claims.get("userId");
                 Object email = claims.get("email");
                 Object role = claims.get("role");
+                String userRoleStr = role != null ? String.valueOf(role) : "";
+
+                // Kiểm tra phân quyền RBAC nếu cấu hình requiredRole
+                if (StringUtils.hasText(config.getRequiredRole()) && !config.getRequiredRole().equalsIgnoreCase(userRoleStr)) {
+                    log.warn("Access denied: user role {} does not match required role {}", userRoleStr, config.getRequiredRole());
+                    return onError(exchange, "Bạn không có quyền truy cập tài nguyên này", HttpStatus.FORBIDDEN);
+                }
 
                 ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
                         .header("X-Auth-Username", username != null ? username : "")
                         .header("X-User-Id", userId != null ? String.valueOf(userId) : "")
                         .header("X-User-Email", email != null ? String.valueOf(email) : "")
-                        .header("X-User-Role", role != null ? String.valueOf(role) : "")
+                        .header("X-User-Role", userRoleStr)
                         .build();
 
                 return chain.filter(exchange.mutate().request(mutatedRequest).build());
@@ -93,6 +95,24 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
                 return onError(exchange, "Token đã hết hạn hoặc không hợp lệ", HttpStatus.UNAUTHORIZED);
             }
         };
+    }
+
+    private String extractToken(ServerHttpRequest request) {
+        // 1. Kiểm tra header Authorization: Bearer <token>
+        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+
+        // 2. Fallback trích xuất từ HttpOnly Cookie accessToken
+        if (request.getCookies().containsKey("accessToken")) {
+            HttpCookie cookie = request.getCookies().getFirst("accessToken");
+            if (cookie != null && StringUtils.hasText(cookie.getValue())) {
+                return cookie.getValue();
+            }
+        }
+
+        return null;
     }
 
     private Mono<Void> onError(ServerWebExchange exchange, String errMessage, HttpStatus httpStatus) {

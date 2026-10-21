@@ -1,6 +1,7 @@
 package com.quickshop.identity.entity;
 
 public enum Role {
-    ROLE_CUSTOMER,
+    ROLE_BUYER,
+    ROLE_SELLER,
     ROLE_ADMIN
 }

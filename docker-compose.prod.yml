@@ -68,6 +68,15 @@ services:
     networks:
       - quickshop-prod-net
 
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: quickshop-prod-zipkin
+    restart: always
+    ports:
+      - "9411:9411"
+    networks:
+      - quickshop-prod-net
+
   # ==========================================================
   # 2. CORE BACKEND MICROSERVICES
   # ==========================================================
@@ -159,11 +168,41 @@ services:
     container_name: quickshop-payment-service
     restart: always
     environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       VNP_TMN_CODE: ${VNP_TMN_CODE}
       VNP_HASH_SECRET: ${VNP_HASH_SECRET}
     depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - quickshop-prod-net
+
+  shipping-service:
+    image: ${DOCKER_REGISTRY:-quickshop}/shipping-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: shipping-service
+    container_name: quickshop-shipping-service
+    restart: always
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+    depends_on:
+      mysql:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
@@ -179,10 +218,16 @@ services:
     container_name: quickshop-notification-ai-service
     restart: always
     environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       OPENAI_API_KEY: ${OPENAI_API_KEY}
     depends_on:
+      mysql:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     networks:
@@ -204,7 +249,8 @@ services:
       CATALOG_SERVICE_URL: http://catalog-service:8082
       ORDER_SERVICE_URL: http://order-service:8083
       PAYMENT_SERVICE_URL: http://payment-service:8084
-      NOTIFICATION_SERVICE_URL: http://notification-ai-service:8085
+      SHIPPING_SERVICE_URL: http://shipping-service:8085
+      NOTIFICATION_SERVICE_URL: http://notification-ai-service:8086
       JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     depends_on:
       redis:

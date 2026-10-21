@@ -34,10 +34,18 @@ public class User {
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
+    @Column(name = "phone_number", length = 20)
+    private String phoneNumber;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 30)
     @Builder.Default
-    private Role role = Role.ROLE_CUSTOMER;
+    private Role role = Role.ROLE_BUYER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private UserStatus status = UserStatus.ACTIVE;
 
     @Builder.Default
     @Column(nullable = false)

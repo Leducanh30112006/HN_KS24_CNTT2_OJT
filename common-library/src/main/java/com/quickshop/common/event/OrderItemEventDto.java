@@ -14,7 +14,10 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class OrderItemEventDto implements Serializable {
     private Long productId;
+    private Long variantId;
+    private Long shopId;
     private String productName;
+    private String variantName;
     private String sku;
     private Integer quantity;
     private BigDecimal price;
