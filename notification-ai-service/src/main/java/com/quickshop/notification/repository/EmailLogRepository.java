@@ -8,5 +8,6 @@ import java.util.List;
 
 @Repository
 public interface EmailLogRepository extends JpaRepository<EmailLog, Long> {
-    List<EmailLog> findByRecipientEmail(String recipientEmail);
+    List<EmailLog> findAllByOrderBySentAtDesc();
+    List<EmailLog> findByRecipientEmailOrderBySentAtDesc(String recipientEmail);
 }

@@ -27,6 +27,9 @@ public class EmailLog {
     @Column(nullable = false)
     private String subject;
 
+    @Column(columnDefinition = "TEXT")
+    private String content;
+
     @Column(nullable = false, length = 20)
     private String status; // SUCCESS, FAILED
 

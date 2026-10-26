@@ -1,8 +1,12 @@
 package com.quickshop.notification.controller;
 
 import com.quickshop.common.dto.ApiResponse;
+import com.quickshop.notification.dto.AiChatResponse;
+import com.quickshop.notification.dto.AiSeoRequest;
+import com.quickshop.notification.dto.AiSeoResponse;
 import com.quickshop.notification.entity.Notification;
 import com.quickshop.notification.repository.NotificationRepository;
+import com.quickshop.notification.service.AiAssistantService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +24,7 @@ import java.util.Map;
 public class NotificationAiController {
 
     private final NotificationRepository notificationRepository;
+    private final AiAssistantService aiAssistantService;
 
     @GetMapping("/api/notifications/my")
     public ResponseEntity<ApiResponse<List<Notification>>> getMyNotifications(@RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId) {
@@ -27,37 +32,23 @@ public class NotificationAiController {
     }
 
     @PostMapping("/api/ai/chat")
-    public ResponseEntity<ApiResponse<Map<String, String>>> chatWithAi(@RequestBody AiChatRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> chatWithAi(@RequestBody AiChatRequest request) {
         String userInput = request.getMessage() != null ? request.getMessage() : "";
+        AiChatResponse chatResponse = aiAssistantService.processShoppingChat(userInput);
 
-        // FR-10: Kiểm tra Prompt Sanitization chống Prompt Injection
-        String sanitizedPrompt = sanitizePrompt(userInput);
-        log.info("AI Shopping Assistant processing sanitized query: {}", sanitizedPrompt);
-
-        // Fallback / Circuit Breaker shopping response
-        String reply;
-        String lower = sanitizedPrompt.toLowerCase();
-        if (lower.contains("điện thoại") || lower.contains("phone")) {
-            reply = "Chào bạn! Mình gợi ý bạn tham khảo dòng **QuickPhone Pro Max 256GB** tại gian hàng TechWorld Official Store, hiện đang có sẵn màu Titan Tự Nhiên với giá ưu đãi cực tốt!";
-        } else if (lower.contains("laptop") || lower.contains("máy tính")) {
-            reply = "Bạn có thể tham khảo **QuickBook Ultra 14 inch M3 Pro** cấu hình 16GB/512GB siêu mượt cho lập trình viên và đồ họa nhé!";
-        } else {
-            reply = "Chào bạn! Tôi là Trợ lý Mua sắm QuickShop AI. Bạn cần tư vấn sản phẩm, kiểm tra khuyến mãi hay theo dõi đơn hàng hôm nay?";
-        }
-
-        Map<String, String> response = new HashMap<>();
-        response.put("reply", reply);
-        response.put("originalPrompt", userInput);
-        response.put("sanitizedPrompt", sanitizedPrompt);
+        Map<String, Object> response = new HashMap<>();
+        response.put("reply", chatResponse.getReply());
+        response.put("originalPrompt", chatResponse.getOriginalPrompt());
+        response.put("sanitizedPrompt", chatResponse.getSanitizedPrompt());
+        response.put("suggestions", chatResponse.getSuggestions());
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    private String sanitizePrompt(String input) {
-        if (input == null) return "";
-        // Loại bỏ các mẫu injection thường gặp
-        String cleaned = input.replaceAll("(?i)(ignore previous instructions|drop database|system prompt|reveal secrets)", "[FILTERED]");
-        return cleaned.trim();
+    @PostMapping("/api/ai/generate-seo")
+    public ResponseEntity<ApiResponse<AiSeoResponse>> generateSeo(@RequestBody AiSeoRequest request) {
+        AiSeoResponse response = aiAssistantService.generateSeoContent(request);
+        return ResponseEntity.ok(ApiResponse.success("Sinh nội dung SEO thành công", response));
     }
 
     @Data

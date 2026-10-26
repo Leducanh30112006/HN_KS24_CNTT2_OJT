@@ -1,436 +1,621 @@
-import React, { useState } from 'react';
-import { useAuthStore } from './stores/useAuthStore';
+import React, { useState, useEffect } from 'react';
+import Navbar from './components/Navbar';
+import HeroBanner from './components/HeroBanner';
+import FlashSaleSection from './components/FlashSaleSection';
+import ProductCard from './components/ProductCard';
+import ProductDetailModal from './components/ProductDetailModal';
+import CartDrawer from './components/CartDrawer';
+import AiChatWidget from './components/AiChatWidget';
+import SellerPortal from './components/SellerPortal';
+import AdminPortal from './components/AdminPortal';
+import AuthModal from './components/AuthModal';
 import axiosClient from './api/axiosClient';
 import { 
-  ShoppingBag, ShieldCheck, Database, Layers, CheckCircle2, User, Key, Server, 
-  Store, ShoppingCart, Truck, CreditCard, Bot, ArrowRight, Sparkles, AlertCircle
+  Filter, RotateCcw, Star, ChevronRight, ShieldCheck, 
+  HelpCircle, Smartphone, Award, Truck, Sparkles 
 } from 'lucide-react';
 
 export default function App() {
-  const { user, isAuthenticated, login, logout } = useAuthStore();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-  
-  // Tab navigation
-  const [activeTab, setActiveTab] = useState('services'); // 'services', 'auth', 'orders', 'ai'
+  const [currentView, setCurrentView] = useState('storefront'); // 'storefront' | 'seller' | 'admin'
 
-  // AI Chat test state
-  const [aiMessage, setAiMessage] = useState('');
-  const [aiResponse, setAiResponse] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
+  // Data states
+  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
 
-  const handleLogin = async (e) => {
-    if (e) e.preventDefault();
-    setLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
+  // Filter states
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'priceAsc' | 'priceDesc'
+  const [priceRange, setPriceRange] = useState('all'); // 'all', 'under1m', '1m-5m', '5m-20m', 'above20m'
+  const [minRating, setMinRating] = useState(0);
 
-    try {
-      const res = await axiosClient.post('/api/auth/login', {
-        usernameOrEmail: username,
-        password: password,
-      });
+  // Modal states
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-      if (res.success && res.data) {
-        login(res.data);
-        setSuccessMsg(`Đăng nhập thành công với vai trò: ${res.data.fullName} [${res.data.role}]`);
-      }
-    } catch (err) {
-      setErrorMsg(err.message || 'Không thể kết nối đến API Gateway (Port 8080)');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const setRoleAccount = (u, p) => {
-    setUsername(u);
-    setPassword(p);
-    setErrorMsg('');
-    setSuccessMsg('');
-  };
-
-  const handleAiChat = async (e) => {
-    e.preventDefault();
-    if (!aiMessage.trim()) return;
-    setAiLoading(true);
-    try {
-      const res = await axiosClient.post('/api/ai/chat', { message: aiMessage });
-      if (res.success && res.data) {
-        setAiResponse(res.data.reply);
-      }
-    } catch (err) {
-      setAiResponse('Lỗi kết nối Trợ lý AI: ' + (err.message || 'Vui lòng kiểm tra Notification & AI Service (Port 8086)'));
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const services = [
-    { name: 'API Gateway', port: '8080', icon: ShieldCheck, tech: 'Spring Cloud Gateway, Redis Rate Limiter (CF-Connecting-IP), Dual Auth', status: 'Online' },
-    { name: 'Identity & Shop', port: '8081', icon: User, tech: 'RBAC (Buyer, Seller, Admin), Shop KYC, identity_db', status: 'Online' },
-    { name: 'Catalog & Product', port: '8082', icon: Store, tech: 'Multi-variant SKU, MinIO S3, Redis Cache, Reviews, catalog_db', status: 'Online' },
-    { name: 'Order & Cart', port: '8083', icon: ShoppingCart, tech: 'Saga Orchestrator, Split Sub-Orders, Redis Cart, order.dlq, order_db', status: 'Online' },
-    { name: 'Payment & Wallet', port: '8084', icon: CreditCard, tech: 'VNPay Sandbox, Escrow Ledger, Seller Wallet, payment_db', status: 'Online' },
-    { name: 'Shipping & Logistics', port: '8085', icon: Truck, tech: 'GHN/GHTK, Idempotent Webhook (event_id), shipping_db', status: 'Online' },
-    { name: 'Notification & AI', port: '8086', icon: Bot, tech: 'Spring AI Chatbot, Prompt Sanitization, RabbitMQ Mail OTP, notification_db', status: 'Online' },
+  // Default seed data for immediate standalone presentation
+  const defaultCategories = [
+    { id: 1, name: 'Điện thoại & Phụ kiện', slug: 'dien-thoai-phu-kien', icon: 'Smartphone', productCount: 3 },
+    { id: 2, name: 'Laptop & Máy tính', slug: 'laptop-may-tinh', icon: 'Laptop', productCount: 2 },
+    { id: 3, name: 'Thời trang nam nữ', slug: 'thoi-trang', icon: 'Shirt', productCount: 2 },
+    { id: 4, name: 'Nhà cửa & Đời sống', slug: 'nha-cua-doi-song', icon: 'Home', productCount: 2 },
+    { id: 5, name: 'Mỹ phẩm & Làm đẹp', slug: 'my-pham-lam-dep', icon: 'Sparkles', productCount: 1 },
+    { id: 6, name: 'Giày dép & Túi xách', slug: 'giay-dep-tui-xach', icon: 'ShoppingBag', productCount: 1 },
   ];
 
+  const defaultProducts = [
+    {
+      id: 1,
+      shopId: 1,
+      shopName: 'TechWorld Official Store',
+      categoryId: 1,
+      categoryName: 'Điện thoại & Phụ kiện',
+      name: 'Điện thoại thông minh QuickPhone Pro Max 256GB - Bản Quốc Tế',
+      description: 'Flagship hàng đầu với chip xử lý AI 3nm mạnh mẽ, màn hình Super Retina XDR OLED 120Hz siêu mượt mà, cụm 3 camera 48MP zoom quang học 5x và thời lượng pin trâu lên đến 29 giờ liên tục.',
+      mainImage: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&auto=format&fit=crop&q=80',
+      status: 'ACTIVE',
+      minPrice: 29990000,
+      maxPrice: 41990000,
+      totalStock: 85,
+      averageRating: 5.0,
+      reviewCount: 48,
+      variants: [
+        { id: 11, sku: 'QP-PRO-TITAN-256', color: 'Titan Tự Nhiên', size: '256GB', price: 29990000, stock: 45, availableStock: 45 },
+        { id: 12, sku: 'QP-PRO-BLACK-512', color: 'Đen Không Gian', size: '512GB', price: 34990000, stock: 25, availableStock: 25 },
+        { id: 13, sku: 'QP-PRO-DESERT-1TB', color: 'Titan Sa Mạc', size: '1TB', price: 41990000, stock: 15, availableStock: 15 },
+      ],
+    },
+    {
+      id: 2,
+      shopId: 1,
+      shopName: 'TechWorld Official Store',
+      categoryId: 2,
+      categoryName: 'Laptop & Máy tính',
+      name: 'Laptop QuickBook Ultra 14 inch M3 Pro - 18GB/512GB Bạc Ánh Kim',
+      description: 'Chiếc máy trạm di động mỏng nhẹ đẳng cấp nhất: màn hình Liquid Retina XDR 1000 nits, chip 11-core CPU, 14-core GPU xử lý đồ họa mượt mà, pin dùng cả ngày không cần sạc.',
+      mainImage: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600&auto=format&fit=crop&q=80',
+      status: 'ACTIVE',
+      minPrice: 45990000,
+      maxPrice: 57990000,
+      totalStock: 30,
+      averageRating: 4.9,
+      reviewCount: 32,
+      variants: [
+        { id: 21, sku: 'QB-ULTRA-SPACEBLACK-18-512', color: 'Đen Không Gian', size: '18GB / 512GB', price: 45990000, stock: 20, availableStock: 20 },
+        { id: 22, sku: 'QB-ULTRA-SILVER-36-1TB', color: 'Bạc Ánh Kim', size: '36GB / 1TB', price: 57990000, stock: 10, availableStock: 10 },
+      ],
+    },
+    {
+      id: 3,
+      shopId: 1,
+      shopName: 'TechWorld Official Store',
+      categoryId: 1,
+      categoryName: 'Điện thoại & Phụ kiện',
+      name: 'Tai nghe Bluetooth True Wireless QuickPods Pro 2 Chống Ồn Chủ Động',
+      description: 'Âm thanh vòm cá nhân hóa chuẩn phòng thu, công nghệ khử tiếng ồn chủ động ANC thế hệ 2 gấp đôi hiệu quả, kháng nước IP54 và hộp sạc hỗ trợ sạc MagSafe không dây.',
+      mainImage: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=600&auto=format&fit=crop&q=80',
+      status: 'ACTIVE',
+      minPrice: 4990000,
+      maxPrice: 4990000,
+      totalStock: 80,
+      averageRating: 5.0,
+      reviewCount: 96,
+      variants: [
+        { id: 31, sku: 'QPODS-PRO-WHITE', color: 'Trắng Tinh Khôi', size: 'Tiêu chuẩn', price: 4990000, stock: 80, availableStock: 80 },
+      ],
+    },
+    {
+      id: 4,
+      shopId: 2,
+      shopName: 'Fashion Hub Official',
+      categoryId: 3,
+      categoryName: 'Thời trang nam nữ',
+      name: 'Áo Polo Nam QuickStyle Premium Vải Cafe Khử Mùi Thoáng Khí',
+      description: 'Chất liệu dệt sợi từ bã cafe tự nhiên siêu nhẹ, chống tia UV 50+, co giãn 4 chiều vận động thoải mái và chống nhăn tự nhiên không cần ủi.',
+      mainImage: 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=600&auto=format&fit=crop&q=80',
+      status: 'ACTIVE',
+      minPrice: 289000,
+      maxPrice: 289000,
+      totalStock: 255,
+      averageRating: 4.8,
+      reviewCount: 140,
+      variants: [
+        { id: 41, sku: 'POLO-NAVY-M', color: 'Xanh Navy', size: 'M', price: 289000, stock: 100, availableStock: 100 },
+        { id: 42, sku: 'POLO-NAVY-L', color: 'Xanh Navy', size: 'L', price: 289000, stock: 85, availableStock: 85 },
+        { id: 43, sku: 'POLO-WHITE-M', color: 'Trắng Sữa', size: 'M', price: 289000, stock: 70, availableStock: 70 },
+      ],
+    },
+    {
+      id: 5,
+      shopId: 2,
+      shopName: 'SmartHome Vietnam Store',
+      categoryId: 4,
+      categoryName: 'Nhà cửa & Đời sống',
+      name: 'Robot Hút Bụi Lau Nhà Tự Động QuickBot Omni 3000Pa Cảm Biến LiDAR',
+      description: 'Hệ thống định vị laser LDS 360 độ lập bản đồ 3D cực chuẩn, lực hút bão 3000Pa gom sạch lông thú cưng, tự động giặt giẻ lau sấy khí nóng diệt khuẩn 99.9%.',
+      mainImage: 'https://images.unsplash.com/photo-1558317374-067fb5f30001?w=600&auto=format&fit=crop&q=80',
+      status: 'ACTIVE',
+      minPrice: 8490000,
+      maxPrice: 8490000,
+      totalStock: 30,
+      averageRating: 4.9,
+      reviewCount: 22,
+      variants: [
+        { id: 51, sku: 'ROBOT-OMNI-WHITE', color: 'Trắng Tuyết', size: 'Bản Quốc Tế', price: 8490000, stock: 30, availableStock: 30 },
+      ],
+    },
+    {
+      id: 6,
+      shopId: 3,
+      shopName: 'BeautyCare Mall',
+      categoryId: 5,
+      categoryName: 'Mỹ phẩm & Làm đẹp',
+      name: 'Tinh Chất Serum Niacinamide 10% + Zinc 1% Dưỡng Sáng Đều Màu Da',
+      description: 'Công thức lành tính dịu nhẹ kiểm soát bã nhờn, làm thông thoáng lỗ chân lông, làm mờ vết thâm mụn chỉ sau 14 ngày sử dụng đều đặn.',
+      mainImage: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&auto=format&fit=crop&q=80',
+      status: 'ACTIVE',
+      minPrice: 199000,
+      maxPrice: 349000,
+      totalStock: 240,
+      averageRating: 4.7,
+      reviewCount: 65,
+      variants: [
+        { id: 61, sku: 'SERUM-30ML', color: 'Trong suốt', size: '30ml', price: 199000, stock: 150, availableStock: 150 },
+        { id: 62, sku: 'SERUM-60ML', color: 'Trong suốt', size: '60ml', price: 349000, stock: 90, availableStock: 90 },
+      ],
+    },
+    {
+      id: 7,
+      shopId: 3,
+      shopName: 'Sneaker World',
+      categoryId: 6,
+      categoryName: 'Giày dép & Túi xách',
+      name: 'Giày Sneaker Thể Thao QuickRunner Pro Đệm Khí Êm Ái Chống Trượt',
+      description: 'Đế đệm khí êm nhẹ trợ lực khi chạy bộ, thân giày dệt lưới Flyknit thoáng khí kháng khuẩn không lo hôi chân, thiết kế trẻ trung phong cách Hàn Quốc.',
+      mainImage: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80',
+      status: 'ACTIVE',
+      minPrice: 890000,
+      maxPrice: 890000,
+      totalStock: 120,
+      averageRating: 5.0,
+      reviewCount: 54,
+      variants: [
+        { id: 71, sku: 'SNEAKER-RED-40', color: 'Đỏ Rực Rỡ', size: '40', price: 890000, stock: 40, availableStock: 40 },
+        { id: 72, sku: 'SNEAKER-RED-41', color: 'Đỏ Rực Rỡ', size: '41', price: 890000, stock: 45, availableStock: 45 },
+        { id: 73, sku: 'SNEAKER-RED-42', color: 'Đỏ Rực Rỡ', size: '42', price: 890000, stock: 35, availableStock: 35 },
+      ],
+    },
+  ];
+
+  // Fetch Categories from /api/catalog/categories
+  const fetchCategories = async () => {
+    try {
+      const res = await axiosClient.get('/api/catalog/categories');
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        setCategories(res.data);
+      } else {
+        setCategories(defaultCategories);
+      }
+    } catch (err) {
+      setCategories(defaultCategories);
+    }
+  };
+
+  // Fetch Products from /api/catalog/products
+  const fetchProducts = async (catId = selectedCategory, kw = searchKeyword, sort = sortBy) => {
+    setLoadingProducts(true);
+    let url = `/api/catalog/products?status=ACTIVE&sortBy=${sort}&size=50`;
+    if (catId) url += `&categoryId=${catId}`;
+    if (kw && kw.trim()) url += `&keyword=${encodeURIComponent(kw.trim())}`;
+
+    try {
+      const res = await axiosClient.get(url);
+      if (res.success && res.data?.content && res.data.content.length > 0) {
+        setProducts(res.data.content);
+      } else {
+        // Filter local default
+        let filtered = defaultProducts;
+        if (catId) filtered = filtered.filter((p) => p.categoryId === catId);
+        if (kw && kw.trim()) {
+          const lkw = kw.toLowerCase().trim();
+          filtered = filtered.filter((p) => p.name.toLowerCase().includes(lkw) || p.description.toLowerCase().includes(lkw));
+        }
+        setProducts(filtered);
+      }
+    } catch (err) {
+      let filtered = defaultProducts;
+      if (catId) filtered = filtered.filter((p) => p.categoryId === catId);
+      if (kw && kw.trim()) {
+        const lkw = kw.toLowerCase().trim();
+        filtered = filtered.filter((p) => p.name.toLowerCase().includes(lkw) || p.description.toLowerCase().includes(lkw));
+      }
+      setProducts(filtered);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    fetchProducts(selectedCategory, searchKeyword, sortBy);
+  }, [selectedCategory, sortBy]);
+
+  const handleSearchSubmit = (keywordOverride) => {
+    const kw = keywordOverride !== undefined ? keywordOverride : searchKeyword;
+    fetchProducts(selectedCategory, kw, sortBy);
+  };
+
+  const handleResetFilters = () => {
+    setSelectedCategory(null);
+    setSearchKeyword('');
+    setSortBy('newest');
+    setPriceRange('all');
+    setMinRating(0);
+    fetchProducts(null, '', 'newest');
+  };
+
+  // Filter products by client criteria (Price Range & Min Rating)
+  const filteredProducts = products.filter((p) => {
+    const price = p.minPrice || 0;
+    if (priceRange === 'under1m' && price >= 1000000) return false;
+    if (priceRange === '1m-5m' && (price < 1000000 || price > 5000000)) return false;
+    if (priceRange === '5m-20m' && (price < 5000000 || price > 20000000)) return false;
+    if (priceRange === 'above20m' && price < 20000000) return false;
+
+    if (minRating > 0 && (p.averageRating || 5.0) < minRating) return false;
+    return true;
+  });
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 font-sans">
-      <div className="max-w-6xl mx-auto space-y-6">
-        
-        {/* Header */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-900/90 border border-slate-800 p-6 rounded-2xl gap-4 shadow-xl backdrop-blur-sm">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 shadow-inner">
-              <ShoppingBag className="w-8 h-8" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                QuickShop Marketplace
-                <span className="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono font-medium">
-                  v2.2.0 Production-Ready
-                </span>
-              </h1>
-              <p className="text-sm text-slate-400">
-                Sàn TMĐT Đa người bán (Multi-Vendor) • 7 Microservices • 6 MySQL DBs • Saga Orchestrator
-              </p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#F5F5FA] text-slate-800 font-sans flex flex-col">
+      {/* 1. Universal Top Navigation */}
+      <Navbar
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        searchKeyword={searchKeyword}
+        setSearchKeyword={setSearchKeyword}
+        onSearchSubmit={handleSearchSubmit}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={(catId) => {
+          setSelectedCategory(catId);
+          setCurrentView('storefront');
+        }}
+        categories={categories}
+        onOpenCart={() => setIsCartOpen(true)}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+      />
 
-          <div>
-            {isAuthenticated ? (
-              <div className="flex items-center gap-4 bg-slate-800/90 p-2.5 px-4 rounded-xl border border-slate-700">
-                <div className="flex items-center gap-2 text-sm text-slate-200">
-                  <User className="w-4 h-4 text-emerald-400" />
-                  <span className="font-medium">{user?.fullName}</span>
-                  <span className="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30 font-mono">
-                    {user?.role}
-                  </span>
-                </div>
-                <button
-                  onClick={logout}
-                  className="text-xs bg-rose-600/80 hover:bg-rose-600 text-white px-3 py-1.5 rounded-lg transition"
-                >
-                  Đăng xuất
-                </button>
-              </div>
-            ) : (
-              <div className="text-xs text-amber-400 bg-amber-950/40 border border-amber-800/50 px-3.5 py-2 rounded-xl flex items-center gap-2">
-                <Key className="w-4 h-4 text-amber-400" />
-                <span>Chưa đăng nhập (Khách vãng lai)</span>
-              </div>
-            )}
-          </div>
-        </header>
-
-        {/* Navigation Tabs */}
-        <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-2">
-          <button
-            onClick={() => setActiveTab('services')}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 ${
-              activeTab === 'services'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30'
-                : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800'
-            }`}
-          >
-            <Server className="w-4 h-4" />
-            Tô pô 7 Services ({services.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('auth')}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 ${
-              activeTab === 'auth'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30'
-                : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            Kiểm thử RBAC (3 Roles)
-          </button>
-
-          <button
-            onClick={() => setActiveTab('orders')}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 ${
-              activeTab === 'orders'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30'
-                : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            Mô phỏng Đơn hàng & Saga
-          </button>
-
-          <button
-            onClick={() => setActiveTab('ai')}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2 ${
-              activeTab === 'ai'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30'
-                : 'bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800'
-            }`}
-          >
-            <Bot className="w-4 h-4" />
-            Trợ lý QuickShop AI
-          </button>
-        </div>
-
-        {/* Tab 1: Services Grid */}
-        {activeTab === 'services' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
-                <Server className="w-5 h-5 text-emerald-400" />
-                Các Microservices độc lập theo chuẩn SRS v2.2.0
-              </h2>
-              <span className="text-xs text-slate-400 font-mono">Gateway Route Port: 8080</span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {services.map((svc) => {
-                const IconComponent = svc.icon;
-                return (
-                  <div
-                    key={svc.name}
-                    className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl hover:border-emerald-500/50 transition group flex flex-col justify-between shadow-lg"
-                  >
-                    <div>
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="p-2 bg-slate-800 rounded-xl text-emerald-400 group-hover:bg-emerald-500/10 transition">
-                            <IconComponent className="w-5 h-5" />
-                          </div>
-                          <span className="font-semibold text-white group-hover:text-emerald-400 transition">
-                            {svc.name}
-                          </span>
-                        </div>
-                        <span className="text-xs bg-slate-800 text-emerald-400 font-mono px-2.5 py-1 rounded-lg border border-slate-700">
-                          Port {svc.port}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-400 mb-4 leading-relaxed">{svc.tech}</p>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs">
-                      <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Ready</span>
-                      </div>
-                      <span className="text-slate-500 font-mono">Database per Service</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: RBAC Auth Test */}
-        {activeTab === 'auth' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-4">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                Kiểm thử Phân quyền (3 Roles Đã Seed Sẵn)
-              </h2>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Hệ thống QuickShop Marketplace phân quyền nghiêm ngặt 3 vai trò: <strong className="text-emerald-400">ROLE_ADMIN</strong>, <strong className="text-sky-400">ROLE_BUYER</strong>, và <strong className="text-amber-400">ROLE_SELLER</strong> (gắn với Shop Profile). Bấm các nút chọn nhanh bên dưới để đăng nhập:
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setRoleAccount('admin', 'admin123')}
-                  className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-left hover:border-emerald-500 transition group"
-                >
-                  <div className="text-xs text-emerald-400 font-mono mb-1">ROLE_ADMIN</div>
-                  <div className="font-semibold text-white">Quản trị viên Sàn</div>
-                  <div className="text-xs text-slate-400 mt-1 font-mono">admin / admin123</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setRoleAccount('buyer', 'buyer123')}
-                  className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-left hover:border-sky-500 transition group"
-                >
-                  <div className="text-xs text-sky-400 font-mono mb-1">ROLE_BUYER</div>
-                  <div className="font-semibold text-white">Khách hàng Mua</div>
-                  <div className="text-xs text-slate-400 mt-1 font-mono">buyer / buyer123</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setRoleAccount('seller', 'seller123')}
-                  className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-left hover:border-amber-500 transition group"
-                >
-                  <div className="text-xs text-amber-400 font-mono mb-1">ROLE_SELLER</div>
-                  <div className="font-semibold text-white">Chủ Gian hàng</div>
-                  <div className="text-xs text-slate-400 mt-1 font-mono">seller / seller123</div>
-                </button>
-              </div>
-
-              <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-xl text-xs text-slate-300 space-y-2">
-                <div className="font-semibold text-white flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-emerald-400" />
-                  Cơ chế Dual Auth tại API Gateway (Port 8080):
-                </div>
-                <div>• Hỗ trợ trích xuất Token từ cả Header <code className="text-emerald-400">Authorization: Bearer &lt;token&gt;</code> lẫn Cookie <code className="text-emerald-400">accessToken</code>.</div>
-                <div>• Rate Limiting tự động ưu tiên nhận diện IP gốc qua header <code className="text-emerald-400">CF-Connecting-IP</code> từ Cloudflare.</div>
-              </div>
-            </div>
-
-            {/* Login Box */}
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between shadow-xl">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <h3 className="font-semibold text-white flex items-center gap-2">
-                  <Key className="w-4 h-4 text-emerald-400" />
-                  Đăng nhập qua Gateway
-                </h3>
-
-                {errorMsg && (
-                  <div className="text-xs bg-rose-950/60 border border-rose-800 text-rose-300 p-3 rounded-xl">
-                    {errorMsg}
-                  </div>
-                )}
-
-                {successMsg && (
-                  <div className="text-xs bg-emerald-950/60 border border-emerald-800 text-emerald-300 p-3 rounded-xl">
-                    {successMsg}
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Tên đăng nhập / Email</label>
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Mật khẩu</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-                    required
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl text-sm transition shadow-lg shadow-emerald-900/30 disabled:opacity-50"
-                >
-                  {loading ? 'Đang xác thực qua Gateway...' : 'Xác thực tài khoản'}
-                </button>
-              </form>
-
-              <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400">
-                Endpoint: <code className="text-slate-300">POST /api/auth/login</code>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Marketplace Multi-Vendor Orders & Saga Flow */}
-        {activeTab === 'orders' && (
+      {/* 2. Main Content Views */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6">
+        {/* VIEW 1: STOREFRONT (NGƯỜI MUA) */}
+        {currentView === 'storefront' && (
           <div className="space-y-6">
-            <div className="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl space-y-4">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Layers className="w-5 h-5 text-emerald-400" />
-                Mô hình Tách Đơn Hàng Đa Gian Hàng (Master Order & Sub-Orders)
-              </h2>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Khi khách hàng đặt giỏ hàng chứa nhiều sản phẩm từ các Shop khác nhau, Order Service đóng vai trò <strong>Saga Orchestrator</strong> tự động tạo 1 Master Order và các Sub-Orders độc lập:
-              </p>
+            {/* Hero Carousel & Commitments Banner */}
+            <HeroBanner onSelectCategory={(catId) => setSelectedCategory(catId)} />
 
-              {/* Diagram / Card Flow */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl">
-                  <div className="text-xs text-emerald-400 font-mono mb-1">Bước 1: Giỏ hàng đa Shop</div>
-                  <div className="font-medium text-white">Buyer Checkout Giỏ hàng</div>
-                  <p className="text-xs text-slate-400 mt-2">
-                    Gom nhóm mặt hàng theo Shop ID. Áp dụng Voucher Sàn + Voucher từng Shop.
-                  </p>
+            {/* Flash Sale Deal Shocker Section */}
+            <FlashSaleSection
+              products={products}
+              onSelectProduct={(p) => setSelectedProduct(p)}
+            />
+
+            {/* Category Showcase Grid (Chuẩn Shopee) */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-orange-600" />
+                  Danh mục sàn nổi bật
+                </h3>
+                <span className="text-xs text-orange-600 font-semibold cursor-pointer hover:underline">
+                  Xem tất cả ngành hàng
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 pt-1">
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedCategory(c.id === selectedCategory ? null : c.id)}
+                    className={`p-3 rounded-2xl border text-center transition flex flex-col items-center justify-center space-y-1.5 group ${
+                      selectedCategory === c.id
+                        ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm font-bold'
+                        : 'border-slate-100 hover:border-orange-300 hover:shadow-md bg-white text-slate-700'
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-orange-100 to-amber-50 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+                      <Smartphone className="w-6 h-6 stroke-[1.8]" />
+                    </div>
+                    <span className="text-xs font-semibold line-clamp-1 group-hover:text-orange-600 transition">
+                      {c.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Main Product Catalog Layout with Filter Sidebar */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+              {/* Left Column: Filter Sidebar */}
+              <aside className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-sm space-y-5 text-xs hidden lg:block sticky top-24">
+                <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                  <div className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
+                    <Filter className="w-4 h-4 text-orange-600" />
+                    Bộ lọc tìm kiếm
+                  </div>
+                  <button
+                    onClick={handleResetFilters}
+                    className="text-slate-400 hover:text-orange-600 flex items-center gap-1 transition text-[11px]"
+                    title="Xóa tất cả bộ lọc"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    Xóa lọc
+                  </button>
                 </div>
 
-                <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl">
-                  <div className="text-xs text-emerald-400 font-mono mb-1">Bước 2: Saga Giữ kho 15 phút</div>
-                  <div className="font-medium text-white">RabbitMQ: order.created</div>
-                  <p className="text-xs text-slate-400 mt-2">
-                    Gửi message sang Catalog Service giữ tồn kho có thời hạn. Nếu thất bại sau 3 lần retry $\rightarrow$ đẩy vào <code className="text-rose-400">order.dlq</code>.
-                  </p>
+                {/* Filter 1: By Category */}
+                <div className="space-y-2">
+                  <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                    Theo Danh Mục
+                  </div>
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => setSelectedCategory(null)}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg transition ${
+                        selectedCategory === null ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-slate-50 text-slate-600'
+                      }`}
+                    >
+                      Tất cả danh mục
+                    </button>
+                    {categories.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => setSelectedCategory(c.id)}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-lg transition flex justify-between items-center ${
+                          selectedCategory === c.id ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-slate-50 text-slate-600'
+                        }`}
+                      >
+                        <span className="truncate">{c.name}</span>
+                        {c.productCount > 0 && (
+                          <span className="text-[10px] text-slate-400">({c.productCount})</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl">
-                  <div className="text-xs text-emerald-400 font-mono mb-1">Bước 3: Escrow & Sổ cái</div>
-                  <div className="font-medium text-white">Payment & Escrow Holding</div>
-                  <p className="text-xs text-slate-400 mt-2">
-                    Tạm giữ tiền trong Escrow. Sau khi Sub-Order DELIVERED quá 3 ngày không khiếu nại $\rightarrow$ giải phóng tiền vào Ví Seller qua Double-Entry Ledger.
-                  </p>
+                {/* Filter 2: By Price Range */}
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                    Khoảng Giá (VND)
+                  </div>
+                  <div className="space-y-1 text-slate-600">
+                    {[
+                      { id: 'all', label: 'Tất cả mức giá' },
+                      { id: 'under1m', label: 'Dưới 1.000.000đ' },
+                      { id: '1m-5m', label: '1.000.000đ - 5.000.000đ' },
+                      { id: '5m-20m', label: '5.000.000đ - 20.000.000đ' },
+                      { id: 'above20m', label: 'Trên 20.000.000đ' },
+                    ].map((pr) => (
+                      <label key={pr.id} className="flex items-center space-x-2 cursor-pointer p-1 hover:text-orange-600">
+                        <input
+                          type="radio"
+                          name="priceRange"
+                          checked={priceRange === pr.id}
+                          onChange={() => setPriceRange(pr.id)}
+                          className="text-orange-600 focus:ring-orange-500"
+                        />
+                        <span>{pr.label}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Filter 3: By Rating */}
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                    Đánh Giá Sao
+                  </div>
+                  <div className="space-y-1 text-slate-600">
+                    {[
+                      { stars: 5, label: 'Từ 5 sao (Tuyệt đối)' },
+                      { stars: 4, label: 'Từ 4 sao trở lên' },
+                      { stars: 3, label: 'Từ 3 sao trở lên' },
+                      { stars: 0, label: 'Tất cả đánh giá' },
+                    ].map((r) => (
+                      <button
+                        key={r.stars}
+                        onClick={() => setMinRating(r.stars)}
+                        className={`w-full text-left px-2 py-1 rounded-lg flex items-center space-x-1.5 transition ${
+                          minRating === r.stars ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex text-amber-400">
+                          {r.stars > 0 ? (
+                            Array.from({ length: r.stars }).map((_, i) => (
+                              <Star key={i} className="w-3 h-3 fill-amber-400" />
+                            ))
+                          ) : (
+                            <span className="text-[11px] text-slate-500">Tất cả</span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-slate-600">{r.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </aside>
+
+              {/* Right Column: Sort Tool Bar & Product Grid */}
+              <div className="lg:col-span-3 space-y-4">
+                {/* Sort Bar */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 p-3 sm:px-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm text-xs">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-slate-500 font-medium">Sắp xếp theo:</span>
+                    <button
+                      onClick={() => setSortBy('newest')}
+                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${
+                        sortBy === 'newest' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      Mới nhất
+                    </button>
+                    <button
+                      onClick={() => setSortBy('priceAsc')}
+                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${
+                        sortBy === 'priceAsc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      Giá thấp đến cao
+                    </button>
+                    <button
+                      onClick={() => setSortBy('priceDesc')}
+                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${
+                        sortBy === 'priceDesc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      Giá cao đến thấp
+                    </button>
+                  </div>
+
+                  <div className="text-slate-400 font-medium text-[11px]">
+                    Tìm thấy <strong className="text-slate-800">{filteredProducts.length}</strong> sản phẩm
+                  </div>
+                </div>
+
+                {/* Product Grid */}
+                {loadingProducts ? (
+                  <div className="py-20 text-center space-y-2">
+                    <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <div className="text-xs text-slate-400">Đang tải sản phẩm từ Catalog DB & Redis Cache...</div>
+                  </div>
+                ) : filteredProducts.length === 0 ? (
+                  <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-3">
+                    <div className="w-16 h-16 rounded-full bg-orange-50 text-orange-400 mx-auto flex items-center justify-center">
+                      <Filter className="w-8 h-8" />
+                    </div>
+                    <h3 className="font-bold text-sm text-slate-800">Không tìm thấy sản phẩm phù hợp</h3>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                      Vui lòng thử điều chỉnh lại bộ lọc giá, từ khóa tìm kiếm hoặc chọn danh mục khác.
+                    </p>
+                    <button
+                      onClick={handleResetFilters}
+                      className="px-4 py-2 bg-orange-600 text-white rounded-xl text-xs font-semibold hover:bg-orange-700 transition"
+                    >
+                      Xem tất cả sản phẩm
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                    {filteredProducts.map((p) => (
+                      <ProductCard
+                        key={p.id}
+                        product={p}
+                        onSelect={(prod) => setSelectedProduct(prod)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* Tab 4: AI Shopping Assistant */}
-        {activeTab === 'ai' && (
-          <div className="max-w-2xl mx-auto bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-4">
-            <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
-              <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
-                <Bot className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-white">Trợ lý Mua sắm QuickShop AI</h3>
-                <p className="text-xs text-slate-400">Tích hợp Spring AI, Prompt Sanitization chống Injection (Port 8086)</p>
-              </div>
-            </div>
-
-            {aiResponse && (
-              <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl text-sm leading-relaxed text-slate-200">
-                <div className="text-xs font-semibold text-emerald-400 mb-1 flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  QuickShop AI Phản hồi:
-                </div>
-                {aiResponse}
-              </div>
-            )}
-
-            <form onSubmit={handleAiChat} className="space-y-3">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={aiMessage}
-                  onChange={(e) => setAiMessage(e.target.value)}
-                  placeholder="Hỏi về điện thoại QuickPhone Pro Max hoặc laptop QuickBook..."
-                  className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-                <button
-                  type="submit"
-                  disabled={aiLoading}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-2.5 rounded-xl text-sm transition shadow-lg shadow-emerald-900/30 disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  {aiLoading ? 'Đang suy nghĩ...' : 'Gửi'}
-                </button>
-              </div>
-              <div className="text-[11px] text-slate-500 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5 text-slate-400" />
-                Mọi truy vấn đều được làm sạch qua bộ lọc Prompt Sanitization trước khi gửi đến LLM.
-              </div>
-            </form>
-          </div>
+        {/* VIEW 2: SELLER CENTER (KÊNH NGƯỜI BÁN) */}
+        {currentView === 'seller' && (
+          <SellerPortal
+            categories={categories}
+            onProductCreated={(newProd) => {
+              setProducts([newProd, ...products]);
+              alert('Sản phẩm đã được gửi lên hệ thống và chuyển vào hàng đợi duyệt của Admin (FR-04)!');
+            }}
+          />
         )}
 
-      </div>
+        {/* VIEW 3: ADMIN PORTAL (CỔNG QUẢN TRỊ) */}
+        {currentView === 'admin' && (
+          <AdminPortal
+            categories={categories}
+            onCategoriesUpdated={fetchCategories}
+          />
+        )}
+      </main>
+
+      {/* 3. Footer Chuẩn Sàn TMĐT Việt Nam */}
+      <footer className="bg-white border-t border-slate-200 mt-16 text-slate-600 text-xs">
+        <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="space-y-3">
+            <div className="text-lg font-black text-slate-900 flex items-center">
+              Quick<span className="text-orange-600">Shop</span>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Sàn Thương mại Điện tử Đa người bán (Multi-Vendor Marketplace) chuẩn Microservices & Cloud-Native.
+            </p>
+            <div className="text-[11px] text-slate-400">
+              © 2026 QuickShop. Phát triển bởi Nhóm 03 (Lê Đức Anh, Triệu Quốc Bình, Nguyễn Văn Kiên).
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-bold text-slate-900 uppercase text-xs tracking-wider">Chăm sóc khách hàng</h4>
+            <ul className="space-y-1.5 text-slate-500 text-xs">
+              <li className="hover:text-orange-600 cursor-pointer">Trung tâm trợ giúp</li>
+              <li className="hover:text-orange-600 cursor-pointer">Hướng dẫn mua hàng</li>
+              <li className="hover:text-orange-600 cursor-pointer">Chính sách vận chuyển</li>
+              <li className="hover:text-orange-600 cursor-pointer">Chính sách bảo hành & đổi trả</li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-bold text-slate-900 uppercase text-xs tracking-wider">Về QuickShop</h4>
+            <ul className="space-y-1.5 text-slate-500 text-xs">
+              <li className="hover:text-orange-600 cursor-pointer">Giới thiệu sàn TMĐT</li>
+              <li className="hover:text-orange-600 cursor-pointer">Tuyển dụng đối tác</li>
+              <li className="hover:text-orange-600 cursor-pointer">Điều khoản dịch vụ</li>
+              <li className="hover:text-orange-600 cursor-pointer">Chính sách bảo mật</li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-bold text-slate-900 uppercase text-xs tracking-wider">Đơn vị Vận chuyển & Thanh toán</h4>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Tích hợp đối tác vận chuyển GHN, GHTK, Viettel Post và cổng thanh toán VNPay Sandbox, Thẻ nội địa Napas, Ví điện tử Escrow.
+            </p>
+            <div className="pt-2 text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+              <ShieldCheck className="w-4 h-4" />
+              Đã đăng ký chứng nhận với Bộ Công Thương
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* 4. Modals & Widgets */}
+      {selectedProduct && (
+        <ProductDetailModal
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onBuyNow={() => {
+            setSelectedProduct(null);
+            setIsCartOpen(true);
+          }}
+        />
+      )}
+
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+
+      <AiChatWidget />
     </div>
   );
 }
