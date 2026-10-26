@@ -31,6 +31,10 @@ public class Notification {
     private String content;
 
     @Builder.Default
+    @Column(length = 30)
+    private String type = "SYSTEM"; // ORDER, PROMOTION, SYSTEM, OTP
+
+    @Builder.Default
     @Column(name = "is_read", nullable = false)
     private boolean isRead = false;
 
