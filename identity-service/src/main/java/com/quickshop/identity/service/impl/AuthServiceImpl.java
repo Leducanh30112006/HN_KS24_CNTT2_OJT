@@ -1,6 +1,7 @@
 package com.quickshop.identity.service.impl;
 
 import com.quickshop.common.exception.BadRequestException;
+import com.quickshop.common.exception.ResourceNotFoundException;
 import com.quickshop.identity.dto.AuthResponse;
 import com.quickshop.identity.dto.LoginRequest;
 import com.quickshop.identity.dto.RegisterRequest;
@@ -100,6 +101,44 @@ public class AuthServiceImpl implements AuthService {
                 .fullName(savedUser.getFullName())
                 .role(savedUser.getRole())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AuthResponse refreshToken(String refreshToken) {
+        if (!tokenProvider.validateToken(refreshToken)) {
+            throw new BadRequestException("Refresh token không hợp lệ hoặc đã hết hạn");
+        }
+
+        String username = tokenProvider.getUsernameFromToken(refreshToken);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+        if (!user.isActive() || user.getStatus() == UserStatus.BLOCKED) {
+            throw new BadRequestException("Tài khoản đã bị vô hiệu hóa");
+        }
+
+        String newAccessToken = tokenProvider.generateAccessToken(user);
+        String newRefreshToken = tokenProvider.generateRefreshToken(user);
+
+        return AuthResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .tokenType("Bearer")
+                .expiresIn(86400L)
+                .userId(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .role(user.getRole())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public User getCurrentUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
     }
 
     @EventListener(ApplicationReadyEvent.class)
