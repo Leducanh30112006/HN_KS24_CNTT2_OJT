@@ -17,6 +17,9 @@ import java.util.List;
 @AllArgsConstructor
 public class OrderCreatedEvent implements Serializable {
     private String orderId;
+    private Long masterOrderId;
+    private Long subOrderId;
+    private Long shopId;
     private Long customerId;
     private String customerEmail;
     private List<OrderItemEventDto> items;

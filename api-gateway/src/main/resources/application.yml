@@ -52,11 +52,11 @@ spring:
           filters:
             - StripPrefix=0
 
-        # 2. Identity Service - Protected User Management
+        # 2. Identity Service - Protected User & Shop Management
         - id: identity-protected-route
           uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/users/**
+            - Path=/api/users/**, /api/shops/**
           filters:
             - name: JwtAuthGatewayFilterFactory
             - StripPrefix=0
@@ -69,16 +69,16 @@ spring:
           filters:
             - StripPrefix=0
 
-        # 4. Order Service - Protected Checkout & Cart
+        # 4. Order Service - Cart & Orders
         - id: order-service-route
           uri: ${ORDER_SERVICE_URL:http://localhost:8083}
           predicates:
-            - Path=/api/orders/**
+            - Path=/api/orders/**, /api/cart/**
           filters:
             - name: JwtAuthGatewayFilterFactory
             - StripPrefix=0
 
-        # 5. Payment Service - VNPay & IPN
+        # 5. Payment Service - VNPay & Wallet
         - id: payment-service-route
           uri: ${PAYMENT_SERVICE_URL:http://localhost:8084}
           predicates:
@@ -86,9 +86,17 @@ spring:
           filters:
             - StripPrefix=0
 
-        # 6. Notification & AI Chatbot Service
+        # 6. Shipping Service - Logistics & Webhooks
+        - id: shipping-service-route
+          uri: ${SHIPPING_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/shipping/**
+          filters:
+            - StripPrefix=0
+
+        # 7. Notification & AI Chatbot Service
         - id: notification-service-route
-          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
           predicates:
             - Path=/api/notifications/**, /api/ai/**
           filters:
