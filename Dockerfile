@@ -38,6 +38,6 @@ USER quickshop:quickshop
 # Memory limits & G1GC tuning for VPS environment
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -Djava.security.egd=file:/dev/./urandom"
 
-EXPOSE 8080 8081 8082 8083 8084 8085
+EXPOSE 8080 8081 8082 8083 8084 8085 8086
 
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]

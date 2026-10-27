@@ -4,19 +4,23 @@ CREATE DATABASE IF NOT EXISTS `catalog_db` CHARACTER SET utf8mb4 COLLATE utf8mb4
 CREATE DATABASE IF NOT EXISTS `order_db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS `payment_db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS `shipping_db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS `notification_db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 GRANT ALL PRIVILEGES ON identity_db.* TO 'root'@'%';
 GRANT ALL PRIVILEGES ON catalog_db.* TO 'root'@'%';
 GRANT ALL PRIVILEGES ON order_db.* TO 'root'@'%';
 GRANT ALL PRIVILEGES ON payment_db.* TO 'root'@'%';
 GRANT ALL PRIVILEGES ON shipping_db.* TO 'root'@'%';
+GRANT ALL PRIVILEGES ON notification_db.* TO 'root'@'%';
 
 FLUSH PRIVILEGES;
 
 -- ==========================================================
 -- SHIPPING & LOGISTICS DATABASE SCHEMA (shipping_db)
+-- SHIPPING & LOGISTICS DATABASE SCHEMA (notification_db)
 -- ==========================================================
 USE `shipping_db`;
+USE `notification_db`;
 
 CREATE TABLE IF NOT EXISTS `shipments` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,

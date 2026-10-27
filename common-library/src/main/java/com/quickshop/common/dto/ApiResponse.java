@@ -43,6 +43,14 @@ public class ApiResponse<T> implements Serializable {
                 .build();
     }
 
+    public static <T> ApiResponse<T> success(T data) {
+        return ok(data);
+    }
+
+    public static <T> ApiResponse<T> success(String message, T data) {
+        return ok(message, data);
+    }
+
     public static <T> ApiResponse<T> created(String message, T data) {
         return ApiResponse.<T>builder()
                 .success(true)
