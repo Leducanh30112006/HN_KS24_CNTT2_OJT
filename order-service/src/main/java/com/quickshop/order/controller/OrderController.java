@@ -1,51 +1,70 @@
 package com.quickshop.order.controller;
 
 import com.quickshop.common.dto.ApiResponse;
-import com.quickshop.order.entity.MasterOrder;
-import com.quickshop.order.entity.SubOrder;
-import com.quickshop.order.repository.MasterOrderRepository;
-import com.quickshop.order.repository.SubOrderRepository;
+import com.quickshop.common.exception.BadRequestException;
+import com.quickshop.order.dto.checkout.CheckoutRequest;
+import com.quickshop.order.dto.order.MasterOrderResponse;
+import com.quickshop.order.service.CheckoutService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
+@Slf4j
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
+@Tag(name = "Order Management", description = "APIs xử lý đặt hàng (Checkout), quản lý Master Order và Sub-Orders")
 public class OrderController {
 
-    private final MasterOrderRepository masterOrderRepository;
-    private final SubOrderRepository subOrderRepository;
+    private final CheckoutService checkoutService;
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<MasterOrder>>> getMyOrders(@RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
-        if (userIdHeader != null && !userIdHeader.isBlank()) {
-            Long userId = Long.parseLong(userIdHeader);
-            return ResponseEntity.ok(ApiResponse.success(masterOrderRepository.findByUserId(userId)));
+    @Operation(summary = "Tiến hành Checkout đơn hàng đa shop (Tạo Master Order và Sub-Orders)")
+    @PostMapping("/checkout")
+    public ResponseEntity<ApiResponse<MasterOrderResponse>> checkout(
+            @Parameter(description = "User ID trích xuất từ JWT Gateway")
+            @RequestHeader(value = "X-User-Id", required = false) Long headerUserId,
+            @Parameter(description = "User ID query param (fallback cho test)")
+            @RequestParam(value = "userId", required = false) Long paramUserId,
+            @Parameter(description = "Idempotency Key chống đặt trùng lặp đơn hàng")
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKeyHeader,
+            @Valid @RequestBody CheckoutRequest request) {
+
+        Long userId = resolveUserId(headerUserId, paramUserId);
+        MasterOrderResponse response = checkoutService.checkout(userId, idempotencyKeyHeader, request);
+
+        if (response.isDuplicateRequest()) {
+            return ResponseEntity.ok(ApiResponse.ok("Yêu cầu checkout lặp lại - trả về đơn hàng đã tạo trước đó", response));
         }
-        return ResponseEntity.ok(ApiResponse.success(masterOrderRepository.findAll()));
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created("Đặt hàng thành công", response));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getOrderDetails(@PathVariable Long id) {
-        Optional<MasterOrder> orderOpt = masterOrderRepository.findById(id);
-        if (orderOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        List<SubOrder> subOrders = subOrderRepository.findByMasterOrderId(id);
-        Map<String, Object> result = new HashMap<>();
-        result.put("masterOrder", orderOpt.get());
-        result.put("subOrders", subOrders);
-        return ResponseEntity.ok(ApiResponse.success(result));
+    @Operation(summary = "Xem chi tiết Master Order và danh sách Sub-Orders theo ID")
+    @GetMapping("/{orderId}")
+    public ResponseEntity<ApiResponse<MasterOrderResponse>> getOrderById(
+            @Parameter(description = "User ID trích xuất từ JWT Gateway")
+            @RequestHeader(value = "X-User-Id", required = false) Long headerUserId,
+            @Parameter(description = "User ID query param (fallback cho test)")
+            @RequestParam(value = "userId", required = false) Long paramUserId,
+            @PathVariable Long orderId) {
+
+        Long userId = resolveUserId(headerUserId, paramUserId);
+        MasterOrderResponse response = checkoutService.getOrderById(userId, orderId);
+        return ResponseEntity.ok(ApiResponse.ok("Lấy chi tiết đơn hàng thành công", response));
     }
 
-    @GetMapping("/shop/{shopId}")
-    public ResponseEntity<ApiResponse<List<SubOrder>>> getShopSubOrders(@PathVariable Long shopId) {
-        return ResponseEntity.ok(ApiResponse.success(subOrderRepository.findByShopId(shopId)));
+    private Long resolveUserId(Long headerUserId, Long paramUserId) {
+        Long userId = headerUserId != null ? headerUserId : paramUserId;
+        if (userId == null || userId <= 0) {
+            throw new BadRequestException("Yêu cầu thông tin định danh người dùng qua X-User-Id header hoặc param userId");
+        }
+        return userId;
     }
 }

@@ -1,0 +1,54 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: shipping-service-test
+  main:
+    allow-bean-definition-overriding: true
+
+  datasource:
+    url: jdbc:h2:mem:shipping_db;MODE=MySQL;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    listener:
+      simple:
+        auto-startup: false
+      direct:
+        auto-startup: false
+
+quickshop:
+  shipping:
+    carrier:
+      mode: mock
+      default-carrier: GHN
+      ghn:
+        api-token: test-ghn-token
+        shop-id: test-shop-id
+        base-url: https://online-gateway.ghn.vn/shiip/public-api
+    pricing:
+      base-intra-province: 22000
+      base-intra-region: 30000
+      base-inter-region: 40000
+      base-weight-grams: 1000
+      step-weight-grams: 500
+      step-weight-fee: 5000

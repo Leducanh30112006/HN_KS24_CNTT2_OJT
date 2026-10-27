@@ -26,6 +26,12 @@ spring:
     username: ${RABBITMQ_USERNAME:quickshop}
     password: ${RABBITMQ_PASSWORD:quickshop123}
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
 vnpay:
   tmn-code: ${VNP_TMN_CODE:QUICKSHOP}
   hash-secret: ${VNP_HASH_SECRET:QUICKSHOPSECRETKEYVNPAY2026}

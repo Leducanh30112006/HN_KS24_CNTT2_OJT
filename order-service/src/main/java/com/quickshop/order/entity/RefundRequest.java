@@ -1,21 +1,20 @@
 package com.quickshop.order.entity;
 
+import com.quickshop.order.entity.enums.RefundRequestStatus;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "refund_requests")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Entity
-@Table(name = "refund_requests")
-@EntityListeners(AuditingEntityListener.class)
 public class RefundRequest {
 
     @Id
@@ -28,7 +27,7 @@ public class RefundRequest {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(nullable = false)
+    @Column(name = "reason", nullable = false, length = 255)
     private String reason;
 
     @Column(name = "evidence_images", columnDefinition = "TEXT")
@@ -37,14 +36,15 @@ public class RefundRequest {
     @Column(name = "refund_amount", nullable = false, precision = 12, scale = 0)
     private BigDecimal refundAmount;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 30)
     @Builder.Default
-    @Column(nullable = false, length = 30)
-    private String status = "PENDING"; // PENDING, ACCEPTED, REJECTED, ADMIN_MEDIATING
+    private RefundRequestStatus status = RefundRequestStatus.PENDING;
 
     @Column(name = "admin_note", columnDefinition = "TEXT")
     private String adminNote;
 
-    @CreatedDate
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 }

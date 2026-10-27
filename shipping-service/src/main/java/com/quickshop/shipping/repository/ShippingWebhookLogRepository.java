@@ -8,6 +8,8 @@ import java.util.Optional;
 
 @Repository
 public interface ShippingWebhookLogRepository extends JpaRepository<ShippingWebhookLog, Long> {
-    boolean existsByEventId(String eventId);
+
     Optional<ShippingWebhookLog> findByEventId(String eventId);
+
+    boolean existsByEventId(String eventId);
 }

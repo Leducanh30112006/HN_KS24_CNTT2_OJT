@@ -1,17 +1,24 @@
 package com.quickshop.payment.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
-@Getter
-@Setter
+@Entity
+@Table(name = "wallets", indexes = {
+        @Index(name = "idx_wallet_shop_id", columnList = "shop_id", unique = true)
+})
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-@Entity
-@Table(name = "wallets")
 public class Wallet {
 
     @Id
@@ -22,10 +29,22 @@ public class Wallet {
     private Long shopId;
 
     @Builder.Default
-    @Column(nullable = false, precision = 12, scale = 0)
+    @Column(name = "balance", nullable = false, precision = 12, scale = 0)
     private BigDecimal balance = BigDecimal.ZERO;
 
     @Builder.Default
     @Column(name = "frozen_balance", nullable = false, precision = 12, scale = 0)
     private BigDecimal frozenBalance = BigDecimal.ZERO;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }

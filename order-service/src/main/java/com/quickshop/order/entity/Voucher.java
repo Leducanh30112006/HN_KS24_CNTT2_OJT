@@ -1,38 +1,41 @@
 package com.quickshop.order.entity;
 
+import com.quickshop.order.entity.enums.VoucherDiscountType;
+import com.quickshop.order.entity.enums.VoucherStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "vouchers")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Entity
-@Table(name = "vouchers")
 public class Voucher {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(name = "code", unique = true, nullable = false, length = 50)
     private String code;
 
     @Column(name = "shop_id")
-    private Long shopId; // null = Voucher toàn sàn, not null = Voucher của Shop
+    private Long shopId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "discount_type", nullable = false, length = 20)
-    private String discountType; // PERCENTAGE, FIXED_AMOUNT
+    private VoucherDiscountType discountType;
 
     @Column(name = "discount_value", nullable = false, precision = 12, scale = 0)
     private BigDecimal discountValue;
 
-    @Builder.Default
     @Column(name = "min_order_value", nullable = false, precision = 12, scale = 0)
+    @Builder.Default
     private BigDecimal minOrderValue = BigDecimal.ZERO;
 
     @Column(name = "max_discount_amount", precision = 12, scale = 0)
@@ -41,8 +44,8 @@ public class Voucher {
     @Column(name = "usage_limit", nullable = false)
     private Integer usageLimit;
 
-    @Builder.Default
     @Column(name = "used_count", nullable = false)
+    @Builder.Default
     private Integer usedCount = 0;
 
     @Column(name = "start_date", nullable = false)
@@ -51,7 +54,8 @@ public class Voucher {
     @Column(name = "end_date", nullable = false)
     private LocalDateTime endDate;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
-    @Column(nullable = false, length = 20)
-    private String status = "ACTIVE";
+    private VoucherStatus status = VoucherStatus.ACTIVE;
 }

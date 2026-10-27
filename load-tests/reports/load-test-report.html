@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>QuickShop k6 Load Test Report - 1000 RPS</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 2rem; }
+    .container { max-width: 1000px; margin: 0 auto; background: #1e293b; border-radius: 12px; padding: 2rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5); border: 1px solid #334155; }
+    h1 { color: #38bdf8; margin-top: 0; font-size: 1.8rem; border-bottom: 2px solid #334155; padding-bottom: 0.75rem; }
+    .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: bold; font-size: 0.85rem; }
+    .badge-pass { background: #065f46; color: #34d399; }
+    .badge-warn { background: #78350f; color: #fbbf24; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1.5rem 0; }
+    .card { background: #0f172a; padding: 1.25rem; border-radius: 8px; border: 1px solid #334155; text-align: center; }
+    .card-title { font-size: 0.85rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .card-value { font-size: 1.8rem; font-weight: bold; color: #f8fafc; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+    th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #334155; }
+    th { background: #0f172a; color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; }
+    tr:hover { background: #283548; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Báo Cáo Tải QuickShop: Mục tiêu 1000 RPS</h1>
+    <p>Thời gian chạy: 10/27/2026, 03:58:36 | BASE_URL: <code>http://localhost:8083</code></p>
+    
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">RPS Thực Tế</div>
+        <div class="card-value" style="color: #38bdf8;">666.81 req/s</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Tỷ Lệ Lỗi (Error Rate)</div>
+        <div class="card-value" style="color: #34d399;">0.00%</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Độ Trễ p95</div>
+        <div class="card-value" style="color: #a78bfa;">1.70 ms</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Độ Trễ p99</div>
+        <div class="card-value" style="color: #fb923c;">N/A ms</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Chỉ số</th><th>Giá trị đo</th><th>Ngưỡng cam kết</th><th>Đánh giá</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Tổng số Request</td><td>46674</td><td>N/A</td><td><span class="badge badge-pass">HOÀN TẤT</span></td></tr>
+        <tr><td>Độ trễ trung vị p50</td><td>0.00 ms</td><td>&lt; 150 ms</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Độ trễ phân vị p95</td><td>1.70 ms</td><td>&lt; 500 ms</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Độ trễ phân vị p99</td><td>N/A ms</td><td>&lt; 1000 ms</td><td><span class="badge badge-warn">WARN</span></td></tr>
+        <tr><td>Read p95 (Giỏ hàng & Voucher)</td><td>0.52 ms</td><td>&lt; 300 ms</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Write p95 (Checkout & Thêm giỏ)</td><td>11.12 ms</td><td>&lt; 600 ms</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Đơn Master Order tạo mới</td><td>2731</td><td>Giao dịch thật</td><td><span class="badge badge-pass">VERIFIED</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

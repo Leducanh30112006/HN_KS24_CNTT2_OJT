@@ -5,37 +5,38 @@ import lombok.*;
 
 import java.math.BigDecimal;
 
+@Entity
+@Table(name = "order_items")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Entity
-@Table(name = "order_items")
 public class OrderItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "sub_order_id", nullable = false)
-    private Long subOrderId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sub_order_id", nullable = false)
+    private SubOrder subOrder;
 
     @Column(name = "variant_id", nullable = false)
     private Long variantId;
 
-    @Column(name = "product_name", nullable = false)
+    @Column(name = "product_name", nullable = false, length = 255)
     private String productName;
 
-    @Column(name = "variant_name")
+    @Column(name = "variant_name", length = 100)
     private String variantName;
 
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
-    @Column(nullable = false, precision = 12, scale = 0)
+    @Column(name = "price", nullable = false, precision = 12, scale = 0)
     private BigDecimal price;
 
-    @Column(nullable = false)
+    @Column(name = "quantity", nullable = false)
     private Integer quantity;
 }

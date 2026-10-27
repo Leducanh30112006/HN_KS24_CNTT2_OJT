@@ -1,21 +1,26 @@
 package com.quickshop.payment.entity;
 
+import com.quickshop.payment.entity.enums.WithdrawalStatus;
 import jakarta.persistence.*;
-import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Getter
-@Setter
+@Entity
+@Table(name = "withdrawals", indexes = {
+        @Index(name = "idx_withdrawal_shop_id", columnList = "shop_id"),
+        @Index(name = "idx_withdrawal_status", columnList = "status"),
+        @Index(name = "idx_withdrawal_idempotency", columnList = "idempotency_key")
+})
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-@Entity
-@Table(name = "withdrawals")
-@EntityListeners(AuditingEntityListener.class)
 public class Withdrawal {
 
     @Id
@@ -25,7 +30,7 @@ public class Withdrawal {
     @Column(name = "shop_id", nullable = false)
     private Long shopId;
 
-    @Column(nullable = false, precision = 12, scale = 0)
+    @Column(name = "amount", nullable = false, precision = 12, scale = 0)
     private BigDecimal amount;
 
     @Column(name = "bank_code", nullable = false, length = 20)
@@ -37,14 +42,24 @@ public class Withdrawal {
     @Column(name = "bank_account_name", nullable = false, length = 100)
     private String bankAccountName;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 30)
     @Builder.Default
-    @Column(nullable = false, length = 30)
-    private String status = "PENDING"; // PENDING, APPROVED, REJECTED, COMPLETED
+    private WithdrawalStatus status = WithdrawalStatus.PENDING;
 
     @Column(name = "admin_id")
     private Long adminId;
 
-    @CreatedDate
+    @Column(name = "idempotency_key", length = 100)
+    private String idempotencyKey;
+
+    @Column(name = "rejection_reason", length = 255)
+    private String rejectionReason;
+
+    @Column(name = "bank_transaction_ref", length = 100)
+    private String bankTransactionRef;
+
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
