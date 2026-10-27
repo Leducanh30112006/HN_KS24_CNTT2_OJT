@@ -86,9 +86,17 @@ spring:
           filters:
             - StripPrefix=0
 
-        # 6. Notification & AI Chatbot Service
+        # 6. Shipping & Logistics Service - Shipments & Webhook
+        - id: shipping-service-route
+          uri: ${SHIPPING_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/shipping/**
+          filters:
+            - StripPrefix=0
+
+        # 7. Notification & AI Chatbot Service
         - id: notification-service-route
-          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
           predicates:
             - Path=/api/notifications/**, /api/ai/**
           filters:

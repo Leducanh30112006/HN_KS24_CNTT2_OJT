@@ -1,0 +1,17 @@
+{
+  "requestId": "test-1",
+  "shippingAddress": "123 Cau Giay",
+  "recipientName": "Nguyen Van An",
+  "recipientPhone": "0981111001",
+  "paymentMethod": "VNPAY",
+  "voucherCode": "QUICKSHOP10",
+  "shopVoucherCodes": {
+    "1": "SHOP1_SALE10"
+  },
+  "items": [
+    {
+      "variantId": 1,
+      "quantity": 1
+    }
+  ]
+}

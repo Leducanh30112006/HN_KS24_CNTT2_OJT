@@ -1,0 +1,60 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: shipping-service
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/shipping_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:rootpassword}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:quickshop}
+    password: ${RABBITMQ_PASSWORD:quickshop123}
+
+quickshop:
+  shipping:
+    carrier:
+      # Chế độ: 'mock' (mô phỏng) hoặc 'production' (gọi đối tác thật GHN/GHTK)
+      mode: ${SHIPPING_CARRIER_MODE:mock}
+      default-carrier: ${DEFAULT_CARRIER:GHN}
+      ghn:
+        api-token: ${GHN_API_TOKEN:}
+        shop-id: ${GHN_SHOP_ID:}
+        base-url: ${GHN_BASE_URL:https://online-gateway.ghn.vn/shiip/public-api}
+      ghtk:
+        api-token: ${GHTK_API_TOKEN:}
+        base-url: ${GHTK_BASE_URL:https://services.giaohangtietkiem.vn/services}
+    pricing:
+      base-intra-province: 22000
+      base-intra-region: 30000
+      base-inter-region: 40000
+      base-weight-grams: 1000
+      step-weight-grams: 500
+      step-weight-fee: 5000
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

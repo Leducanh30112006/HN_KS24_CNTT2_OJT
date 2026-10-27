@@ -1,0 +1,52 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: payment-service-test
+  main:
+    allow-bean-definition-overriding: true
+
+  datasource:
+    url: jdbc:h2:mem:payment_db;MODE=MySQL;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    listener:
+      simple:
+        auto-startup: false
+      direct:
+        auto-startup: false
+
+vnpay:
+  tmn-code: QUICKSHOP_TEST
+  hash-secret: TEST_VNPAY_SECRET_KEY_2026_HMACSHA512
+  payment-url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  return-url: http://localhost:5173/payment/vnpay-return
+
+quickshop:
+  platform:
+    commission-rate: 0.03
+
+escrow:
+  auto-release:
+    cron: "0 0 0 * * ?"
+    days-threshold: 3

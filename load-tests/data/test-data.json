@@ -1,0 +1,39 @@
+{
+  "baseUrl": "http://localhost:8083",
+  "users": [
+    { "id": 1001, "role": "ROLE_BUYER", "name": "Nguyễn Văn An", "phone": "0981111001" },
+    { "id": 1002, "role": "ROLE_BUYER", "name": "Trần Thị Bình", "phone": "0981111002" },
+    { "id": 1003, "role": "ROLE_BUYER", "name": "Lê Văn Cường", "phone": "0981111003" },
+    { "id": 1004, "role": "ROLE_BUYER", "name": "Phạm Thị Dung", "phone": "0981111004" },
+    { "id": 1005, "role": "ROLE_BUYER", "name": "Hoàng Văn Em", "phone": "0981111005" },
+    { "id": 1006, "role": "ROLE_BUYER", "name": "Vũ Thị Phương", "phone": "0981111006" },
+    { "id": 1007, "role": "ROLE_BUYER", "name": "Đặng Văn Giang", "phone": "0981111007" },
+    { "id": 1008, "role": "ROLE_BUYER", "name": "Bùi Thị Hà", "phone": "0981111008" },
+    { "id": 1009, "role": "ROLE_BUYER", "name": "Đỗ Văn Hùng", "phone": "0981111009" },
+    { "id": 1010, "role": "ROLE_BUYER", "name": "Hồ Thị Kiều", "phone": "0981111010" }
+  ],
+  "variants": [
+    { "variantId": 1, "productId": 10, "shopId": 1, "name": "Áo Thun Nam Cotton Compact", "price": 199000, "stock": 500000 },
+    { "variantId": 2, "productId": 20, "shopId": 1, "name": "Quần Jeans Nam Slim Fit Co Giãn", "price": 389000, "stock": 500000 },
+    { "variantId": 3, "productId": 30, "shopId": 2, "name": "Giày Sneaker Thể Thao Running", "price": 650000, "stock": 500000 },
+    { "variantId": 4, "productId": 40, "shopId": 2, "name": "Balo Laptop Chống Nước 15.6 inch", "price": 299000, "stock": 500000 },
+    { "variantId": 5, "productId": 50, "shopId": 3, "name": "Tai Nghe Bluetooth True Wireless", "price": 490000, "stock": 500000 },
+    { "variantId": 6, "productId": 60, "shopId": 3, "name": "Cáp Sạc Nhanh Type-C to Type-C 100W", "price": 150000, "stock": 500000 }
+  ],
+  "vouchers": {
+    "platform": ["QUICKSHOP10", "FREESHIP_MAX", "QUICKSHOP50K"],
+    "shops": {
+      "1": ["SHOP1_SALE10", "SHOP1_VOUCHER20K"],
+      "2": ["SHOP2_SALE15", "SHOP2_VOUCHER30K"],
+      "3": ["TECH_SALE10", "GADGET_50K"]
+    }
+  },
+  "addresses": [
+    "Số 123 Đường Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy, Hà Nội",
+    "Số 45 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+    "Số 78 Đường Trần Phú, Phường Hải Châu 1, Quận Hải Châu, Đà Nẵng",
+    "Số 12 Đường Lê Lợi, Phường Máy Tơ, Quận Ngô Quyền, Hải Phòng",
+    "Số 89 Đường Hùng Vương, Phường Phú Hội, TP. Huế, Thừa Thiên Huế"
+  ],
+  "paymentMethods": ["VNPAY", "COD", "WALLET"]
+}
