@@ -115,6 +115,18 @@ jobs:
         if: matrix.enabled == 'true'
         uses: actions/checkout@v4
 
+      - name: Set up JDK 17
+        if: matrix.enabled == 'true' && matrix.service != 'frontend'
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Build JAR with Gradle
+        if: matrix.enabled == 'true' && matrix.service != 'frontend'
+        run: chmod +x ./gradlew && ./gradlew :${{ matrix.service }}:bootJar -x test --no-daemon
+
       - name: Set up Docker Buildx
         if: matrix.enabled == 'true'
         uses: docker/setup-buildx-action@v3
@@ -191,7 +203,6 @@ jobs:
             if [ -n "$SERVICES_TO_UPDATE" ]; then
               echo "Updating services:$SERVICES_TO_UPDATE"
               docker compose -f docker-compose.prod.yml pull $SERVICES_TO_UPDATE || true
-              docker compose -f docker-compose.prod.yml build $SERVICES_TO_UPDATE
               docker compose -f docker-compose.prod.yml up -d --no-deps $SERVICES_TO_UPDATE
             else
               echo "No service images changed, verifying container health..."
