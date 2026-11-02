@@ -415,7 +415,7 @@ export default function SellerPortal({ categories = [], onProductCreated }) {
                 >
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {c.parentId ? `  ↳ ${c.name}` : `● ${c.name}`}
                     </option>
                   ))}
                 </select>

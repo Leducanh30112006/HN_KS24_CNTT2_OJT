@@ -21,6 +21,7 @@ public class CatalogCacheService {
 
     public static final Duration DEFAULT_TTL = Duration.ofMinutes(10); // FR-03: TTL = 10 phút
     private static final String KEY_CATEGORIES_ALL = "catalog:categories:all";
+    private static final String KEY_CATEGORIES_TREE = "catalog:categories:tree";
     private static final String KEY_PRODUCT_PREFIX = "catalog:product:";
     private static final String KEY_PRODUCTS_PAGE_PREFIX = "catalog:products:filter:";
 
@@ -44,6 +45,29 @@ public class CatalogCacheService {
             log.debug("Cached categories to Redis with TTL 10m");
         } catch (Exception e) {
             log.warn("Redis write failed for categories: {}", e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<CategoryDto> getCachedCategoryTree() {
+        try {
+            Object data = redisTemplate.opsForValue().get(KEY_CATEGORIES_TREE);
+            if (data instanceof List<?>) {
+                log.debug("Redis Cache HIT for category tree");
+                return (List<CategoryDto>) data;
+            }
+        } catch (Exception e) {
+            log.warn("Redis lookup failed for category tree: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    public void cacheCategoryTree(List<CategoryDto> tree) {
+        try {
+            redisTemplate.opsForValue().set(KEY_CATEGORIES_TREE, tree, DEFAULT_TTL);
+            log.debug("Cached category tree to Redis with TTL 10m");
+        } catch (Exception e) {
+            log.warn("Redis write failed for category tree: {}", e.getMessage());
         }
     }
 
@@ -111,11 +135,12 @@ public class CatalogCacheService {
     public void evictCategoryCaches() {
         try {
             redisTemplate.delete(KEY_CATEGORIES_ALL);
+            redisTemplate.delete(KEY_CATEGORIES_TREE);
             Set<String> keys = redisTemplate.keys(KEY_PRODUCTS_PAGE_PREFIX + "*");
             if (keys != null && !keys.isEmpty()) {
                 redisTemplate.delete(keys);
             }
-            log.info("Evicted category caches");
+            log.info("Evicted category caches (all & tree)");
         } catch (Exception e) {
             log.warn("Redis eviction failed for categories: {}", e.getMessage());
         }

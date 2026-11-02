@@ -75,9 +75,19 @@ public class ProductService {
                 predicates.add(cb.equal(root.get("status"), status));
             }
 
-            // Category filter
+            // Category filter (Hỗ trợ cả danh mục lá và cây danh mục cha-con)
             if (categoryId != null) {
-                predicates.add(cb.equal(root.get("categoryId"), categoryId));
+                List<Category> childCategories = categoryRepository.findByParentId(categoryId);
+                if (childCategories != null && !childCategories.isEmpty()) {
+                    List<Long> categoryIds = new ArrayList<>();
+                    categoryIds.add(categoryId);
+                    for (Category child : childCategories) {
+                        categoryIds.add(child.getId());
+                    }
+                    predicates.add(root.get("categoryId").in(categoryIds));
+                } else {
+                    predicates.add(cb.equal(root.get("categoryId"), categoryId));
+                }
             }
 
             // Shop filter

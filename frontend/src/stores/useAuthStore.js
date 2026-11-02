@@ -39,6 +39,22 @@ export const useAuthStore = create(
         });
       },
 
+      // Action: Cập nhật token sau khi refresh token thành công
+      setTokens: (accessToken, refreshToken) => {
+        if (accessToken) {
+          localStorage.setItem('quickshop_access_token', accessToken);
+        }
+        if (refreshToken) {
+          localStorage.setItem('quickshop_refresh_token', refreshToken);
+        }
+
+        set((state) => ({
+          accessToken: accessToken || state.accessToken,
+          refreshToken: refreshToken || state.refreshToken,
+          isAuthenticated: true,
+        }));
+      },
+
       // Action: Cập nhật thông tin profile
       updateUser: (updatedUser) => {
         set((state) => ({

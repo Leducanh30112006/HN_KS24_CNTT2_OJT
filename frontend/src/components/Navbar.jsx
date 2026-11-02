@@ -323,13 +323,15 @@ export default function Navbar({
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium transition flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition flex items-center gap-1.5 ${
+                cat.parentId ? 'text-[11px] font-normal opacity-90' : 'font-bold'
+              } ${
                 selectedCategory === cat.id
                   ? 'bg-orange-600 text-white shadow-sm'
                   : 'text-slate-600 hover:text-orange-600 hover:bg-white'
               }`}
             >
-              <span>{cat.name}</span>
+              <span>{cat.parentId ? `↳ ${cat.name}` : cat.name}</span>
               {cat.productCount > 0 && (
                 <span className={`text-[10px] px-1 rounded-full ${
                   selectedCategory === cat.id ? 'bg-orange-700 text-white' : 'bg-slate-200 text-slate-600'

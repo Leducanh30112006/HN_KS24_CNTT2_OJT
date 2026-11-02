@@ -33,43 +33,72 @@ public class CatalogDataInitializer {
     @Transactional
     public void seedInitialCatalogData() {
         if (categoryRepository.count() == 0) {
+            // 1. Root categories (Cây danh mục cấp 1 - Cha)
+            Category rootTech = categoryRepository.save(Category.builder()
+                    .name("Thiết bị Điện tử")
+                    .slug("thiet-bi-dien-tu")
+                    .icon("Cpu")
+                    .parentId(null)
+                    .build());
+
+            Category rootFashion = categoryRepository.save(Category.builder()
+                    .name("Thời trang & Làm đẹp")
+                    .slug("thoi-trang-lam-dep")
+                    .icon("Sparkles")
+                    .parentId(null)
+                    .build());
+
+            Category rootLiving = categoryRepository.save(Category.builder()
+                    .name("Đời sống & Gia đình")
+                    .slug("doi-song-gia-dinh")
+                    .icon("Home")
+                    .parentId(null)
+                    .build());
+
+            // 2. Subcategories (Cây danh mục cấp 2 - Con)
             Category electronics = categoryRepository.save(Category.builder()
                     .name("Điện thoại & Phụ kiện")
                     .slug("dien-thoai-phu-kien")
                     .icon("Smartphone")
+                    .parentId(rootTech.getId())
                     .build());
 
             Category laptop = categoryRepository.save(Category.builder()
                     .name("Laptop & Máy tính")
                     .slug("laptop-may-tinh")
                     .icon("Laptop")
+                    .parentId(rootTech.getId())
                     .build());
 
             Category fashion = categoryRepository.save(Category.builder()
                     .name("Thời trang nam nữ")
                     .slug("thoi-trang")
                     .icon("Shirt")
-                    .build());
-
-            Category home = categoryRepository.save(Category.builder()
-                    .name("Nhà cửa & Đời sống")
-                    .slug("nha-cua-doi-song")
-                    .icon("Home")
-                    .build());
-
-            Category beauty = categoryRepository.save(Category.builder()
-                    .name("Mỹ phẩm & Làm đẹp")
-                    .slug("my-pham-lam-dep")
-                    .icon("Sparkles")
+                    .parentId(rootFashion.getId())
                     .build());
 
             Category shoes = categoryRepository.save(Category.builder()
                     .name("Giày dép & Túi xách")
                     .slug("giay-dep-tui-xach")
                     .icon("ShoppingBag")
+                    .parentId(rootFashion.getId())
                     .build());
 
-            log.info("Initialized 6 marketplace categories");
+            Category beauty = categoryRepository.save(Category.builder()
+                    .name("Mỹ phẩm & Làm đẹp")
+                    .slug("my-pham-lam-dep")
+                    .icon("Sparkles")
+                    .parentId(rootFashion.getId())
+                    .build());
+
+            Category home = categoryRepository.save(Category.builder()
+                    .name("Nhà cửa & Đời sống")
+                    .slug("nha-cua-doi-song")
+                    .icon("Home")
+                    .parentId(rootLiving.getId())
+                    .build());
+
+            log.info("Initialized 3 root categories and 6 subcategories (Category Tree)");
 
             // 1. Điện thoại thông minh QuickPhone Pro Max
             Product phone = productRepository.save(Product.builder()

@@ -25,6 +25,12 @@ public class CategoryController {
         return ResponseEntity.ok(ApiResponse.success("Lấy danh mục thành công", categoryService.getAllCategories()));
     }
 
+    @GetMapping("/tree")
+    @Operation(summary = "Lấy cây danh mục phân cấp Cha - Con (Category Tree - Redis Cache TTL 10m)")
+    public ResponseEntity<ApiResponse<List<CategoryDto>>> getCategoryTree() {
+        return ResponseEntity.ok(ApiResponse.success("Lấy cây danh mục thành công", categoryService.getCategoryTree()));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Lấy thông tin chi tiết một danh mục")
     public ResponseEntity<ApiResponse<CategoryDto>> getCategoryById(@PathVariable Long id) {

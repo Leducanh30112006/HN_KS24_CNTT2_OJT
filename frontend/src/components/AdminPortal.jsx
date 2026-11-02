@@ -16,6 +16,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated }) {
   const [newCatName, setNewCatName] = useState('');
   const [newCatSlug, setNewCatSlug] = useState('');
   const [newCatIcon, setNewCatIcon] = useState('Sparkles');
+  const [newCatParentId, setNewCatParentId] = useState('');
 
   // Notification state
   const [notifUserId, setNotifUserId] = useState('1');
@@ -100,6 +101,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated }) {
         name: newCatName.trim(),
         slug: newCatSlug.trim() || undefined,
         icon: newCatIcon,
+        parentId: newCatParentId ? Number(newCatParentId) : null,
       });
 
       if (res.success && res.data) {
@@ -107,12 +109,14 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated }) {
         alert('Tạo danh mục mới thành công!');
         setNewCatName('');
         setNewCatSlug('');
+        setNewCatParentId('');
       }
     } catch (err) {
       alert('Đã tạo danh mục mới!');
       if (onCategoriesUpdated) onCategoriesUpdated();
       setNewCatName('');
       setNewCatSlug('');
+      setNewCatParentId('');
     }
   };
 
@@ -347,6 +351,22 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated }) {
               </div>
 
               <div>
+                <label className="font-bold text-slate-700">Danh mục cha (Cây phân cấp):</label>
+                <select
+                  value={newCatParentId}
+                  onChange={(e) => setNewCatParentId(e.target.value)}
+                  className="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-orange-500"
+                >
+                  <option value="">-- Là danh mục gốc (Cấp 1) --</option>
+                  {categories.filter((c) => !c.parentId).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="font-bold text-slate-700">Biểu tượng Icon:</label>
                 <select
                   value={newCatIcon}
@@ -381,7 +401,18 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated }) {
               {categories.map((c) => (
                 <div key={c.id} className="p-3.5 flex justify-between items-center hover:bg-slate-50 transition">
                   <div>
-                    <div className="font-bold text-slate-900 text-sm">{c.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900 text-sm">{c.name}</span>
+                      {c.parentId ? (
+                        <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                          Con của: {c.parentName || `ID #${c.parentId}`}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">
+                          Danh mục gốc
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[11px] text-slate-400 font-mono mt-0.5">
                       Slug: /{c.slug} • Icon: {c.icon || 'Sparkles'}
                     </div>

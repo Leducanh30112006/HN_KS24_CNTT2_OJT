@@ -37,12 +37,15 @@ export default function App() {
 
   // Default seed data for immediate standalone presentation
   const defaultCategories = [
-    { id: 1, name: 'Điện thoại & Phụ kiện', slug: 'dien-thoai-phu-kien', icon: 'Smartphone', productCount: 3 },
-    { id: 2, name: 'Laptop & Máy tính', slug: 'laptop-may-tinh', icon: 'Laptop', productCount: 2 },
-    { id: 3, name: 'Thời trang nam nữ', slug: 'thoi-trang', icon: 'Shirt', productCount: 2 },
-    { id: 4, name: 'Nhà cửa & Đời sống', slug: 'nha-cua-doi-song', icon: 'Home', productCount: 2 },
-    { id: 5, name: 'Mỹ phẩm & Làm đẹp', slug: 'my-pham-lam-dep', icon: 'Sparkles', productCount: 1 },
-    { id: 6, name: 'Giày dép & Túi xách', slug: 'giay-dep-tui-xach', icon: 'ShoppingBag', productCount: 1 },
+    { id: 100, name: 'Thiết bị Điện tử', slug: 'thiet-bi-dien-tu', icon: 'Cpu', parentId: null, productCount: 5 },
+    { id: 1, name: 'Điện thoại & Phụ kiện', slug: 'dien-thoai-phu-kien', icon: 'Smartphone', parentId: 100, parentName: 'Thiết bị Điện tử', productCount: 3 },
+    { id: 2, name: 'Laptop & Máy tính', slug: 'laptop-may-tinh', icon: 'Laptop', parentId: 100, parentName: 'Thiết bị Điện tử', productCount: 2 },
+    { id: 200, name: 'Thời trang & Làm đẹp', slug: 'thoi-trang-lam-dep', icon: 'Sparkles', parentId: null, productCount: 4 },
+    { id: 3, name: 'Thời trang nam nữ', slug: 'thoi-trang', icon: 'Shirt', parentId: 200, parentName: 'Thời trang & Làm đẹp', productCount: 2 },
+    { id: 6, name: 'Giày dép & Túi xách', slug: 'giay-dep-tui-xach', icon: 'ShoppingBag', parentId: 200, parentName: 'Thời trang & Làm đẹp', productCount: 1 },
+    { id: 5, name: 'Mỹ phẩm & Làm đẹp', slug: 'my-pham-lam-dep', icon: 'Sparkles', parentId: 200, parentName: 'Thời trang & Làm đẹp', productCount: 1 },
+    { id: 300, name: 'Đời sống & Gia đình', slug: 'doi-song-gia-dinh', icon: 'Home', parentId: null, productCount: 2 },
+    { id: 4, name: 'Nhà cửa & Đời sống', slug: 'nha-cua-doi-song', icon: 'Home', parentId: 300, parentName: 'Đời sống & Gia đình', productCount: 2 },
   ];
 
   const defaultProducts = [
@@ -217,7 +220,11 @@ export default function App() {
       } else {
         // Filter local default
         let filtered = defaultProducts;
-        if (catId) filtered = filtered.filter((p) => p.categoryId === catId);
+        if (catId) {
+          const childIds = categories.filter((c) => c.parentId === catId).map((c) => c.id);
+          const allowedCatIds = [catId, ...childIds];
+          filtered = filtered.filter((p) => allowedCatIds.includes(p.categoryId));
+        }
         if (kw && kw.trim()) {
           const lkw = kw.toLowerCase().trim();
           filtered = filtered.filter((p) => p.name.toLowerCase().includes(lkw) || p.description.toLowerCase().includes(lkw));
@@ -226,7 +233,11 @@ export default function App() {
       }
     } catch (err) {
       let filtered = defaultProducts;
-      if (catId) filtered = filtered.filter((p) => p.categoryId === catId);
+      if (catId) {
+        const childIds = categories.filter((c) => c.parentId === catId).map((c) => c.id);
+        const allowedCatIds = [catId, ...childIds];
+        filtered = filtered.filter((p) => allowedCatIds.includes(p.categoryId));
+      }
       if (kw && kw.trim()) {
         const lkw = kw.toLowerCase().trim();
         filtered = filtered.filter((p) => p.name.toLowerCase().includes(lkw) || p.description.toLowerCase().includes(lkw));
@@ -375,11 +386,13 @@ export default function App() {
                       <button
                         key={c.id}
                         onClick={() => setSelectedCategory(c.id)}
-                        className={`w-full text-left px-2.5 py-1.5 rounded-lg transition flex justify-between items-center ${
+                        className={`w-full text-left py-1.5 rounded-lg transition flex justify-between items-center ${
+                          c.parentId ? 'pl-6 pr-2.5 text-[11px]' : 'px-2.5 font-bold text-slate-800'
+                        } ${
                           selectedCategory === c.id ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-slate-50 text-slate-600'
                         }`}
                       >
-                        <span className="truncate">{c.name}</span>
+                        <span className="truncate">{c.parentId ? `↳ ${c.name}` : c.name}</span>
                         {c.productCount > 0 && (
                           <span className="text-[10px] text-slate-400">({c.productCount})</span>
                         )}
