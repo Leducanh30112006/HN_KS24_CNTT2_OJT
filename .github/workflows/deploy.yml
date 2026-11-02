@@ -186,7 +186,8 @@ jobs:
             echo "==== Starting Rolling Deployment on VPS Ubuntu ===="
             cd /opt/quickshop
 
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
 
             export IMAGE_TAG=$IMAGE_TAG
 
