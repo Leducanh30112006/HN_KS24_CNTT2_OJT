@@ -166,6 +166,8 @@ jobs:
           port: ${{ env.VPS_PORT }}
           username: ${{ env.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 30m
+          timeout: 60s
           envs: IMAGE_TAG,GATEWAY_CHANGED,IDENTITY_CHANGED,CATALOG_CHANGED,ORDER_CHANGED,PAYMENT_CHANGED,SHIPPING_CHANGED,NOTIFICATION_CHANGED,FRONTEND_CHANGED
           script: |
             set -e

@@ -41,6 +41,11 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
         super(Config.class);
     }
 
+    @Override
+    public String name() {
+        return "JwtAuth";
+    }
+
     @PostConstruct
     public void init() {
         byte[] keyBytes;

@@ -58,7 +58,7 @@ spring:
           predicates:
             - Path=/api/users/**, /api/shops/**
           filters:
-            - name: JwtAuthGatewayFilterFactory
+            - name: JwtAuth
             - StripPrefix=0
 
         # 3. Catalog Service - Public Catalog Browsing
@@ -75,7 +75,7 @@ spring:
           predicates:
             - Path=/api/orders/**, /api/cart/**
           filters:
-            - name: JwtAuthGatewayFilterFactory
+            - name: JwtAuth
             - StripPrefix=0
 
         # 5. Payment Service - VNPay & Wallet
