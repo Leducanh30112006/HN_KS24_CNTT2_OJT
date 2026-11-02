@@ -1,6 +1,6 @@
 # ==============================================================
 # Multi-stage Dockerfile for QuickShop Spring Boot Microservices
-# Optimized with Eclipse Temurin 17 Alpine & Gradle layer caching
+# Optimized with Eclipse Temurin 17 Alpine & Multi-project Gradle
 # ==============================================================
 
 # Stage 1: Build
@@ -13,15 +13,21 @@ COPY gradle ./gradle
 COPY settings.gradle .
 COPY build.gradle .
 
-# Copy common library and target service
+# Copy all source directories for multi-project Gradle build
 COPY common-library ./common-library
+COPY api-gateway ./api-gateway
+COPY catalog-service ./catalog-service
+COPY identity-service ./identity-service
+COPY notification-ai-service ./notification-ai-service
+COPY order-service ./order-service
+COPY payment-service ./payment-service
+COPY shipping-service ./shipping-service
 
 ARG SERVICE_NAME
-COPY ${SERVICE_NAME} ./${SERVICE_NAME}
 
-# Grant execution rights and compile service jar
+# Grant execution rights and compile target service jar
 RUN chmod +x ./gradlew && \
-    ./gradlew :${SERVICE_NAME}:bootJar -x test --no-daemon --parallel
+    ./gradlew :${SERVICE_NAME}:bootJar -x test --no-daemon
 
 # Stage 2: Minimal Production Runtime
 FROM eclipse-temurin:17-jre-alpine AS runner
@@ -36,7 +42,7 @@ COPY --from=builder --chown=quickshop:quickshop /app/${SERVICE_NAME}/build/libs/
 USER quickshop:quickshop
 
 # Memory limits & G1GC tuning for VPS environment
-ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -Djava.security.egd=file:/dev/./urandom"
+ENV JAVA_OPTS="-XX:+UseContainerSupport -Xms96m -Xmx192m -XX:+UseG1GC -Djava.security.egd=file:/dev/./urandom"
 
 EXPOSE 8080 8081 8082 8083 8084 8085 8086
 
