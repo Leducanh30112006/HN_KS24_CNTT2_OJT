@@ -298,7 +298,7 @@ Triển khai Product CRUD theo Shop; trạng thái DRAFT/PENDING/APPROVED/REJECT
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Category CRUD","2026-11-02","2026-11-02"
-"Đang làm","[Cart] Xây dựng Cart model/API; thêm, sửa số lượng, xóa sản phẩm; kiểm tra SKU và số lượng hợp lệ: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+"Đã xong","[Cart] Xây dựng Cart model/API; thêm, sửa số lượng, xóa sản phẩm; kiểm tra SKU và số lượng hợp lệ: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Hai, 2026-11-02
 **Phân hệ:** Cart
 
