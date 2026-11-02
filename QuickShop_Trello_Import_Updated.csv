@@ -285,7 +285,7 @@ Triển khai đăng ký tài khoản, BCrypt password, kiểm tra email/phone tr
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Identity Service","2026-11-02","2026-11-02"
-"Đang làm","[Catalog] Triển khai Product CRUD theo Shop; trạng thái DRAFT/PENDING/APPROVED/REJECTED và phân quyền cơ bản: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+"Đã xong","[Catalog] Triển khai Product CRUD theo Shop; trạng thái DRAFT/PENDING/APPROVED/REJECTED và phân quyền cơ bản: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Hai, 2026-11-02
 **Phân hệ:** Catalog
 

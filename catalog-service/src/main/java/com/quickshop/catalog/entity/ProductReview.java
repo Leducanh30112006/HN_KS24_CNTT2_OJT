@@ -24,11 +24,14 @@ public class ProductReview {
     @Column(name = "product_id", nullable = false)
     private Long productId;
 
-    @Column(name = "sub_order_id", nullable = false)
+    @Column(name = "sub_order_id")
     private Long subOrderId;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
+
+    @Column(name = "user_name", length = 100)
+    private String userName;
 
     @Column(nullable = false)
     private Integer rating;
