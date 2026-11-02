@@ -207,9 +207,11 @@ jobs:
               docker compose -f docker-compose.prod.yml up -d --no-deps $SERVICES_TO_UPDATE
             else
               echo "No service images changed, verifying container health..."
-              docker compose -f docker-compose.prod.yml up -d
               docker compose -f docker-compose.prod.yml ps
             fi
+
+            echo "Reloading Nginx to refresh upstream routing..."
+            docker compose -f docker-compose.prod.yml exec -T nginx nginx -s reload || true
 
             echo "Cleaning unused dangling images..."
             docker image prune -f
