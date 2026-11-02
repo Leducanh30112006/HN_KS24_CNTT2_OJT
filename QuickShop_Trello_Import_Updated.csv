@@ -1,4 +1,4 @@
-﻿"List","Name","Description","Start Date","Due Date"
+"List","Name","Description","Start Date","Due Date"
 "Đã xong","[Quản lý & kiến trúc] Kick-off; rà soát mục tiêu MVP, FR-01–FR-11, NFR; lập danh sách phạm vi và tiêu chí nghiệm thu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Hai, 2026-10-26
 **Phân hệ:** Quản lý & kiến trúc
@@ -272,7 +272,7 @@ Khởi tạo Payment/Shipping service skeleton; kết nối DB và tạo health 
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - DDL Payment/Shipping","2026-11-01","2026-11-01"
-"Đang làm","[Identity] Triển khai đăng ký tài khoản, BCrypt password, kiểm tra email/phone trùng và validate dữ liệu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+"Đã xong","[Identity] Triển khai đăng ký tài khoản, BCrypt password, kiểm tra email/phone trùng và validate dữ liệu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Hai, 2026-11-02
 **Phân hệ:** Identity
 

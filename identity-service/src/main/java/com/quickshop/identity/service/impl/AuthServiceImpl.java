@@ -73,11 +73,18 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Email đã được đăng ký trên hệ thống");
         }
 
+        if (registerRequest.getPhoneNumber() != null && !registerRequest.getPhoneNumber().isBlank()) {
+            if (userRepository.existsByPhoneNumber(registerRequest.getPhoneNumber())) {
+                throw new BadRequestException("Số điện thoại đã được đăng ký trên hệ thống");
+            }
+        }
+
         Role role = registerRequest.getRole() != null ? registerRequest.getRole() : Role.ROLE_BUYER;
 
         User user = User.builder()
                 .username(registerRequest.getUsername())
                 .email(registerRequest.getEmail())
+                .phoneNumber(registerRequest.getPhoneNumber())
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
                 .fullName(registerRequest.getFullName())
                 .role(role)
