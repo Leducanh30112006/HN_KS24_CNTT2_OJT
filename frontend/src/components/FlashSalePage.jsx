@@ -280,3 +280,4 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
     </div>
   );
 }
+
