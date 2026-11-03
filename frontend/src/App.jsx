@@ -8,16 +8,17 @@ import CartDrawer from './components/CartDrawer';
 import AiChatWidget from './components/AiChatWidget';
 import SellerPortal from './components/SellerPortal';
 import AdminPortal from './components/AdminPortal';
+import LoginPage from './components/LoginPage';
 import AuthModal from './components/AuthModal';
 import axiosClient from './api/axiosClient';
 import { 
-  Filter, RotateCcw, Star, ChevronRight, ShieldCheck, 
+  Filter, RotateCcw, Star, ChevronRight, ChevronDown, ShieldCheck, 
   HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft 
 } from 'lucide-react';
 import { useAuthStore } from './stores/useAuthStore';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('storefront'); // 'storefront' | 'seller' | 'admin'
+  const [currentView, setCurrentView] = useState('storefront'); // 'storefront' | 'search' | 'login' | 'seller' | 'admin'
   const { user, isAuthenticated } = useAuthStore();
 
   const isSellerOrAdmin = isAuthenticated && user && (user.role === 'ROLE_SELLER' || user.role === 'ROLE_ADMIN' || user.role === 'SELLER' || user.role === 'ADMIN');
@@ -27,6 +28,9 @@ export default function App() {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+
+  // Category showcase display toggle (1 row vs all)
+  const [showAllCategories, setShowAllCategories] = useState(false);
 
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -263,7 +267,10 @@ export default function App() {
 
   const handleSearchSubmit = (keywordOverride) => {
     const kw = keywordOverride !== undefined ? keywordOverride : searchKeyword;
+    setSearchKeyword(kw);
     fetchProducts(selectedCategory, kw, sortBy);
+    // Chuyển sang trang kết quả tìm kiếm chuyên biệt
+    setCurrentView('search');
   };
 
   const handleResetFilters = () => {
@@ -287,6 +294,19 @@ export default function App() {
     return true;
   });
 
+  // Hiển thị 1 hàng danh mục (6 danh mục) khi chưa bấm "Xem tất cả ngành hàng"
+  const displayedCategories = showAllCategories ? categories : categories.slice(0, 6);
+
+  // Dedicated Full-Page Login View
+  if (currentView === 'login') {
+    return (
+      <LoginPage
+        onBackToHome={() => setCurrentView('storefront')}
+        onLoginSuccess={(targetView) => setCurrentView(targetView || 'storefront')}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F5F5FA] text-slate-800 font-sans flex flex-col">
       {/* 1. Universal Top Navigation */}
@@ -303,12 +323,142 @@ export default function App() {
         }}
         categories={categories}
         onOpenCart={() => setIsCartOpen(true)}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onOpenAuthModal={() => setCurrentView('login')}
+        onNavigateToLogin={() => setCurrentView('login')}
       />
 
       {/* 2. Main Content Views */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6">
-        {/* VIEW 1: STOREFRONT (NGƯỜI MUA) */}
+        
+        {/* VIEW 1: DEDICATED SEARCH RESULTS PAGE (CHỈ HIỂN THỊ CÁC SẢN PHẨM CẦN TÌM) */}
+        {currentView === 'search' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Search Header Banner */}
+            <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setSearchKeyword('');
+                    setSelectedCategory(null);
+                    setCurrentView('storefront');
+                    fetchProducts(null, '', 'newest');
+                  }}
+                  className="p-2 sm:px-3.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-700 transition flex items-center gap-2 text-xs font-semibold shadow-sm active:scale-95"
+                  title="Quay lại Trang chủ"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Trang chủ Mua sắm</span>
+                </button>
+
+                <div>
+                  <h2 className="text-base sm:text-xl font-black text-slate-900 flex items-center gap-2">
+                    <span>Kết quả tìm kiếm cho:</span>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-rose-600 italic">
+                      "{searchKeyword || 'Tất cả sản phẩm'}"
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Trang kết quả tìm kiếm chuyên biệt theo tên sản phẩm, thương hiệu và mô tả
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-xs font-semibold px-4 py-2 bg-orange-50 border border-orange-200 text-orange-700 rounded-full shadow-inner flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+                <span>Tìm thấy <strong className="font-black text-orange-600">{filteredProducts.length}</strong> sản phẩm</span>
+              </div>
+            </div>
+
+            {/* Search Sort Toolbar */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-3 sm:px-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm text-xs">
+              <div className="flex items-center space-x-2">
+                <span className="text-slate-500 font-medium">Sắp xếp theo:</span>
+                <button
+                  onClick={() => setSortBy('newest')}
+                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${
+                    sortBy === 'newest' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  Mới nhất
+                </button>
+                <button
+                  onClick={() => setSortBy('priceAsc')}
+                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${
+                    sortBy === 'priceAsc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  Giá thấp đến cao
+                </button>
+                <button
+                  onClick={() => setSortBy('priceDesc')}
+                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${
+                    sortBy === 'priceDesc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  Giá cao đến thấp
+                </button>
+              </div>
+
+              <button
+                onClick={() => {
+                  setSearchKeyword('');
+                  setSelectedCategory(null);
+                  setCurrentView('storefront');
+                  fetchProducts(null, '', 'newest');
+                }}
+                className="text-xs text-orange-600 hover:underline flex items-center gap-1 font-semibold"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Xóa tìm kiếm & về trang chủ
+              </button>
+            </div>
+
+            {/* Product Grid: Only Searched Products */}
+            {loadingProducts ? (
+              <div className="py-24 text-center space-y-3 bg-white rounded-3xl border border-slate-200/80 shadow-sm">
+                <div className="w-9 h-9 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <div className="text-xs text-slate-500 font-medium">Đang tìm kiếm sản phẩm phù hợp...</div>
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm space-y-4">
+                <div className="w-16 h-16 rounded-full bg-orange-50 text-orange-400 mx-auto flex items-center justify-center">
+                  <Filter className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-800">Không tìm thấy sản phẩm nào</h3>
+                  <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                    Không có sản phẩm nào khớp với từ khóa <strong className="text-slate-700">"{searchKeyword}"</strong>. Vui lòng thử từ khóa khác hoặc quay lại trang chủ.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setSearchKeyword('');
+                    setSelectedCategory(null);
+                    setCurrentView('storefront');
+                    fetchProducts(null, '', 'newest');
+                  }}
+                  className="px-5 py-2.5 bg-orange-600 text-white rounded-xl text-xs font-semibold hover:bg-orange-700 shadow-md shadow-orange-500/20 transition inline-flex items-center gap-1.5"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Xem tất cả sản phẩm tại Trang chủ
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                {filteredProducts.map((p) => (
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    onSelect={(prod) => setSelectedProduct(prod)}
+                    onRequireAuth={() => setCurrentView('login')}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* VIEW 2: STOREFRONT (NGƯỜI MUA - TRANG CHỦ) */}
         {currentView === 'storefront' && (
           <div className="space-y-6">
             {/* Hero Carousel & Commitments Banner */}
@@ -320,20 +470,25 @@ export default function App() {
               onSelectProduct={(p) => setSelectedProduct(p)}
             />
 
-            {/* Category Showcase Grid (Chuẩn Shopee) */}
+            {/* Category Showcase Grid (Hiển thị 1 hàng, bấm xem tất cả mới mở rộng) */}
             <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wide flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-orange-600" />
                   Danh mục sàn nổi bật
                 </h3>
-                <span className="text-xs text-orange-600 font-semibold cursor-pointer hover:underline">
-                  Xem tất cả ngành hàng
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAllCategories(!showAllCategories)}
+                  className="text-xs text-orange-600 font-semibold cursor-pointer hover:underline flex items-center gap-1 transition"
+                >
+                  <span>{showAllCategories ? 'Thu gọn' : 'Xem tất cả ngành hàng'}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showAllCategories ? 'rotate-180' : ''}`} />
+                </button>
               </div>
 
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 pt-1">
-                {categories.map((c) => (
+                {displayedCategories.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => setSelectedCategory(c.id === selectedCategory ? null : c.id)}
@@ -534,10 +689,7 @@ export default function App() {
                         key={p.id}
                         product={p}
                         onSelect={(prod) => setSelectedProduct(prod)}
-                        onRequireAuth={(msg) => {
-                          alert(msg);
-                          setIsAuthModalOpen(true);
-                        }}
+                        onRequireAuth={() => setCurrentView('login')}
                       />
                     ))}
                   </div>
@@ -547,7 +699,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW 2: SELLER CENTER (KÊNH NGƯỜI BÁN - PHÂN QUYỀN RBAC) */}
+        {/* VIEW 3: SELLER CENTER (KÊNH NGƯỜI BÁN - PHÂN QUYỀN RBAC) */}
         {currentView === 'seller' && (
           isSellerOrAdmin ? (
             <SellerPortal
@@ -568,7 +720,7 @@ export default function App() {
               </p>
               <div className="flex justify-center items-center gap-3 pt-2">
                 <button
-                  onClick={() => setIsAuthModalOpen(true)}
+                  onClick={() => setCurrentView('login')}
                   className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs rounded-xl shadow-md transition"
                 >
                   Đăng nhập Người Bán
@@ -585,7 +737,7 @@ export default function App() {
           )
         )}
 
-        {/* VIEW 3: ADMIN PORTAL (CỔNG QUẢN TRỊ - PHÂN QUYỀN RBAC) */}
+        {/* VIEW 4: ADMIN PORTAL (CỔNG QUẢN TRỊ - PHÂN QUYỀN RBAC) */}
         {currentView === 'admin' && (
           isAdmin ? (
             <AdminPortal
@@ -604,7 +756,7 @@ export default function App() {
               </p>
               <div className="flex justify-center items-center gap-3 pt-2">
                 <button
-                  onClick={() => setIsAuthModalOpen(true)}
+                  onClick={() => setCurrentView('login')}
                   className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-md transition"
                 >
                   Đăng nhập Quản trị viên
@@ -675,10 +827,7 @@ export default function App() {
         <ProductDetailModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
-          onRequireAuth={(msg) => {
-            alert(msg);
-            setIsAuthModalOpen(true);
-          }}
+          onRequireAuth={() => setCurrentView('login')}
           onBuyNow={() => {
             setSelectedProduct(null);
             setIsCartOpen(true);
@@ -689,10 +838,7 @@ export default function App() {
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
-        onRequireAuth={(msg) => {
-          alert(msg);
-          setIsAuthModalOpen(true);
-        }}
+        onRequireAuth={() => setCurrentView('login')}
       />
 
       <AuthModal

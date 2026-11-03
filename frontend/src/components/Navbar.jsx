@@ -18,6 +18,7 @@ export default function Navbar({
   categories = [],
   onOpenCart,
   onOpenAuthModal,
+  onNavigateToLogin,
 }) {
   const { user, isAuthenticated, logout } = useAuthStore();
   const totalCartCount = useCartStore((state) => state.getTotalCount());
@@ -28,9 +29,19 @@ export default function Navbar({
 
   const hotKeywords = ['iPhone 16 Pro', 'QuickBook Ultra M3', 'Áo Polo Cafe', 'Robot hút bụi', 'Kem chống nắng'];
 
+  const handleGoToLogin = () => {
+    if (onNavigateToLogin) {
+      onNavigateToLogin();
+    } else if (onOpenAuthModal) {
+      onOpenAuthModal();
+    } else {
+      setCurrentView('login');
+    }
+  };
+
   const handleSearchKeyPress = (e) => {
     if (e.key === 'Enter') {
-      onSearchSubmit();
+      if (onSearchSubmit) onSearchSubmit(searchKeyword);
     }
   };
 
@@ -85,7 +96,7 @@ export default function Navbar({
             {!isAuthenticated && (
               <div className="flex items-center space-x-3 opacity-90">
                 <button
-                  onClick={onOpenAuthModal}
+                  onClick={handleGoToLogin}
                   className="hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Store className="w-3 h-3" />
@@ -93,14 +104,14 @@ export default function Navbar({
                 </button>
                 <span className="opacity-40">|</span>
                 <button
-                  onClick={onOpenAuthModal}
+                  onClick={handleGoToLogin}
                   className="hover:underline cursor-pointer"
                 >
                   Đăng ký
                 </button>
                 <span className="opacity-40">|</span>
                 <button
-                  onClick={onOpenAuthModal}
+                  onClick={handleGoToLogin}
                   className="font-bold hover:underline cursor-pointer"
                 >
                   Đăng nhập
@@ -113,9 +124,13 @@ export default function Navbar({
 
       {/* 2. Main Navigation Bar */}
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-        {/* Brand Logo - Bấm vào quay về trang Catalog */}
+        {/* Brand Logo - Bấm vào quay về trang Catalog Storefront */}
         <div 
-          onClick={() => setCurrentView('storefront')} 
+          onClick={() => {
+            if (setSearchKeyword) setSearchKeyword('');
+            if (setSelectedCategory) setSelectedCategory(null);
+            setCurrentView('storefront');
+          }} 
           className="flex items-center gap-2.5 cursor-pointer group select-none flex-shrink-0"
         >
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-500 via-rose-500 to-amber-500 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
@@ -146,7 +161,7 @@ export default function Navbar({
               className="w-full pl-4 pr-24 py-2.5 bg-slate-100/90 hover:bg-slate-100 focus:bg-white text-xs sm:text-sm text-slate-900 rounded-2xl border border-transparent focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all placeholder:text-slate-400"
             />
             <button
-              onClick={onSearchSubmit}
+              onClick={() => onSearchSubmit && onSearchSubmit(searchKeyword)}
               className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white rounded-xl flex items-center justify-center text-xs font-semibold shadow-sm transition active:scale-95"
             >
               <Search className="w-4 h-4 mr-1" />
@@ -162,7 +177,7 @@ export default function Navbar({
                 key={idx}
                 onClick={() => {
                   setSearchKeyword(kw);
-                  onSearchSubmit();
+                  if (onSearchSubmit) onSearchSubmit(kw);
                 }}
                 className="hover:text-orange-600 cursor-pointer truncate max-w-[120px]"
               >
@@ -276,7 +291,7 @@ export default function Navbar({
               </button>
             ) : (
               <button
-                onClick={onOpenAuthModal}
+                onClick={handleGoToLogin}
                 className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition"
               >
                 <User className="w-4 h-4" />
@@ -350,49 +365,6 @@ export default function Navbar({
           </div>
         </div>
       </div>
-
-      {/* 3. Category Horizontal Pills (Dải danh mục trực quan - CHỈ HIỂN THỊ Ở TRANG CATALOG STOREFRONT VÀ ẨN THANH CUỘN) */}
-      {currentView === 'storefront' && (
-        <div className="bg-slate-50 border-t border-slate-200/80 px-4 py-2">
-          <div 
-            className="max-w-7xl mx-auto flex items-center space-x-2 overflow-x-auto text-xs no-scrollbar"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap font-medium transition ${
-                selectedCategory === null
-                  ? 'bg-orange-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-orange-600 hover:bg-white'
-              }`}
-            >
-              Tất cả sản phẩm
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition flex items-center gap-1.5 ${
-                  cat.parentId ? 'text-[11px] font-normal opacity-90' : 'font-bold'
-                } ${
-                  selectedCategory === cat.id
-                    ? 'bg-orange-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-orange-600 hover:bg-white'
-                }`}
-              >
-                <span>{cat.parentId ? `↳ ${cat.name}` : cat.name}</span>
-                {cat.productCount > 0 && (
-                  <span className={`text-[10px] px-1 rounded-full ${
-                    selectedCategory === cat.id ? 'bg-orange-700 text-white' : 'bg-slate-200 text-slate-600'
-                  }`}>
-                    {cat.productCount}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </header>
   );
 }
