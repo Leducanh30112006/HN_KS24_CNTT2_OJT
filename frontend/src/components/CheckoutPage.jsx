@@ -2,10 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { 
   ShoppingBag, ArrowLeft, Trash2, Store, Tag, CheckCircle2, ShieldCheck, 
   MapPin, Phone, User, Truck, CreditCard, ChevronRight, AlertCircle, 
-  Clock, Sparkles, Check, Edit3, Plus, RefreshCw, DollarSign, QrCode
+  Clock, Sparkles, Check, Edit3, Plus, RefreshCw, DollarSign, QrCode, Ticket
 } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import VoucherModal from './VoucherModal';
 
 export default function CheckoutPage({ 
   checkoutItems = [],
@@ -33,10 +34,20 @@ export default function CheckoutPage({
     label: 'Nhà riêng (Mặc định)',
   });
 
-  // Voucher state
+  // Voucher states (Phân chia rõ ràng Voucher Sàn & Voucher Shop chuẩn Shopee)
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [appliedShippingVoucher, setAppliedShippingVoucher] = useState({
+    code: 'FREESHIPMAX',
+    discount: 25000,
+    title: 'Miễn Phí Vận Chuyển Toàn Quốc',
+  });
+  const [appliedPlatformVoucher, setAppliedPlatformVoucher] = useState({
+    code: 'QUICKSHOP50K',
+    discount: 50000,
+    title: 'Giảm 50.000₫ Đơn Hàng Sàn',
+  });
+  const [appliedShopVouchers, setAppliedShopVouchers] = useState({});
   const [voucherCode, setVoucherCode] = useState('');
-  const [discountAmount, setDiscountAmount] = useState(0);
-  const [shippingDiscount, setShippingDiscount] = useState(0);
   const [voucherApplied, setVoucherApplied] = useState('');
 
   // Order Placement status
@@ -79,31 +90,48 @@ export default function CheckoutPage({
     baseShipping = 0;
   }
 
-  const actualShippingFee = Math.max(0, baseShipping - shippingDiscount);
-  const finalTotal = Math.max(0, subTotal + actualShippingFee - discountAmount);
+  // Calculate distinct discount types
+  const shippingDiscount = appliedShippingVoucher?.discount || 0;
+  const platformDiscount = appliedPlatformVoucher?.discount || 0;
+  const shopDiscount = Object.values(appliedShopVouchers).reduce((sum, v) => sum + (v.discount || 0), 0);
+  const totalDiscount = platformDiscount + shopDiscount;
 
-  const handleApplyVoucher = (codeToApply) => {
+  const actualShippingFee = Math.max(0, baseShipping - shippingDiscount);
+  const finalTotal = Math.max(0, subTotal + actualShippingFee - totalDiscount);
+
+  // Handle vouchers from modal
+  const handleApplyVouchers = ({ shippingVoucher, platformVoucher, shopVouchers }) => {
+    setAppliedShippingVoucher(shippingVoucher);
+    setAppliedPlatformVoucher(platformVoucher);
+    setAppliedShopVouchers(shopVouchers || {});
+    setVoucherApplied('✓ Đã cập nhật áp dụng voucher thành công!');
+  };
+
+  const handleQuickApplyCode = (codeToApply) => {
     const code = (codeToApply || voucherCode).trim().toUpperCase();
     if (code === 'QUICKSHOP50K') {
       if (subTotal >= 200000) {
-        setDiscountAmount(50000);
-        setVoucherCode('QUICKSHOP50K');
-        setVoucherApplied('Đã áp dụng mã QUICKSHOP50K: Giảm ngay 50.000₫!');
+        setAppliedPlatformVoucher({ code: 'QUICKSHOP50K', discount: 50000, title: 'Giảm 50.000₫ Đơn Hàng Sàn' });
+        setVoucherApplied('✓ Đã áp dụng mã Sàn QUICKSHOP50K (-50.000₫)!');
       } else {
         setVoucherApplied('Mã QUICKSHOP50K yêu cầu đơn hàng từ 200.000₫.');
       }
     } else if (code === 'FREESHIPMAX') {
-      setShippingDiscount(25000);
-      setVoucherCode('FREESHIPMAX');
-      setVoucherApplied('Đã áp dụng mã FREESHIPMAX: Giảm 25.000₫ phí vận chuyển!');
+      setAppliedShippingVoucher({ code: 'FREESHIPMAX', discount: 25000, title: 'Miễn Phí Vận Chuyển' });
+      setVoucherApplied('✓ Đã áp dụng mã Freeship FREESHIPMAX (-25.000₫)!');
     } else if (code === 'MALL100K') {
       if (subTotal >= 1000000) {
-        setDiscountAmount(100000);
-        setVoucherCode('MALL100K');
-        setVoucherApplied('Đã áp dụng mã MALL100K: Giảm 100.000₫ cho đơn Mall!');
+        setAppliedPlatformVoucher({ code: 'MALL100K', discount: 100000, title: 'Giảm 100.000₫ Đơn Mall' });
+        setVoucherApplied('✓ Đã áp dụng mã Sàn MALL100K (-100.000₫)!');
       } else {
         setVoucherApplied('Mã MALL100K yêu cầu đơn hàng từ 1.000.000₫.');
       }
+    } else if (code.includes('SHOP') || code.includes('TECH') || code.includes('SMART')) {
+      setAppliedShopVouchers((prev) => ({
+        ...prev,
+        1: { code, title: 'Voucher Shop Đối Tác', discount: 30000, shopId: 1, shopName: 'TechWorld' }
+      }));
+      setVoucherApplied(`✓ Đã áp dụng mã Shop ${code} (-30.000₫)!`);
     } else {
       setVoucherApplied('Mã giảm giá không hợp lệ hoặc đã hết lượt áp dụng.');
     }
@@ -589,62 +617,124 @@ export default function CheckoutPage({
         {/* RIGHT COLUMN (1/3 width, Sticky Order Summary Box) */}
         <div className="space-y-6 lg:sticky lg:top-24">
 
-          {/* Vouchers & Coupons Card */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-3">
-            <div className="flex items-center gap-2 text-xs font-black text-slate-900 uppercase tracking-wide">
-              <Tag className="w-4 h-4 text-orange-600" />
-              <span>Mã Giảm Giá QuickShop</span>
+          {/* Vouchers & Coupons Card (Chuẩn Shopee: Phân chia rõ ràng Voucher Sàn & Voucher Shop) */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-3.5">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-xs font-black text-slate-900 uppercase tracking-wide">
+                <Ticket className="w-4 h-4 text-orange-600" />
+                <span>Mã Giảm Giá & Voucher</span>
+              </div>
+              <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+                Chuẩn Shopee
+              </span>
             </div>
 
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={voucherCode}
-                onChange={(e) => setVoucherCode(e.target.value)}
-                placeholder="Nhập mã voucher..."
-                className="flex-1 px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs uppercase font-mono font-bold focus:outline-none focus:border-orange-500"
-              />
-              <button
-                type="button"
-                onClick={() => handleApplyVoucher()}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition active:scale-95"
-              >
-                Áp dụng
-              </button>
+            {/* Shopee-style Clickable Voucher Row 1: Sàn & Freeship */}
+            <div
+              onClick={() => setIsVoucherModalOpen(true)}
+              className="p-3 bg-gradient-to-r from-orange-50/70 to-rose-50/40 hover:from-orange-100/60 hover:to-rose-100/40 border border-orange-200 rounded-2xl cursor-pointer transition flex items-center justify-between gap-2 shadow-sm group"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-xl bg-orange-600 text-white flex items-center justify-center flex-shrink-0">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-black text-slate-900 flex items-center gap-1.5 flex-wrap">
+                    <span>QuickShop Voucher:</span>
+                    {appliedPlatformVoucher ? (
+                      <span className="bg-orange-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded shadow-sm">
+                        -{formatVND(appliedPlatformVoucher.discount)}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-orange-600 font-semibold">Chưa chọn</span>
+                    )}
+
+                    {appliedShippingVoucher && (
+                      <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded shadow-sm">
+                        🚚 Freeship -{formatVND(appliedShippingVoucher.discount)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate mt-0.5">
+                    {appliedPlatformVoucher?.title || 'Bấm để chọn mã giảm giá & freeship sàn'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 text-xs font-bold text-orange-600 group-hover:translate-x-0.5 transition flex-shrink-0">
+                <span className="text-[11px]">{appliedPlatformVoucher || appliedShippingVoucher ? 'Đổi mã' : 'Chọn mã'}</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </div>
             </div>
 
-            {voucherApplied && (
-              <div className={`text-[11px] ${discountAmount > 0 || shippingDiscount > 0 ? 'text-emerald-600 font-bold' : 'text-rose-500 font-medium'}`}>
-                {voucherApplied}
+            {/* Shopee-style Clickable Voucher Row 2: Voucher Của Shop */}
+            <div
+              onClick={() => setIsVoucherModalOpen(true)}
+              className="p-3 bg-gradient-to-r from-purple-50/70 to-indigo-50/40 hover:from-purple-100/60 hover:to-indigo-100/40 border border-purple-200 rounded-2xl cursor-pointer transition flex items-center justify-between gap-2 shadow-sm group"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center flex-shrink-0">
+                  <Store className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-black text-slate-900 flex items-center gap-1.5 flex-wrap">
+                    <span>Voucher Của Shop:</span>
+                    {shopDiscount > 0 ? (
+                      <span className="bg-purple-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded shadow-sm">
+                        -{formatVND(shopDiscount)}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-purple-600 font-semibold">Chưa chọn</span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate mt-0.5">
+                    {shopDiscount > 0
+                      ? Object.values(appliedShopVouchers).map(v => v.shopName).join(', ')
+                      : 'Bấm chọn voucher riêng của từng Shop trong đơn'}
+                  </div>
+                </div>
               </div>
-            )}
 
-            {/* Quick voucher chips */}
-            <div className="space-y-1.5 pt-2 border-t border-slate-100">
-              <div className="text-[11px] text-slate-400 font-medium">Mã ưu đãi có sẵn:</div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex items-center gap-1 text-xs font-bold text-purple-600 group-hover:translate-x-0.5 transition flex-shrink-0">
+                <span className="text-[11px]">{shopDiscount > 0 ? 'Đổi mã' : 'Chọn mã'}</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </div>
+            </div>
+
+            {/* Big Shopee CTA Button to Open Voucher Modal */}
+            <button
+              type="button"
+              onClick={() => setIsVoucherModalOpen(true)}
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-sm active:scale-95"
+            >
+              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span>Bấm Chọn Hoặc Nhập Mã Voucher (Sàn & Shop)</span>
+            </button>
+
+            {/* Quick manual voucher input */}
+            <div className="pt-2 border-t border-slate-100 space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={voucherCode}
+                  onChange={(e) => setVoucherCode(e.target.value)}
+                  placeholder="Hoặc nhập mã trực tiếp..."
+                  className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs uppercase font-mono font-bold focus:outline-none focus:border-orange-500"
+                />
                 <button
                   type="button"
-                  onClick={() => handleApplyVoucher('QUICKSHOP50K')}
-                  className="px-2.5 py-1 bg-orange-50 hover:bg-orange-100 border border-dashed border-orange-300 text-orange-700 rounded-lg text-[10px] font-bold transition text-left"
+                  onClick={() => handleQuickApplyCode()}
+                  className="px-3.5 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-xl transition active:scale-95"
                 >
-                  ⚡ QUICKSHOP50K (-50k)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleApplyVoucher('FREESHIPMAX')}
-                  className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-dashed border-emerald-300 text-emerald-700 rounded-lg text-[10px] font-bold transition text-left"
-                >
-                  🚚 FREESHIPMAX (-25k)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleApplyVoucher('MALL100K')}
-                  className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 border border-dashed border-purple-300 text-purple-700 rounded-lg text-[10px] font-bold transition text-left"
-                >
-                  👑 MALL100K (-100k)
+                  Nhập
                 </button>
               </div>
+
+              {voucherApplied && (
+                <div className={`text-[11px] ${voucherApplied.startsWith('✓') ? 'text-emerald-600 font-bold' : 'text-rose-500 font-medium'}`}>
+                  {voucherApplied}
+                </div>
+              )}
             </div>
           </div>
 
@@ -671,17 +761,24 @@ export default function CheckoutPage({
                 </span>
               </div>
 
-              {discountAmount > 0 && (
+              {shippingDiscount > 0 && (
                 <div className="flex justify-between text-emerald-600 font-bold">
-                  <span>Giảm giá Voucher sàn:</span>
-                  <span>-{formatVND(discountAmount)}</span>
+                  <span>Giảm giá Vận chuyển (Freeship):</span>
+                  <span>-{formatVND(shippingDiscount)}</span>
                 </div>
               )}
 
-              {shippingDiscount > 0 && (
-                <div className="flex justify-between text-emerald-600 font-bold">
-                  <span>Giảm giá Vận chuyển:</span>
-                  <span>-{formatVND(shippingDiscount)}</span>
+              {platformDiscount > 0 && (
+                <div className="flex justify-between text-orange-600 font-bold">
+                  <span>Giảm giá Voucher Sàn:</span>
+                  <span>-{formatVND(platformDiscount)}</span>
+                </div>
+              )}
+
+              {shopDiscount > 0 && (
+                <div className="flex justify-between text-purple-600 font-bold">
+                  <span>Giảm giá Voucher Shop:</span>
+                  <span>-{formatVND(shopDiscount)}</span>
                 </div>
               )}
 
@@ -689,6 +786,14 @@ export default function CheckoutPage({
                 <span className="text-sm font-bold text-slate-900">Tổng cộng thanh toán:</span>
                 <span className="text-xl font-black text-rose-600">{formatVND(finalTotal)}</span>
               </div>
+
+              {(shippingDiscount + platformDiscount + shopDiscount) > 0 && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-[11px] font-bold text-center flex items-center justify-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Tiết kiệm được {formatVND(shippingDiscount + platformDiscount + shopDiscount)} cho đơn này!</span>
+                </div>
+              )}
+
               <div className="text-[10px] text-slate-400 text-right">
                 (Đã bao gồm thuế GTGT nếu có)
               </div>
@@ -727,6 +832,20 @@ export default function CheckoutPage({
           </div>
         </div>
       </div>
+
+      {/* Voucher Selection Modal (Chuẩn Shopee) */}
+      <VoucherModal
+        isOpen={isVoucherModalOpen}
+        onClose={() => setIsVoucherModalOpen(false)}
+        subTotal={subTotal}
+        shopsInOrder={shopGroups.map(g => ({ shopId: g.shopId, shopName: g.shopName }))}
+        appliedVouchers={{
+          shippingVoucher: appliedShippingVoucher,
+          platformVoucher: appliedPlatformVoucher,
+          shopVouchers: appliedShopVouchers,
+        }}
+        onApplyVouchers={handleApplyVouchers}
+      />
     </div>
   );
 }
