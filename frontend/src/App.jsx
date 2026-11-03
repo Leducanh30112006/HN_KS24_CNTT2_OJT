@@ -6,6 +6,7 @@ import ProductCard from './components/ProductCard';
 import ProductDetailPage from './components/ProductDetailPage';
 import FlashSalePage from './components/FlashSalePage';
 import ShopDetailPage from './components/ShopDetailPage';
+import CartPage from './components/CartPage';
 import CheckoutPage from './components/CheckoutPage';
 import CartDrawer from './components/CartDrawer';
 import AiChatWidget from './components/AiChatWidget';
@@ -45,6 +46,7 @@ export default function App() {
   // Modal / Selected Product & Shop states
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedShop, setSelectedShop] = useState(null);
+  const [checkoutItems, setCheckoutItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -369,23 +371,43 @@ export default function App() {
             }}
             onSelectRelatedProduct={handleSelectProduct}
             onSelectShop={handleSelectShop}
-            onBuyNow={() => {
-              setCurrentView('cart');
+            onBuyNow={(buyItem) => {
+              if (buyItem) {
+                setCheckoutItems([buyItem]);
+              }
+              setCurrentView('checkout');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onRequireAuth={() => setCurrentView('login')}
           />
         )}
 
-        {/* VIEW: DEDICATED CART & CHECKOUT PAGE (PHẦN MUA HÀNG VÀ THANH TOÁN LÀ TRANG RIÊNG) */}
+        {/* VIEW: DEDICATED CART PAGE (TRANG GIỎ HÀNG CHUẨN SHOPEE - CHỈ HIỆN SẢN PHẨM TRONG GIỎ, TÍCH CHỌN MÓN ĐỂ THANH TOÁN) */}
         {currentView === 'cart' && (
-          <CheckoutPage
+          <CartPage
+            onProceedToCheckout={(selected) => {
+              setCheckoutItems(selected);
+              setCurrentView('checkout');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             onBack={() => {
               if (selectedProduct) {
                 setCurrentView('product-detail');
               } else {
                 setCurrentView('storefront');
               }
+            }}
+            onSelectProduct={handleSelectProduct}
+          />
+        )}
+
+        {/* VIEW: DEDICATED CHECKOUT PAGE (TRANG THANH TOÁN CÁC MÓN ĐÃ TÍCH CHỌN) */}
+        {currentView === 'checkout' && (
+          <CheckoutPage
+            checkoutItems={checkoutItems}
+            onBack={() => {
+              setCurrentView('cart');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onSelectProduct={handleSelectProduct}
             onRequireAuth={() => setCurrentView('login')}

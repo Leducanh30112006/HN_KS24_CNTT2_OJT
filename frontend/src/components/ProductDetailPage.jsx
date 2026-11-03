@@ -134,7 +134,20 @@ export default function ProductDetailPage({
       return;
     }
     addToCart(product, selectedVariant, quantity);
-    if (onBuyNow) onBuyNow();
+    const buyItem = {
+      productId: product.id,
+      variantId: selectedVariant?.id || product.id,
+      sku: selectedVariant?.sku || `SKU-${product.id}`,
+      productName: product.name,
+      color: selectedVariant?.color || '',
+      size: selectedVariant?.size || '',
+      price: Number(selectedVariant?.price || product.minPrice || 0),
+      mainImage: product.mainImage,
+      quantity,
+      shopId: product.shopId || 1,
+      shopName: product.shopName || 'TechWorld Official Store',
+    };
+    if (onBuyNow) onBuyNow(buyItem);
   };
 
   const handleAddReview = async (e) => {
