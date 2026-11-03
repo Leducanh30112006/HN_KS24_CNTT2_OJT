@@ -311,7 +311,7 @@ Xây dựng Cart model/API; thêm, sửa số lượng, xóa sản phẩm; kiể
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Order Service","2026-11-02","2026-11-02"
-"Cần làm","[Identity] Triển khai OTP qua Redis TTL 5 phút; API xác thực OTP và giới hạn gửi lại OTP: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+"Đã xong","[Identity] Triển khai OTP qua Redis TTL 5 phút; API xác thực OTP và giới hạn gửi lại OTP: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Ba, 2026-11-03
 **Phân hệ:** Identity
 

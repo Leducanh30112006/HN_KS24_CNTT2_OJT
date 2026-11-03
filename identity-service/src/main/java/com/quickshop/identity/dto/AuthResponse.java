@@ -1,6 +1,7 @@
 package com.quickshop.identity.dto;
 
 import com.quickshop.identity.entity.Role;
+import com.quickshop.identity.entity.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,4 +22,5 @@ public class AuthResponse {
     private String email;
     private String fullName;
     private Role role;
+    private UserStatus status;
 }
