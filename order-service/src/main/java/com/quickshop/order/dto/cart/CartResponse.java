@@ -17,6 +17,10 @@ import java.util.List;
 public class CartResponse implements Serializable {
 
     private Long userId;
+    private String guestId;
+
+    @Builder.Default
+    private CartType cartType = CartType.USER;
 
     @Builder.Default
     private List<CartShopGroupResponse> shops = new ArrayList<>();
@@ -24,4 +28,5 @@ public class CartResponse implements Serializable {
     private BigDecimal totalAmount;
     private Integer totalItems;      // Tổng số mặt hàng khác nhau trong giỏ
     private Integer totalQuantity;   // Tổng số lượng sản phẩm
+    private Long ttlSeconds;         // Thời gian sống còn lại trên Redis (giây)
 }

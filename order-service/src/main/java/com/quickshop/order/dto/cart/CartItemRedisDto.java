@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Cấu trúc dữ liệu lưu trữ dạng JSON trong Redis Hash key "cart:{user_id}".
+ * Cấu trúc dữ liệu lưu trữ dạng JSON trong Redis Hash key "cart:user:{id}" hoặc "cart:guest:{guestId}".
  * Giá và tồn kho tại đây đóng vai trò snapshot hiển thị trong giỏ hàng.
  */
 @Data
@@ -31,6 +31,16 @@ public class CartItemRedisDto implements Serializable {
     private BigDecimal price; // Giá snapshot
     private Integer quantity;
     private Integer availableStock; // Tồn kho khả dụng snapshot
+
+    @Builder.Default
+    private CartType cartType = CartType.USER;
+
+    private String ownerId; // userId hoặc guestId định danh chủ sở hữu item
+
+    @Builder.Default
+    private boolean selected = true; // Hỗ trợ đánh dấu chọn mua theo phân hệ Checkout
+
+    private BigDecimal itemSubtotal; // Thành tiền snapshot = price * quantity
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     @Builder.Default
