@@ -3,7 +3,7 @@ import Navbar from './components/Navbar';
 import HeroBanner from './components/HeroBanner';
 import FlashSaleSection from './components/FlashSaleSection';
 import ProductCard from './components/ProductCard';
-import ProductDetailModal from './components/ProductDetailModal';
+import ProductDetailPage from './components/ProductDetailPage';
 import CartDrawer from './components/CartDrawer';
 import AiChatWidget from './components/AiChatWidget';
 import SellerPortal from './components/SellerPortal';
@@ -18,7 +18,7 @@ import {
 import { useAuthStore } from './stores/useAuthStore';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('storefront'); // 'storefront' | 'search' | 'login' | 'seller' | 'admin'
+  const [currentView, setCurrentView] = useState('storefront'); // 'storefront' | 'search' | 'product-detail' | 'login' | 'seller' | 'admin'
   const { user, isAuthenticated } = useAuthStore();
 
   const isSellerOrAdmin = isAuthenticated && user && (user.role === 'ROLE_SELLER' || user.role === 'ROLE_ADMIN' || user.role === 'SELLER' || user.role === 'ADMIN');
@@ -39,7 +39,7 @@ export default function App() {
   const [priceRange, setPriceRange] = useState('all'); // 'all', 'under1m', '1m-5m', '5m-20m', 'above20m'
   const [minRating, setMinRating] = useState(0);
 
-  // Modal states
+  // Modal / Selected Product states
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -271,6 +271,13 @@ export default function App() {
     fetchProducts(selectedCategory, kw, sortBy);
     // Chuyển sang trang kết quả tìm kiếm chuyên biệt
     setCurrentView('search');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSelectProduct = (prod) => {
+    setSelectedProduct(prod);
+    setCurrentView('product-detail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleResetFilters = () => {
@@ -312,13 +319,17 @@ export default function App() {
       {/* 1. Universal Top Navigation */}
       <Navbar
         currentView={currentView}
-        setCurrentView={setCurrentView}
+        setCurrentView={(view) => {
+          if (view === 'storefront') setSelectedProduct(null);
+          setCurrentView(view);
+        }}
         searchKeyword={searchKeyword}
         setSearchKeyword={setSearchKeyword}
         onSearchSubmit={handleSearchSubmit}
         selectedCategory={selectedCategory}
         setSelectedCategory={(catId) => {
           setSelectedCategory(catId);
+          setSelectedProduct(null);
           setCurrentView('storefront');
         }}
         categories={categories}
@@ -330,7 +341,22 @@ export default function App() {
       {/* 2. Main Content Views */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6">
         
-        {/* VIEW 1: DEDICATED SEARCH RESULTS PAGE (CHỈ HIỂN THỊ CÁC SẢN PHẨM CẦN TÌM) */}
+        {/* VIEW 1: PRODUCT DETAIL PAGE (CHUYÊN BIỆT NHƯ SHOPEE VÀ TIKTOK SHOP) */}
+        {currentView === 'product-detail' && selectedProduct && (
+          <ProductDetailPage
+            product={selectedProduct}
+            allProducts={products}
+            onBack={() => {
+              setSelectedProduct(null);
+              setCurrentView('storefront');
+            }}
+            onSelectRelatedProduct={handleSelectProduct}
+            onBuyNow={() => setIsCartOpen(true)}
+            onRequireAuth={() => setCurrentView('login')}
+          />
+        )}
+
+        {/* VIEW 2: DEDICATED SEARCH RESULTS PAGE (CHỈ HIỂN THỊ CÁC SẢN PHẨM CẦN TÌM) */}
         {currentView === 'search' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Search Header Banner */}
@@ -449,7 +475,7 @@ export default function App() {
                   <ProductCard
                     key={p.id}
                     product={p}
-                    onSelect={(prod) => setSelectedProduct(prod)}
+                    onSelect={handleSelectProduct}
                     onRequireAuth={() => setCurrentView('login')}
                   />
                 ))}
@@ -458,7 +484,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW 2: STOREFRONT (NGƯỜI MUA - TRANG CHỦ) */}
+        {/* VIEW 3: STOREFRONT (NGƯỜI MUA - TRANG CHỦ) */}
         {currentView === 'storefront' && (
           <div className="space-y-6">
             {/* Hero Carousel & Commitments Banner */}
@@ -467,7 +493,7 @@ export default function App() {
             {/* Flash Sale Deal Shocker Section */}
             <FlashSaleSection
               products={products}
-              onSelectProduct={(p) => setSelectedProduct(p)}
+              onSelectProduct={handleSelectProduct}
             />
 
             {/* Category Showcase Grid (Hiển thị 1 hàng, bấm xem tất cả mới mở rộng) */}
@@ -688,7 +714,7 @@ export default function App() {
                       <ProductCard
                         key={p.id}
                         product={p}
-                        onSelect={(prod) => setSelectedProduct(prod)}
+                        onSelect={handleSelectProduct}
                         onRequireAuth={() => setCurrentView('login')}
                       />
                     ))}
@@ -699,12 +725,15 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW 3: SELLER CENTER (KÊNH NGƯỜI BÁN - PHÂN QUYỀN RBAC) */}
+        {/* VIEW 4: SELLER CENTER (KÊNH NGƯỜI BÁN - PHÂN QUYỀN RBAC) */}
         {currentView === 'seller' && (
           isSellerOrAdmin ? (
             <SellerPortal
               categories={categories}
-              onBackToStorefront={() => setCurrentView('storefront')}
+              onBackToStorefront={() => {
+                setSelectedProduct(null);
+                setCurrentView('storefront');
+              }}
               onProductCreated={(newProd) => {
                 setProducts([newProd, ...products]);
               }}
@@ -726,7 +755,10 @@ export default function App() {
                   Đăng nhập Người Bán
                 </button>
                 <button
-                  onClick={() => setCurrentView('storefront')}
+                  onClick={() => {
+                    setSelectedProduct(null);
+                    setCurrentView('storefront');
+                  }}
                   className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition flex items-center gap-1.5"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -737,12 +769,15 @@ export default function App() {
           )
         )}
 
-        {/* VIEW 4: ADMIN PORTAL (CỔNG QUẢN TRỊ - PHÂN QUYỀN RBAC) */}
+        {/* VIEW 5: ADMIN PORTAL (CỔNG QUẢN TRỊ - PHÂN QUYỀN RBAC) */}
         {currentView === 'admin' && (
           isAdmin ? (
             <AdminPortal
               categories={categories}
-              onBackToStorefront={() => setCurrentView('storefront')}
+              onBackToStorefront={() => {
+                setSelectedProduct(null);
+                setCurrentView('storefront');
+              }}
               onCategoriesUpdated={fetchCategories}
             />
           ) : (
@@ -762,7 +797,10 @@ export default function App() {
                   Đăng nhập Quản trị viên
                 </button>
                 <button
-                  onClick={() => setCurrentView('storefront')}
+                  onClick={() => {
+                    setSelectedProduct(null);
+                    setCurrentView('storefront');
+                  }}
                   className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition flex items-center gap-1.5"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -823,18 +861,6 @@ export default function App() {
       </footer>
 
       {/* 4. Modals & Widgets */}
-      {selectedProduct && (
-        <ProductDetailModal
-          product={selectedProduct}
-          onClose={() => setSelectedProduct(null)}
-          onRequireAuth={() => setCurrentView('login')}
-          onBuyNow={() => {
-            setSelectedProduct(null);
-            setIsCartOpen(true);
-          }}
-        />
-      )}
-
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
