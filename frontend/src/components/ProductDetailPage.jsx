@@ -15,7 +15,8 @@ export default function ProductDetailPage({
   onBack, 
   onSelectRelatedProduct, 
   onBuyNow, 
-  onRequireAuth 
+  onRequireAuth,
+  onSelectShop
 }) {
   const addToCart = useCartStore((state) => state.addToCart);
   const { user, isAuthenticated } = useAuthStore();
@@ -483,8 +484,12 @@ export default function ProductDetailPage({
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           {/* Shop Profile Left */}
           <div className="flex items-center space-x-4">
-            <div className="relative">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-orange-500 to-rose-600 text-white font-black flex items-center justify-center text-xl shadow-md">
+            <div 
+              onClick={() => onSelectShop && onSelectShop({ id: product.shopId || 1, name: product.shopName || 'TechWorld Official Store' })}
+              className="relative cursor-pointer group"
+              title="Xem thông tin gian hàng"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-orange-500 to-rose-600 text-white font-black flex items-center justify-center text-xl shadow-md group-hover:scale-105 transition-transform">
                 <Store className="w-8 h-8" />
               </div>
               <span className="absolute -bottom-1 -right-1 bg-rose-600 text-white text-[9px] font-black px-1 rounded shadow uppercase">
@@ -493,7 +498,11 @@ export default function ProductDetailPage({
             </div>
 
             <div className="space-y-1">
-              <div className="text-base font-bold text-slate-900 flex items-center gap-1.5">
+              <div 
+                onClick={() => onSelectShop && onSelectShop({ id: product.shopId || 1, name: product.shopName || 'TechWorld Official Store' })}
+                className="text-base font-bold text-slate-900 flex items-center gap-1.5 cursor-pointer hover:text-orange-600 transition"
+                title="Bấm để xem trang Shop"
+              >
                 <span>{product.shopName || 'TechWorld Official Store'}</span>
                 <Check className="w-4 h-4 text-white bg-blue-500 rounded-full p-0.5" />
               </div>
@@ -503,14 +512,15 @@ export default function ProductDetailPage({
               <div className="flex gap-2 pt-1">
                 <button 
                   onClick={() => alert(`Đang mở kết nối trò chuyện với gian hàng ${product.shopName || 'TechWorld'}...`)}
-                  className="px-3 py-1 bg-orange-50 border border-orange-200 text-orange-600 hover:bg-orange-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition"
+                  className="px-3 py-1 bg-orange-50 border border-orange-200 text-orange-600 hover:bg-orange-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition active:scale-95"
                 >
                   <MessageSquare className="w-3 h-3" />
                   <span>Chat Ngay</span>
                 </button>
                 <button 
-                  onClick={() => alert(`Đang chuyển tới trang chủ gian hàng ${product.shopName || 'TechWorld'}...`)}
-                  className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition"
+                  onClick={() => onSelectShop && onSelectShop({ id: product.shopId || 1, name: product.shopName || 'TechWorld Official Store' })}
+                  className="px-3 py-1 bg-slate-100 hover:bg-orange-600 hover:text-white text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition active:scale-95 shadow-sm"
+                  title="Xem toàn bộ sản phẩm của gian hàng này"
                 >
                   <Store className="w-3 h-3" />
                   <span>Xem Shop</span>
@@ -759,3 +769,4 @@ export default function ProductDetailPage({
     </div>
   );
 }
+
