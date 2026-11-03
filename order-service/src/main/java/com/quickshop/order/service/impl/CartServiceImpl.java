@@ -112,18 +112,6 @@ public class CartServiceImpl implements CartService {
         }
 
         try {
-            CatalogVariantValidationDto catalogDto = catalogServiceClient.getVariantDetails(variantId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Biến thể sản phẩm (variantId=" + variantId + ") không tồn tại hoặc đã ngừng kinh doanh"));
-
-            if (!catalogDto.isActive()) {
-                throw new BadRequestException("Sản phẩm hoặc gian hàng hiện không còn hoạt động để thêm vào giỏ");
-            }
-
-            int availableStock = catalogDto.getAvailableStock() != null ? catalogDto.getAvailableStock() : 0;
-            if (availableStock <= 0) {
-                throw new BadRequestException("Biến thể sản phẩm này hiện đã hết hàng trong kho");
-            }
-
             int existingQty = 0;
             String existingJson = (String) stringRedisTemplate.opsForHash().get(cartKey, String.valueOf(variantId));
             if (existingJson != null) {
@@ -139,6 +127,19 @@ public class CartServiceImpl implements CartService {
             if (requestedNewQty > 999) {
                 throw new BadRequestException("Tổng số lượng cho sản phẩm này trong giỏ hàng không được vượt quá 999");
             }
+
+            CatalogVariantValidationDto catalogDto = catalogServiceClient.getVariantDetails(variantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Biến thể sản phẩm (variantId=" + variantId + ") không tồn tại hoặc đã ngừng kinh doanh"));
+
+            if (!catalogDto.isActive()) {
+                throw new BadRequestException("Sản phẩm hoặc gian hàng hiện không còn hoạt động để thêm vào giỏ");
+            }
+
+            int availableStock = catalogDto.getAvailableStock() != null ? catalogDto.getAvailableStock() : 0;
+            if (availableStock <= 0) {
+                throw new BadRequestException("Biến thể sản phẩm này hiện đã hết hàng trong kho");
+            }
+
             if (requestedNewQty > availableStock) {
                 throw new BadRequestException(String.format(
                         "Số lượng yêu cầu (%d) vượt quá tồn kho khả dụng hiện tại (%d). Vui lòng giảm số lượng.",
@@ -274,9 +275,21 @@ public class CartServiceImpl implements CartService {
 
         try {
             Long deleted = stringRedisTemplate.opsForHash().delete(cartKey, String.valueOf(variantId));
+            if (deleted == null || deleted == 0) {
+                throw new ResourceNotFoundException("Mặt hàng (variantId=" + variantId + ") không có trong giỏ hàng");
+            }
             log.info("Đã xóa variantId {} khỏi User Cart {} (kết quả: {})", variantId, userId, deleted);
-            cartRedisKeyManager.refreshTtl(cartKey, CartType.USER);
+
+            Long remaining = stringRedisTemplate.opsForHash().size(cartKey);
+            if (remaining != null && remaining == 0) {
+                stringRedisTemplate.delete(cartKey);
+            } else {
+                cartRedisKeyManager.refreshTtl(cartKey, CartType.USER);
+            }
+
             return getCart(userId);
+        } catch (BadRequestException | ResourceNotFoundException | CartLockException ex) {
+            throw ex;
         } catch (Exception ex) {
             log.error("Lỗi khi xóa mặt hàng {} khỏi giỏ cho user {}: {}", variantId, userId, ex.getMessage(), ex);
             throw new CartOperationException("Xóa mặt hàng khỏi giỏ hàng thất bại: " + ex.getMessage(), ex);
@@ -378,18 +391,6 @@ public class CartServiceImpl implements CartService {
         }
 
         try {
-            CatalogVariantValidationDto catalogDto = catalogServiceClient.getVariantDetails(variantId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Biến thể sản phẩm (variantId=" + variantId + ") không tồn tại hoặc đã ngừng kinh doanh"));
-
-            if (!catalogDto.isActive()) {
-                throw new BadRequestException("Sản phẩm hoặc gian hàng hiện không còn hoạt động để thêm vào giỏ");
-            }
-
-            int availableStock = catalogDto.getAvailableStock() != null ? catalogDto.getAvailableStock() : 0;
-            if (availableStock <= 0) {
-                throw new BadRequestException("Biến thể sản phẩm này hiện đã hết hàng trong kho");
-            }
-
             int existingQty = 0;
             String existingJson = (String) stringRedisTemplate.opsForHash().get(cartKey, String.valueOf(variantId));
             if (existingJson != null) {
@@ -405,6 +406,19 @@ public class CartServiceImpl implements CartService {
             if (requestedNewQty > 999) {
                 throw new BadRequestException("Tổng số lượng cho sản phẩm này trong giỏ hàng không được vượt quá 999");
             }
+
+            CatalogVariantValidationDto catalogDto = catalogServiceClient.getVariantDetails(variantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Biến thể sản phẩm (variantId=" + variantId + ") không tồn tại hoặc đã ngừng kinh doanh"));
+
+            if (!catalogDto.isActive()) {
+                throw new BadRequestException("Sản phẩm hoặc gian hàng hiện không còn hoạt động để thêm vào giỏ");
+            }
+
+            int availableStock = catalogDto.getAvailableStock() != null ? catalogDto.getAvailableStock() : 0;
+            if (availableStock <= 0) {
+                throw new BadRequestException("Biến thể sản phẩm này hiện đã hết hàng trong kho");
+            }
+
             if (requestedNewQty > availableStock) {
                 throw new BadRequestException(String.format(
                         "Số lượng yêu cầu (%d) vượt quá tồn kho khả dụng hiện tại (%d). Vui lòng giảm số lượng.",
@@ -540,9 +554,21 @@ public class CartServiceImpl implements CartService {
 
         try {
             Long deleted = stringRedisTemplate.opsForHash().delete(cartKey, String.valueOf(variantId));
+            if (deleted == null || deleted == 0) {
+                throw new ResourceNotFoundException("Mặt hàng (variantId=" + variantId + ") không có trong giỏ hàng");
+            }
             log.info("Đã xóa variantId {} khỏi Guest Cart {} (kết quả: {})", variantId, guestId, deleted);
-            cartRedisKeyManager.refreshTtl(cartKey, CartType.GUEST);
+
+            Long remaining = stringRedisTemplate.opsForHash().size(cartKey);
+            if (remaining != null && remaining == 0) {
+                stringRedisTemplate.delete(cartKey);
+            } else {
+                cartRedisKeyManager.refreshTtl(cartKey, CartType.GUEST);
+            }
+
             return getGuestCart(guestId);
+        } catch (BadRequestException | ResourceNotFoundException | CartLockException ex) {
+            throw ex;
         } catch (Exception ex) {
             log.error("Lỗi khi xóa mặt hàng {} khỏi giỏ cho guest {}: {}", variantId, guestId, ex.getMessage(), ex);
             throw new CartOperationException("Xóa mặt hàng khỏi giỏ hàng khách thất bại: " + ex.getMessage(), ex);

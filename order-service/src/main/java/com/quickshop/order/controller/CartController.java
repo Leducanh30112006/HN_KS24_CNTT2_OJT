@@ -42,7 +42,7 @@ public class CartController {
         Long userId = resolveUserIdQuietly(headerUserId, paramUserId);
         if (userId != null) {
             CartResponse cartResponse = cartService.getCart(userId);
-            return ResponseEntity.ok(ApiResponse.ok("Lấy giỏ hàng người dùng thành công", cartResponse));
+            return ResponseEntity.ok(ApiResponse.ok("Lấy giỏ hàng thành công", cartResponse));
         }
 
         String guestId = resolveGuestId(headerGuestId, paramGuestId);

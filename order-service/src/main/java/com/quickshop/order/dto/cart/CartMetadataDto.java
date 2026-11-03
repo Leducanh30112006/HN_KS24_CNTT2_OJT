@@ -29,3 +29,4 @@ public class CartMetadataDto implements Serializable {
 
     private boolean exists;
 }
+
