@@ -337,7 +337,7 @@ Triển khai SKU/variant, giá, tồn kho và reserved_stock; kiểm tra không 
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Product CRUD","2026-11-03","2026-11-03"
-"Cần làm","[Cart] Triển khai Guest Cart và User Cart trên Redis; định nghĩa key/TTL và cấu trúc cart item: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+"Đã xong","[Cart] Triển khai Guest Cart và User Cart trên Redis; định nghĩa key/TTL và cấu trúc cart item: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Ba, 2026-11-03
 **Phân hệ:** Cart
 
