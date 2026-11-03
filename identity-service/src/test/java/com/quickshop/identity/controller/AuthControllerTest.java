@@ -4,9 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.identity.dto.AuthResponse;
 import com.quickshop.identity.dto.LoginRequest;
+import com.quickshop.identity.dto.OtpResponse;
 import com.quickshop.identity.dto.RegisterRequest;
+import com.quickshop.identity.dto.ResendOtpRequest;
+import com.quickshop.identity.dto.VerifyOtpRequest;
 import com.quickshop.identity.entity.Role;
 import com.quickshop.identity.entity.User;
+import com.quickshop.identity.entity.UserStatus;
 import com.quickshop.identity.exception.GlobalExceptionHandler;
 import com.quickshop.identity.service.AuthService;
 import org.junit.jupiter.api.DisplayName;
@@ -30,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(controllers = AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandler.class)
-@DisplayName("AuthController - REST APIs Đăng ký, Đăng nhập, Dual Auth Cookie & Refresh Token")
+@DisplayName("AuthController - REST APIs Đăng ký, Đăng nhập, OTP Redis & Dual Auth Cookie")
 class AuthControllerTest {
 
     @Autowired
@@ -64,6 +68,7 @@ class AuthControllerTest {
                 .email("test@quickshop.vn")
                 .fullName("Test User")
                 .role(Role.ROLE_BUYER)
+                .status(UserStatus.PENDING_VERIFICATION)
                 .build();
 
         when(authService.register(any(RegisterRequest.class))).thenReturn(authResponse);
@@ -89,6 +94,94 @@ class AuthControllerTest {
                 .build();
 
         mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/verify-otp - Xác thực OTP thành công trả về 200 OK và cấp JWT")
+    void verifyOtp_Success() throws Exception {
+        VerifyOtpRequest request = VerifyOtpRequest.builder()
+                .email("buyer@quickshop.vn")
+                .otp("123456")
+                .build();
+
+        AuthResponse authResponse = AuthResponse.builder()
+                .accessToken("verified_access_token")
+                .refreshToken("verified_refresh_token")
+                .tokenType("Bearer")
+                .expiresIn(86400L)
+                .userId(1L)
+                .username("testbuyer")
+                .email("buyer@quickshop.vn")
+                .fullName("Nguyễn Văn Mua")
+                .role(Role.ROLE_BUYER)
+                .status(UserStatus.ACTIVE)
+                .build();
+
+        when(authService.verifyOtp(any(VerifyOtpRequest.class))).thenReturn(authResponse);
+
+        mockMvc.perform(post("/api/auth/verify-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(header().exists("Set-Cookie"))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("verified_access_token"))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/verify-otp - Validation thất bại khi OTP không đúng 6 số")
+    void verifyOtp_ValidationFailed_InvalidOtp() throws Exception {
+        VerifyOtpRequest request = VerifyOtpRequest.builder()
+                .email("buyer@quickshop.vn")
+                .otp("123") // chỉ 3 số
+                .build();
+
+        mockMvc.perform(post("/api/auth/verify-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/resend-otp - Yêu cầu gửi lại OTP thành công trả về 200 OK")
+    void resendOtp_Success() throws Exception {
+        ResendOtpRequest request = ResendOtpRequest.builder()
+                .email("buyer@quickshop.vn")
+                .build();
+
+        OtpResponse otpResponse = OtpResponse.builder()
+                .email("buyer@quickshop.vn")
+                .message("Mã OTP mới đã được gửi thành công")
+                .ttlSeconds(300L)
+                .cooldownSeconds(60L)
+                .build();
+
+        when(authService.resendOtp(any(ResendOtpRequest.class))).thenReturn(otpResponse);
+
+        mockMvc.perform(post("/api/auth/resend-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.email").value("buyer@quickshop.vn"))
+                .andExpect(jsonPath("$.data.ttlSeconds").value(300))
+                .andExpect(jsonPath("$.data.cooldownSeconds").value(60));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/resend-otp - Validation thất bại khi email không đúng định dạng")
+    void resendOtp_ValidationFailed_InvalidEmail() throws Exception {
+        ResendOtpRequest request = ResendOtpRequest.builder()
+                .email("not-an-email")
+                .build();
+
+        mockMvc.perform(post("/api/auth/resend-otp")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
