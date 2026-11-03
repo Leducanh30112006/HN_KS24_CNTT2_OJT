@@ -4,7 +4,10 @@ import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.common.exception.ResourceNotFoundException;
 import com.quickshop.identity.dto.AuthResponse;
 import com.quickshop.identity.dto.LoginRequest;
+import com.quickshop.identity.dto.OtpResponse;
 import com.quickshop.identity.dto.RegisterRequest;
+import com.quickshop.identity.dto.ResendOtpRequest;
+import com.quickshop.identity.dto.VerifyOtpRequest;
 import com.quickshop.identity.entity.Role;
 import com.quickshop.identity.entity.Shop;
 import com.quickshop.identity.entity.ShopStatus;
@@ -14,6 +17,7 @@ import com.quickshop.identity.repository.ShopRepository;
 import com.quickshop.identity.repository.UserRepository;
 import com.quickshop.identity.security.JwtTokenProvider;
 import com.quickshop.identity.service.AuthService;
+import com.quickshop.identity.service.OtpService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -31,6 +35,7 @@ public class AuthServiceImpl implements AuthService {
     private final ShopRepository shopRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
+    private final OtpService otpService;
 
     @Override
     @Transactional
@@ -40,6 +45,10 @@ public class AuthServiceImpl implements AuthService {
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
             throw new BadRequestException("Tên đăng nhập hoặc mật khẩu không chính xác");
+        }
+
+        if (user.getStatus() == UserStatus.PENDING_VERIFICATION) {
+            throw new BadRequestException("Tài khoản chưa được kích hoạt. Vui lòng xác thực mã OTP gửi về email của bạn");
         }
 
         if (!user.isActive() || user.getStatus() == UserStatus.BLOCKED) {
@@ -59,6 +68,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .role(user.getRole())
+                .status(user.getStatus())
                 .build();
     }
 
@@ -88,11 +98,14 @@ public class AuthServiceImpl implements AuthService {
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
                 .fullName(registerRequest.getFullName())
                 .role(role)
-                .status(UserStatus.ACTIVE)
-                .active(true)
+                .status(UserStatus.PENDING_VERIFICATION)
+                .active(false)
                 .build();
 
         User savedUser = userRepository.save(user);
+
+        // Khởi tạo mã OTP qua Redis với TTL 5 phút và cooldown 60 giây
+        otpService.generateAndSaveOtp(savedUser.getEmail());
 
         String accessToken = tokenProvider.generateAccessToken(savedUser);
         String refreshToken = tokenProvider.generateRefreshToken(savedUser);
@@ -107,6 +120,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(savedUser.getEmail())
                 .fullName(savedUser.getFullName())
                 .role(savedUser.getRole())
+                .status(savedUser.getStatus())
                 .build();
     }
 
@@ -138,6 +152,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .role(user.getRole())
+                .status(user.getStatus())
                 .build();
     }
 
@@ -146,6 +161,78 @@ public class AuthServiceImpl implements AuthService {
     public User getCurrentUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse verifyOtp(VerifyOtpRequest verifyOtpRequest) {
+        User user = userRepository.findByEmail(verifyOtpRequest.getEmail())
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy tài khoản với email: " + verifyOtpRequest.getEmail()));
+
+        if (user.getStatus() == UserStatus.ACTIVE && user.isActive()) {
+            log.info("Tài khoản {} đã được kích hoạt trước đó", user.getEmail());
+            String accessToken = tokenProvider.generateAccessToken(user);
+            String refreshToken = tokenProvider.generateRefreshToken(user);
+
+            return AuthResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .tokenType("Bearer")
+                    .expiresIn(86400L)
+                    .userId(user.getId())
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .fullName(user.getFullName())
+                    .role(user.getRole())
+                    .status(user.getStatus())
+                    .build();
+        }
+
+        // Xác thực mã OTP qua Redis
+        otpService.verifyOtp(verifyOtpRequest.getEmail(), verifyOtpRequest.getOtp());
+
+        // Kích hoạt tài khoản
+        user.setStatus(UserStatus.ACTIVE);
+        user.setActive(true);
+        User savedUser = userRepository.save(user);
+
+        log.info("Kích hoạt tài khoản thành công cho user: {}", savedUser.getUsername());
+
+        String accessToken = tokenProvider.generateAccessToken(savedUser);
+        String refreshToken = tokenProvider.generateRefreshToken(savedUser);
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(86400L)
+                .userId(savedUser.getId())
+                .username(savedUser.getUsername())
+                .email(savedUser.getEmail())
+                .fullName(savedUser.getFullName())
+                .role(savedUser.getRole())
+                .status(savedUser.getStatus())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OtpResponse resendOtp(ResendOtpRequest resendOtpRequest) {
+        User user = userRepository.findByEmail(resendOtpRequest.getEmail())
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy tài khoản với email: " + resendOtpRequest.getEmail()));
+
+        if (user.getStatus() == UserStatus.ACTIVE && user.isActive()) {
+            throw new BadRequestException("Tài khoản này đã được kích hoạt thành công, không cần gửi lại OTP");
+        }
+
+        otpService.resendOtp(user.getEmail());
+
+        return OtpResponse.builder()
+                .email(user.getEmail())
+                .message("Mã OTP mới đã được gửi thành công tới email của bạn (hết hạn sau 5 phút)")
+                .ttlSeconds(300L)
+                .cooldownSeconds(60L)
+                .build();
     }
 
     @EventListener(ApplicationReadyEvent.class)

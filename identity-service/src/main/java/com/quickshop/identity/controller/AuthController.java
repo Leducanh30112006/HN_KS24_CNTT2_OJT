@@ -3,7 +3,10 @@ package com.quickshop.identity.controller;
 import com.quickshop.common.dto.ApiResponse;
 import com.quickshop.identity.dto.AuthResponse;
 import com.quickshop.identity.dto.LoginRequest;
+import com.quickshop.identity.dto.OtpResponse;
 import com.quickshop.identity.dto.RegisterRequest;
+import com.quickshop.identity.dto.ResendOtpRequest;
+import com.quickshop.identity.dto.VerifyOtpRequest;
 import com.quickshop.identity.entity.User;
 import com.quickshop.identity.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@Tag(name = "Identity Auth", description = "Endpoints đăng ký, đăng nhập xác thực JWT và Dual Auth (Cookie & Bearer)")
+@Tag(name = "Identity Auth", description = "Endpoints đăng ký, đăng nhập xác thực JWT, OTP qua Redis và Dual Auth (Cookie & Bearer)")
 public class AuthController {
 
     private final AuthService authService;
@@ -52,6 +55,27 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body(ApiResponse.created("Đăng ký tài khoản thành công", response));
+    }
+
+    @PostMapping("/verify-otp")
+    @Operation(summary = "Xác thực mã OTP 6 chữ số và kích hoạt tài khoản")
+    public ResponseEntity<ApiResponse<AuthResponse>> verifyOtp(@Valid @RequestBody VerifyOtpRequest verifyOtpRequest) {
+        AuthResponse response = authService.verifyOtp(verifyOtpRequest);
+
+        ResponseCookie accessCookie = createCookie("accessToken", response.getAccessToken(), 86400);
+        ResponseCookie refreshCookie = createCookie("refreshToken", response.getRefreshToken(), 604800);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(ApiResponse.ok("Xác thực OTP thành công, tài khoản đã được kích hoạt", response));
+    }
+
+    @PostMapping("/resend-otp")
+    @Operation(summary = "Yêu cầu gửi lại mã xác thực OTP (giới hạn cooldown 60 giây)")
+    public ResponseEntity<ApiResponse<OtpResponse>> resendOtp(@Valid @RequestBody ResendOtpRequest resendOtpRequest) {
+        OtpResponse response = authService.resendOtp(resendOtpRequest);
+        return ResponseEntity.ok(ApiResponse.ok("Gửi lại mã OTP thành công", response));
     }
 
     @PostMapping("/refresh-token")
