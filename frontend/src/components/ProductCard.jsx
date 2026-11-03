@@ -3,7 +3,7 @@ import { Star, ShoppingCart, MapPin, CheckCircle2 } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 
-export default function ProductCard({ product, onSelect, onRequireAuth }) {
+export default function ProductCard({ product, onSelect, onRequireAuth, onSelectShop }) {
   const addToCart = useCartStore((state) => state.addToCart);
   const { isAuthenticated } = useAuthStore();
 
@@ -72,8 +72,24 @@ export default function ProductCard({ product, onSelect, onRequireAuth }) {
 
         {/* Content Info */}
         <div className="p-3 space-y-1.5">
-          <div className="text-[11px] text-orange-600 font-semibold truncate">
-            {product.categoryName || 'Sản phẩm chính hãng'}
+          <div className="flex items-center justify-between text-[11px] gap-1">
+            <span className="text-orange-600 font-semibold truncate">
+              {product.categoryName || 'Sản phẩm chính hãng'}
+            </span>
+            {product.shopName && (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onSelectShop) {
+                    onSelectShop({ id: product.shopId || 1, name: product.shopName });
+                  }
+                }}
+                className="text-[10px] text-slate-400 hover:text-orange-600 hover:underline truncate max-w-[85px] cursor-pointer"
+                title={`Xem gian hàng: ${product.shopName}`}
+              >
+                {product.shopName}
+              </span>
+            )}
           </div>
 
           <h3 

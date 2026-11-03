@@ -4,6 +4,8 @@ import HeroBanner from './components/HeroBanner';
 import FlashSaleSection from './components/FlashSaleSection';
 import ProductCard from './components/ProductCard';
 import ProductDetailPage from './components/ProductDetailPage';
+import FlashSalePage from './components/FlashSalePage';
+import ShopDetailPage from './components/ShopDetailPage';
 import CartDrawer from './components/CartDrawer';
 import AiChatWidget from './components/AiChatWidget';
 import SellerPortal from './components/SellerPortal';
@@ -39,8 +41,9 @@ export default function App() {
   const [priceRange, setPriceRange] = useState('all'); // 'all', 'under1m', '1m-5m', '5m-20m', 'above20m'
   const [minRating, setMinRating] = useState(0);
 
-  // Modal / Selected Product states
+  // Modal / Selected Product & Shop states
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedShop, setSelectedShop] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -280,6 +283,12 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleSelectShop = (shop) => {
+    setSelectedShop(shop);
+    setCurrentView('shop-detail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleResetFilters = () => {
     setSelectedCategory(null);
     setSearchKeyword('');
@@ -320,7 +329,10 @@ export default function App() {
       <Navbar
         currentView={currentView}
         setCurrentView={(view) => {
-          if (view === 'storefront') setSelectedProduct(null);
+          if (view === 'storefront') {
+            setSelectedProduct(null);
+            setSelectedShop(null);
+          }
           setCurrentView(view);
         }}
         searchKeyword={searchKeyword}
@@ -330,6 +342,7 @@ export default function App() {
         setSelectedCategory={(catId) => {
           setSelectedCategory(catId);
           setSelectedProduct(null);
+          setSelectedShop(null);
           setCurrentView('storefront');
         }}
         categories={categories}
@@ -351,7 +364,34 @@ export default function App() {
               setCurrentView('storefront');
             }}
             onSelectRelatedProduct={handleSelectProduct}
+            onSelectShop={handleSelectShop}
             onBuyNow={() => setIsCartOpen(true)}
+            onRequireAuth={() => setCurrentView('login')}
+          />
+        )}
+
+        {/* VIEW: FLASH SALE DEDICATED PAGE (TRANG DEAL SỐC CHUYÊN BIỆT) */}
+        {currentView === 'flash-sale' && (
+          <FlashSalePage
+            products={products}
+            onBack={() => setCurrentView('storefront')}
+            onSelectProduct={handleSelectProduct}
+          />
+        )}
+
+        {/* VIEW: SHOP / SELLER DETAIL PAGE (TRANG THÔNG TIN SHOP VÀ SẢN PHẨM SHOP BÁN) */}
+        {currentView === 'shop-detail' && (
+          <ShopDetailPage
+            shop={selectedShop}
+            allProducts={products}
+            onBack={() => {
+              if (selectedProduct) {
+                setCurrentView('product-detail');
+              } else {
+                setCurrentView('storefront');
+              }
+            }}
+            onSelectProduct={handleSelectProduct}
             onRequireAuth={() => setCurrentView('login')}
           />
         )}
@@ -476,6 +516,7 @@ export default function App() {
                     key={p.id}
                     product={p}
                     onSelect={handleSelectProduct}
+                    onSelectShop={handleSelectShop}
                     onRequireAuth={() => setCurrentView('login')}
                   />
                 ))}
@@ -494,6 +535,10 @@ export default function App() {
             <FlashSaleSection
               products={products}
               onSelectProduct={handleSelectProduct}
+              onViewAllDeals={() => {
+                setCurrentView('flash-sale');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
             />
 
             {/* Category Showcase Grid (Hiển thị 1 hàng, bấm xem tất cả mới mở rộng) */}
@@ -715,6 +760,7 @@ export default function App() {
                         key={p.id}
                         product={p}
                         onSelect={handleSelectProduct}
+                        onSelectShop={handleSelectShop}
                         onRequireAuth={() => setCurrentView('login')}
                       />
                     ))}
