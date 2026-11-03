@@ -27,12 +27,24 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Request Interceptor: Tự động đính kèm Bearer Access Token vào mọi request
+// Request Interceptor: Tự động đính kèm Bearer Access Token & RBAC headers vào mọi request
 axiosClient.interceptors.request.use(
   (config) => {
-    const token = useAuthStore.getState().accessToken || localStorage.getItem('quickshop_access_token');
+    const authState = useAuthStore.getState();
+    const token = authState.accessToken || localStorage.getItem('quickshop_access_token');
     if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (authState.user) {
+      if (authState.user.userId && !config.headers['X-User-Id']) {
+        config.headers['X-User-Id'] = String(authState.user.userId);
+      }
+      if (authState.user.role && !config.headers['X-User-Role']) {
+        config.headers['X-User-Role'] = authState.user.role;
+      }
+      if (!config.headers['X-Shop-Id']) {
+        config.headers['X-Shop-Id'] = '1';
+      }
     }
     return config;
   },
@@ -117,7 +129,7 @@ axiosClient.interceptors.response.use(
       }
     }
 
-    return Promise.reject(error.response?.data || error.message || 'Lỗi kết nối máy chủ');
+    return Promise.reject(error.response?.data || error);
   }
 );
 

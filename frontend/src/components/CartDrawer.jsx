@@ -3,9 +3,9 @@ import { X, Trash2, ShoppingBag, Store, ArrowRight, ShieldCheck, Tag, CheckCircl
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 
-export default function CartDrawer({ isOpen, onClose }) {
+export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
   const { items, updateQuantity, removeFromCart, clearCart, getTotalAmount, getItemsByShop } = useCartStore();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
 
   const [voucherCode, setVoucherCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -38,6 +38,10 @@ export default function CartDrawer({ isOpen, onClose }) {
   };
 
   const handleCheckout = () => {
+    if (!isAuthenticated) {
+      if (onRequireAuth) onRequireAuth('Vui lòng đăng nhập để tiến hành đặt hàng!');
+      return;
+    }
     setCheckoutSuccess(true);
     setTimeout(() => {
       clearCart();

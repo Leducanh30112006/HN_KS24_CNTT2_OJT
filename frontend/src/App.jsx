@@ -12,11 +12,16 @@ import AuthModal from './components/AuthModal';
 import axiosClient from './api/axiosClient';
 import { 
   Filter, RotateCcw, Star, ChevronRight, ShieldCheck, 
-  HelpCircle, Smartphone, Award, Truck, Sparkles 
+  HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft 
 } from 'lucide-react';
+import { useAuthStore } from './stores/useAuthStore';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('storefront'); // 'storefront' | 'seller' | 'admin'
+  const { user, isAuthenticated } = useAuthStore();
+
+  const isSellerOrAdmin = isAuthenticated && user && (user.role === 'ROLE_SELLER' || user.role === 'ROLE_ADMIN' || user.role === 'SELLER' || user.role === 'ADMIN');
+  const isAdmin = isAuthenticated && user && (user.role === 'ROLE_ADMIN' || user.role === 'ADMIN');
 
   // Data states
   const [categories, setCategories] = useState([]);
@@ -529,6 +534,10 @@ export default function App() {
                         key={p.id}
                         product={p}
                         onSelect={(prod) => setSelectedProduct(prod)}
+                        onRequireAuth={(msg) => {
+                          alert(msg);
+                          setIsAuthModalOpen(true);
+                        }}
                       />
                     ))}
                   </div>
@@ -538,23 +547,78 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW 2: SELLER CENTER (KÊNH NGƯỜI BÁN) */}
+        {/* VIEW 2: SELLER CENTER (KÊNH NGƯỜI BÁN - PHÂN QUYỀN RBAC) */}
         {currentView === 'seller' && (
-          <SellerPortal
-            categories={categories}
-            onProductCreated={(newProd) => {
-              setProducts([newProd, ...products]);
-              alert('Sản phẩm đã được gửi lên hệ thống và chuyển vào hàng đợi duyệt của Admin (FR-04)!');
-            }}
-          />
+          isSellerOrAdmin ? (
+            <SellerPortal
+              categories={categories}
+              onBackToStorefront={() => setCurrentView('storefront')}
+              onProductCreated={(newProd) => {
+                setProducts([newProd, ...products]);
+              }}
+            />
+          ) : (
+            <div className="bg-white rounded-3xl p-10 text-center border border-slate-200/90 shadow-sm max-w-lg mx-auto my-12 space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center">
+                <ShieldAlert className="w-8 h-8" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900">Kênh Người Bán - Yêu cầu xác thực</h2>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                Khu vực quản lý dành riêng cho Người bán (ROLE_SELLER) và Quản trị viên (ROLE_ADMIN). Vui lòng đăng nhập với tài khoản người bán để tiếp tục.
+              </p>
+              <div className="flex justify-center items-center gap-3 pt-2">
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs rounded-xl shadow-md transition"
+                >
+                  Đăng nhập Người Bán
+                </button>
+                <button
+                  onClick={() => setCurrentView('storefront')}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition flex items-center gap-1.5"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Quay lại Mua sắm
+                </button>
+              </div>
+            </div>
+          )
         )}
 
-        {/* VIEW 3: ADMIN PORTAL (CỔNG QUẢN TRỊ) */}
+        {/* VIEW 3: ADMIN PORTAL (CỔNG QUẢN TRỊ - PHÂN QUYỀN RBAC) */}
         {currentView === 'admin' && (
-          <AdminPortal
-            categories={categories}
-            onCategoriesUpdated={fetchCategories}
-          />
+          isAdmin ? (
+            <AdminPortal
+              categories={categories}
+              onBackToStorefront={() => setCurrentView('storefront')}
+              onCategoriesUpdated={fetchCategories}
+            />
+          ) : (
+            <div className="bg-white rounded-3xl p-10 text-center border border-slate-200/90 shadow-sm max-w-lg mx-auto my-12 space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 mx-auto flex items-center justify-center">
+                <Lock className="w-8 h-8" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900">Cổng Quản Trị - Giới hạn quyền truy cập</h2>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                Trang này yêu cầu thẩm quyền Quản trị viên hệ thống (ROLE_ADMIN). Vui lòng đăng nhập tài khoản có thẩm quyền Quản trị để truy cập.
+              </p>
+              <div className="flex justify-center items-center gap-3 pt-2">
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-md transition"
+                >
+                  Đăng nhập Quản trị viên
+                </button>
+                <button
+                  onClick={() => setCurrentView('storefront')}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition flex items-center gap-1.5"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Quay lại Mua sắm
+                </button>
+              </div>
+            </div>
+          )
         )}
       </main>
 
@@ -611,6 +675,10 @@ export default function App() {
         <ProductDetailModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
+          onRequireAuth={(msg) => {
+            alert(msg);
+            setIsAuthModalOpen(true);
+          }}
           onBuyNow={() => {
             setSelectedProduct(null);
             setIsCartOpen(true);
@@ -621,6 +689,10 @@ export default function App() {
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
+        onRequireAuth={(msg) => {
+          alert(msg);
+          setIsAuthModalOpen(true);
+        }}
       />
 
       <AuthModal

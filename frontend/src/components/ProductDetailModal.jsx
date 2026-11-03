@@ -7,9 +7,9 @@ import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import axiosClient from '../api/axiosClient';
 
-export default function ProductDetailModal({ product, onClose, onBuyNow }) {
+export default function ProductDetailModal({ product, onClose, onBuyNow, onRequireAuth }) {
   const addToCart = useCartStore((state) => state.addToCart);
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
 
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [quantity, setQuantity] = useState(1);
@@ -85,9 +85,22 @@ export default function ProductDetailModal({ product, onClose, onBuyNow }) {
   };
 
   const handleAddToCart = () => {
+    if (!isAuthenticated) {
+      if (onRequireAuth) onRequireAuth('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!');
+      return;
+    }
     addToCart(product, selectedVariant, quantity);
     setAddedToast(true);
     setTimeout(() => setAddedToast(false), 2500);
+  };
+
+  const handleBuyNow = () => {
+    if (!isAuthenticated) {
+      if (onRequireAuth) onRequireAuth('Vui lòng đăng nhập để tiến hành mua hàng ngay!');
+      return;
+    }
+    addToCart(product, selectedVariant, quantity);
+    if (onBuyNow) onBuyNow();
   };
 
   const handleAddReview = async (e) => {
@@ -323,10 +336,7 @@ export default function ProductDetailModal({ product, onClose, onBuyNow }) {
                 </button>
 
                 <button
-                  onClick={() => {
-                    handleAddToCart();
-                    if (onBuyNow) onBuyNow();
-                  }}
+                  onClick={handleBuyNow}
                   className="flex-1 py-3 px-4 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-orange-500/30 active:scale-95 flex items-center justify-center gap-1.5"
                 >
                   Mua ngay

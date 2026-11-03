@@ -1,9 +1,11 @@
 import React from 'react';
 import { Star, ShoppingCart, MapPin, CheckCircle2 } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
+import { useAuthStore } from '../stores/useAuthStore';
 
-export default function ProductCard({ product, onSelect }) {
+export default function ProductCard({ product, onSelect, onRequireAuth }) {
   const addToCart = useCartStore((state) => state.addToCart);
+  const { isAuthenticated } = useAuthStore();
 
   const formatVND = (price) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -11,6 +13,13 @@ export default function ProductCard({ product, onSelect }) {
 
   const handleQuickAdd = (e) => {
     e.stopPropagation();
+    // Bắt buộc đăng nhập trước khi mua hàng hoặc thêm vào giỏ
+    if (!isAuthenticated) {
+      if (onRequireAuth) {
+        onRequireAuth('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!');
+      }
+      return;
+    }
     const defaultVariant = product.variants && product.variants.length > 0 ? product.variants[0] : null;
     addToCart(product, defaultVariant, 1);
   };
@@ -55,7 +64,7 @@ export default function ProductCard({ product, onSelect }) {
           <button
             onClick={handleQuickAdd}
             className="absolute bottom-2 right-2 w-9 h-9 rounded-xl bg-orange-600 hover:bg-orange-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-lg shadow-orange-600/30 active:scale-90"
-            title="Thêm nhanh vào giỏ hàng"
+            title="Thêm nhanh vào giỏ hàng (Yêu cầu đăng nhập)"
           >
             <ShoppingCart className="w-4 h-4" />
           </button>
