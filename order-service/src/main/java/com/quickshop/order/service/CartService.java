@@ -1,7 +1,9 @@
 package com.quickshop.order.service;
 
 import com.quickshop.order.dto.cart.AddToCartRequest;
+import com.quickshop.order.dto.cart.CartMetadataDto;
 import com.quickshop.order.dto.cart.CartResponse;
+import com.quickshop.order.dto.cart.CartType;
 import com.quickshop.order.dto.cart.MergeCartRequest;
 import com.quickshop.order.dto.cart.MergeCartResponse;
 import com.quickshop.order.dto.cart.UpdateCartItemRequest;
@@ -53,6 +55,58 @@ public interface CartService {
      * @param userId ID người dùng
      */
     void clearCart(Long userId);
+
+    /**
+     * Lấy toàn bộ thông tin giỏ hàng tạm thời của khách vãng lai (Guest Cart trên Redis).
+     *
+     * @param guestId ID định danh phiên khách vãng lai
+     * @return CartResponse chứa danh sách shop và các item tương ứng (TTL 7 ngày)
+     */
+    CartResponse getGuestCart(String guestId);
+
+    /**
+     * Thêm sản phẩm vào giỏ hàng khách vãng lai trên Redis (Key cart:guest:{guestId}).
+     *
+     * @param guestId ID định danh phiên khách vãng lai
+     * @param request Thông tin SKU và số lượng
+     * @return CartResponse sau khi cập nhật
+     */
+    CartResponse addToGuestCart(String guestId, AddToCartRequest request);
+
+    /**
+     * Cập nhật số lượng mặt hàng trong giỏ hàng khách vãng lai.
+     *
+     * @param guestId   ID định danh phiên khách vãng lai
+     * @param variantId ID biến thể SKU
+     * @param request   Số lượng mới
+     * @return CartResponse sau khi cập nhật
+     */
+    CartResponse updateGuestCartItemQuantity(String guestId, Long variantId, UpdateCartItemRequest request);
+
+    /**
+     * Xóa mặt hàng khỏi giỏ hàng khách vãng lai.
+     *
+     * @param guestId   ID định danh phiên khách vãng lai
+     * @param variantId ID biến thể SKU cần xóa
+     * @return CartResponse sau khi xóa
+     */
+    CartResponse removeGuestCartItem(String guestId, Long variantId);
+
+    /**
+     * Làm trống toàn bộ giỏ hàng khách vãng lai.
+     *
+     * @param guestId ID định danh phiên khách vãng lai
+     */
+    void clearGuestCart(String guestId);
+
+    /**
+     * Tra cứu thông tin metadata (Key, TTL còn lại, số lượng item) của Redis Cart.
+     *
+     * @param cartType Phân loại giỏ hàng (USER / GUEST)
+     * @param ownerId  userId hoặc guestId
+     * @return CartMetadataDto
+     */
+    CartMetadataDto getCartMetadata(CartType cartType, String ownerId);
 
     /**
      * Hợp nhất danh sách mặt hàng từ Guest Cart vào User Cart (SRS 2.2.0 - FR-05).
