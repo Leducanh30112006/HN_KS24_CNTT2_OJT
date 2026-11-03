@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   ShoppingBag, ArrowLeft, Trash2, Store, Tag, CheckCircle2, ShieldCheck, 
   MapPin, Phone, User, Truck, CreditCard, ChevronRight, AlertCircle, 
@@ -8,12 +8,15 @@ import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 
 export default function CheckoutPage({ 
+  checkoutItems = [],
   onBack, 
   onSelectProduct,
   onRequireAuth 
 }) {
-  const { items, updateQuantity, removeFromCart, clearCart, getTotalAmount, getItemsByShop } = useCartStore();
+  const { items, removeMultipleFromCart } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
+
+  const displayItems = (checkoutItems && checkoutItems.length > 0) ? checkoutItems : items;
 
   // Shipping & Payment Options
   const [shippingMethod, setShippingMethod] = useState('standard'); // 'standard' | 'express' | 'economy'
@@ -45,8 +48,26 @@ export default function CheckoutPage({
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   };
 
-  const shopGroups = getItemsByShop();
-  const subTotal = getTotalAmount();
+  // Gom nhóm sản phẩm thanh toán theo Shop
+  const shopGroups = useMemo(() => {
+    const groups = {};
+    for (const item of displayItems) {
+      const sId = item.shopId || 1;
+      if (!groups[sId]) {
+        groups[sId] = {
+          shopId: sId,
+          shopName: item.shopName || `Gian hàng #${sId}`,
+          items: [],
+        };
+      }
+      groups[sId].items.push(item);
+    }
+    return Object.values(groups);
+  }, [displayItems]);
+
+  const subTotal = useMemo(() => {
+    return displayItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  }, [displayItems]);
 
   // Base shipping fee calculation
   let baseShipping = 0;
@@ -96,7 +117,7 @@ export default function CheckoutPage({
       return;
     }
 
-    if (items.length === 0) return;
+    if (displayItems.length === 0) return;
 
     setIsSubmitting(true);
     // Simulate Saga Distributed Order Transaction
@@ -105,7 +126,7 @@ export default function CheckoutPage({
       setOrderId(generatedOrderId);
       setIsSubmitting(false);
       setOrderSuccess(true);
-      clearCart();
+      removeMultipleFromCart(displayItems.map((i) => i.variantId));
     }, 1200);
   };
 
@@ -172,17 +193,17 @@ export default function CheckoutPage({
     );
   }
 
-  // EMPTY CART SCREEN
-  if (items.length === 0) {
+  // EMPTY CHECKOUT ITEMS SCREEN
+  if (displayItems.length === 0) {
     return (
       <div className="max-w-4xl mx-auto py-12 px-4 animate-in fade-in duration-300">
         <div className="bg-white rounded-3xl border border-slate-200/90 p-10 sm:p-16 text-center space-y-4 shadow-sm">
           <div className="w-20 h-20 rounded-3xl bg-orange-50 text-orange-400 mx-auto flex items-center justify-center shadow-inner">
             <ShoppingBag className="w-10 h-10" />
           </div>
-          <h2 className="text-xl font-black text-slate-800">Giỏ hàng của bạn đang trống</h2>
+          <h2 className="text-xl font-black text-slate-800">Chưa có sản phẩm nào được chọn để thanh toán</h2>
           <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-            Hiện tại bạn chưa chọn mua sản phẩm nào. Hãy khám phá hàng ngàn deal sốc công nghệ, thời trang và gia dụng ưu đãi hôm nay nhé!
+            Vui lòng quay lại Giỏ hàng và tích chọn các sản phẩm bạn muốn đặt mua trước khi thanh toán.
           </p>
           <div className="pt-4">
             <button
@@ -190,7 +211,7 @@ export default function CheckoutPage({
               className="px-6 py-3 bg-gradient-to-r from-orange-500 to-rose-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-orange-500/20 hover:from-orange-600 hover:to-rose-700 transition inline-flex items-center gap-2 active:scale-95"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Khám phá sản phẩm ngay</span>
+              <span>Quay lại Giỏ hàng</span>
             </button>
           </div>
         </div>
@@ -207,15 +228,15 @@ export default function CheckoutPage({
           className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-700 transition flex items-center gap-2 text-xs font-bold active:scale-95 shadow-sm"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Tiếp tục Mua sắm</span>
+          <span>Quay lại Giỏ hàng</span>
         </button>
 
         <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-          <span className="text-slate-400 cursor-pointer hover:text-orange-600" onClick={onBack}>Trang chủ</span>
+          <span className="text-slate-400 cursor-pointer hover:text-orange-600" onClick={onBack}>Giỏ hàng</span>
           <ChevronRight className="w-3.5 h-3.5" />
-          <span className="text-orange-600 font-bold">Giỏ hàng & Thanh toán đơn hàng</span>
+          <span className="text-orange-600 font-bold">Thanh toán đơn hàng</span>
           <span className="bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full text-[11px] ml-1">
-            {items.reduce((s, i) => s + i.quantity, 0)} sản phẩm
+            {displayItems.reduce((s, i) => s + i.quantity, 0)} sản phẩm đã chọn
           </span>
         </div>
       </div>
@@ -709,3 +730,4 @@ export default function CheckoutPage({
     </div>
   );
 }
+

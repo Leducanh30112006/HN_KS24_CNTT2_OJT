@@ -61,6 +61,11 @@ export const useCartStore = create(
         set({ items: get().items.filter((item) => item.variantId !== variantId) });
       },
 
+      removeMultipleFromCart: (variantIds) => {
+        const idSet = new Set(variantIds);
+        set({ items: get().items.filter((item) => !idSet.has(item.variantId)) });
+      },
+
       clearCart: () => {
         set({ items: [] });
       },
