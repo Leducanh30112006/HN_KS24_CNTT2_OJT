@@ -9,6 +9,7 @@ import com.quickshop.order.dto.cart.*;
 import com.quickshop.order.dto.catalog.CatalogVariantValidationDto;
 import com.quickshop.order.exception.CartLockException;
 import com.quickshop.order.service.impl.CartServiceImpl;
+import com.quickshop.order.util.CartRedisKeyManager;
 import com.quickshop.order.util.RedisDistributedLock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -52,7 +53,7 @@ class CartServiceTest {
     private static final Long VARIANT_ID_1 = 201L;
     private static final Long VARIANT_ID_2 = 202L;
     private static final String CART_KEY = "cart:1001";
-    private static final String LOCK_KEY = "lock:cart:1001";
+    private static final String LOCK_KEY = "lock:cart:user:1001";
     private static final String LOCK_TOKEN = "test-uuid-lock-token";
 
     @BeforeEach
@@ -62,11 +63,20 @@ class CartServiceTest {
 
         lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
 
+        // CartRedisKeyManager cần StringRedisTemplate để resolveUserCartKey (fallback legacy)
+        // Mock: cart:user:1001 chưa có → fallback về cart:1001 (legacy key)
+        lenient().when(stringRedisTemplate.hasKey("cart:user:" + USER_ID)).thenReturn(Boolean.FALSE);
+        lenient().when(stringRedisTemplate.hasKey("cart:" + USER_ID)).thenReturn(Boolean.TRUE);
+        lenient().when(hashOperations.size(anyString())).thenReturn(0L);
+
+        CartRedisKeyManager keyManager = new CartRedisKeyManager(stringRedisTemplate);
+
         cartService = new CartServiceImpl(
                 stringRedisTemplate,
                 objectMapper,
                 catalogServiceClient,
-                redisDistributedLock
+                redisDistributedLock,
+                keyManager
         );
     }
 
@@ -760,5 +770,156 @@ class CartServiceTest {
         assertTrue(response.getWarnings().stream().anyMatch(w -> w.contains("ngừng kinh doanh")));
 
         verify(redisDistributedLock).releaseLock(LOCK_KEY, LOCK_TOKEN);
+    }
+
+    // ==========================================
+    // TESTS CHO GUEST CART (REDIS TTL 7 NGÀY) & METADATA
+    // ==========================================
+
+    @Test
+    @DisplayName("Lấy giỏ hàng Guest trống -> Trả về CartResponse trống với cartType=GUEST")
+    void testGetGuestCart_Empty() {
+        String guestId = "guest-session-empty";
+        String guestCartKey = "cart:guest:" + guestId;
+
+        when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
+        when(hashOperations.entries(guestCartKey)).thenReturn(Collections.emptyMap());
+        when(stringRedisTemplate.getExpire(guestCartKey)).thenReturn(604800L);
+
+        CartResponse response = cartService.getGuestCart(guestId);
+
+        assertNotNull(response);
+        assertEquals(guestId, response.getGuestId());
+        assertEquals(CartType.GUEST, response.getCartType());
+        assertEquals(0, response.getTotalItems());
+        assertEquals(BigDecimal.ZERO, response.getTotalAmount());
+        assertEquals(604800L, response.getTtlSeconds());
+    }
+
+    @Test
+    @DisplayName("Thêm sản phẩm vào Guest Cart thành công -> Kiểm tra lưu Redis Hash và gia hạn TTL 7 ngày")
+    void testAddToGuestCart_Success() throws Exception {
+        String guestId = "guest-session-add";
+        String guestCartKey = "cart:guest:" + guestId;
+        String guestLockKey = "lock:cart:guest:" + guestId;
+
+        AddToCartRequest request = AddToCartRequest.builder()
+                .variantId(VARIANT_ID_1)
+                .quantity(2)
+                .build();
+
+        CatalogVariantValidationDto catalogDto = CatalogVariantValidationDto.builder()
+                .variantId(VARIANT_ID_1)
+                .productId(101L)
+                .shopId(10L)
+                .shopName("Shop A")
+                .productName("Sản phẩm A")
+                .variantName("Đỏ / XL")
+                .sku("SKU-A-RED-XL")
+                .price(BigDecimal.valueOf(150000))
+                .availableStock(50)
+                .active(true)
+                .build();
+
+        when(redisDistributedLock.acquireLock(eq(guestLockKey), anyLong(), anyInt(), anyLong())).thenReturn(LOCK_TOKEN);
+        when(catalogServiceClient.getVariantDetails(VARIANT_ID_1)).thenReturn(Optional.of(catalogDto));
+        when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
+        when(hashOperations.get(guestCartKey, String.valueOf(VARIANT_ID_1))).thenReturn(null);
+
+        // Sau khi thêm, getGuestCart đọc lại entries
+        CartItemRedisDto savedDto = CartItemRedisDto.builder()
+                .variantId(VARIANT_ID_1)
+                .productId(101L)
+                .shopId(10L)
+                .shopName("Shop A")
+                .productName("Sản phẩm A")
+                .variantName("Đỏ / XL")
+                .sku("SKU-A-RED-XL")
+                .price(BigDecimal.valueOf(150000))
+                .quantity(2)
+                .availableStock(50)
+                .cartType(CartType.GUEST)
+                .ownerId(guestId)
+                .selected(true)
+                .itemSubtotal(BigDecimal.valueOf(300000))
+                .build();
+
+        when(hashOperations.entries(guestCartKey)).thenReturn(Map.of(
+                String.valueOf(VARIANT_ID_1), objectMapper.writeValueAsString(savedDto)
+        ));
+
+        CartResponse response = cartService.addToGuestCart(guestId, request);
+
+        assertNotNull(response);
+        assertEquals(guestId, response.getGuestId());
+        assertEquals(CartType.GUEST, response.getCartType());
+        assertEquals(1, response.getTotalItems());
+        assertEquals(2, response.getTotalQuantity());
+        assertEquals(BigDecimal.valueOf(300000), response.getTotalAmount());
+
+        verify(hashOperations).put(eq(guestCartKey), eq(String.valueOf(VARIANT_ID_1)), anyString());
+        verify(stringRedisTemplate).expire(eq(guestCartKey), eq(java.time.Duration.ofDays(7)));
+        verify(redisDistributedLock).releaseLock(guestLockKey, LOCK_TOKEN);
+    }
+
+    @Test
+    @DisplayName("Cập nhật số lượng item trong Guest Cart về 0 -> Tự động xóa khỏi giỏ")
+    void testUpdateGuestCartItemQuantity_Zero_RemovesItem() {
+        String guestId = "guest-session-update";
+        String guestCartKey = "cart:guest:" + guestId;
+        String guestLockKey = "lock:cart:guest:" + guestId;
+
+        UpdateCartItemRequest request = UpdateCartItemRequest.builder()
+                .quantity(0)
+        
+                .build();
+
+        when(redisDistributedLock.acquireLock(eq(guestLockKey), anyLong(), anyInt(), anyLong())).thenReturn(LOCK_TOKEN);
+        when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
+        when(hashOperations.delete(guestCartKey, String.valueOf(VARIANT_ID_1))).thenReturn(1L);
+        when(hashOperations.entries(guestCartKey)).thenReturn(Collections.emptyMap());
+
+        CartResponse response = cartService.updateGuestCartItemQuantity(guestId, VARIANT_ID_1, request);
+
+        assertNotNull(response);
+        assertEquals(0, response.getTotalItems());
+        verify(hashOperations).delete(guestCartKey, String.valueOf(VARIANT_ID_1));
+        verify(redisDistributedLock).releaseLock(guestLockKey, LOCK_TOKEN);
+    }
+
+    @Test
+    @DisplayName("Làm trống Guest Cart -> Xóa key khỏi Redis")
+    void testClearGuestCart_Success() {
+        String guestId = "guest-session-clear";
+        String guestCartKey = "cart:guest:" + guestId;
+        String guestLockKey = "lock:cart:guest:" + guestId;
+
+        when(redisDistributedLock.acquireLock(eq(guestLockKey), anyLong(), anyInt(), anyLong())).thenReturn(LOCK_TOKEN);
+
+        cartService.clearGuestCart(guestId);
+
+        verify(stringRedisTemplate).delete(guestCartKey);
+        verify(redisDistributedLock).releaseLock(guestLockKey, LOCK_TOKEN);
+    }
+
+    @Test
+    @DisplayName("Tra cứu metadata giỏ hàng User -> Trả về thông tin quản trị và thời gian hết hạn")
+    void testGetCartMetadata_User() {
+        when(stringRedisTemplate.hasKey("cart:1001")).thenReturn(true);
+        when(stringRedisTemplate.hasKey("cart:user:1001")).thenReturn(false);
+        when(stringRedisTemplate.getExpire("cart:1001")).thenReturn(2592000L);
+        when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
+        when(hashOperations.size("cart:1001")).thenReturn(5L);
+
+        CartMetadataDto metadata = cartService.getCartMetadata(CartType.USER, String.valueOf(USER_ID));
+
+        assertNotNull(metadata);
+        assertEquals("cart:1001", metadata.getCartKey());
+        assertEquals(CartType.USER, metadata.getCartType());
+        assertEquals("1001", metadata.getOwnerId());
+        assertEquals(5, metadata.getTotalItems());
+        assertEquals(2592000L, metadata.getTtlSeconds());
+        assertTrue(metadata.isExists());
+        assertNotNull(metadata.getExpiresAt());
     }
 }

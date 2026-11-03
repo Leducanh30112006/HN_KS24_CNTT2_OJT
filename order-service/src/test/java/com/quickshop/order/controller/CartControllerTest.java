@@ -302,4 +302,141 @@ class CartControllerTest {
 
         verifyNoInteractions(cartService);
     }
+
+    // ==========================================
+    // TESTS CHO GUEST CART & METADATA
+    // ==========================================
+
+    @Test
+    @DisplayName("GET /api/cart có header X-Guest-Id -> Trả về 200 OK và giỏ hàng khách")
+    void testGetCart_WithGuestHeader_Success() throws Exception {
+        String guestId = "guest-xyz-123";
+        CartResponse cartResponse = CartResponse.builder()
+                .guestId(guestId)
+                .cartType(com.quickshop.order.dto.cart.CartType.GUEST)
+                .shops(Collections.emptyList())
+                .totalAmount(BigDecimal.ZERO)
+                .totalItems(0)
+                .totalQuantity(0)
+                .ttlSeconds(604800L)
+                .build();
+
+        when(cartService.getGuestCart(guestId)).thenReturn(cartResponse);
+
+        mockMvc.perform(get("/api/cart")
+                        .header("X-Guest-Id", guestId)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Lấy giỏ hàng khách vãng lai thành công"))
+                .andExpect(jsonPath("$.data.guestId").value(guestId))
+                .andExpect(jsonPath("$.data.cartType").value("GUEST"));
+
+        verify(cartService).getGuestCart(guestId);
+    }
+
+    @Test
+    @DisplayName("GET /api/cart/guest/{guestId} trực tiếp -> Trả về 200 OK")
+    void testGetGuestCartDirect_Success() throws Exception {
+        String guestId = "guest-direct-001";
+        CartResponse cartResponse = CartResponse.builder()
+                .guestId(guestId)
+                .cartType(com.quickshop.order.dto.cart.CartType.GUEST)
+                .shops(Collections.emptyList())
+                .totalAmount(BigDecimal.ZERO)
+                .totalItems(0)
+                .totalQuantity(0)
+                .build();
+
+        when(cartService.getGuestCart(guestId)).thenReturn(cartResponse);
+
+        mockMvc.perform(get("/api/cart/guest/{guestId}", guestId)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.guestId").value(guestId));
+
+        verify(cartService).getGuestCart(guestId);
+    }
+
+    @Test
+    @DisplayName("POST /api/cart/guest/{guestId}/items hợp lệ -> Trả về 201 Created")
+    void testAddToGuestCartDirect_Success() throws Exception {
+        String guestId = "guest-direct-002";
+        AddToCartRequest request = AddToCartRequest.builder()
+                .variantId(201L)
+                .quantity(1)
+                .build();
+
+        CartResponse cartResponse = CartResponse.builder()
+                .guestId(guestId)
+                .cartType(com.quickshop.order.dto.cart.CartType.GUEST)
+                .totalAmount(BigDecimal.valueOf(100000))
+                .totalItems(1)
+                .totalQuantity(1)
+                .build();
+
+        when(cartService.addToGuestCart(eq(guestId), any(AddToCartRequest.class))).thenReturn(cartResponse);
+
+        mockMvc.perform(post("/api/cart/guest/{guestId}/items", guestId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Thêm sản phẩm vào giỏ hàng khách thành công"));
+
+        verify(cartService).addToGuestCart(eq(guestId), any(AddToCartRequest.class));
+    }
+
+    @Test
+    @DisplayName("DELETE /api/cart/guest/{guestId} -> Làm trống giỏ hàng khách, trả về 200 OK")
+    void testClearGuestCartDirect_Success() throws Exception {
+        String guestId = "guest-direct-003";
+        doNothing().when(cartService).clearGuestCart(guestId);
+
+        mockMvc.perform(delete("/api/cart/guest/{guestId}", guestId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Đã làm trống giỏ hàng khách"));
+
+        verify(cartService).clearGuestCart(guestId);
+    }
+
+    @Test
+    @DisplayName("GET /api/cart/metadata với userId -> Trả về thông tin quản trị Redis Cart")
+    void testGetCartMetadata_User_Success() throws Exception {
+        com.quickshop.order.dto.cart.CartMetadataDto metadata = com.quickshop.order.dto.cart.CartMetadataDto.builder()
+                .cartKey("cart:user:1001")
+                .cartType(com.quickshop.order.dto.cart.CartType.USER)
+                .ownerId("1001")
+                .totalItems(3)
+                .ttlSeconds(2592000L)
+                .exists(true)
+                .build();
+
+        when(cartService.getCartMetadata(com.quickshop.order.dto.cart.CartType.USER, "1001"))
+                .thenReturn(metadata);
+
+        mockMvc.perform(get("/api/cart/metadata?userId=1001")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.cartKey").value("cart:user:1001"))
+                .andExpect(jsonPath("$.data.ttlSeconds").value(2592000L))
+                .andExpect(jsonPath("$.data.exists").value(true));
+
+        verify(cartService).getCartMetadata(com.quickshop.order.dto.cart.CartType.USER, "1001");
+    }
+
+    @Test
+    @DisplayName("GET /api/cart/metadata thiếu cả userId và guestId -> Báo lỗi 400 Bad Request")
+    void testGetCartMetadata_MissingAll_ReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/cart/metadata")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Yêu cầu cung cấp userId hoặc guestId để tra cứu metadata giỏ hàng"));
+
+        verifyNoInteractions(cartService);
+    }
 }
