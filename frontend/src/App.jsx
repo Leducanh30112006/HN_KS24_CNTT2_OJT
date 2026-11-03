@@ -6,6 +6,7 @@ import ProductCard from './components/ProductCard';
 import ProductDetailPage from './components/ProductDetailPage';
 import FlashSalePage from './components/FlashSalePage';
 import ShopDetailPage from './components/ShopDetailPage';
+import CheckoutPage from './components/CheckoutPage';
 import CartDrawer from './components/CartDrawer';
 import AiChatWidget from './components/AiChatWidget';
 import SellerPortal from './components/SellerPortal';
@@ -346,7 +347,10 @@ export default function App() {
           setCurrentView('storefront');
         }}
         categories={categories}
-        onOpenCart={() => setIsCartOpen(true)}
+        onOpenCart={() => {
+          setCurrentView('cart');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
         onOpenAuthModal={() => setCurrentView('login')}
         onNavigateToLogin={() => setCurrentView('login')}
       />
@@ -365,7 +369,25 @@ export default function App() {
             }}
             onSelectRelatedProduct={handleSelectProduct}
             onSelectShop={handleSelectShop}
-            onBuyNow={() => setIsCartOpen(true)}
+            onBuyNow={() => {
+              setCurrentView('cart');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onRequireAuth={() => setCurrentView('login')}
+          />
+        )}
+
+        {/* VIEW: DEDICATED CART & CHECKOUT PAGE (PHẦN MUA HÀNG VÀ THANH TOÁN LÀ TRANG RIÊNG) */}
+        {currentView === 'cart' && (
+          <CheckoutPage
+            onBack={() => {
+              if (selectedProduct) {
+                setCurrentView('product-detail');
+              } else {
+                setCurrentView('storefront');
+              }
+            }}
+            onSelectProduct={handleSelectProduct}
             onRequireAuth={() => setCurrentView('login')}
           />
         )}
