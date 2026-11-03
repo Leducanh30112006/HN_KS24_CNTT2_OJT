@@ -19,18 +19,85 @@ export default function ShopDetailPage({
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'best' | 'newest' | 'priceAsc' | 'priceDesc'
   const [shopSearchKeyword, setShopSearchKeyword] = useState('');
 
-  // Default shop info fallback if only shopName / shopId is passed
+  // Profiles for shops
+  const shopProfiles = {
+    1: {
+      name: 'TechWorld Official Store',
+      avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80',
+      coverImage: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1200&auto=format&fit=crop&q=80',
+      rating: 4.9,
+      reviewCount: '28.6k',
+      responseRate: '99%',
+      responseTime: 'trong vài phút',
+      joinedTime: '3 năm trước',
+      location: 'Hà Nội, Việt Nam',
+      isMall: true,
+    },
+    2: {
+      name: 'Fashion Hub Official',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+      coverImage: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&auto=format&fit=crop&q=80',
+      rating: 4.8,
+      reviewCount: '15.4k',
+      responseRate: '98%',
+      responseTime: 'trong 1 giờ',
+      joinedTime: '2 năm trước',
+      location: 'TP. Hồ Chí Minh',
+      isMall: true,
+    },
+    3: {
+      name: 'SmartHome Vietnam Store',
+      avatar: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=200&auto=format&fit=crop&q=80',
+      coverImage: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&auto=format&fit=crop&q=80',
+      rating: 4.9,
+      reviewCount: '9.8k',
+      responseRate: '99%',
+      responseTime: 'trong vài phút',
+      joinedTime: '1 năm trước',
+      location: 'Hà Nội, Việt Nam',
+      isMall: true,
+    },
+    4: {
+      name: 'BeautyCare Mall',
+      avatar: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200&auto=format&fit=crop&q=80',
+      coverImage: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1200&auto=format&fit=crop&q=80',
+      rating: 4.9,
+      reviewCount: '34.2k',
+      responseRate: '100%',
+      responseTime: 'trong vài phút',
+      joinedTime: '4 năm trước',
+      location: 'TP. Hồ Chí Minh',
+      isMall: true,
+    },
+    5: {
+      name: 'Sneaker World',
+      avatar: 'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=200&auto=format&fit=crop&q=80',
+      coverImage: 'https://images.unsplash.com/photo-1556906781-9a412961c28c?w=1200&auto=format&fit=crop&q=80',
+      rating: 4.9,
+      reviewCount: '12.3k',
+      responseRate: '97%',
+      responseTime: 'trong 1 giờ',
+      joinedTime: '2 năm trước',
+      location: 'Đà Nẵng, Việt Nam',
+      isMall: true,
+    },
+  };
+
+  const matchedProfile = (shop?.id && shopProfiles[shop.id]) ||
+    Object.values(shopProfiles).find(p => p.name === (shop?.name || shop?.shopName)) ||
+    shopProfiles[1];
+
   const shopInfo = {
-    id: shop?.id || 1,
-    name: shop?.name || shop?.shopName || 'TechWorld Official Store',
-    avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80',
-    coverImage: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=1200&auto=format&fit=crop&q=80',
-    rating: 4.9,
-    reviewCount: '18.6k',
-    responseRate: '99%',
-    responseTime: 'trong vài phút',
-    joinedTime: '2 năm trước',
-    location: 'Hà Nội, Việt Nam',
+    id: shop?.id || matchedProfile.id || 1,
+    name: shop?.name || shop?.shopName || matchedProfile.name,
+    avatar: shop?.avatar || matchedProfile.avatar,
+    coverImage: shop?.coverImage || matchedProfile.coverImage,
+    rating: shop?.rating || matchedProfile.rating,
+    reviewCount: shop?.reviewCount || matchedProfile.reviewCount,
+    responseRate: matchedProfile.responseRate,
+    responseTime: matchedProfile.responseTime,
+    joinedTime: matchedProfile.joinedTime,
+    location: shop?.location || matchedProfile.location,
     isMall: true,
   };
 
@@ -60,7 +127,7 @@ export default function ShopDetailPage({
     });
 
     // If there are few products in sample DB for this shop, supplement with relevant shop items
-    if (rawMatches.length < 4) {
+    if (rawMatches.length < 1) {
       const extraItems = allProducts.slice(0, 6).map((p, index) => ({
         ...p,
         id: p.id * 100 + index,

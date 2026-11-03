@@ -20,6 +20,7 @@ import {
   HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft 
 } from 'lucide-react';
 import { useAuthStore } from './stores/useAuthStore';
+import { defaultCategories, defaultProducts } from './data/sampleProducts';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('storefront'); // 'storefront' | 'search' | 'product-detail' | 'login' | 'seller' | 'admin'
@@ -29,8 +30,8 @@ export default function App() {
   const isAdmin = isAuthenticated && user && (user.role === 'ROLE_ADMIN' || user.role === 'ADMIN');
 
   // Data states
-  const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState(defaultCategories);
+  const [products, setProducts] = useState(defaultProducts);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
   // Category showcase display toggle (1 row vs all)
@@ -49,163 +50,6 @@ export default function App() {
   const [checkoutItems, setCheckoutItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-
-  // Default seed data for immediate standalone presentation
-  const defaultCategories = [
-    { id: 100, name: 'Thiết bị Điện tử', slug: 'thiet-bi-dien-tu', icon: 'Cpu', parentId: null, productCount: 5 },
-    { id: 1, name: 'Điện thoại & Phụ kiện', slug: 'dien-thoai-phu-kien', icon: 'Smartphone', parentId: 100, parentName: 'Thiết bị Điện tử', productCount: 3 },
-    { id: 2, name: 'Laptop & Máy tính', slug: 'laptop-may-tinh', icon: 'Laptop', parentId: 100, parentName: 'Thiết bị Điện tử', productCount: 2 },
-    { id: 200, name: 'Thời trang & Làm đẹp', slug: 'thoi-trang-lam-dep', icon: 'Sparkles', parentId: null, productCount: 4 },
-    { id: 3, name: 'Thời trang nam nữ', slug: 'thoi-trang', icon: 'Shirt', parentId: 200, parentName: 'Thời trang & Làm đẹp', productCount: 2 },
-    { id: 6, name: 'Giày dép & Túi xách', slug: 'giay-dep-tui-xach', icon: 'ShoppingBag', parentId: 200, parentName: 'Thời trang & Làm đẹp', productCount: 1 },
-    { id: 5, name: 'Mỹ phẩm & Làm đẹp', slug: 'my-pham-lam-dep', icon: 'Sparkles', parentId: 200, parentName: 'Thời trang & Làm đẹp', productCount: 1 },
-    { id: 300, name: 'Đời sống & Gia đình', slug: 'doi-song-gia-dinh', icon: 'Home', parentId: null, productCount: 2 },
-    { id: 4, name: 'Nhà cửa & Đời sống', slug: 'nha-cua-doi-song', icon: 'Home', parentId: 300, parentName: 'Đời sống & Gia đình', productCount: 2 },
-  ];
-
-  const defaultProducts = [
-    {
-      id: 1,
-      shopId: 1,
-      shopName: 'TechWorld Official Store',
-      categoryId: 1,
-      categoryName: 'Điện thoại & Phụ kiện',
-      name: 'Điện thoại thông minh QuickPhone Pro Max 256GB - Bản Quốc Tế',
-      description: 'Flagship hàng đầu với chip xử lý AI 3nm mạnh mẽ, màn hình Super Retina XDR OLED 120Hz siêu mượt mà, cụm 3 camera 48MP zoom quang học 5x và thời lượng pin trâu lên đến 29 giờ liên tục.',
-      mainImage: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&auto=format&fit=crop&q=80',
-      status: 'ACTIVE',
-      minPrice: 29990000,
-      maxPrice: 41990000,
-      totalStock: 85,
-      averageRating: 5.0,
-      reviewCount: 48,
-      variants: [
-        { id: 11, sku: 'QP-PRO-TITAN-256', color: 'Titan Tự Nhiên', size: '256GB', price: 29990000, stock: 45, availableStock: 45 },
-        { id: 12, sku: 'QP-PRO-BLACK-512', color: 'Đen Không Gian', size: '512GB', price: 34990000, stock: 25, availableStock: 25 },
-        { id: 13, sku: 'QP-PRO-DESERT-1TB', color: 'Titan Sa Mạc', size: '1TB', price: 41990000, stock: 15, availableStock: 15 },
-      ],
-    },
-    {
-      id: 2,
-      shopId: 1,
-      shopName: 'TechWorld Official Store',
-      categoryId: 2,
-      categoryName: 'Laptop & Máy tính',
-      name: 'Laptop QuickBook Ultra 14 inch M3 Pro - 18GB/512GB Bạc Ánh Kim',
-      description: 'Chiếc máy trạm di động mỏng nhẹ đẳng cấp nhất: màn hình Liquid Retina XDR 1000 nits, chip 11-core CPU, 14-core GPU xử lý đồ họa mượt mà, pin dùng cả ngày không cần sạc.',
-      mainImage: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600&auto=format&fit=crop&q=80',
-      status: 'ACTIVE',
-      minPrice: 45990000,
-      maxPrice: 57990000,
-      totalStock: 30,
-      averageRating: 4.9,
-      reviewCount: 32,
-      variants: [
-        { id: 21, sku: 'QB-ULTRA-SPACEBLACK-18-512', color: 'Đen Không Gian', size: '18GB / 512GB', price: 45990000, stock: 20, availableStock: 20 },
-        { id: 22, sku: 'QB-ULTRA-SILVER-36-1TB', color: 'Bạc Ánh Kim', size: '36GB / 1TB', price: 57990000, stock: 10, availableStock: 10 },
-      ],
-    },
-    {
-      id: 3,
-      shopId: 1,
-      shopName: 'TechWorld Official Store',
-      categoryId: 1,
-      categoryName: 'Điện thoại & Phụ kiện',
-      name: 'Tai nghe Bluetooth True Wireless QuickPods Pro 2 Chống Ồn Chủ Động',
-      description: 'Âm thanh vòm cá nhân hóa chuẩn phòng thu, công nghệ khử tiếng ồn chủ động ANC thế hệ 2 gấp đôi hiệu quả, kháng nước IP54 và hộp sạc hỗ trợ sạc MagSafe không dây.',
-      mainImage: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=600&auto=format&fit=crop&q=80',
-      status: 'ACTIVE',
-      minPrice: 4990000,
-      maxPrice: 4990000,
-      totalStock: 80,
-      averageRating: 5.0,
-      reviewCount: 96,
-      variants: [
-        { id: 31, sku: 'QPODS-PRO-WHITE', color: 'Trắng Tinh Khôi', size: 'Tiêu chuẩn', price: 4990000, stock: 80, availableStock: 80 },
-      ],
-    },
-    {
-      id: 4,
-      shopId: 2,
-      shopName: 'Fashion Hub Official',
-      categoryId: 3,
-      categoryName: 'Thời trang nam nữ',
-      name: 'Áo Polo Nam QuickStyle Premium Vải Cafe Khử Mùi Thoáng Khí',
-      description: 'Chất liệu dệt sợi từ bã cafe tự nhiên siêu nhẹ, chống tia UV 50+, co giãn 4 chiều vận động thoải mái và chống nhăn tự nhiên không cần ủi.',
-      mainImage: 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=600&auto=format&fit=crop&q=80',
-      status: 'ACTIVE',
-      minPrice: 289000,
-      maxPrice: 289000,
-      totalStock: 255,
-      averageRating: 4.8,
-      reviewCount: 140,
-      variants: [
-        { id: 41, sku: 'POLO-NAVY-M', color: 'Xanh Navy', size: 'M', price: 289000, stock: 100, availableStock: 100 },
-        { id: 42, sku: 'POLO-NAVY-L', color: 'Xanh Navy', size: 'L', price: 289000, stock: 85, availableStock: 85 },
-        { id: 43, sku: 'POLO-WHITE-M', color: 'Trắng Sữa', size: 'M', price: 289000, stock: 70, availableStock: 70 },
-      ],
-    },
-    {
-      id: 5,
-      shopId: 2,
-      shopName: 'SmartHome Vietnam Store',
-      categoryId: 4,
-      categoryName: 'Nhà cửa & Đời sống',
-      name: 'Robot Hút Bụi Lau Nhà Tự Động QuickBot Omni 3000Pa Cảm Biến LiDAR',
-      description: 'Hệ thống định vị laser LDS 360 độ lập bản đồ 3D cực chuẩn, lực hút bão 3000Pa gom sạch lông thú cưng, tự động giặt giẻ lau sấy khí nóng diệt khuẩn 99.9%.',
-      mainImage: 'https://images.unsplash.com/photo-1558317374-067fb5f30001?w=600&auto=format&fit=crop&q=80',
-      status: 'ACTIVE',
-      minPrice: 8490000,
-      maxPrice: 8490000,
-      totalStock: 30,
-      averageRating: 4.9,
-      reviewCount: 22,
-      variants: [
-        { id: 51, sku: 'ROBOT-OMNI-WHITE', color: 'Trắng Tuyết', size: 'Bản Quốc Tế', price: 8490000, stock: 30, availableStock: 30 },
-      ],
-    },
-    {
-      id: 6,
-      shopId: 3,
-      shopName: 'BeautyCare Mall',
-      categoryId: 5,
-      categoryName: 'Mỹ phẩm & Làm đẹp',
-      name: 'Tinh Chất Serum Niacinamide 10% + Zinc 1% Dưỡng Sáng Đều Màu Da',
-      description: 'Công thức lành tính dịu nhẹ kiểm soát bã nhờn, làm thông thoáng lỗ chân lông, làm mờ vết thâm mụn chỉ sau 14 ngày sử dụng đều đặn.',
-      mainImage: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&auto=format&fit=crop&q=80',
-      status: 'ACTIVE',
-      minPrice: 199000,
-      maxPrice: 349000,
-      totalStock: 240,
-      averageRating: 4.7,
-      reviewCount: 65,
-      variants: [
-        { id: 61, sku: 'SERUM-30ML', color: 'Trong suốt', size: '30ml', price: 199000, stock: 150, availableStock: 150 },
-        { id: 62, sku: 'SERUM-60ML', color: 'Trong suốt', size: '60ml', price: 349000, stock: 90, availableStock: 90 },
-      ],
-    },
-    {
-      id: 7,
-      shopId: 3,
-      shopName: 'Sneaker World',
-      categoryId: 6,
-      categoryName: 'Giày dép & Túi xách',
-      name: 'Giày Sneaker Thể Thao QuickRunner Pro Đệm Khí Êm Ái Chống Trượt',
-      description: 'Đế đệm khí êm nhẹ trợ lực khi chạy bộ, thân giày dệt lưới Flyknit thoáng khí kháng khuẩn không lo hôi chân, thiết kế trẻ trung phong cách Hàn Quốc.',
-      mainImage: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80',
-      status: 'ACTIVE',
-      minPrice: 890000,
-      maxPrice: 890000,
-      totalStock: 120,
-      averageRating: 5.0,
-      reviewCount: 54,
-      variants: [
-        { id: 71, sku: 'SNEAKER-RED-40', color: 'Đỏ Rực Rỡ', size: '40', price: 890000, stock: 40, availableStock: 40 },
-        { id: 72, sku: 'SNEAKER-RED-41', color: 'Đỏ Rực Rỡ', size: '41', price: 890000, stock: 45, availableStock: 45 },
-        { id: 73, sku: 'SNEAKER-RED-42', color: 'Đỏ Rực Rỡ', size: '42', price: 890000, stock: 35, availableStock: 35 },
-      ],
-    },
-  ];
 
   // Fetch Categories from /api/catalog/categories
   const fetchCategories = async () => {
@@ -230,11 +74,11 @@ export default function App() {
 
     try {
       const res = await axiosClient.get(url);
-      if (res.success && res.data?.content && res.data.content.length > 0) {
+      if (res.success && res.data?.content && res.data.content.length >= 20) {
         setProducts(res.data.content);
       } else {
         // Filter local default
-        let filtered = defaultProducts;
+        let filtered = [...defaultProducts];
         if (catId) {
           const childIds = categories.filter((c) => c.parentId === catId).map((c) => c.id);
           const allowedCatIds = [catId, ...childIds];
@@ -244,10 +88,17 @@ export default function App() {
           const lkw = kw.toLowerCase().trim();
           filtered = filtered.filter((p) => p.name.toLowerCase().includes(lkw) || p.description.toLowerCase().includes(lkw));
         }
+        if (sort === 'priceAsc') {
+          filtered.sort((a, b) => (a.minPrice || 0) - (b.minPrice || 0));
+        } else if (sort === 'priceDesc') {
+          filtered.sort((a, b) => (b.minPrice || 0) - (a.minPrice || 0));
+        } else if (sort === 'newest') {
+          filtered.sort((a, b) => b.id - a.id);
+        }
         setProducts(filtered);
       }
     } catch (err) {
-      let filtered = defaultProducts;
+      let filtered = [...defaultProducts];
       if (catId) {
         const childIds = categories.filter((c) => c.parentId === catId).map((c) => c.id);
         const allowedCatIds = [catId, ...childIds];
@@ -256,6 +107,13 @@ export default function App() {
       if (kw && kw.trim()) {
         const lkw = kw.toLowerCase().trim();
         filtered = filtered.filter((p) => p.name.toLowerCase().includes(lkw) || p.description.toLowerCase().includes(lkw));
+      }
+      if (sort === 'priceAsc') {
+        filtered.sort((a, b) => (a.minPrice || 0) - (b.minPrice || 0));
+      } else if (sort === 'priceDesc') {
+        filtered.sort((a, b) => (b.minPrice || 0) - (a.minPrice || 0));
+      } else if (sort === 'newest') {
+        filtered.sort((a, b) => b.id - a.id);
       }
       setProducts(filtered);
     } finally {
