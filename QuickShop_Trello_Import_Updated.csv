@@ -324,7 +324,7 @@ Triển khai OTP qua Redis TTL 5 phút; API xác thực OTP và giới hạn g�
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Đăng ký","2026-11-03","2026-11-03"
-"Cần làm","[Catalog] Triển khai SKU/variant, giá, tồn kho và reserved_stock; kiểm tra không cho tồn kho âm: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+"Đã xong","[Catalog] Triển khai SKU/variant, giá, tồn kho và reserved_stock; kiểm tra không cho tồn kho âm: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Ba, 2026-11-03
 **Phân hệ:** Catalog
 
