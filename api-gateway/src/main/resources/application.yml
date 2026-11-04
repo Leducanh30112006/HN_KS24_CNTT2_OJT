@@ -73,7 +73,7 @@ spring:
         - id: order-service-route
           uri: ${ORDER_SERVICE_URL:http://localhost:8083}
           predicates:
-            - Path=/api/orders/**, /api/cart/**
+            - Path=/api/orders/**, /api/cart/**, /api/vouchers/**
           filters:
             - name: JwtAuth
             - StripPrefix=0
