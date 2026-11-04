@@ -4,9 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quickshop.common.dto.ApiResponse;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +28,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 
 @Slf4j
@@ -52,9 +56,14 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
         try {
             keyBytes = Decoders.BASE64.decode(jwtSecret);
         } catch (IllegalArgumentException e) {
-            keyBytes = jwtSecret.getBytes();
+            keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
         }
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    public void setJwtSecret(String jwtSecret) {
+        this.jwtSecret = jwtSecret;
+        init();
     }
 
     @Override
@@ -73,6 +82,13 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
                         .build()
                         .parseClaimsJws(token)
                         .getBody();
+
+                // Ngăn chặn sử dụng nhầm Refresh Token để gọi API được bảo vệ
+                Object tokenType = claims.get("type");
+                if ("REFRESH".equalsIgnoreCase(String.valueOf(tokenType))) {
+                    log.warn("Access denied: provided token is a refresh token, not an access token");
+                    return onError(exchange, "Token không hợp lệ (Không thể sử dụng Refresh Token để truy cập tài nguyên)", HttpStatus.UNAUTHORIZED);
+                }
 
                 String username = claims.getSubject();
                 Object userId = claims.get("userId");
@@ -95,9 +111,15 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
 
                 return chain.filter(exchange.mutate().request(mutatedRequest).build());
 
+            } catch (ExpiredJwtException ex) {
+                log.warn("JWT token expired: {}", ex.getMessage());
+                return onError(exchange, "Token xác thực đã hết hạn, vui lòng làm mới token hoặc đăng nhập lại", HttpStatus.UNAUTHORIZED);
+            } catch (SignatureException | MalformedJwtException ex) {
+                log.warn("Invalid JWT signature or malformed token: {}", ex.getMessage());
+                return onError(exchange, "Chữ ký hoặc định dạng Token không hợp lệ", HttpStatus.UNAUTHORIZED);
             } catch (Exception ex) {
                 log.error("JWT token validation failed: {}", ex.getMessage());
-                return onError(exchange, "Token đã hết hạn hoặc không hợp lệ", HttpStatus.UNAUTHORIZED);
+                return onError(exchange, "Token xác thực không hợp lệ", HttpStatus.UNAUTHORIZED);
             }
         };
     }
@@ -130,7 +152,7 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
         try {
             bytes = objectMapper.writeValueAsBytes(apiResponse);
         } catch (JsonProcessingException e) {
-            bytes = ("{\"success\":false,\"message\":\"" + errMessage + "\"}").getBytes();
+            bytes = ("{\"success\":false,\"message\":\"" + errMessage + "\"}").getBytes(StandardCharsets.UTF_8);
         }
 
         DataBuffer buffer = response.bufferFactory().wrap(bytes);
