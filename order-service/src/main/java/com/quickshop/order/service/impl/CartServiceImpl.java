@@ -153,7 +153,7 @@ public class CartServiceImpl implements CartService {
             CartItemRedisDto updatedDto = CartItemRedisDto.builder()
                     .variantId(catalogDto.getVariantId())
                     .productId(catalogDto.getProductId())
-                    .shopId(catalogDto.getShopId())
+                    .shopId(catalogDto.getShopId() != null ? catalogDto.getShopId() : 1L)
                     .shopName(catalogDto.getShopName() != null ? catalogDto.getShopName() : "Shop #" + catalogDto.getShopId())
                     .productName(catalogDto.getProductName())
                     .variantName(catalogDto.getVariantName())
@@ -643,15 +643,23 @@ public class CartServiceImpl implements CartService {
     // ==========================================
 
     @Override
+    public MergeCartResponse mergeGuestCartToUserCart(Long userId, String guestId, String requestId) {
+        validateUserId(userId);
+        validateGuestId(guestId);
+        MergeCartRequest request = MergeCartRequest.builder()
+                .guestId(guestId.trim())
+                .requestId(requestId)
+                .clearGuestCartAfterMerge(true)
+                .items(Collections.emptyList())
+                .build();
+        return mergeCart(userId, request);
+    }
+
+    @Override
     public MergeCartResponse mergeCart(Long userId, MergeCartRequest request) {
         validateUserId(userId);
-        if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
-            return MergeCartResponse.builder()
-                    .cart(getCart(userId))
-                    .warnings(Collections.emptyList())
-                    .mergedItemsCount(0)
-                    .duplicateRequest(false)
-                    .build();
+        if (request == null || !request.hasValidPayload()) {
+            throw new BadRequestException("Yêu cầu hợp nhất giỏ hàng không hợp lệ: cần cung cấp guestId hoặc danh sách items");
         }
 
         String requestId = request.getRequestId();
@@ -668,15 +676,79 @@ public class CartServiceImpl implements CartService {
                     .warnings(Collections.singletonList("Yêu cầu hợp nhất đã được xử lý trước đó (Idempotent)."))
                     .mergedItemsCount(0)
                     .duplicateRequest(true)
+                    .guestId(request.getGuestId())
+                    .duplicateSkuCount(0)
+                    .stockAdjustedCount(0)
                     .build();
+        }
+
+        // 2. Thu thập danh sách mặt hàng từ các nguồn (Redis Guest Cart và Request Items)
+        List<GuestCartItemDto> combinedGuestItems = new ArrayList<>();
+        String guestId = (request.getGuestId() != null && !request.getGuestId().isBlank()) ? request.getGuestId().trim() : null;
+        String guestCartKey = (guestId != null) ? cartRedisKeyManager.getGuestCartKey(guestId) : null;
+
+        if (guestCartKey != null) {
+            try {
+                Map<Object, Object> rawGuestEntries = stringRedisTemplate.opsForHash().entries(guestCartKey);
+                if (rawGuestEntries != null && !rawGuestEntries.isEmpty()) {
+                    for (Map.Entry<Object, Object> entry : rawGuestEntries.entrySet()) {
+                        try {
+                            CartItemRedisDto dto = objectMapper.readValue(String.valueOf(entry.getValue()), CartItemRedisDto.class);
+                            if (dto.getVariantId() != null && dto.getQuantity() != null && dto.getQuantity() > 0) {
+                                combinedGuestItems.add(GuestCartItemDto.builder()
+                                        .variantId(dto.getVariantId())
+                                        .quantity(dto.getQuantity())
+                                        .build());
+                            }
+                        } catch (Exception parseEx) {
+                            log.warn("Lỗi đọc item từ Redis Guest Cart {} tại field {}: {}", guestId, entry.getKey(), parseEx.getMessage());
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                log.error("Lỗi khi đọc Redis Guest Cart cho guest {}: {}", guestId, ex.getMessage(), ex);
+            }
+        }
+
+        if (request.getItems() != null && !request.getItems().isEmpty()) {
+            combinedGuestItems.addAll(request.getItems());
+        }
+
+        if (combinedGuestItems.isEmpty()) {
+            log.info("Không có mặt hàng nào cần hợp nhất cho user {} (guestId: {})", userId, guestId);
+            return MergeCartResponse.builder()
+                    .cart(getCart(userId))
+                    .warnings(Collections.emptyList())
+                    .mergedItemsCount(0)
+                    .duplicateRequest(false)
+                    .guestId(guestId)
+                    .clearedGuestCart(false)
+                    .duplicateSkuCount(0)
+                    .stockAdjustedCount(0)
+                    .build();
+        }
+
+        // 3. Gộp các mặt hàng trùng SKU/variantId trong nguồn dữ liệu khách vãng lai
+        Map<Long, Integer> aggregatedGuestItems = new LinkedHashMap<>();
+        for (GuestCartItemDto guestItem : combinedGuestItems) {
+            if (guestItem == null || guestItem.getVariantId() == null || guestItem.getQuantity() == null || guestItem.getQuantity() <= 0) {
+                continue;
+            }
+            aggregatedGuestItems.merge(guestItem.getVariantId(), guestItem.getQuantity(), Integer::sum);
         }
 
         String cartKey = cartRedisKeyManager.resolveUserCartKey(userId);
         String lockKey = cartRedisKeyManager.getUserLockKey(userId);
+        String guestLockKey = (guestId != null) ? cartRedisKeyManager.getGuestLockKey(guestId) : null;
 
         String lockToken = redisDistributedLock.acquireLock(lockKey, LOCK_TIMEOUT_MS, LOCK_MAX_RETRIES, LOCK_RETRY_INTERVAL_MS);
         if (lockToken == null) {
             throw new CartLockException("Giỏ hàng đang bận xử lý hợp nhất, vui lòng thử lại sau giây lát");
+        }
+
+        String guestLockToken = null;
+        if (guestLockKey != null) {
+            guestLockToken = redisDistributedLock.acquireLock(guestLockKey, LOCK_TIMEOUT_MS, LOCK_MAX_RETRIES, LOCK_RETRY_INTERVAL_MS);
         }
 
         try {
@@ -687,10 +759,13 @@ public class CartServiceImpl implements CartService {
                         .warnings(Collections.singletonList("Yêu cầu hợp nhất đã được xử lý trước đó."))
                         .mergedItemsCount(0)
                         .duplicateRequest(true)
+                        .guestId(guestId)
+                        .duplicateSkuCount(0)
+                        .stockAdjustedCount(0)
                         .build();
             }
 
-            // 2. Đọc toàn bộ giỏ hàng User hiện có trong Redis Hash
+            // 4. Đọc toàn bộ giỏ hàng User hiện có trong Redis Hash
             Map<Object, Object> rawEntries = stringRedisTemplate.opsForHash().entries(cartKey);
             Map<Long, CartItemRedisDto> currentCartMap = new HashMap<>();
 
@@ -707,15 +782,13 @@ public class CartServiceImpl implements CartService {
 
             List<String> warnings = new ArrayList<>();
             int mergedCount = 0;
+            int duplicateSkuCount = 0;
+            int stockAdjustedCount = 0;
 
-            // 3. Xử lý gộp từng mặt hàng từ Guest Cart
-            for (GuestCartItemDto guestItem : request.getItems()) {
-                if (guestItem == null || guestItem.getVariantId() == null || guestItem.getQuantity() == null || guestItem.getQuantity() <= 0) {
-                    continue;
-                }
-
-                Long variantId = guestItem.getVariantId();
-                int guestQty = guestItem.getQuantity();
+            // 5. Xử lý kiểm tra trùng SKU và giới hạn tồn kho cho từng biến thể
+            for (Map.Entry<Long, Integer> entry : aggregatedGuestItems.entrySet()) {
+                Long variantId = entry.getKey();
+                int guestQty = entry.getValue();
 
                 Optional<CatalogVariantValidationDto> optCatalog = catalogServiceClient.getVariantDetails(variantId);
                 if (optCatalog.isEmpty() || !optCatalog.get().isActive()) {
@@ -730,15 +803,20 @@ public class CartServiceImpl implements CartService {
                     continue;
                 }
 
+                boolean isDuplicateSku = currentCartMap.containsKey(variantId);
                 int currentQty = 0;
-                if (currentCartMap.containsKey(variantId)) {
+                if (isDuplicateSku) {
                     CartItemRedisDto existing = currentCartMap.get(variantId);
                     currentQty = existing.getQuantity() != null ? existing.getQuantity() : 0;
+                    duplicateSkuCount++;
+                    log.info("Phát hiện trùng SKU [{}] (variantId: {}) trong User Cart {}. Số lượng hiện có: {}, số lượng thêm từ khách: {}",
+                            catalogDto.getSku(), variantId, userId, currentQty, guestQty);
                 }
 
                 int finalQty = currentQty + guestQty;
 
                 if (finalQty > availableStock) {
+                    stockAdjustedCount++;
                     finalQty = availableStock;
                     warnings.add(String.format(
                             "Sản phẩm '%s' chỉ còn %d sản phẩm khả dụng trong kho. Số lượng trong giỏ hàng đã được điều chỉnh về %d.",
@@ -779,7 +857,7 @@ public class CartServiceImpl implements CartService {
                 mergedCount++;
             }
 
-            // 5. Ghi nhận toàn bộ dữ liệu đã hợp nhất vào Redis Hash một cách an toàn
+            // 6. Ghi nhận toàn bộ dữ liệu đã hợp nhất vào Redis Hash một cách an toàn
             Map<String, String> writesToRedis = new HashMap<>();
             for (CartItemRedisDto item : currentCartMap.values()) {
                 writesToRedis.put(String.valueOf(item.getVariantId()), objectMapper.writeValueAsString(item));
@@ -790,14 +868,24 @@ public class CartServiceImpl implements CartService {
                 cartRedisKeyManager.refreshTtl(cartKey, CartType.USER);
             }
 
-            // 6. Ghi nhận Idempotency Token thành công
+            // 7. Tự động dọn dẹp Redis Guest Cart nếu được yêu cầu
+            boolean clearedGuest = false;
+            if (guestCartKey != null && request.isClearGuestCartAfterMerge()) {
+                Boolean deleted = stringRedisTemplate.delete(guestCartKey);
+                clearedGuest = Boolean.TRUE.equals(deleted);
+                log.info("Đã xóa dọn dẹp Redis Guest Cart [{}] sau khi hợp nhất vào User Cart {} (kết quả: {})",
+                        guestCartKey, userId, clearedGuest);
+            }
+
+            // 8. Ghi nhận Idempotency Token thành công
             if (idempotencyKey != null) {
                 stringRedisTemplate.opsForValue().set(idempotencyKey, "PROCESSED", IDEMPOTENCY_TTL);
             }
 
-            log.info("Hợp nhất thành công {} mặt hàng từ Guest Cart vào User Cart cho user {}", mergedCount, userId);
+            log.info("Hợp nhất thành công {} mặt hàng (trùng SKU: {}, điều chỉnh tồn kho: {}) từ Guest Cart vào User Cart cho user {}",
+                    mergedCount, duplicateSkuCount, stockAdjustedCount, userId);
 
-            // 7. Đọc lại giỏ hàng đầy đủ đã được gom nhóm để trả về
+            // 9. Đọc lại giỏ hàng đầy đủ đã được gom nhóm để trả về
             CartResponse updatedCart = getCart(userId);
 
             return MergeCartResponse.builder()
@@ -805,6 +893,10 @@ public class CartServiceImpl implements CartService {
                     .warnings(warnings)
                     .mergedItemsCount(mergedCount)
                     .duplicateRequest(false)
+                    .guestId(guestId)
+                    .clearedGuestCart(clearedGuest)
+                    .duplicateSkuCount(duplicateSkuCount)
+                    .stockAdjustedCount(stockAdjustedCount)
                     .build();
 
         } catch (CartLockException ex) {
@@ -813,6 +905,9 @@ public class CartServiceImpl implements CartService {
             log.error("Lỗi khi hợp nhất giỏ hàng cho user {}: {}", userId, ex.getMessage(), ex);
             throw new CartOperationException("Hợp nhất giỏ hàng thất bại: " + ex.getMessage(), ex);
         } finally {
+            if (guestLockToken != null && guestLockKey != null) {
+                redisDistributedLock.releaseLock(guestLockKey, guestLockToken);
+            }
             redisDistributedLock.releaseLock(lockKey, lockToken);
         }
     }
@@ -937,7 +1032,7 @@ public class CartServiceImpl implements CartService {
         }
 
         Map<Long, List<CartItemResponse>> itemsByShop = items.stream()
-                .collect(Collectors.groupingBy(CartItemResponse::getShopId, LinkedHashMap::new, Collectors.toList()));
+                .collect(Collectors.groupingBy(item -> item.getShopId() != null ? item.getShopId() : 1L, LinkedHashMap::new, Collectors.toList()));
 
         List<CartShopGroupResponse> shopGroups = new ArrayList<>();
         BigDecimal totalCartAmount = BigDecimal.ZERO;

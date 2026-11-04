@@ -4,10 +4,12 @@ import {
   ArrowLeft, CheckCircle2, AlertCircle, Eye, EyeOff, Sparkles, KeyRound 
 } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useCartStore } from '../stores/useCartStore';
 import axiosClient from '../api/axiosClient';
 
 export default function LoginPage({ onBackToHome, onLoginSuccess }) {
   const { login } = useAuthStore();
+  const { mergeCartOnLogin } = useCartStore();
   
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
   
@@ -48,6 +50,18 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
       if (res.success && res.data) {
         login(res.data);
         const role = res.data.role;
+        const userId = res.data.userId || res.data.id || 1001;
+
+        // Tự động hợp nhất giỏ hàng khách vãng lai từ LocalStorage lên User Cart trên Redis
+        try {
+          const mergeResult = await mergeCartOnLogin(userId);
+          if (mergeResult?.warnings?.length > 0) {
+            console.info('Cảnh báo tồn kho khi hợp nhất giỏ hàng:', mergeResult.warnings);
+          }
+        } catch (mergeErr) {
+          console.warn('Lỗi khi hợp nhất giỏ hàng:', mergeErr);
+        }
+
         setSuccessMsg(`Đăng nhập thành công! Chào mừng ${res.data.fullName || res.data.username}`);
         
         setTimeout(() => {
@@ -82,6 +96,11 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
         role,
         accessToken: 'mock_jwt_token_for_quickshop_local_demo',
       };
+
+      // Tự động kích hoạt hợp nhất giỏ hàng demo
+      try {
+        await mergeCartOnLogin(mockData.userId);
+      } catch (e) {}
 
       login(mockData);
       setSuccessMsg(`Đăng nhập thành công: ${fullName} [${role}]`);

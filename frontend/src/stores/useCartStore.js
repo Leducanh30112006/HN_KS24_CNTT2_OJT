@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import axiosClient from '../api/axiosClient';
 
 export const useCartStore = create(
   persist(
@@ -93,6 +94,44 @@ export const useCartStore = create(
           groups[sId].items.push(item);
         }
         return Object.values(groups);
+      },
+
+      // Hợp nhất giỏ hàng khách vãng lai từ LocalStorage vào User Cart khi đăng nhập
+      mergeCartOnLogin: async (userId) => {
+        const guestItems = get().items;
+        if (!guestItems || guestItems.length === 0 || !userId) {
+          return { success: true, mergedCount: 0, warnings: [] };
+        }
+
+        try {
+          const payload = {
+            requestId: `req-merge-${userId}-${Date.now()}`,
+            items: guestItems.map((item) => ({
+              variantId: Number(item.variantId),
+              quantity: Number(item.quantity) || 1,
+            })),
+          };
+
+          const res = await axiosClient.post('/api/cart/merge', payload, {
+            headers: {
+              'X-User-Id': userId,
+              'X-Idempotency-Key': payload.requestId,
+            },
+          });
+
+          const data = res.data?.data;
+          // Sau khi merge thành công, làm trống giỏ hàng local để chuyển sang đồng bộ User Cart
+          set({ items: [] });
+          return {
+            success: true,
+            mergedCount: data?.mergedItemsCount || 0,
+            warnings: data?.warnings || [],
+            cart: data?.cart,
+          };
+        } catch (err) {
+          console.warn('Không thể hợp nhất giỏ hàng lên máy chủ (hoạt động chế độ offline):', err);
+          return { success: false, error: err };
+        }
       },
     }),
     {

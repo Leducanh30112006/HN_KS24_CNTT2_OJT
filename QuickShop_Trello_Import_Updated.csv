@@ -376,7 +376,7 @@ Tích hợp MinIO upload ảnh sản phẩm; kiểm tra loại file/kích thư�
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - SKU API; MinIO","2026-11-04","2026-11-04"
-"Cần làm","[Cart & Checkout] Triển khai merge Guest Cart sang User Cart khi đăng nhập; kiểm tra trùng SKU và giới hạn tồn kho: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+"Đã xong","[Cart & Checkout] Triển khai merge Guest Cart sang User Cart khi đăng nhập; kiểm tra trùng SKU và giới hạn tồn kho: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Tư, 2026-11-04
 **Phân hệ:** Cart & Checkout
 
