@@ -30,6 +30,48 @@ export default function ProductDetailModal({ product, onClose, onBuyNow, onRequi
 
   const [selectedColor, setSelectedColor] = useState(colors[0] || '');
   const [selectedSize, setSelectedSize] = useState(sizes[0] || '');
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  // Zoom on hover state
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+  const [isZoomed, setIsZoomed] = useState(false);
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomPos({
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+    });
+  };
+
+  const handleMouseEnter = () => setIsZoomed(true);
+  const handleMouseLeave = () => {
+    setIsZoomed(false);
+    setZoomPos({ x: 50, y: 50 });
+  };
+
+  // Chỉ lấy danh sách ảnh của chính sản phẩm này
+  const productImages = React.useMemo(() => {
+    if (!product) return [];
+    const list = [];
+    if (product.mainImage) list.push(product.mainImage);
+    if (Array.isArray(product.images)) {
+      product.images.forEach((img) => {
+        if (img && !list.includes(img)) list.push(img);
+      });
+    }
+    if (Array.isArray(product.variants)) {
+      product.variants.forEach((v) => {
+        if (v.image && !list.includes(v.image)) list.push(v.image);
+      });
+    }
+    if (list.length === 0) {
+      list.push('https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80');
+    }
+    return list;
+  }, [product]);
 
   // Select matching variant when color or size changes
   useEffect(() => {
@@ -159,29 +201,61 @@ export default function ProductDetailModal({ product, onClose, onBuyNow, onRequi
         {/* Modal Scrollable Body */}
         <div className="overflow-y-auto p-4 sm:p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-            {/* Left: Product Images */}
+            {/* Left: Product Images with Zoom On Hover */}
             <div className="space-y-3">
-              <div className="aspect-square rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 shadow-inner">
+              <div 
+                className="relative aspect-square rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 shadow-inner group cursor-crosshair select-none"
+                onMouseMove={handleMouseMove}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+              >
                 <img
-                  src={product.mainImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'}
+                  src={productImages[activeImageIndex] || product.mainImage}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-150 ease-out pointer-events-none"
+                  style={{
+                    transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                    transform: isZoomed ? 'scale(1.75)' : 'scale(1)',
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = product.mainImage;
+                  }}
                 />
+                <div className={`absolute bottom-3 right-3 bg-slate-900/60 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-1 rounded-lg pointer-events-none transition-opacity duration-200 z-10 flex items-center gap-1 ${
+                  isZoomed ? 'opacity-0' : 'opacity-80'
+                }`}>
+                  <span>🔍 Rê chuột để zoom</span>
+                </div>
               </div>
-              <div className="grid grid-cols-4 gap-2">
-                {[1, 2, 3, 4].map((idx) => (
-                  <div
-                    key={idx}
-                    className="aspect-square rounded-xl overflow-hidden border-2 border-orange-500/40 p-0.5 bg-slate-50 cursor-pointer hover:border-orange-600 transition"
-                  >
-                    <img
-                      src={product.mainImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'}
-                      alt="thumb"
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  </div>
-                ))}
-              </div>
+
+              {/* Thumbnail Row - CHỈ hiển thị khi sản phẩm có nhiều ảnh thực tế của chính nó */}
+              {productImages.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {productImages.map((img, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveImageIndex(idx)}
+                      className={`w-14 h-14 flex-shrink-0 rounded-xl overflow-hidden border-2 transition p-0.5 bg-slate-50 cursor-pointer ${
+                        activeImageIndex === idx
+                          ? 'border-orange-600 shadow-md ring-2 ring-orange-500/20 scale-95'
+                          : 'border-slate-200 hover:border-orange-300 opacity-80 hover:opacity-100'
+                      }`}
+                    >
+                      <img
+                        src={img}
+                        alt={`Ảnh ${idx + 1}`}
+                        className="w-full h-full object-cover rounded-lg"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = product.mainImage;
+                        }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Guarantees Box */}
               <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-2 text-xs text-slate-600">
