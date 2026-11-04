@@ -131,6 +131,11 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Refresh token không hợp lệ hoặc đã hết hạn");
         }
 
+        String tokenType = tokenProvider.getTokenType(refreshToken);
+        if (!"REFRESH".equalsIgnoreCase(tokenType)) {
+            throw new BadRequestException("Token cung cấp không phải là refresh token");
+        }
+
         String username = tokenProvider.getUsernameFromToken(refreshToken);
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));

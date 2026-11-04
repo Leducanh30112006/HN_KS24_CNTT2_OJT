@@ -406,6 +406,7 @@ class AuthServiceTest {
         @DisplayName("Làm mới token thành công")
         void refreshToken_Success() {
             when(tokenProvider.validateToken("valid_refresh_token")).thenReturn(true);
+            when(tokenProvider.getTokenType("valid_refresh_token")).thenReturn("REFRESH");
             when(tokenProvider.getUsernameFromToken("valid_refresh_token")).thenReturn("testbuyer");
             when(userRepository.findByUsername("testbuyer")).thenReturn(Optional.of(sampleUser));
             when(tokenProvider.generateAccessToken(sampleUser)).thenReturn("new_access_token");
@@ -416,6 +417,17 @@ class AuthServiceTest {
             assertThat(response).isNotNull();
             assertThat(response.getAccessToken()).isEqualTo("new_access_token");
             assertThat(response.getRefreshToken()).isEqualTo("new_refresh_token");
+        }
+
+        @Test
+        @DisplayName("Làm mới token thất bại - token không phải là type REFRESH")
+        void refreshToken_WrongType_ThrowsBadRequest() {
+            when(tokenProvider.validateToken("access_token")).thenReturn(true);
+            when(tokenProvider.getTokenType("access_token")).thenReturn("ACCESS");
+
+            assertThatThrownBy(() -> authService.refreshToken("access_token"))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("không phải là refresh token");
         }
 
         @Test

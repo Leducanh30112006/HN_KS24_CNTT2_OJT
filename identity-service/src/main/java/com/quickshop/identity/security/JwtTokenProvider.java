@@ -50,6 +50,7 @@ public class JwtTokenProvider {
                 .claim("email", user.getEmail())
                 .claim("role", user.getRole().name())
                 .claim("fullName", user.getFullName())
+                .claim("type", "ACCESS")
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(signingKey, SignatureAlgorithm.HS256)
@@ -98,5 +99,10 @@ public class JwtTokenProvider {
             return ((Number) userId).longValue();
         }
         return Long.parseLong(String.valueOf(userId));
+    }
+
+    public String getTokenType(String token) {
+        Object type = getClaimsFromToken(token).get("type");
+        return type != null ? String.valueOf(type) : null;
     }
 }
