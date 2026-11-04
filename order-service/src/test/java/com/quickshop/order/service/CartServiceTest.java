@@ -922,4 +922,239 @@ class CartServiceTest {
         assertTrue(metadata.isExists());
         assertNotNull(metadata.getExpiresAt());
     }
+    // ==========================================
+    // TESTS CHO CART MERGE FLOW (KIỂM TRA TRÙNG SKU & TỒN KHO)
+    // ==========================================
+
+    @Test
+    @DisplayName("Merge Cart từ Redis Guest Cart theo guestId -> Đọc Redis, hợp nhất vào User Cart và xóa Redis Guest Cart key")
+    void testMergeGuestCartToUserCart_FromRedis_SuccessAndCleansGuestCart() throws Exception {
+        String guestId = "guest-merge-session";
+        String guestCartKey = "cart:guest:" + guestId;
+        String guestLockKey = "lock:cart:guest:" + guestId;
+
+        CartItemRedisDto guestItemDto = CartItemRedisDto.builder()
+                .variantId(VARIANT_ID_1)
+                .productId(1L)
+                .shopId(10L)
+                .shopName("Shop Công Nghệ")
+                .productName("Chuột gaming")
+                .sku("SKU-MOUSE-01")
+                .price(BigDecimal.valueOf(250000))
+                .quantity(3)
+                .availableStock(20)
+                .cartType(CartType.GUEST)
+                .ownerId(guestId)
+                .build();
+
+        CatalogVariantValidationDto catalogDto = CatalogVariantValidationDto.builder()
+                .variantId(VARIANT_ID_1)
+                .productId(1L)
+                .shopId(10L)
+                .shopName("Shop Công Nghệ")
+                .productName("Chuột gaming")
+                .sku("SKU-MOUSE-01")
+                .price(BigDecimal.valueOf(250000))
+                .availableStock(20)
+                .active(true)
+                .build();
+
+        when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
+        when(hashOperations.entries(guestCartKey)).thenReturn(Map.of(
+                String.valueOf(VARIANT_ID_1), objectMapper.writeValueAsString(guestItemDto)
+        ));
+        when(redisDistributedLock.acquireLock(eq(LOCK_KEY), anyLong(), anyInt(), anyLong())).thenReturn(LOCK_TOKEN);
+        when(redisDistributedLock.acquireLock(eq(guestLockKey), anyLong(), anyInt(), anyLong())).thenReturn("guest-token");
+        when(hashOperations.entries(CART_KEY)).thenReturn(Collections.emptyMap());
+        when(catalogServiceClient.getVariantDetails(VARIANT_ID_1)).thenReturn(Optional.of(catalogDto));
+        when(stringRedisTemplate.delete(guestCartKey)).thenReturn(Boolean.TRUE);
+
+        MergeCartResponse response = cartService.mergeGuestCartToUserCart(USER_ID, guestId, "req-redis-merge-01");
+
+        assertNotNull(response);
+        assertEquals(guestId, response.getGuestId());
+        assertTrue(response.isClearedGuestCart());
+        assertEquals(1, response.getMergedItemsCount());
+        assertEquals(0, response.getDuplicateSkuCount());
+        assertTrue(response.getWarnings().isEmpty());
+
+        verify(stringRedisTemplate).delete(guestCartKey);
+        verify(redisDistributedLock).releaseLock(guestLockKey, "guest-token");
+        verify(redisDistributedLock).releaseLock(LOCK_KEY, LOCK_TOKEN);
+    }
+
+    @Test
+    @DisplayName("Merge Cart: Danh sách guest payload có nhiều item trùng SKU -> Tự động gộp cộng dồn trước khi hợp nhất")
+    void testMergeCart_AggregatesDuplicateVariantsInGuestPayload() throws Exception {
+        GuestCartItemDto item1 = GuestCartItemDto.builder()
+                .variantId(VARIANT_ID_1)
+                .quantity(2)
+                .build();
+        GuestCartItemDto item2 = GuestCartItemDto.builder()
+                .variantId(VARIANT_ID_1) // Cùng variantId=201
+                .quantity(3)
+                .build();
+
+        MergeCartRequest request = MergeCartRequest.builder()
+                .requestId("req-agg-duplicate")
+                .items(List.of(item1, item2))
+                .build();
+
+        CatalogVariantValidationDto catalogDto = CatalogVariantValidationDto.builder()
+                .variantId(VARIANT_ID_1)
+                .productId(1L)
+                .shopId(10L)
+                .shopName("Shop")
+                .productName("Sản phẩm")
+                .sku("SKU-01")
+                .price(BigDecimal.valueOf(100000))
+                .availableStock(20)
+                .active(true)
+                .build();
+
+        when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
+        when(redisDistributedLock.acquireLock(eq(LOCK_KEY), anyLong(), anyInt(), anyLong())).thenReturn(LOCK_TOKEN);
+        when(hashOperations.entries(CART_KEY)).thenReturn(Collections.emptyMap());
+        when(catalogServiceClient.getVariantDetails(VARIANT_ID_1)).thenReturn(Optional.of(catalogDto));
+
+        MergeCartResponse response = cartService.mergeCart(USER_ID, request);
+
+        assertNotNull(response);
+        assertEquals(1, response.getMergedItemsCount(), "Chỉ tạo 1 SKU duy nhất trong giỏ hàng");
+        assertEquals(0, response.getDuplicateSkuCount(), "Chưa có trong User Cart ban đầu nên duplicateSkuCount = 0");
+
+        verify(hashOperations).putAll(eq(CART_KEY), argThat(map -> {
+            String json = (String) map.get(String.valueOf(VARIANT_ID_1));
+            return json != null && json.contains("\"quantity\":5");
+        }));
+        verify(redisDistributedLock).releaseLock(LOCK_KEY, LOCK_TOKEN);
+    }
+
+    @Test
+    @DisplayName("Merge Cart: Request thiếu cả guestId và items -> Ném BadRequestException")
+    void testMergeCart_InvalidPayload_ThrowsBadRequestException() {
+        MergeCartRequest emptyRequest = MergeCartRequest.builder()
+                .guestId(null)
+                .items(Collections.emptyList())
+                .build();
+
+        assertThrows(BadRequestException.class, () ->
+                cartService.mergeCart(USER_ID, emptyRequest)
+        );
+
+        verifyNoInteractions(redisDistributedLock);
+    }
+
+    @Test
+    @DisplayName("Merge Cart: Tổng số lượng sau khi gộp vượt 999 -> Giới hạn tối đa 999 kèm cảnh báo")
+    void testMergeCart_ExceedsMaxLimit999_CapsAt999WithWarning() throws Exception {
+        GuestCartItemDto guestItem = GuestCartItemDto.builder()
+                .variantId(VARIANT_ID_1)
+                .quantity(600)
+                .build();
+
+        MergeCartRequest request = MergeCartRequest.builder()
+                .requestId("req-max-999")
+                .items(List.of(guestItem))
+                .build();
+
+        CartItemRedisDto userExisting = CartItemRedisDto.builder()
+                .variantId(VARIANT_ID_1)
+                .quantity(500)
+                .price(BigDecimal.valueOf(50000))
+                .build();
+
+        CatalogVariantValidationDto catalogDto = CatalogVariantValidationDto.builder()
+                .variantId(VARIANT_ID_1)
+                .productId(1L)
+                .shopId(10L)
+                .shopName("Shop")
+                .productName("Sản phẩm số lượng lớn")
+                .sku("SKU-BULK")
+                .price(BigDecimal.valueOf(50000))
+                .availableStock(2000)
+                .active(true)
+                .build();
+
+        when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
+        when(redisDistributedLock.acquireLock(eq(LOCK_KEY), anyLong(), anyInt(), anyLong())).thenReturn(LOCK_TOKEN);
+        when(hashOperations.entries(CART_KEY)).thenReturn(Map.of(
+                String.valueOf(VARIANT_ID_1), objectMapper.writeValueAsString(userExisting)
+        ));
+        when(catalogServiceClient.getVariantDetails(VARIANT_ID_1)).thenReturn(Optional.of(catalogDto));
+
+        MergeCartResponse response = cartService.mergeCart(USER_ID, request);
+
+        assertNotNull(response);
+        assertEquals(1, response.getDuplicateSkuCount());
+        assertTrue(response.getWarnings().stream().anyMatch(w -> w.contains("999")));
+
+        verify(hashOperations).putAll(eq(CART_KEY), argThat(map -> {
+            String json = (String) map.get(String.valueOf(VARIANT_ID_1));
+            return json != null && json.contains("\"quantity\":999");
+        }));
+        verify(redisDistributedLock).releaseLock(LOCK_KEY, LOCK_TOKEN);
+    }
+
+    @Test
+    @DisplayName("Merge Cart: Hợp nhất Hybrid (kết hợp cả Redis Guest Cart và danh sách items payload)")
+    void testMergeCart_Hybrid_CombinesRedisAndPayloadItems() throws Exception {
+        String guestId = "guest-hybrid";
+        String guestCartKey = "cart:guest:" + guestId;
+        String guestLockKey = "lock:cart:guest:" + guestId;
+
+        CartItemRedisDto redisGuestItem = CartItemRedisDto.builder()
+                .variantId(VARIANT_ID_1)
+                .quantity(2)
+                .build();
+
+        GuestCartItemDto payloadItem = GuestCartItemDto.builder()
+                .variantId(VARIANT_ID_2)
+                .quantity(3)
+                .build();
+
+        MergeCartRequest request = MergeCartRequest.builder()
+                .requestId("req-hybrid-01")
+                .guestId(guestId)
+                .items(List.of(payloadItem))
+                .build();
+
+        CatalogVariantValidationDto catalog1 = CatalogVariantValidationDto.builder()
+                .variantId(VARIANT_ID_1)
+                .productName("Sp 1")
+                .sku("SKU-1")
+                .price(BigDecimal.valueOf(100000))
+                .availableStock(10)
+                .active(true)
+                .build();
+
+        CatalogVariantValidationDto catalog2 = CatalogVariantValidationDto.builder()
+                .variantId(VARIANT_ID_2)
+                .productName("Sp 2")
+                .sku("SKU-2")
+                .price(BigDecimal.valueOf(200000))
+                .availableStock(10)
+                .active(true)
+                .build();
+
+        when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
+        when(hashOperations.entries(guestCartKey)).thenReturn(Map.of(
+                String.valueOf(VARIANT_ID_1), objectMapper.writeValueAsString(redisGuestItem)
+        ));
+        when(redisDistributedLock.acquireLock(eq(LOCK_KEY), anyLong(), anyInt(), anyLong())).thenReturn(LOCK_TOKEN);
+        when(redisDistributedLock.acquireLock(eq(guestLockKey), anyLong(), anyInt(), anyLong())).thenReturn("guest-token");
+        when(hashOperations.entries(CART_KEY)).thenReturn(Collections.emptyMap());
+        when(catalogServiceClient.getVariantDetails(VARIANT_ID_1)).thenReturn(Optional.of(catalog1));
+        when(catalogServiceClient.getVariantDetails(VARIANT_ID_2)).thenReturn(Optional.of(catalog2));
+        when(stringRedisTemplate.delete(guestCartKey)).thenReturn(Boolean.TRUE);
+
+        MergeCartResponse response = cartService.mergeCart(USER_ID, request);
+
+        assertNotNull(response);
+        assertEquals(2, response.getMergedItemsCount(), "Phải hợp nhất cả 2 biến thể từ 2 nguồn");
+        assertTrue(response.isClearedGuestCart());
+        verify(stringRedisTemplate).delete(guestCartKey);
+        verify(redisDistributedLock).releaseLock(guestLockKey, "guest-token");
+        verify(redisDistributedLock).releaseLock(LOCK_KEY, LOCK_TOKEN);
+    }
 }

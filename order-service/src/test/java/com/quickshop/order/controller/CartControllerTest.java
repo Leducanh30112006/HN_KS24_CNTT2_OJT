@@ -276,7 +276,7 @@ class CartControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.data.items").exists());
+                .andExpect(jsonPath("$.message").value("Yêu cầu hợp nhất giỏ hàng không hợp lệ: cần cung cấp guestId hoặc danh sách items"));
 
         verifyNoInteractions(cartService);
     }
@@ -438,5 +438,93 @@ class CartControllerTest {
                 .andExpect(jsonPath("$.message").value("Yêu cầu cung cấp userId hoặc guestId để tra cứu metadata giỏ hàng"));
 
         verifyNoInteractions(cartService);
+    }
+    @Test
+    @DisplayName("POST /api/cart/merge/guest/{guestId} thành công -> Trả về 200 OK")
+    void testMergeGuestCartByPath_Success() throws Exception {
+        String guestId = "guest-path-test";
+        MergeCartResponse mergeResponse = MergeCartResponse.builder()
+                .cart(CartResponse.builder().userId(USER_ID).totalItems(2).totalQuantity(3).totalAmount(BigDecimal.valueOf(150000)).build())
+                .mergedItemsCount(2)
+                .guestId(guestId)
+                .clearedGuestCart(true)
+                .duplicateSkuCount(0)
+                .stockAdjustedCount(0)
+                .warnings(Collections.emptyList())
+                .duplicateRequest(false)
+                .build();
+
+        when(cartService.mergeGuestCartToUserCart(eq(USER_ID), eq(guestId), any())).thenReturn(mergeResponse);
+
+        mockMvc.perform(post("/api/cart/merge/guest/" + guestId)
+                        .header("X-User-Id", USER_ID)
+                        .header("X-Idempotency-Key", "req-idem-01"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Hợp nhất giỏ hàng khách vãng lai thành công"))
+                .andExpect(jsonPath("$.data.guestId").value(guestId))
+                .andExpect(jsonPath("$.data.clearedGuestCart").value(true))
+                .andExpect(jsonPath("$.data.mergedItemsCount").value(2));
+
+        verify(cartService).mergeGuestCartToUserCart(eq(USER_ID), eq(guestId), eq("req-idem-01"));
+    }
+
+    @Test
+    @DisplayName("POST /api/cart/merge với guestId trong request body -> Trả về 200 OK")
+    void testMergeCart_WithGuestIdInBody_Success() throws Exception {
+        String guestId = "guest-body-123";
+        MergeCartRequest request = MergeCartRequest.builder()
+                .guestId(guestId)
+                .clearGuestCartAfterMerge(true)
+                .build();
+
+        MergeCartResponse mergeResponse = MergeCartResponse.builder()
+                .cart(CartResponse.builder().userId(USER_ID).totalItems(1).totalQuantity(2).build())
+                .mergedItemsCount(1)
+                .guestId(guestId)
+                .clearedGuestCart(true)
+                .build();
+
+        when(cartService.mergeCart(eq(USER_ID), any(MergeCartRequest.class))).thenReturn(mergeResponse);
+
+        mockMvc.perform(post("/api/cart/merge")
+                        .header("X-User-Id", USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.guestId").value(guestId))
+                .andExpect(jsonPath("$.data.clearedGuestCart").value(true));
+
+        verify(cartService).mergeCart(eq(USER_ID), any(MergeCartRequest.class));
+    }
+
+    @Test
+    @DisplayName("POST /api/cart/merge với header X-Guest-Id -> Tự động nhận diện guestId và trả về 200 OK")
+    void testMergeCart_WithHeaderGuestId_Success() throws Exception {
+        String guestId = "guest-header-xyz";
+        MergeCartRequest request = MergeCartRequest.builder()
+                .clearGuestCartAfterMerge(true)
+                .build();
+
+        MergeCartResponse mergeResponse = MergeCartResponse.builder()
+                .cart(CartResponse.builder().userId(USER_ID).totalItems(1).totalQuantity(1).build())
+                .mergedItemsCount(1)
+                .guestId(guestId)
+                .clearedGuestCart(true)
+                .build();
+
+        when(cartService.mergeCart(eq(USER_ID), any(MergeCartRequest.class))).thenReturn(mergeResponse);
+
+        mockMvc.perform(post("/api/cart/merge")
+                        .header("X-User-Id", USER_ID)
+                        .header("X-Guest-Id", guestId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.guestId").value(guestId));
+
+        verify(cartService).mergeCart(eq(USER_ID), argThat(req -> guestId.equals(req.getGuestId())));
     }
 }

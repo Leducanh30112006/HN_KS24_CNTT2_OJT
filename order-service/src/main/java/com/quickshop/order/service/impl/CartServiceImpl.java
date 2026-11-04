@@ -153,7 +153,7 @@ public class CartServiceImpl implements CartService {
             CartItemRedisDto updatedDto = CartItemRedisDto.builder()
                     .variantId(catalogDto.getVariantId())
                     .productId(catalogDto.getProductId())
-                    .shopId(catalogDto.getShopId())
+                    .shopId(catalogDto.getShopId() != null ? catalogDto.getShopId() : 1L)
                     .shopName(catalogDto.getShopName() != null ? catalogDto.getShopName() : "Shop #" + catalogDto.getShopId())
                     .productName(catalogDto.getProductName())
                     .variantName(catalogDto.getVariantName())
@@ -1032,7 +1032,7 @@ public class CartServiceImpl implements CartService {
         }
 
         Map<Long, List<CartItemResponse>> itemsByShop = items.stream()
-                .collect(Collectors.groupingBy(CartItemResponse::getShopId, LinkedHashMap::new, Collectors.toList()));
+                .collect(Collectors.groupingBy(item -> item.getShopId() != null ? item.getShopId() : 1L, LinkedHashMap::new, Collectors.toList()));
 
         List<CartShopGroupResponse> shopGroups = new ArrayList<>();
         BigDecimal totalCartAmount = BigDecimal.ZERO;
