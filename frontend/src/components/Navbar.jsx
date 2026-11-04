@@ -45,7 +45,8 @@ export default function Navbar({
     }
   };
 
-  const isSellerOrAdmin = user && (user.role === 'ROLE_SELLER' || user.role === 'ROLE_ADMIN' || user.role === 'SELLER' || user.role === 'ADMIN');
+  const isSeller = user && (user.role === 'ROLE_SELLER' || user.role === 'SELLER');
+  const isSellerOnly = isSeller && !user?.role?.includes('ADMIN');
   const isAdmin = user && (user.role === 'ROLE_ADMIN' || user.role === 'ADMIN');
 
   return (
@@ -67,7 +68,7 @@ export default function Navbar({
 
           {/* Phân quyền điều hướng: Kênh Người Bán / Admin chỉ hiển thị khi có thẩm quyền */}
           <div className="flex items-center space-x-3 text-[11px] font-medium">
-            {isAuthenticated && isSellerOrAdmin && (
+            {isAuthenticated && isSellerOnly && (
               <button
                 onClick={() => setCurrentView('seller')}
                 className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
@@ -322,7 +323,7 @@ export default function Navbar({
                 </button>
 
                 {/* Chỉ hiển thị Kênh Người Bán nếu là ROLE_SELLER hoặc ROLE_ADMIN */}
-                {isSellerOrAdmin && (
+                {isSellerOnly && (
                   <button
                     onClick={() => {
                       setCurrentView('seller');
