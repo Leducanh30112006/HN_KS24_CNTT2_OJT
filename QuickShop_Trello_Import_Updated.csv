@@ -350,7 +350,7 @@ Triển khai Guest Cart và User Cart trên Redis; định nghĩa key/TTL và c�
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Cart API","2026-11-03","2026-11-03"
-"Cần làm","[Identity & Gateway] Triển khai login, access/refresh token; xác thực JWT ở Gateway và chuẩn hóa lỗi 401/403: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+"Đã xong","[Identity & Gateway] Triển khai login, access/refresh token; xác thực JWT ở Gateway và chuẩn hóa lỗi 401/403: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Tư, 2026-11-04
 **Phân hệ:** Identity & Gateway
 
