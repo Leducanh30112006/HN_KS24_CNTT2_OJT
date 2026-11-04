@@ -112,7 +112,7 @@ export default function CartPage({
   }
 
   return (
-    <div className="space-y-6 pb-28 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300">
       {/* 1. Header Navigation & Breadcrumbs */}
       <div className="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <button
@@ -304,9 +304,9 @@ export default function CartPage({
         })}
       </div>
 
-      {/* 5. Sticky Bottom Action Bar (Chuẩn Shopee) */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-2xl py-3 sm:py-4 px-4 sm:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-6">
+      {/* 5. Sticky Bottom Action Bar (Chuẩn Shopee - Tự động dừng phía trên Footer, không che Footer) */}
+      <div className="sticky bottom-4 z-30 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-3xl shadow-xl py-3.5 sm:py-4 px-4 sm:px-8 mt-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-6">
           {/* Left: Select all & Bulk delete */}
           <div className="flex items-center gap-4 text-xs font-bold text-slate-700 w-full sm:w-auto justify-between sm:justify-start">
             <label className="flex items-center space-x-2 cursor-pointer select-none">
