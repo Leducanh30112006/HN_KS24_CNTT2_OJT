@@ -118,6 +118,17 @@ public interface CartService {
     MergeCartResponse mergeCart(Long userId, MergeCartRequest request);
 
     /**
+     * Hợp nhất giỏ hàng khách vãng lai (Guest Cart trên Redis) trực tiếp vào User Cart sau khi đăng nhập.
+     * Tự động dọn dẹp Redis Guest Cart key sau khi gộp thành công.
+     *
+     * @param userId    ID người dùng đã xác thực
+     * @param guestId   Mã phiên giỏ hàng khách vãng lai trên Redis
+     * @param requestId Idempotency Key chống gửi lặp (tùy chọn)
+     * @return MergeCartResponse chứa giỏ hàng đã cập nhật và danh sách cảnh báo
+     */
+    MergeCartResponse mergeGuestCartToUserCart(Long userId, String guestId, String requestId);
+
+    /**
      * Xóa danh sách các mặt hàng đã checkout thành công khỏi Redis Cart.
      *
      * @param userId     ID người dùng
