@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import HeroBanner from './components/HeroBanner';
 import FlashSaleSection from './components/FlashSaleSection';
@@ -26,8 +26,9 @@ export default function App() {
   const [currentView, setCurrentView] = useState('storefront'); // 'storefront' | 'search' | 'product-detail' | 'login' | 'seller' | 'admin'
   const { user, isAuthenticated } = useAuthStore();
 
-  const isSellerOrAdmin = isAuthenticated && user && (user.role === 'ROLE_SELLER' || user.role === 'ROLE_ADMIN' || user.role === 'SELLER' || user.role === 'ADMIN');
+  const isSeller = isAuthenticated && user && (user.role === 'ROLE_SELLER' || user.role === 'SELLER');
   const isAdmin = isAuthenticated && user && (user.role === 'ROLE_ADMIN' || user.role === 'ADMIN');
+  const isSellerOnly = isSeller && !isAdmin;
 
   // Data states
   const [categories, setCategories] = useState(defaultCategories);
@@ -675,7 +676,7 @@ export default function App() {
 
         {/* VIEW 4: SELLER CENTER (KÊNH NGƯỜI BÁN - PHÂN QUYỀN RBAC) */}
         {currentView === 'seller' && (
-          isSellerOrAdmin ? (
+          isSellerOnly ? (
             <SellerPortal
               categories={categories}
               onBackToStorefront={() => {
