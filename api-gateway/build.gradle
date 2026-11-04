@@ -19,4 +19,8 @@ dependencies {
 
     // Actuator for Health checks
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // Test dependencies
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'io.projectreactor:reactor-test'
 }
