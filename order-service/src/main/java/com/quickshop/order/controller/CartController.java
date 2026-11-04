@@ -210,11 +210,28 @@ public class CartController {
     public ResponseEntity<ApiResponse<MergeCartResponse>> mergeCart(
             @RequestHeader(value = "X-User-Id", required = false) Long headerUserId,
             @RequestParam(value = "userId", required = false) Long paramUserId,
+            @RequestHeader(value = "X-Guest-Id", required = false) String headerGuestId,
             @Parameter(description = "Idempotency Key chống gửi lặp qua Header")
             @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKeyHeader,
             @Valid @RequestBody MergeCartRequest request) {
 
         Long userId = resolveUserId(headerUserId, paramUserId);
+
+        if (request == null || !request.hasValidPayload()) {
+            if (headerGuestId != null && !headerGuestId.isBlank()) {
+                if (request == null) {
+                    request = MergeCartRequest.builder().guestId(headerGuestId.trim()).build();
+                } else {
+                    request.setGuestId(headerGuestId.trim());
+                }
+            } else {
+                throw new BadRequestException("Yêu cầu hợp nhất giỏ hàng không hợp lệ: cần cung cấp guestId hoặc danh sách items");
+            }
+        } else if ((request.getGuestId() == null || request.getGuestId().isBlank())
+                && headerGuestId != null && !headerGuestId.isBlank()) {
+            request.setGuestId(headerGuestId.trim());
+        }
+
         if (request.getRequestId() == null || request.getRequestId().isBlank()) {
             if (idempotencyKeyHeader != null && !idempotencyKeyHeader.isBlank()) {
                 request.setRequestId(idempotencyKeyHeader.trim());
@@ -222,6 +239,23 @@ public class CartController {
         }
         MergeCartResponse response = cartService.mergeCart(userId, request);
         return ResponseEntity.ok(ApiResponse.ok("Hợp nhất giỏ hàng thành công", response));
+    }
+
+    @Operation(summary = "Hợp nhất toàn bộ giỏ hàng khách vãng lai trên Redis vào giỏ hàng người dùng khi đăng nhập")
+    @PostMapping("/merge/guest/{guestId}")
+    public ResponseEntity<ApiResponse<MergeCartResponse>> mergeGuestCartByPath(
+            @PathVariable("guestId") String guestId,
+            @RequestHeader(value = "X-User-Id", required = false) Long headerUserId,
+            @RequestParam(value = "userId", required = false) Long paramUserId,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKeyHeader) {
+
+        Long userId = resolveUserId(headerUserId, paramUserId);
+        if (guestId == null || guestId.isBlank()) {
+            throw new BadRequestException("Mã phiên khách vãng lai (guestId) không được để trống");
+        }
+
+        MergeCartResponse response = cartService.mergeGuestCartToUserCart(userId, guestId.trim(), idempotencyKeyHeader);
+        return ResponseEntity.ok(ApiResponse.ok("Hợp nhất giỏ hàng khách vãng lai thành công", response));
     }
 
     private Long resolveUserId(Long headerUserId, Long paramUserId) {
