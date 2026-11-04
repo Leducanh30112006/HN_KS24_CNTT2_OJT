@@ -363,7 +363,7 @@ Triển khai login, access/refresh token; xác thực JWT ở Gateway và chuẩ
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - OTP flow","2026-11-04","2026-11-04"
-"Cần làm","[Catalog & Storage] Tích hợp MinIO upload ảnh sản phẩm; kiểm tra loại file/kích thước và trả public URL: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+"Đã xong","[Catalog & Storage] Tích hợp MinIO upload ảnh sản phẩm; kiểm tra loại file/kích thước và trả public URL: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Tư, 2026-11-04
 **Phân hệ:** Catalog & Storage
 
