@@ -44,7 +44,7 @@ spring:
             key-resolver: "#{@ipKeyResolver}"
 
       routes:
-        # 1. Identity Service - Public Auth Endpoints
+        # 1. Identity Service - Public Auth Endpoints (Đăng ký, Đăng nhập, OTP, Refresh Token)
         - id: identity-public-route
           uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
           predicates:
@@ -52,16 +52,39 @@ spring:
           filters:
             - StripPrefix=0
 
-        # 2. Identity Service - Protected User & Shop Management
+        # 2. Identity Service - Public Shop Browsing (Xem thông tin gian hàng)
+        - id: identity-shops-public-route
+          uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/shops, /api/shops/{id}, /api/shops/owner/{ownerId}
+            - Method=GET
+          filters:
+            - StripPrefix=0
+
+        # 3. Identity Service - Admin Shop Approval (Admin duyệt/từ chối gian hàng KYC)
+        - id: identity-admin-shops-route
+          uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/shops/*/approve, /api/shops/*/reject
+            - Method=PUT
+          filters:
+            - name: JwtAuth
+              args:
+                requiredRole: ROLE_ADMIN
+            - StripPrefix=0
+
+        # 4. Identity Service - Protected User & Shop Onboarding (Buyer, Seller, Admin)
         - id: identity-protected-route
           uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/users/**, /api/shops/**
+            - Path=/api/users/**, /api/shops/register
           filters:
             - name: JwtAuth
+              args:
+                allowedRoles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN"
             - StripPrefix=0
 
-        # 3. Catalog Service - Public Catalog Browsing
+        # 5. Catalog Service - Public Catalog Browsing (Xem sản phẩm, danh mục, đánh giá)
         - id: catalog-service-route
           uri: ${CATALOG_SERVICE_URL:http://localhost:8082}
           predicates:
@@ -69,32 +92,40 @@ spring:
           filters:
             - StripPrefix=0
 
-        # 4. Order Service - Cart & Orders
+        # 6. Order Service - Cart, Orders & Vouchers (Yêu cầu đăng nhập)
         - id: order-service-route
           uri: ${ORDER_SERVICE_URL:http://localhost:8083}
           predicates:
             - Path=/api/orders/**, /api/cart/**, /api/vouchers/**
           filters:
             - name: JwtAuth
+              args:
+                allowedRoles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN"
             - StripPrefix=0
 
-        # 5. Payment Service - VNPay & Wallet
+        # 7. Payment Service - VNPay & Wallet (Yêu cầu đăng nhập)
         - id: payment-service-route
           uri: ${PAYMENT_SERVICE_URL:http://localhost:8084}
           predicates:
             - Path=/api/payments/**
           filters:
+            - name: JwtAuth
+              args:
+                allowedRoles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN"
             - StripPrefix=0
 
-        # 6. Shipping Service - Logistics & Webhooks
+        # 8. Shipping Service - Logistics & Tracking (Yêu cầu đăng nhập)
         - id: shipping-service-route
           uri: ${SHIPPING_SERVICE_URL:http://localhost:8085}
           predicates:
             - Path=/api/shipping/**
           filters:
+            - name: JwtAuth
+              args:
+                allowedRoles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN"
             - StripPrefix=0
 
-        # 7. Notification & AI Chatbot Service
+        # 9. Notification & AI Chatbot Service
         - id: notification-service-route
           uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
           predicates:
