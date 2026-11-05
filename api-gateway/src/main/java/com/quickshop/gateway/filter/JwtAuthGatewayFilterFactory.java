@@ -30,6 +30,8 @@ import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.util.Arrays;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -48,6 +50,11 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
     @Override
     public String name() {
         return "JwtAuth";
+    }
+
+    @Override
+    public List<String> shortcutFieldOrder() {
+        return Arrays.asList("requiredRole", "allowedRoles");
     }
 
     @PostConstruct
@@ -96,10 +103,11 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
                 Object role = claims.get("role");
                 String userRoleStr = role != null ? String.valueOf(role) : "";
 
-                // Kiểm tra phân quyền RBAC nếu cấu hình requiredRole
-                if (StringUtils.hasText(config.getRequiredRole()) && !config.getRequiredRole().equalsIgnoreCase(userRoleStr)) {
-                    log.warn("Access denied: user role {} does not match required role {}", userRoleStr, config.getRequiredRole());
-                    return onError(exchange, "Bạn không có quyền truy cập tài nguyên này", HttpStatus.FORBIDDEN);
+                // Kiểm tra phân quyền RBAC (Hỗ trợ requiredRole, allowedRoles và chuẩn hóa ROLE_ prefix)
+                if (!isAuthorized(userRoleStr, config)) {
+                    log.warn("Access denied: user role '{}' does not have permission. Required/Allowed: [requiredRole={}, allowedRoles={}]",
+                            userRoleStr, config.getRequiredRole(), config.getAllowedRoles());
+                    return onError(exchange, "Bạn không có quyền truy cập tài nguyên này (Yêu cầu vai trò phù hợp)", HttpStatus.FORBIDDEN);
                 }
 
                 ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
@@ -122,6 +130,58 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
                 return onError(exchange, "Token xác thực không hợp lệ", HttpStatus.UNAUTHORIZED);
             }
         };
+    }
+
+    private boolean isAuthorized(String userRole, Config config) {
+        boolean hasRequirement = false;
+
+        // 1. Kiểm tra requiredRole đơn
+        if (StringUtils.hasText(config.getRequiredRole())) {
+            hasRequirement = true;
+            if (isRoleMatching(userRole, config.getRequiredRole())) {
+                return true;
+            }
+        }
+
+        // 2. Kiểm tra allowedRoles (chuỗi phân tách bởi dấu phẩy, ví dụ: "ROLE_SELLER,ROLE_ADMIN")
+        if (StringUtils.hasText(config.getAllowedRoles())) {
+            hasRequirement = true;
+            String[] roles = config.getAllowedRoles().split(",");
+            for (String r : roles) {
+                if (isRoleMatching(userRole, r)) {
+                    return true;
+                }
+            }
+        }
+
+        // 3. Kiểm tra list roles
+        if (config.getRoles() != null && !config.getRoles().isEmpty()) {
+            hasRequirement = true;
+            for (String r : config.getRoles()) {
+                if (isRoleMatching(userRole, r)) {
+                    return true;
+                }
+            }
+        }
+
+        // Nếu không có bất kỳ cấu hình role nào, mặc định cho phép mọi người dùng đã xác thực (Authenticated)
+        return !hasRequirement;
+    }
+
+    private boolean isRoleMatching(String userRole, String targetRole) {
+        if (!StringUtils.hasText(userRole) || !StringUtils.hasText(targetRole)) {
+            return false;
+        }
+        String u = userRole.trim().toUpperCase();
+        String t = targetRole.trim().toUpperCase();
+        if (u.equals(t)) {
+            return true;
+        }
+
+        // Chuẩn hóa loại bỏ hoặc đối chiếu prefix ROLE_
+        String uClean = u.startsWith("ROLE_") ? u.substring(5) : u;
+        String tClean = t.startsWith("ROLE_") ? t.substring(5) : t;
+        return uClean.equals(tClean);
     }
 
     private String extractToken(ServerHttpRequest request) {
@@ -162,5 +222,7 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
     @Data
     public static class Config {
         private String requiredRole;
+        private String allowedRoles;
+        private List<String> roles;
     }
 }
