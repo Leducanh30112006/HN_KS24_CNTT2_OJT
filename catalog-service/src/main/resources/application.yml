@@ -45,6 +45,13 @@ minio:
   public-url: ${MINIO_PUBLIC_URL:http://localhost:9000}
   max-file-size: ${MINIO_MAX_FILE_SIZE:5242880} # 5MB
 
+catalog:
+  cache:
+    enabled: ${CATALOG_CACHE_ENABLED:true}
+    product-ttl: ${CATALOG_PRODUCT_TTL:600s} # 10 phút cho chi tiết sản phẩm
+    products-page-ttl: ${CATALOG_PRODUCTS_PAGE_TTL:300s} # 5 phút cho danh sách tìm kiếm / bộ lọc
+    category-ttl: ${CATALOG_CATEGORY_TTL:1800s} # 30 phút cho danh mục sản phẩm
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
