@@ -20,8 +20,8 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -239,7 +239,7 @@ class JwtAuthGatewayFilterFactoryTest {
     }
 
     @Test
-    @DisplayName("Phân quyền RBAC khớp - Cho phép đi tiếp vào microservice đích")
+    @DisplayName("Phân quyền RBAC khớp requiredRole - Cho phép đi tiếp vào microservice đích")
     void apply_RoleMatches_PassesToService() {
         String adminToken = generateToken("admin", 1L, "admin@quickshop.vn", "ROLE_ADMIN", "ACCESS", 3600000L);
 
@@ -250,6 +250,115 @@ class JwtAuthGatewayFilterFactoryTest {
 
         MockServerHttpRequest request = MockServerHttpRequest.get("/api/admin/system")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        AtomicBoolean chainCalled = new AtomicBoolean(false);
+        GatewayFilterChain chain = ex -> {
+            chainCalled.set(true);
+            return Mono.empty();
+        };
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        assertThat(chainCalled.get()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Cấu hình allowedRoles đa vai trò (SELLER, ADMIN) - Seller truy cập thành công")
+    void apply_AllowedRoles_SellerPermitted() {
+        String sellerToken = generateToken("seller1", 2L, "seller@quickshop.vn", "ROLE_SELLER", "ACCESS", 3600000L);
+
+        JwtAuthGatewayFilterFactory.Config config = new JwtAuthGatewayFilterFactory.Config();
+        config.setAllowedRoles("ROLE_SELLER,ROLE_ADMIN");
+
+        GatewayFilter filter = filterFactory.apply(config);
+
+        MockServerHttpRequest request = MockServerHttpRequest.post("/api/catalog/products/manage")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + sellerToken)
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        AtomicBoolean chainCalled = new AtomicBoolean(false);
+        GatewayFilterChain chain = ex -> {
+            chainCalled.set(true);
+            return Mono.empty();
+        };
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        assertThat(chainCalled.get()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Cấu hình allowedRoles đa vai trò (SELLER, ADMIN) - Buyer truy cập bị từ chối 403 Forbidden")
+    void apply_AllowedRoles_BuyerDenied() throws Exception {
+        String buyerToken = generateToken("buyer1", 3L, "buyer@quickshop.vn", "ROLE_BUYER", "ACCESS", 3600000L);
+
+        JwtAuthGatewayFilterFactory.Config config = new JwtAuthGatewayFilterFactory.Config();
+        config.setAllowedRoles("ROLE_SELLER,ROLE_ADMIN");
+
+        GatewayFilter filter = filterFactory.apply(config);
+
+        MockServerHttpRequest request = MockServerHttpRequest.post("/api/catalog/products/manage")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + buyerToken)
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        GatewayFilterChain chain = ex -> Mono.empty();
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        String responseBody = exchange.getResponse().getBodyAsString().block();
+        JsonNode rootNode = objectMapper.readTree(responseBody);
+        assertThat(rootNode.get("success").asBoolean()).isFalse();
+        assertThat(rootNode.get("message").asText()).contains("Bạn không có quyền truy cập tài nguyên này");
+    }
+
+    @Test
+    @DisplayName("Chuẩn hóa Role tiền tố - Role không có tiền tố ROLE_ vẫn khớp chuẩn xác")
+    void apply_RoleNormalization_MatchesWithoutPrefix() {
+        // Token có role = "SELLER" (không có tiền tố ROLE_)
+        String sellerToken = generateToken("seller2", 20L, "seller2@quickshop.vn", "SELLER", "ACCESS", 3600000L);
+
+        JwtAuthGatewayFilterFactory.Config config = new JwtAuthGatewayFilterFactory.Config();
+        config.setRequiredRole("ROLE_SELLER");
+
+        GatewayFilter filter = filterFactory.apply(config);
+
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/seller/orders")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + sellerToken)
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        AtomicBoolean chainCalled = new AtomicBoolean(false);
+        GatewayFilterChain chain = ex -> {
+            chainCalled.set(true);
+            return Mono.empty();
+        };
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        assertThat(chainCalled.get()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Không yêu cầu Role cụ thể - Mọi người dùng đã xác thực (Authenticated) đều được đi tiếp")
+    void apply_NoRoleRequirement_AnyAuthenticatedUserPasses() {
+        String buyerToken = generateToken("buyer1", 5L, "buyer@quickshop.vn", "ROLE_BUYER", "ACCESS", 3600000L);
+
+        // Config không thiết lập requiredRole hay allowedRoles
+        JwtAuthGatewayFilterFactory.Config config = new JwtAuthGatewayFilterFactory.Config();
+
+        GatewayFilter filter = filterFactory.apply(config);
+
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/users/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + buyerToken)
                 .build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
