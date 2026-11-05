@@ -239,3 +239,4 @@ class CatalogCacheServiceTest {
         verifyNoInteractions(redisTemplate);
     }
 }
+

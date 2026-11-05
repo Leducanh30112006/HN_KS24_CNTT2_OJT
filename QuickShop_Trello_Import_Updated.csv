@@ -415,7 +415,7 @@ Tích hợp Redis cache danh sách/chi tiết sản phẩm; cấu hình TTL và 
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Product API",2026-11-05,2026-11-05
-Cần làm,[Checkout] Triển khai checkout tạo MasterOrder và SubOrder theo từng Shop; lưu snapshot tên/giá/SKU: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,[Checkout] Triển khai checkout tạo MasterOrder và SubOrder theo từng Shop; lưu snapshot tên/giá/SKU: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Năm, 2026-11-05
 **Phân hệ:** Checkout
 
