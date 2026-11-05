@@ -389,7 +389,7 @@ Triển khai merge Guest Cart sang User Cart khi đăng nhập; kiểm tra trùn
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Guest/User Cart","2026-11-04","2026-11-04"
-"Cần làm","[Gateway & Security] Triển khai JWT Dual Auth Cookie/Bearer, RBAC Buyer/Seller/Admin và route protection: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+"Đã xong","[Gateway & Security] Triển khai JWT Dual Auth Cookie/Bearer, RBAC Buyer/Seller/Admin và route protection: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Năm, 2026-11-05
 **Phân hệ:** Gateway & Security
 
