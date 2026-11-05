@@ -20,6 +20,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -413,6 +416,89 @@ class ProductServiceTest {
 
             assertThatThrownBy(() -> productService.getVariantValidation(999L))
                     .isInstanceOf(ResourceNotFoundException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("7. Cơ chế Caching Sản phẩm (Redis Cache)")
+    class ProductCachingIntegrationTests {
+
+        @Test
+        @DisplayName("getProductById - Cache HIT: Trả về dữ liệu từ Redis cache mà không cần nạp biến thể")
+        void getProductById_CacheHit() {
+            sampleProduct.setStatus(ProductStatus.APPROVED);
+            when(productRepository.findById(100L)).thenReturn(Optional.of(sampleProduct));
+
+            ProductDto cachedDto = ProductDto.builder()
+                    .id(100L)
+                    .name("Bàn phím cơ không dây QuickKey (Cached)")
+                    .status(ProductStatus.APPROVED)
+                    .build();
+            when(cacheService.getCachedProduct(100L)).thenReturn(cachedDto);
+
+            ProductDto result = productService.getProductById(100L, null, null);
+
+            assertThat(result).isNotNull();
+            assertThat(result.getName()).isEqualTo("Bàn phím cơ không dây QuickKey (Cached)");
+            verify(variantRepository, never()).findByProductId(anyLong());
+            verify(cacheService, never()).cacheProduct(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("getProductById - Cache MISS: Truy vấn DB và tự động nạp vào Redis cache")
+        void getProductById_CacheMiss() {
+            sampleProduct.setStatus(ProductStatus.APPROVED);
+            when(productRepository.findById(100L)).thenReturn(Optional.of(sampleProduct));
+            when(cacheService.getCachedProduct(100L)).thenReturn(null);
+            when(variantRepository.findByProductId(100L)).thenReturn(List.of(sampleVariant));
+
+            ProductDto result = productService.getProductById(100L, null, null);
+
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(100L);
+            verify(variantRepository).findByProductId(100L);
+            verify(cacheService).cacheProduct(eq(100L), any(ProductDto.class));
+        }
+
+        @Test
+        @DisplayName("getProducts - Cache HIT: Trả về trang kết quả từ Redis cache và không truy vấn DB")
+        void getProducts_CacheHit() {
+            PageResult<ProductDto> cachedPage = PageResult.<ProductDto>builder()
+                    .content(List.of(ProductDto.builder().id(100L).name("Cached Item").build()))
+                    .page(0)
+                    .size(10)
+                    .totalElements(1L)
+                    .totalPages(1)
+                    .build();
+
+            when(cacheService.getCachedProductPage(anyString())).thenReturn(cachedPage);
+
+            PageResult<ProductDto> result = productService.getProducts(
+                    null, null, null, null, null, null, null, 0, 10, null);
+
+            assertThat(result).isNotNull();
+            assertThat(result.getTotalElements()).isEqualTo(1L);
+            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getContent().get(0).getName()).isEqualTo("Cached Item");
+            verify(productRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("getProducts - Cache MISS: Truy vấn Specification từ DB và lưu kết quả vào Redis cache")
+        @SuppressWarnings("unchecked")
+        void getProducts_CacheMiss() {
+            when(cacheService.getCachedProductPage(anyString())).thenReturn(null);
+            when(productRepository.findAll(any(Specification.class), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(sampleProduct)));
+            when(variantRepository.findByProductId(100L)).thenReturn(List.of(sampleVariant));
+
+            PageResult<ProductDto> result = productService.getProducts(
+                    null, null, null, null, null, null, null, 0, 10, null);
+
+            assertThat(result).isNotNull();
+            assertThat(result.getContent()).hasSize(1);
+            verify(productRepository).findAll(any(Specification.class), any(Pageable.class));
+            verify(cacheService).cacheProductPage(anyString(), any(PageResult.class));
         }
     }
 }
