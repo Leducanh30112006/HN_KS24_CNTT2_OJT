@@ -29,6 +29,8 @@ public class CheckoutResponse implements Serializable {
     private BigDecimal subtotalAmount;
     private BigDecimal shippingFeeTotal;
     private BigDecimal voucherDiscount;
+    @Builder.Default
+    private BigDecimal shopVoucherDiscountTotal = BigDecimal.ZERO;
     private MasterOrderStatus status;
     private String paymentMethod;
     private String recipientName;
