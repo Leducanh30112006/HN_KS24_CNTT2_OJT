@@ -14,7 +14,9 @@ import SellerPortal from './components/SellerPortal';
 import AdminPortal from './components/AdminPortal';
 import LoginPage from './components/LoginPage';
 import AuthModal from './components/AuthModal';
-import axiosClient from './api/axiosClient';
+import Pagination from './components/Pagination';
+import ApiErrorBanner from './components/ApiErrorBanner';
+import catalogApi, { mapPriceRange } from './api/catalogApi';
 import { 
   Filter, RotateCcw, Star, ChevronRight, ChevronDown, ShieldCheck, 
   HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft 
@@ -32,8 +34,19 @@ export default function App() {
 
   // Data states
   const [categories, setCategories] = useState(defaultCategories);
-  const [products, setProducts] = useState(defaultProducts);
+  const [products, setProducts] = useState(defaultProducts.slice(0, 12));
   const [loadingProducts, setLoadingProducts] = useState(false);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(12);
+  const [totalPages, setTotalPages] = useState(Math.max(1, Math.ceil(defaultProducts.length / 12)));
+  const [totalElements, setTotalElements] = useState(defaultProducts.length);
+
+  // API Error & Fallback states
+  const [apiError, setApiError] = useState(null);
+  const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   // Category showcase display toggle (1 row vs all)
   const [showAllCategories, setShowAllCategories] = useState(false);
@@ -55,50 +68,73 @@ export default function App() {
   // Fetch Categories from /api/catalog/categories
   const fetchCategories = async () => {
     try {
-      const res = await axiosClient.get('/api/catalog/categories');
-      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+      const res = await catalogApi.getCategories();
+      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
         setCategories(res.data);
       } else {
         setCategories(defaultCategories);
       }
     } catch (err) {
+      console.warn('Không thể nạp danh mục từ Catalog API:', err);
       setCategories(defaultCategories);
     }
   };
 
-  // Fetch Products from /api/catalog/products
-  const fetchProducts = async (catId = selectedCategory, kw = searchKeyword, sort = sortBy) => {
+  // Fetch Products from /api/catalog/products with full filtering & pagination
+  const fetchProducts = async (overrideParams = {}) => {
     setLoadingProducts(true);
-    let url = `/api/catalog/products?status=ACTIVE&sortBy=${sort}&size=50`;
-    if (catId) url += `&categoryId=${catId}`;
-    if (kw && kw.trim()) url += `&keyword=${encodeURIComponent(kw.trim())}`;
+
+    const catId = overrideParams.catId !== undefined ? overrideParams.catId : selectedCategory;
+    const kw = overrideParams.kw !== undefined ? overrideParams.kw : searchKeyword;
+    const sort = overrideParams.sort !== undefined ? overrideParams.sort : sortBy;
+    const range = overrideParams.range !== undefined ? overrideParams.range : priceRange;
+    const rating = overrideParams.rating !== undefined ? overrideParams.rating : minRating;
+    const page = overrideParams.page !== undefined ? overrideParams.page : currentPage;
+    const size = overrideParams.size !== undefined ? overrideParams.size : pageSize;
+
+    const { minPrice: mappedMinPrice, maxPrice: mappedMaxPrice } = mapPriceRange(range);
 
     try {
-      const res = await axiosClient.get(url);
-      if (res.success && res.data?.content && res.data.content.length >= 20) {
-        setProducts(res.data.content);
+      const res = await catalogApi.getProducts({
+        categoryId: catId,
+        keyword: kw,
+        sortBy: sort,
+        minPrice: mappedMinPrice,
+        maxPrice: mappedMaxPrice,
+        minRating: rating > 0 ? rating : undefined,
+        page,
+        size,
+      });
+
+      if (res && res.success && res.data) {
+        const pageData = res.data;
+        const items = Array.isArray(pageData.content) ? pageData.content : [];
+
+        // Nếu database chưa có dữ liệu và không áp dụng bộ lọc nào ở trang 0
+        if (items.length === 0 && !catId && !kw && range === 'all' && rating === 0 && page === 0) {
+          setProducts(defaultProducts.slice(0, size));
+          setTotalElements(defaultProducts.length);
+          setTotalPages(Math.max(1, Math.ceil(defaultProducts.length / size)));
+          setCurrentPage(0);
+          setIsUsingFallback(true);
+        } else {
+          setProducts(items);
+          setTotalElements(pageData.totalElements ?? items.length);
+          setTotalPages(pageData.totalPages ?? 1);
+          setCurrentPage(pageData.page ?? page);
+          setIsUsingFallback(false);
+          setApiError(null);
+        }
       } else {
-        // Filter local default
-        let filtered = [...defaultProducts];
-        if (catId) {
-          const childIds = categories.filter((c) => c.parentId === catId).map((c) => c.id);
-          const allowedCatIds = [catId, ...childIds];
-          filtered = filtered.filter((p) => allowedCatIds.includes(p.categoryId));
-        }
-        if (kw && kw.trim()) {
-          const lkw = kw.toLowerCase().trim();
-          filtered = filtered.filter((p) => p.name.toLowerCase().includes(lkw) || p.description.toLowerCase().includes(lkw));
-        }
-        if (sort === 'priceAsc') {
-          filtered.sort((a, b) => (a.minPrice || 0) - (b.minPrice || 0));
-        } else if (sort === 'priceDesc') {
-          filtered.sort((a, b) => (b.minPrice || 0) - (a.minPrice || 0));
-        } else if (sort === 'newest') {
-          filtered.sort((a, b) => b.id - a.id);
-        }
-        setProducts(filtered);
+        throw new Error(res?.message || 'Không nhận được dữ liệu hợp lệ từ Catalog API.');
       }
     } catch (err) {
+      console.warn('Catalog API offline hoặc lỗi kết nối, chuyển sang chế độ dữ liệu dự phòng:', err);
+      const errMsg = err?.response?.data?.message || err?.message || 'Không thể kết nối đến máy chủ Catalog API.';
+      setApiError(errMsg);
+      setIsUsingFallback(true);
+
+      // Lọc dữ liệu mẫu dự phòng phía client
       let filtered = [...defaultProducts];
       if (catId) {
         const childIds = categories.filter((c) => c.parentId === catId).map((c) => c.id);
@@ -107,18 +143,42 @@ export default function App() {
       }
       if (kw && kw.trim()) {
         const lkw = kw.toLowerCase().trim();
-        filtered = filtered.filter((p) => p.name.toLowerCase().includes(lkw) || p.description.toLowerCase().includes(lkw));
+        filtered = filtered.filter(
+          (p) =>
+            p.name.toLowerCase().includes(lkw) ||
+            (p.description && p.description.toLowerCase().includes(lkw))
+        );
+      }
+      if (mappedMinPrice !== null) {
+        filtered = filtered.filter((p) => (p.minPrice || 0) >= mappedMinPrice);
+      }
+      if (mappedMaxPrice !== null) {
+        filtered = filtered.filter((p) => (p.minPrice || 0) <= mappedMaxPrice);
+      }
+      if (rating > 0) {
+        filtered = filtered.filter((p) => (p.averageRating || 5.0) >= rating);
       }
       if (sort === 'priceAsc') {
         filtered.sort((a, b) => (a.minPrice || 0) - (b.minPrice || 0));
       } else if (sort === 'priceDesc') {
         filtered.sort((a, b) => (b.minPrice || 0) - (a.minPrice || 0));
       } else if (sort === 'newest') {
-        filtered.sort((a, b) => b.id - a.id);
+        filtered.sort((a, b) => (b.id || 0) - (a.id || 0));
       }
-      setProducts(filtered);
+
+      const total = filtered.length;
+      const computedTotalPages = Math.max(1, Math.ceil(total / size));
+      const validPage = Math.min(page, computedTotalPages - 1);
+      const start = Math.max(0, validPage * size);
+      const pagedItems = filtered.slice(start, start + size);
+
+      setProducts(pagedItems);
+      setTotalElements(total);
+      setTotalPages(computedTotalPages);
+      setCurrentPage(validPage);
     } finally {
       setLoadingProducts(false);
+      setIsRetrying(false);
     }
   };
 
@@ -127,13 +187,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchProducts(selectedCategory, searchKeyword, sortBy);
-  }, [selectedCategory, sortBy]);
+    fetchProducts();
+  }, [selectedCategory, sortBy, priceRange, minRating]);
 
   const handleSearchSubmit = (keywordOverride) => {
     const kw = keywordOverride !== undefined ? keywordOverride : searchKeyword;
     setSearchKeyword(kw);
-    fetchProducts(selectedCategory, kw, sortBy);
+    setCurrentPage(0);
+    fetchProducts({ kw, page: 0 });
     // Chuyển sang trang kết quả tìm kiếm chuyên biệt
     setCurrentView('search');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -157,20 +218,43 @@ export default function App() {
     setSortBy('newest');
     setPriceRange('all');
     setMinRating(0);
-    fetchProducts(null, '', 'newest');
+    setCurrentPage(0);
+    fetchProducts({
+      catId: null,
+      kw: '',
+      sort: 'newest',
+      range: 'all',
+      rating: 0,
+      page: 0,
+    });
   };
 
-  // Filter products by client criteria (Price Range & Min Rating)
-  const filteredProducts = products.filter((p) => {
-    const price = p.minPrice || 0;
-    if (priceRange === 'under1m' && price >= 1000000) return false;
-    if (priceRange === '1m-5m' && (price < 1000000 || price > 5000000)) return false;
-    if (priceRange === '5m-20m' && (price < 5000000 || price > 20000000)) return false;
-    if (priceRange === 'above20m' && price < 20000000) return false;
+  const handlePageChange = (newPage) => {
+    if (newPage < 0 || newPage >= totalPages || newPage === currentPage) return;
+    setCurrentPage(newPage);
+    fetchProducts({ page: newPage });
+    const gridElem = document.getElementById('catalog-product-grid');
+    if (gridElem) {
+      gridElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 350, behavior: 'smooth' });
+    }
+  };
 
-    if (minRating > 0 && (p.averageRating || 5.0) < minRating) return false;
-    return true;
-  });
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(0);
+    fetchProducts({ size: newSize, page: 0 });
+  };
+
+  const handleRetryApi = () => {
+    setIsRetrying(true);
+    fetchCategories();
+    fetchProducts();
+  };
+
+  // filteredProducts luôn tương đương products vì server hoặc fallback đã phân trang & lọc
+  const filteredProducts = products;
 
   // Hiển thị 1 hàng danh mục (6 danh mục) khi chưa bấm "Xem tất cả ngành hàng"
   const displayedCategories = showAllCategories ? categories : categories.slice(0, 6);
@@ -334,9 +418,25 @@ export default function App() {
 
               <div className="text-xs font-semibold px-4 py-2 bg-orange-50 border border-orange-200 text-orange-700 rounded-full shadow-inner flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-orange-500" />
-                <span>Tìm thấy <strong className="font-black text-orange-600">{filteredProducts.length}</strong> sản phẩm</span>
+                <span>
+                  Tìm thấy <strong className="font-black text-orange-600">{totalElements}</strong> sản phẩm
+                  {totalPages > 1 && (
+                    <span className="ml-1 text-slate-500 font-normal">
+                      (Trang {currentPage + 1}/{totalPages})
+                    </span>
+                  )}
+                </span>
               </div>
             </div>
+
+            {/* Thông báo lỗi kết nối nếu có */}
+            <ApiErrorBanner
+              error={apiError}
+              isRetrying={isRetrying}
+              fallbackActive={isUsingFallback}
+              onRetry={handleRetryApi}
+              onDismiss={() => setApiError(null)}
+            />
 
             {/* Search Sort Toolbar */}
             <div className="bg-white rounded-2xl border border-slate-200/90 p-3 sm:px-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm text-xs">
@@ -413,16 +513,28 @@ export default function App() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-                {filteredProducts.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    onSelect={handleSelectProduct}
-                    onSelectShop={handleSelectShop}
-                    onRequireAuth={() => setCurrentView('login')}
-                  />
-                ))}
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                  {filteredProducts.map((p) => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      onSelect={handleSelectProduct}
+                      onSelectShop={handleSelectShop}
+                      onRequireAuth={() => setCurrentView('login')}
+                    />
+                  ))}
+                </div>
+
+                {/* Phân trang kết quả tìm kiếm */}
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalElements={totalElements}
+                  pageSize={pageSize}
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handlePageSizeChange}
+                />
               </div>
             )}
           </div>
@@ -598,7 +710,16 @@ export default function App() {
               </aside>
 
               {/* Right Column: Sort Tool Bar & Product Grid */}
-              <div className="lg:col-span-3 space-y-4">
+              <div className="lg:col-span-3 space-y-4" id="catalog-product-grid">
+                {/* Thông báo lỗi kết nối nếu có */}
+                <ApiErrorBanner
+                  error={apiError}
+                  isRetrying={isRetrying}
+                  fallbackActive={isUsingFallback}
+                  onRetry={handleRetryApi}
+                  onDismiss={() => setApiError(null)}
+                />
+
                 {/* Sort Bar */}
                 <div className="bg-white rounded-2xl border border-slate-200/90 p-3 sm:px-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm text-xs">
                   <div className="flex items-center space-x-2">
@@ -629,19 +750,38 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className="text-slate-400 font-medium text-[11px]">
-                    Tìm thấy <strong className="text-slate-800">{filteredProducts.length}</strong> sản phẩm
+                  <div className="text-slate-500 font-medium text-[11px] flex items-center gap-2">
+                    <span>
+                      Tìm thấy <strong className="text-slate-800 font-bold">{totalElements}</strong> sản phẩm
+                    </span>
+                    {totalPages > 1 && (
+                      <span className="text-slate-400">
+                        (Trang <strong className="text-orange-600 font-semibold">{currentPage + 1}</strong> / {totalPages})
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 {/* Product Grid */}
                 {loadingProducts ? (
-                  <div className="py-20 text-center space-y-2">
-                    <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                    <div className="text-xs text-slate-400">Đang tải sản phẩm từ Catalog DB & Redis Cache...</div>
+                  <div className="space-y-4">
+                    <div className="py-6 text-center space-y-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                      <div className="w-7 h-7 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                      <div className="text-xs text-slate-500 font-medium">Đang tải sản phẩm từ Catalog Service & Redis Cache...</div>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5 animate-pulse">
+                          <div className="aspect-square bg-slate-100 rounded-xl" />
+                          <div className="h-3 bg-slate-100 rounded w-1/3" />
+                          <div className="h-4 bg-slate-100 rounded w-full" />
+                          <div className="h-4 bg-slate-100 rounded w-1/2" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : filteredProducts.length === 0 ? (
-                  <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-3">
+                  <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-3 shadow-sm">
                     <div className="w-16 h-16 rounded-full bg-orange-50 text-orange-400 mx-auto flex items-center justify-center">
                       <Filter className="w-8 h-8" />
                     </div>
@@ -657,16 +797,28 @@ export default function App() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                    {filteredProducts.map((p) => (
-                      <ProductCard
-                        key={p.id}
-                        product={p}
-                        onSelect={handleSelectProduct}
-                        onSelectShop={handleSelectShop}
-                        onRequireAuth={() => setCurrentView('login')}
-                      />
-                    ))}
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                      {filteredProducts.map((p) => (
+                        <ProductCard
+                          key={p.id}
+                          product={p}
+                          onSelect={handleSelectProduct}
+                          onSelectShop={handleSelectShop}
+                          onRequireAuth={() => setCurrentView('login')}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Phân trang cho Storefront Catalog */}
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalElements={totalElements}
+                      pageSize={pageSize}
+                      onPageChange={handlePageChange}
+                      onPageSizeChange={handlePageSizeChange}
+                    />
                   </div>
                 )}
               </div>

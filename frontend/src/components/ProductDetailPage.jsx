@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { 
   Star, ShoppingCart, ShieldCheck, Truck, RotateCcw, Store, Check, 
   MessageSquare, Send, Sparkles, ArrowLeft, Heart, Share2, 
-  ChevronRight, BadgeCheck, Zap, Shield, ThumbsUp, CheckCircle2 
+  ChevronRight, BadgeCheck, Zap, Shield, ThumbsUp, CheckCircle2, RefreshCw 
 } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
-import axiosClient from '../api/axiosClient';
+import catalogApi from '../api/catalogApi';
 import ProductCard from './ProductCard';
+import ApiErrorBanner from './ApiErrorBanner';
 
 export default function ProductDetailPage({ 
-  product, 
+  product: initialProduct, 
   allProducts = [], 
   onBack, 
   onSelectRelatedProduct, 
@@ -20,6 +21,13 @@ export default function ProductDetailPage({
 }) {
   const addToCart = useCartStore((state) => state.addToCart);
   const { user, isAuthenticated } = useAuthStore();
+
+  // Dữ liệu sản phẩm thời gian thực lấy từ Catalog Service / Redis Cache
+  const [liveProduct, setLiveProduct] = useState(initialProduct);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [detailError, setDetailError] = useState(null);
+
+  const product = liveProduct || initialProduct;
 
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [quantity, setQuantity] = useState(1);
@@ -80,14 +88,43 @@ export default function ProductDetailPage({
     setQuantity(1);
     setActiveImageIndex(0);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [product?.id]);
+  }, [initialProduct?.id]);
 
-  // Fetch reviews for product
+  // Tự động đồng bộ chi tiết sản phẩm và tồn kho SKU từ API Catalog
+  useEffect(() => {
+    if (initialProduct) {
+      setLiveProduct(initialProduct);
+    }
+    if (initialProduct?.id) {
+      setLoadingDetail(true);
+      setDetailError(null);
+      catalogApi.getProductById(initialProduct.id)
+        .then((res) => {
+          if (res && (res.data || res.success)) {
+            const data = res.data || res;
+            if (data && data.id) {
+              setLiveProduct(data);
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn('Lỗi đồng bộ chi tiết sản phẩm từ Catalog API:', err);
+          if (!initialProduct) {
+            setDetailError('Không thể tải dữ liệu chi tiết sản phẩm từ Catalog API.');
+          }
+        })
+        .finally(() => {
+          setLoadingDetail(false);
+        });
+    }
+  }, [initialProduct?.id]);
+
+  // Fetch reviews từ API Catalog
   useEffect(() => {
     if (product?.id) {
-      axiosClient.get(`/api/catalog/products/${product.id}/reviews`)
+      catalogApi.getProductReviews(product.id)
         .then((res) => {
-          if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
             setReviews(res.data);
           } else {
             setDefaultReviews();
@@ -177,7 +214,7 @@ export default function ProductDetailPage({
     setReviewMsg('');
 
     try {
-      const res = await axiosClient.post(`/api/catalog/products/${product.id}/reviews`, {
+      const res = await catalogApi.createProductReview(product.id, {
         subOrderId: 101,
         userId: user?.userId || 1,
         userName: user?.fullName || 'Khách hàng QuickShop',
@@ -250,6 +287,12 @@ export default function ProductDetailPage({
           <span className="text-slate-700 font-medium">{product.categoryName || 'Danh mục sản phẩm'}</span>
           <span>&gt;</span>
           <span className="text-slate-900 font-semibold truncate max-w-xs">{product.name}</span>
+          {loadingDetail && (
+            <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-orange-600 bg-orange-50 border border-orange-200/60 px-2 py-0.5 rounded-full font-medium animate-pulse ml-2">
+              <RefreshCw className="w-3 h-3 animate-spin text-orange-500" />
+              Đang đồng bộ giá & tồn kho API...
+            </span>
+          )}
         </div>
 
         <div className="hidden sm:flex items-center space-x-3 text-slate-400">
