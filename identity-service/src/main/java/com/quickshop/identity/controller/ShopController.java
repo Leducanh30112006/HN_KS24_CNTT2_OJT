@@ -1,100 +1,122 @@
 package com.quickshop.identity.controller;
 
 import com.quickshop.common.dto.ApiResponse;
-import com.quickshop.common.exception.ResourceNotFoundException;
-import com.quickshop.identity.entity.Role;
-import com.quickshop.identity.entity.Shop;
+import com.quickshop.common.exception.BadRequestException;
+import com.quickshop.identity.dto.CreateShopRequest;
+import com.quickshop.identity.dto.ShopResponse;
+import com.quickshop.identity.dto.UpdateShopRequest;
 import com.quickshop.identity.entity.ShopStatus;
-import com.quickshop.identity.entity.User;
-import com.quickshop.identity.repository.ShopRepository;
-import com.quickshop.identity.repository.UserRepository;
+import com.quickshop.identity.service.ShopService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/shops")
 @RequiredArgsConstructor
-@Tag(name = "Shop & Seller Management", description = "Quản lý gian hàng, đăng ký Seller KYC và duyệt mở Shop")
+@Tag(name = "Shop & Seller Management", description = "Quản lý gian hàng, đăng ký Seller KYC Onboarding và duyệt mở Shop")
 public class ShopController {
 
-    private final ShopRepository shopRepository;
-    private final UserRepository userRepository;
+    private final ShopService shopService;
 
     @GetMapping
-    @Operation(summary = "Lấy danh sách tất cả gian hàng")
-    public ResponseEntity<ApiResponse<List<Shop>>> getAllShops() {
-        return ResponseEntity.ok(ApiResponse.success(shopRepository.findAll()));
+    @Operation(summary = "Lấy danh sách tất cả gian hàng (Public)")
+    public ResponseEntity<ApiResponse<List<ShopResponse>>> getAllShops() {
+        return ResponseEntity.ok(ApiResponse.ok(shopService.getAllShops()));
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Lấy chi tiết gian hàng theo ID")
-    public ResponseEntity<ApiResponse<Shop>> getShopById(@PathVariable Long id) {
-        Optional<Shop> shopOpt = shopRepository.findById(id);
-        if (shopOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(ApiResponse.success(shopOpt.get()));
+    @Operation(summary = "Lấy chi tiết gian hàng theo ID (Public)")
+    public ResponseEntity<ApiResponse<ShopResponse>> getShopById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(shopService.getShopById(id)));
     }
 
     @GetMapping("/owner/{ownerId}")
-    @Operation(summary = "Lấy gian hàng theo ID chủ sở hữu")
-    public ResponseEntity<ApiResponse<Shop>> getShopByOwner(@PathVariable Long ownerId) {
-        Optional<Shop> shopOpt = shopRepository.findByOwnerId(ownerId);
-        if (shopOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(ApiResponse.success(shopOpt.get()));
+    @Operation(summary = "Lấy gian hàng theo ID chủ sở hữu (Public)")
+    public ResponseEntity<ApiResponse<ShopResponse>> getShopByOwner(@PathVariable Long ownerId) {
+        return ResponseEntity.ok(ApiResponse.ok(shopService.getShopByOwnerId(ownerId)));
+    }
+
+    @GetMapping("/my-shop")
+    @Operation(summary = "Lấy thông tin gian hàng của tài khoản đang đăng nhập")
+    public ResponseEntity<ApiResponse<ShopResponse>> getMyShop(
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader
+    ) {
+        Long ownerId = parseUserId(userIdHeader);
+        return ResponseEntity.ok(ApiResponse.ok(shopService.getMyShop(ownerId)));
     }
 
     @PostMapping("/register")
-    @Operation(summary = "Người dùng đăng ký mở gian hàng (Onboarding KYC)")
-    public ResponseEntity<ApiResponse<Shop>> registerShop(
-            @RequestBody Shop shopRequest,
-            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader
+    @Operation(summary = "Người dùng đăng ký mở gian hàng (Onboarding KYC - Trạng thái PENDING_APPROVAL)")
+    public ResponseEntity<ApiResponse<ShopResponse>> registerShop(
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @Valid @RequestBody CreateShopRequest request
     ) {
-        if (userIdHeader != null && !userIdHeader.isBlank()) {
-            shopRequest.setOwnerId(Long.parseLong(userIdHeader));
-        }
-        shopRequest.setStatus(ShopStatus.PENDING_APPROVAL);
-        Shop savedShop = shopRepository.save(shopRequest);
-        return ResponseEntity.ok(ApiResponse.success("Hồ sơ đăng ký mở gian hàng đã được gửi và đang chờ Admin duyệt", savedShop));
+        Long ownerId = parseUserId(userIdHeader);
+        ShopResponse response = shopService.registerShop(ownerId, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created("Hồ sơ đăng ký mở gian hàng đã được gửi thành công và đang chờ Admin duyệt", response));
+    }
+
+    @PutMapping("/my-shop")
+    @Operation(summary = "Chủ gian hàng cập nhật thông tin hồ sơ gian hàng cá nhân")
+    public ResponseEntity<ApiResponse<ShopResponse>> updateMyShop(
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @Valid @RequestBody UpdateShopRequest request
+    ) {
+        Long ownerId = parseUserId(userIdHeader);
+        ShopResponse myShop = shopService.getMyShop(ownerId);
+        ShopResponse response = shopService.updateShop(ownerId, myShop.getId(), request);
+        return ResponseEntity.ok(ApiResponse.ok("Cập nhật thông tin gian hàng thành công", response));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Cập nhật thông tin gian hàng theo ID")
+    public ResponseEntity<ApiResponse<ShopResponse>> updateShopById(
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateShopRequest request
+    ) {
+        Long ownerId = StringUtils.hasText(userIdHeader) ? Long.parseLong(userIdHeader) : null;
+        ShopResponse response = shopService.updateShop(ownerId, id, request);
+        return ResponseEntity.ok(ApiResponse.ok("Cập nhật thông tin gian hàng thành công", response));
+    }
+
+    @GetMapping("/status/{status}")
+    @Operation(summary = "Lọc danh sách gian hàng theo trạng thái (PENDING_APPROVAL, ACTIVE, REJECTED, SUSPENDED)")
+    public ResponseEntity<ApiResponse<List<ShopResponse>>> getShopsByStatus(@PathVariable ShopStatus status) {
+        return ResponseEntity.ok(ApiResponse.ok(shopService.getShopsByStatus(status)));
     }
 
     @PutMapping("/{id}/approve")
-    @Transactional
     @Operation(summary = "Admin duyệt mở gian hàng & nâng quyền ROLE_SELLER cho chủ shop")
-    public ResponseEntity<ApiResponse<Shop>> approveShop(@PathVariable Long id) {
-        Shop shop = shopRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", id));
-
-        shop.setStatus(ShopStatus.ACTIVE);
-        Shop updatedShop = shopRepository.save(shop);
-
-        // Nâng quyền tài khoản chủ shop thành ROLE_SELLER
-        userRepository.findById(shop.getOwnerId()).ifPresent(user -> {
-            user.setRole(Role.ROLE_SELLER);
-            userRepository.save(user);
-        });
-
-        return ResponseEntity.ok(ApiResponse.success("Đã phê duyệt gian hàng thành công và cấp quyền ROLE_SELLER", updatedShop));
+    public ResponseEntity<ApiResponse<ShopResponse>> approveShop(@PathVariable Long id) {
+        ShopResponse response = shopService.approveShop(id);
+        return ResponseEntity.ok(ApiResponse.ok("Đã phê duyệt gian hàng thành công và cấp quyền ROLE_SELLER", response));
     }
 
     @PutMapping("/{id}/reject")
-    @Transactional
     @Operation(summary = "Admin từ chối hồ sơ mở gian hàng")
-    public ResponseEntity<ApiResponse<Shop>> rejectShop(@PathVariable Long id) {
-        Shop shop = shopRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", id));
+    public ResponseEntity<ApiResponse<ShopResponse>> rejectShop(@PathVariable Long id) {
+        ShopResponse response = shopService.rejectShop(id);
+        return ResponseEntity.ok(ApiResponse.ok("Đã từ chối hồ sơ mở gian hàng", response));
+    }
 
-        shop.setStatus(ShopStatus.REJECTED);
-        Shop updatedShop = shopRepository.save(shop);
-        return ResponseEntity.ok(ApiResponse.success("Đã từ chối hồ sơ mở gian hàng", updatedShop));
+    private Long parseUserId(String userIdHeader) {
+        if (!StringUtils.hasText(userIdHeader)) {
+            throw new BadRequestException("Yêu cầu chưa được xác thực danh tính người dùng");
+        }
+        try {
+            return Long.parseLong(userIdHeader.trim());
+        } catch (NumberFormatException e) {
+            throw new BadRequestException("Định dạng User ID không hợp lệ: " + userIdHeader);
+        }
     }
 }
