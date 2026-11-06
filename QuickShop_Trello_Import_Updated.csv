@@ -428,7 +428,7 @@ Triển khai checkout tạo MasterOrder và SubOrder theo từng Shop; lưu snap
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Cart merge; Order schema",2026-11-05,2026-11-05
-Cần làm,"[Shop onboarding] Triển khai tạo hồ sơ Shop, thông tin pháp lý/KYC và trạng thái PENDING_APPROVAL: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[Shop onboarding] Triển khai tạo hồ sơ Shop, thông tin pháp lý/KYC và trạng thái PENDING_APPROVAL: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Sáu, 2026-11-06
 **Phân hệ:** Shop onboarding
 
