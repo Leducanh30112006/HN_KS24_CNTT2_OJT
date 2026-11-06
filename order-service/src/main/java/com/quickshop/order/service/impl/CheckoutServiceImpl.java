@@ -8,13 +8,14 @@ import com.quickshop.order.dto.cart.CartResponse;
 import com.quickshop.order.dto.cart.CartShopGroupResponse;
 import com.quickshop.order.dto.catalog.CatalogVariantValidationDto;
 import com.quickshop.order.dto.checkout.*;
+import com.quickshop.order.dto.voucher.VoucherValidationResponse;
 import com.quickshop.order.entity.*;
 import com.quickshop.order.repository.MasterOrderRepository;
 import com.quickshop.order.repository.OrderItemRepository;
 import com.quickshop.order.repository.SubOrderRepository;
-import com.quickshop.order.repository.VoucherRepository;
 import com.quickshop.order.service.CartService;
 import com.quickshop.order.service.CheckoutService;
+import com.quickshop.order.service.VoucherService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -35,7 +36,7 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final OrderItemRepository orderItemRepository;
     private final CartService cartService;
     private final CatalogServiceClient catalogServiceClient;
-    private final VoucherRepository voucherRepository;
+    private final VoucherService voucherService;
 
     public static final BigDecimal DEFAULT_SHOP_SHIPPING_FEE = BigDecimal.valueOf(25000); // 25,000 VND / shop
 
@@ -53,6 +54,17 @@ public class CheckoutServiceImpl implements CheckoutService {
             BigDecimal subtotal
     ) {}
 
+    private record ShopOrderCalculation(
+            Long shopId,
+            String shopName,
+            List<ItemSnapshot> items,
+            BigDecimal subtotal,
+            BigDecimal shippingFee,
+            BigDecimal voucherDiscount,
+            BigDecimal finalAmount,
+            String voucherCode
+    ) {}
+
     @Override
     @Transactional
     public CheckoutResponse checkout(Long userId, CheckoutRequest request) {
@@ -68,24 +80,72 @@ public class CheckoutServiceImpl implements CheckoutService {
         Map<Long, List<ItemSnapshot>> itemsByShop = validatedItems.stream()
                 .collect(Collectors.groupingBy(ItemSnapshot::shopId, LinkedHashMap::new, Collectors.toList()));
 
-        // 3. Tính toán chi phí từng Shop và tổng tiền
+        // 3. Tính toán chi phí từng Shop và áp dụng Voucher của từng Shop
         BigDecimal totalSubtotal = BigDecimal.ZERO;
         BigDecimal shippingFeeTotal = BigDecimal.ZERO;
-        List<SubOrderResponse> subOrderResponses = new ArrayList<>();
+        BigDecimal totalShopVoucherDiscount = BigDecimal.ZERO;
+        List<ShopOrderCalculation> shopCalculations = new ArrayList<>();
 
         for (Map.Entry<Long, List<ItemSnapshot>> entry : itemsByShop.entrySet()) {
+            Long shopId = entry.getKey();
             List<ItemSnapshot> shopItems = entry.getValue();
+            String shopName = shopItems.get(0).shopName();
+
             BigDecimal shopSubtotal = shopItems.stream()
                     .map(ItemSnapshot::subtotal)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             totalSubtotal = totalSubtotal.add(shopSubtotal);
             shippingFeeTotal = shippingFeeTotal.add(DEFAULT_SHOP_SHIPPING_FEE);
+
+            // Kiểm tra và áp dụng Voucher riêng của Shop nếu người mua có chọn
+            BigDecimal shopVoucherDiscount = BigDecimal.ZERO;
+            String shopVoucherCode = (request.getShopVouchers() != null) ? request.getShopVouchers().get(shopId) : null;
+            if (shopVoucherCode != null && !shopVoucherCode.isBlank()) {
+                VoucherValidationResponse shopValidation = voucherService.validateAndCalculateVoucher(shopVoucherCode, shopId, shopSubtotal);
+                if (shopValidation.isValid()) {
+                    shopVoucherDiscount = shopValidation.getDiscountAmount();
+                } else {
+                    throw new BadRequestException(String.format("Voucher của Shop #%d [%s] không hợp lệ: %s",
+                            shopId, shopVoucherCode, shopValidation.getMessage()));
+                }
+            }
+            totalShopVoucherDiscount = totalShopVoucherDiscount.add(shopVoucherDiscount);
+
+            BigDecimal shopFinalAmount = shopSubtotal.add(DEFAULT_SHOP_SHIPPING_FEE).subtract(shopVoucherDiscount);
+            if (shopFinalAmount.compareTo(BigDecimal.ZERO) < 0) {
+                shopFinalAmount = BigDecimal.ZERO;
+            }
+
+            shopCalculations.add(new ShopOrderCalculation(
+                    shopId,
+                    shopName,
+                    shopItems,
+                    shopSubtotal,
+                    DEFAULT_SHOP_SHIPPING_FEE,
+                    shopVoucherDiscount,
+                    shopFinalAmount,
+                    shopVoucherCode
+            ));
         }
 
-        // 4. Áp dụng voucher sàn nếu có
-        BigDecimal voucherDiscount = calculateVoucherDiscount(request.getVoucherCode(), totalSubtotal);
-        BigDecimal masterTotalAmount = totalSubtotal.add(shippingFeeTotal).subtract(voucherDiscount);
+        // 4. Áp dụng Voucher toàn sàn nếu có
+        BigDecimal platformVoucherDiscount = BigDecimal.ZERO;
+        if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
+            VoucherValidationResponse platformValidation = voucherService.validateAndCalculateVoucher(
+                    request.getVoucherCode(), null, totalSubtotal);
+            if (platformValidation.isValid()) {
+                platformVoucherDiscount = platformValidation.getDiscountAmount();
+            } else {
+                throw new BadRequestException(String.format("Voucher toàn sàn [%s] không hợp lệ: %s",
+                        request.getVoucherCode(), platformValidation.getMessage()));
+            }
+        }
+
+        // Tổng tiền MasterOrder = (Tổng tiền hàng + Tổng phí ship) - Tổng giảm shop - Giảm giá sàn
+        BigDecimal masterTotalAmount = totalSubtotal.add(shippingFeeTotal)
+                .subtract(totalShopVoucherDiscount)
+                .subtract(platformVoucherDiscount);
         if (masterTotalAmount.compareTo(BigDecimal.ZERO) < 0) {
             masterTotalAmount = BigDecimal.ZERO;
         }
@@ -103,7 +163,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         MasterOrder masterOrder = MasterOrder.builder()
                 .userId(userId)
                 .totalAmount(masterTotalAmount)
-                .voucherDiscount(voucherDiscount)
+                .voucherDiscount(platformVoucherDiscount)
                 .shippingFeeTotal(shippingFeeTotal)
                 .status(initialStatus)
                 .paymentMethod(request.getPaymentMethod().trim().toUpperCase())
@@ -115,33 +175,26 @@ public class CheckoutServiceImpl implements CheckoutService {
 
         // 6. Tạo SubOrders và OrderItems snapshot
         int totalItemsCount = 0;
+        List<SubOrderResponse> subOrderResponses = new ArrayList<>();
+        Map<Long, Long> subOrderIdsByShop = new HashMap<>();
 
-        for (Map.Entry<Long, List<ItemSnapshot>> entry : itemsByShop.entrySet()) {
-            Long shopId = entry.getKey();
-            List<ItemSnapshot> shopItems = entry.getValue();
-            String shopName = shopItems.get(0).shopName();
-
-            BigDecimal shopSubtotal = shopItems.stream()
-                    .map(ItemSnapshot::subtotal)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            BigDecimal shopFinalAmount = shopSubtotal.add(DEFAULT_SHOP_SHIPPING_FEE);
-
+        for (ShopOrderCalculation calc : shopCalculations) {
             SubOrder subOrder = SubOrder.builder()
                     .masterOrderId(masterOrderId)
-                    .shopId(shopId)
-                    .subtotalAmount(shopSubtotal)
-                    .shippingFee(DEFAULT_SHOP_SHIPPING_FEE)
-                    .shopVoucherDiscount(BigDecimal.ZERO)
-                    .finalAmount(shopFinalAmount)
+                    .shopId(calc.shopId())
+                    .subtotalAmount(calc.subtotal())
+                    .shippingFee(calc.shippingFee())
+                    .shopVoucherDiscount(calc.voucherDiscount())
+                    .finalAmount(calc.finalAmount())
                     .status(SubOrderStatus.CREATED)
                     .build();
 
             subOrder = subOrderRepository.save(subOrder);
             Long subOrderId = subOrder.getId();
+            subOrderIdsByShop.put(calc.shopId(), subOrderId);
 
             List<OrderItemResponse> itemResponses = new ArrayList<>();
-            for (ItemSnapshot item : shopItems) {
+            for (ItemSnapshot item : calc.items()) {
                 OrderItem orderItem = OrderItem.builder()
                         .subOrderId(subOrderId)
                         .variantId(item.variantId())
@@ -177,19 +230,39 @@ public class CheckoutServiceImpl implements CheckoutService {
                     .id(subOrderId)
                     .subOrderCode("QS-SUB-" + (100000L + subOrderId))
                     .masterOrderId(masterOrderId)
-                    .shopId(shopId)
-                    .shopName(shopName)
-                    .subtotalAmount(shopSubtotal)
-                    .shippingFee(DEFAULT_SHOP_SHIPPING_FEE)
-                    .shopVoucherDiscount(BigDecimal.ZERO)
-                    .finalAmount(shopFinalAmount)
+                    .shopId(calc.shopId())
+                    .shopName(calc.shopName())
+                    .subtotalAmount(calc.subtotal())
+                    .shippingFee(calc.shippingFee())
+                    .shopVoucherDiscount(calc.voucherDiscount())
+                    .finalAmount(calc.finalAmount())
                     .status(subOrder.getStatus())
                     .createdAt(subOrder.getCreatedAt() != null ? subOrder.getCreatedAt() : LocalDateTime.now())
                     .items(itemResponses)
                     .build());
         }
 
-        // 7. Tự động dọn dẹp các mặt hàng đã checkout khỏi Redis Cart của người dùng
+        // 7. Ghi nhận lịch sử sử dụng voucher (Voucher Sàn & Voucher Shop)
+        if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank() && platformVoucherDiscount.compareTo(BigDecimal.ZERO) > 0) {
+            try {
+                voucherService.recordUsage(request.getVoucherCode(), userId, masterOrderId, null, platformVoucherDiscount);
+            } catch (Exception ex) {
+                log.warn("Lỗi khi ghi nhận sử dụng voucher sàn {}: {}", request.getVoucherCode(), ex.getMessage());
+            }
+        }
+
+        for (ShopOrderCalculation calc : shopCalculations) {
+            if (calc.voucherCode() != null && !calc.voucherCode().isBlank() && calc.voucherDiscount().compareTo(BigDecimal.ZERO) > 0) {
+                try {
+                    Long subId = subOrderIdsByShop.get(calc.shopId());
+                    voucherService.recordUsage(calc.voucherCode(), userId, masterOrderId, subId, calc.voucherDiscount());
+                } catch (Exception ex) {
+                    log.warn("Lỗi khi ghi nhận sử dụng voucher shop {}: {}", calc.voucherCode(), ex.getMessage());
+                }
+            }
+        }
+
+        // 8. Tự động dọn dẹp các mặt hàng đã checkout khỏi Redis Cart của người dùng
         List<Long> checkedOutVariantIds = validatedItems.stream().map(ItemSnapshot::variantId).toList();
         try {
             cartService.removeCartItems(userId, checkedOutVariantIds);
@@ -198,8 +271,8 @@ public class CheckoutServiceImpl implements CheckoutService {
             log.warn("Không thể xóa mặt hàng checkout khỏi Redis Cart cho user {}: {}", userId, ex.getMessage());
         }
 
-        log.info("Tạo thành công MasterOrder #{} cho user {} với {} SubOrders, tổng tiền: {} VND",
-                masterOrderId, userId, subOrderResponses.size(), masterTotalAmount);
+        log.info("Tạo thành công MasterOrder #{} cho user {} với {} SubOrders, tổng tiền: {} VND (Giảm sàn: {} VND, Giảm Shop: {} VND)",
+                masterOrderId, userId, subOrderResponses.size(), masterTotalAmount, platformVoucherDiscount, totalShopVoucherDiscount);
 
         return CheckoutResponse.builder()
                 .masterOrderId(masterOrderId)
@@ -208,7 +281,8 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .totalAmount(masterTotalAmount)
                 .subtotalAmount(totalSubtotal)
                 .shippingFeeTotal(shippingFeeTotal)
-                .voucherDiscount(voucherDiscount)
+                .voucherDiscount(platformVoucherDiscount)
+                .shopVoucherDiscountTotal(totalShopVoucherDiscount)
                 .status(masterOrder.getStatus())
                 .paymentMethod(masterOrder.getPaymentMethod())
                 .recipientName(request.getRecipientName().trim())
@@ -239,6 +313,7 @@ public class CheckoutServiceImpl implements CheckoutService {
 
         BigDecimal totalSubtotal = BigDecimal.ZERO;
         BigDecimal shippingFeeTotal = BigDecimal.ZERO;
+        BigDecimal totalShopVoucherDiscount = BigDecimal.ZERO;
         List<SubOrderResponse> subOrderResponses = new ArrayList<>();
         int totalItemsCount = 0;
 
@@ -253,7 +328,22 @@ public class CheckoutServiceImpl implements CheckoutService {
 
             totalSubtotal = totalSubtotal.add(shopSubtotal);
             shippingFeeTotal = shippingFeeTotal.add(DEFAULT_SHOP_SHIPPING_FEE);
-            BigDecimal shopFinalAmount = shopSubtotal.add(DEFAULT_SHOP_SHIPPING_FEE);
+
+            // Tính toán Voucher riêng của Shop cho preview
+            BigDecimal shopVoucherDiscount = BigDecimal.ZERO;
+            String shopVoucherCode = (request.getShopVouchers() != null) ? request.getShopVouchers().get(shopId) : null;
+            if (shopVoucherCode != null && !shopVoucherCode.isBlank()) {
+                VoucherValidationResponse shopValidation = voucherService.validateAndCalculateVoucher(shopVoucherCode, shopId, shopSubtotal);
+                if (shopValidation.isValid()) {
+                    shopVoucherDiscount = shopValidation.getDiscountAmount();
+                }
+            }
+            totalShopVoucherDiscount = totalShopVoucherDiscount.add(shopVoucherDiscount);
+
+            BigDecimal shopFinalAmount = shopSubtotal.add(DEFAULT_SHOP_SHIPPING_FEE).subtract(shopVoucherDiscount);
+            if (shopFinalAmount.compareTo(BigDecimal.ZERO) < 0) {
+                shopFinalAmount = BigDecimal.ZERO;
+            }
 
             List<OrderItemResponse> itemResponses = shopItems.stream().map(i -> OrderItemResponse.builder()
                     .variantId(i.variantId())
@@ -272,7 +362,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                     .shopName(shopName)
                     .subtotalAmount(shopSubtotal)
                     .shippingFee(DEFAULT_SHOP_SHIPPING_FEE)
-                    .shopVoucherDiscount(BigDecimal.ZERO)
+                    .shopVoucherDiscount(shopVoucherDiscount)
                     .finalAmount(shopFinalAmount)
                     .status(SubOrderStatus.CREATED)
                     .items(itemResponses)
@@ -281,8 +371,19 @@ public class CheckoutServiceImpl implements CheckoutService {
             totalItemsCount += shopItems.stream().mapToInt(ItemSnapshot::quantity).sum();
         }
 
-        BigDecimal voucherDiscount = calculateVoucherDiscount(request.getVoucherCode(), totalSubtotal);
-        BigDecimal masterTotalAmount = totalSubtotal.add(shippingFeeTotal).subtract(voucherDiscount);
+        // Tính toán Voucher sàn cho preview
+        BigDecimal platformVoucherDiscount = BigDecimal.ZERO;
+        if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
+            VoucherValidationResponse platformValidation = voucherService.validateAndCalculateVoucher(
+                    request.getVoucherCode(), null, totalSubtotal);
+            if (platformValidation.isValid()) {
+                platformVoucherDiscount = platformValidation.getDiscountAmount();
+            }
+        }
+
+        BigDecimal masterTotalAmount = totalSubtotal.add(shippingFeeTotal)
+                .subtract(totalShopVoucherDiscount)
+                .subtract(platformVoucherDiscount);
         if (masterTotalAmount.compareTo(BigDecimal.ZERO) < 0) {
             masterTotalAmount = BigDecimal.ZERO;
         }
@@ -292,7 +393,8 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .totalAmount(masterTotalAmount)
                 .subtotalAmount(totalSubtotal)
                 .shippingFeeTotal(shippingFeeTotal)
-                .voucherDiscount(voucherDiscount)
+                .voucherDiscount(platformVoucherDiscount)
+                .shopVoucherDiscountTotal(totalShopVoucherDiscount)
                 .status(MasterOrderStatus.DRAFT)
                 .paymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod().toUpperCase() : "COD")
                 .recipientName(request.getRecipientName())
@@ -403,40 +505,4 @@ public class CheckoutServiceImpl implements CheckoutService {
 
         return snapshots;
     }
-
-    private BigDecimal calculateVoucherDiscount(String voucherCode, BigDecimal orderSubtotal) {
-        if (voucherCode == null || voucherCode.isBlank()) {
-            return BigDecimal.ZERO;
-        }
-
-        try {
-            Optional<Voucher> optVoucher = voucherRepository.findByCodeAndStatus(voucherCode.trim().toUpperCase(), "ACTIVE");
-            if (optVoucher.isPresent()) {
-                Voucher voucher = optVoucher.get();
-                if (voucher.getMinOrderValue() != null && orderSubtotal.compareTo(voucher.getMinOrderValue()) < 0) {
-                    log.warn("Đơn hàng chưa đạt giá trị tối thiểu {} để áp dụng voucher {}", voucher.getMinOrderValue(), voucherCode);
-                    return BigDecimal.ZERO;
-                }
-
-                BigDecimal discount = BigDecimal.ZERO;
-                if ("PERCENTAGE".equalsIgnoreCase(voucher.getDiscountType()) && voucher.getDiscountValue() != null) {
-                    discount = orderSubtotal.multiply(voucher.getDiscountValue())
-                            .divide(BigDecimal.valueOf(100), 0, java.math.RoundingMode.HALF_UP);
-                    if (voucher.getMaxDiscountAmount() != null && discount.compareTo(voucher.getMaxDiscountAmount()) > 0) {
-                        discount = voucher.getMaxDiscountAmount();
-                    }
-                } else if (voucher.getDiscountValue() != null) {
-                    discount = voucher.getDiscountValue();
-                }
-
-                log.info("Áp dụng voucher [{}] giảm {} VND cho đơn hàng", voucherCode, discount);
-                return discount;
-            }
-        } catch (Exception ex) {
-            log.warn("Lỗi khi tính toán voucher {}: {}", voucherCode, ex.getMessage());
-        }
-
-        return BigDecimal.ZERO;
-    }
 }
-

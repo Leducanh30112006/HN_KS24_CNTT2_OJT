@@ -1,9 +1,11 @@
 package com.quickshop.order.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.quickshop.order.dto.voucher.*;
 import com.quickshop.order.entity.Voucher;
 import com.quickshop.order.exception.GlobalExceptionHandler;
 import com.quickshop.order.repository.VoucherRepository;
+import com.quickshop.order.service.VoucherService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,9 +19,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -38,7 +42,103 @@ class VoucherControllerTest {
     private VoucherRepository voucherRepository;
 
     @MockBean
+    private VoucherService voucherService;
+
+    @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
+
+    @Test
+    @DisplayName("POST /api/vouchers/validate -> Xác thực voucher thành công 200 OK")
+    void testValidateVoucher_Success() throws Exception {
+        VoucherValidationRequest req = VoucherValidationRequest.builder()
+                .code("GIAM10K")
+                .shopId(null)
+                .orderSubtotal(BigDecimal.valueOf(100000))
+                .build();
+
+        VoucherValidationResponse resp = VoucherValidationResponse.builder()
+                .code("GIAM10K")
+                .valid(true)
+                .discountAmount(BigDecimal.valueOf(10000))
+                .message("Áp dụng voucher thành công")
+                .build();
+
+        when(voucherService.validateAndCalculateVoucher(eq("GIAM10K"), eq(null), any(BigDecimal.class)))
+                .thenReturn(resp);
+
+        mockMvc.perform(post("/api/vouchers/validate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.code").value("GIAM10K"))
+                .andExpect(jsonPath("$.data.valid").value(true))
+                .andExpect(jsonPath("$.data.discountAmount").value(10000));
+    }
+
+    @Test
+    @DisplayName("POST /api/vouchers/apply -> Áp dụng combo Voucher kép 200 OK")
+    void testApplyVouchers_Success() throws Exception {
+        VoucherApplyRequest req = VoucherApplyRequest.builder()
+                .platformVoucherCode("SAN10K")
+                .shopVouchers(Map.of(10L, "SHOP5K"))
+                .shopSubtotals(Map.of(10L, BigDecimal.valueOf(100000)))
+                .build();
+
+        VoucherApplyResponse resp = VoucherApplyResponse.builder()
+                .totalPlatformDiscount(BigDecimal.valueOf(10000))
+                .totalShopDiscount(BigDecimal.valueOf(5000))
+                .totalDiscount(BigDecimal.valueOf(15000))
+                .build();
+
+        when(voucherService.calculateDiscounts(any(VoucherApplyRequest.class))).thenReturn(resp);
+
+        mockMvc.perform(post("/api/vouchers/apply")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.totalDiscount").value(15000));
+    }
+
+    @Test
+    @DisplayName("GET /api/vouchers/applicable -> Lấy danh sách voucher áp dụng được 200 OK")
+    void testGetApplicableVouchers_Success() throws Exception {
+        VoucherResponse v = VoucherResponse.builder()
+                .id(1L)
+                .code("FREESHIP")
+                .platformVoucher(true)
+                .discountType("FIXED_AMOUNT")
+                .discountValue(BigDecimal.valueOf(25000))
+                .status("ACTIVE")
+                .build();
+
+        when(voucherService.getApplicableVouchers(eq(null), any(BigDecimal.class)))
+                .thenReturn(List.of(v));
+
+        mockMvc.perform(get("/api/vouchers/applicable"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].code").value("FREESHIP"));
+    }
+
+    @Test
+    @DisplayName("GET /api/vouchers/code/{code} -> Tra cứu chi tiết voucher theo mã 200 OK")
+    void testGetVoucherByCode_Success() throws Exception {
+        VoucherResponse v = VoucherResponse.builder()
+                .id(1L)
+                .code("QUICKSHOP")
+                .platformVoucher(true)
+                .status("ACTIVE")
+                .build();
+
+        when(voucherService.getVoucherByCode("QUICKSHOP")).thenReturn(v);
+
+        mockMvc.perform(get("/api/vouchers/code/QUICKSHOP"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.code").value("QUICKSHOP"));
+    }
 
     @Test
     @DisplayName("GET /api/vouchers -> Trả về danh sách voucher thành công 200 OK")
@@ -162,4 +262,3 @@ class VoucherControllerTest {
                 .andExpect(jsonPath("$.success").value(true));
     }
 }
-

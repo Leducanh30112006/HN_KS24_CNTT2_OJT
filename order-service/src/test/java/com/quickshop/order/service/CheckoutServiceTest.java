@@ -7,11 +7,11 @@ import com.quickshop.order.dto.cart.CartResponse;
 import com.quickshop.order.dto.cart.CartShopGroupResponse;
 import com.quickshop.order.dto.catalog.CatalogVariantValidationDto;
 import com.quickshop.order.dto.checkout.*;
+import com.quickshop.order.dto.voucher.VoucherValidationResponse;
 import com.quickshop.order.entity.*;
 import com.quickshop.order.repository.MasterOrderRepository;
 import com.quickshop.order.repository.OrderItemRepository;
 import com.quickshop.order.repository.SubOrderRepository;
-import com.quickshop.order.repository.VoucherRepository;
 import com.quickshop.order.service.impl.CheckoutServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,10 +24,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -49,7 +52,7 @@ class CheckoutServiceTest {
     private CatalogServiceClient catalogServiceClient;
 
     @Mock
-    private VoucherRepository voucherRepository;
+    private VoucherService voucherService;
 
     @InjectMocks
     private CheckoutServiceImpl checkoutService;
@@ -239,18 +242,14 @@ class CheckoutServiceTest {
                 .shopName("Shop 1")
                 .build();
 
-        Voucher voucher = Voucher.builder()
-                .id(1L)
-                .code("GIAM20K")
-                .discountType("PERCENTAGE")
-                .discountValue(BigDecimal.valueOf(20)) // 20% của 200k = 40k
-                .maxDiscountAmount(BigDecimal.valueOf(20000)) // Trần tối đa 20k
-                .minOrderValue(BigDecimal.valueOf(100000))
-                .status("ACTIVE")
-                .build();
-
         when(catalogServiceClient.getVariantDetails(101L)).thenReturn(Optional.of(item));
-        when(voucherRepository.findByCodeAndStatus("GIAM20K", "ACTIVE")).thenReturn(Optional.of(voucher));
+
+        when(voucherService.validateAndCalculateVoucher(eq("GIAM20K"), isNull(), any()))
+                .thenReturn(VoucherValidationResponse.builder()
+                        .code("GIAM20K")
+                        .valid(true)
+                        .discountAmount(BigDecimal.valueOf(20000))
+                        .build());
 
         when(masterOrderRepository.save(any(MasterOrder.class))).thenAnswer(i -> {
             MasterOrder m = i.getArgument(0);
@@ -273,6 +272,7 @@ class CheckoutServiceTest {
         assertEquals(BigDecimal.valueOf(20000), response.getVoucherDiscount());
         // Subtotal (200k) + Ship (25k) - Discount (20k) = 205k
         assertEquals(BigDecimal.valueOf(205000), response.getTotalAmount());
+        verify(voucherService, times(1)).recordUsage(eq("GIAM20K"), eq(userId), eq(1003L), isNull(), eq(BigDecimal.valueOf(20000)));
     }
 
     @Test
@@ -293,17 +293,14 @@ class CheckoutServiceTest {
                 .shopName("Shop 1")
                 .build();
 
-        Voucher voucher = Voucher.builder()
-                .id(2L)
-                .code("FREESHIP25K")
-                .discountType("FIXED_AMOUNT")
-                .discountValue(BigDecimal.valueOf(25000))
-                .minOrderValue(BigDecimal.valueOf(50000))
-                .status("ACTIVE")
-                .build();
-
         when(catalogServiceClient.getVariantDetails(101L)).thenReturn(Optional.of(item));
-        when(voucherRepository.findByCodeAndStatus("FREESHIP25K", "ACTIVE")).thenReturn(Optional.of(voucher));
+
+        when(voucherService.validateAndCalculateVoucher(eq("FREESHIP25K"), isNull(), any()))
+                .thenReturn(VoucherValidationResponse.builder()
+                        .code("FREESHIP25K")
+                        .valid(true)
+                        .discountAmount(BigDecimal.valueOf(25000))
+                        .build());
 
         when(masterOrderRepository.save(any(MasterOrder.class))).thenAnswer(i -> {
             MasterOrder m = i.getArgument(0);
@@ -326,6 +323,108 @@ class CheckoutServiceTest {
         assertEquals(BigDecimal.valueOf(25000), response.getVoucherDiscount());
         // Subtotal (200k) + Ship (25k) - Discount (25k) = 200k
         assertEquals(BigDecimal.valueOf(200000), response.getTotalAmount());
+        verify(voucherService, times(1)).recordUsage(eq("FREESHIP25K"), eq(userId), eq(1004L), isNull(), eq(BigDecimal.valueOf(25000)));
+    }
+
+    @Test
+    @DisplayName("checkout: Áp dụng Voucher Kép (cả Voucher Sàn và Voucher của Shop cùng lúc)")
+    void testCheckout_WithDualVoucher_PlatformAndShop_Success() {
+        Long userId = 1L;
+        sampleRequest.setVoucherCode("SAN30K");
+        sampleRequest.setShopVouchers(Map.of(10L, "SHOP15K"));
+        sampleRequest.setItems(List.of(
+                CheckoutItemDto.builder().variantId(101L).quantity(1).build()
+        ));
+
+        CatalogVariantValidationDto item = CatalogVariantValidationDto.builder()
+                .variantId(101L)
+                .productId(201L)
+                .productName("Sản phẩm Shop 10")
+                .sku("SKU-S10")
+                .price(BigDecimal.valueOf(200000))
+                .availableStock(10)
+                .active(true)
+                .shopId(10L)
+                .shopName("Shop 10 Official")
+                .build();
+
+        when(catalogServiceClient.getVariantDetails(101L)).thenReturn(Optional.of(item));
+
+        // Mock Shop voucher
+        when(voucherService.validateAndCalculateVoucher(eq("SHOP15K"), eq(10L), any()))
+                .thenReturn(VoucherValidationResponse.builder()
+                        .code("SHOP15K")
+                        .valid(true)
+                        .discountAmount(BigDecimal.valueOf(15000))
+                        .build());
+
+        // Mock Platform voucher
+        when(voucherService.validateAndCalculateVoucher(eq("SAN30K"), isNull(), any()))
+                .thenReturn(VoucherValidationResponse.builder()
+                        .code("SAN30K")
+                        .valid(true)
+                        .discountAmount(BigDecimal.valueOf(30000))
+                        .build());
+
+        when(masterOrderRepository.save(any(MasterOrder.class))).thenAnswer(i -> {
+            MasterOrder m = i.getArgument(0);
+            m.setId(1005L);
+            return m;
+        });
+        when(subOrderRepository.save(any(SubOrder.class))).thenAnswer(i -> {
+            SubOrder s = i.getArgument(0);
+            s.setId(2005L);
+            return s;
+        });
+        when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(i -> {
+            OrderItem o = i.getArgument(0);
+            o.setId(3005L);
+            return o;
+        });
+
+        CheckoutResponse response = checkoutService.checkout(userId, sampleRequest);
+
+        assertNotNull(response);
+        assertEquals(BigDecimal.valueOf(30000), response.getVoucherDiscount()); // Giảm sàn
+        assertEquals(BigDecimal.valueOf(15000), response.getShopVoucherDiscountTotal()); // Giảm shop
+
+        // Subtotal (200k) + Ship (25k) - Giảm shop (15k) - Giảm sàn (30k) = 180,000 VND
+        assertEquals(BigDecimal.valueOf(180000), response.getTotalAmount());
+
+        SubOrderResponse subOrderRes = response.getSubOrders().get(0);
+        assertEquals(BigDecimal.valueOf(15000), subOrderRes.getShopVoucherDiscount());
+        // SubOrder final = 200k + 25k - 15k = 210,000 VND
+        assertEquals(BigDecimal.valueOf(210000), subOrderRes.getFinalAmount());
+
+        // Verify ghi nhận sử dụng cả 2 voucher
+        verify(voucherService, times(1)).recordUsage(eq("SAN30K"), eq(userId), eq(1005L), isNull(), eq(BigDecimal.valueOf(30000)));
+        verify(voucherService, times(1)).recordUsage(eq("SHOP15K"), eq(userId), eq(1005L), eq(2005L), eq(BigDecimal.valueOf(15000)));
+    }
+
+    @Test
+    @DisplayName("checkout: Ném BadRequestException khi Voucher không hợp lệ")
+    void testCheckout_ThrowsBadRequest_WhenVoucherInvalid() {
+        sampleRequest.setVoucherCode("EXPIRED_CODE");
+
+        CatalogVariantValidationDto item = CatalogVariantValidationDto.builder()
+                .variantId(101L)
+                .productName("Sản phẩm")
+                .sku("SKU-1")
+                .price(BigDecimal.valueOf(100000))
+                .availableStock(10)
+                .active(true)
+                .shopId(1L)
+                .build();
+
+        when(catalogServiceClient.getVariantDetails(101L)).thenReturn(Optional.of(item));
+
+        when(voucherService.validateAndCalculateVoucher(eq("EXPIRED_CODE"), isNull(), any()))
+                .thenReturn(VoucherValidationResponse.builder()
+                        .valid(false)
+                        .message("Voucher đã hết hạn")
+                        .build());
+
+        assertThrows(BadRequestException.class, () -> checkoutService.checkout(1L, sampleRequest));
     }
 
     @Test
