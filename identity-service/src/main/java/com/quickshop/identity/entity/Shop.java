@@ -3,6 +3,7 @@ package com.quickshop.identity.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
@@ -30,8 +31,21 @@ public class Shop {
     @Column(name = "tax_code", length = 50)
     private String taxCode;
 
+    @Column(name = "citizen_id", length = 30)
+    private String citizenId;
+
+    @Column(name = "business_type", length = 50)
+    @Builder.Default
+    private String businessType = "INDIVIDUAL";
+
     @Column(name = "phone_number", length = 20)
     private String phoneNumber;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "logo_url")
+    private String logoUrl;
 
     @Column(name = "bank_code", length = 20)
     private String bankCode;
@@ -53,4 +67,8 @@ public class Shop {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }
