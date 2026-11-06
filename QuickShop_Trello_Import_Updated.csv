@@ -441,7 +441,7 @@ Triển khai tạo hồ sơ Shop, thông tin pháp lý/KYC và trạng thái PEN
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Identity/Shop schema",2026-11-06,2026-11-06
-Cần làm,"[Frontend Catalog] Kết nối màn danh sách/chi tiết sản phẩm với Product API; xử lý lọc, phân trang và lỗi API: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+Đã xong,"[Frontend Catalog] Kết nối màn danh sách/chi tiết sản phẩm với Product API; xử lý lọc, phân trang và lỗi API: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Sáu, 2026-11-06
 **Phân hệ:** Frontend Catalog
 
