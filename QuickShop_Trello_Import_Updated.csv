@@ -727,7 +727,7 @@ Bổ sung màn GMV/commission và audit log cơ bản; hoàn thiện responsive,
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - API báo cáo/audit",2026-11-13,2026-11-13
-Cần làm,"[Shipping] Tích hợp GHN/GHTK hoặc Mock Simulator; tạo vận đơn, phí ship, tracking code và trạng thái giao hàng: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[Shipping] Tích hợp GHN/GHTK hoặc Mock Simulator; tạo vận đơn, phí ship, tracking code và trạng thái giao hàng: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Sáu, 2026-11-13
 **Phân hệ:** Shipping
 
@@ -766,7 +766,7 @@ Tích hợp toàn bộ Buyer/Seller/Admin; sửa lỗi điều hướng, form va
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Các API chính",2026-11-14,2026-11-14
-Cần làm,[Shipping & Wallet] Xử lý webhook shipping idempotent theo event_id; hoàn thiện withdrawal/refund và đóng băng escrow: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,[Shipping & Wallet] Xử lý webhook shipping idempotent theo event_id; hoàn thiện withdrawal/refund và đóng băng escrow: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Bảy, 2026-11-14
 **Phân hệ:** Shipping & Wallet
 
@@ -805,7 +805,7 @@ Kiểm thử luồng Buyer/Seller/Admin; sửa lỗi UI/API; kiểm tra hiển t
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Frontend tích hợp",2026-11-15,2026-11-15
-Cần làm,"[QA Backend] Viết/chạy integration test cho checkout, Saga compensation, VNPay/COD, ledger, shipping webhook và scheduled tasks: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[QA Backend] Viết/chạy integration test cho checkout, Saga compensation, VNPay/COD, ledger, shipping webhook và scheduled tasks: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Chủ Nhật, 2026-11-15
 **Phân hệ:** QA Backend
 
@@ -844,7 +844,7 @@ Chạy regression frontend; xác nhận các màn Buyer/Seller/Admin; cập nh�
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Kết quả QA",2026-11-16,2026-11-16
-Cần làm,"[Release & Handover] Chạy regression backend; kiểm tra dữ liệu/luồng lỗi, tổng hợp test report và danh sách known issues: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[Release & Handover] Chạy regression backend; kiểm tra dữ liệu/luồng lỗi, tổng hợp test report và danh sách known issues: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Hai, 2026-11-16
 **Phân hệ:** Release & Handover
 
