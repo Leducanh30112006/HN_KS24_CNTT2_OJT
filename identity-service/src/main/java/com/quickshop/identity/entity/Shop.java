@@ -61,6 +61,9 @@ public class Shop {
     @Builder.Default
     private ShopStatus status = ShopStatus.PENDING_APPROVAL;
 
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
     @Column(name = "warehouse_address", nullable = false, columnDefinition = "TEXT")
     private String warehouseAddress;
 

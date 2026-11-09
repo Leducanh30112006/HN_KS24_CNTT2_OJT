@@ -25,5 +25,9 @@ public interface ShopService {
 
     ShopResponse approveShop(Long id);
 
+    ShopResponse approveShop(Long id, Long adminId);
+
     ShopResponse rejectShop(Long id);
+
+    ShopResponse rejectShop(Long id, Long adminId, String reason);
 }

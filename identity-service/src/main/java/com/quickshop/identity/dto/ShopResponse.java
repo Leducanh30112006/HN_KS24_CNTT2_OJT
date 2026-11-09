@@ -56,6 +56,9 @@ public class ShopResponse {
     @Schema(description = "Trạng thái gian hàng: PENDING_APPROVAL, ACTIVE, SUSPENDED, REJECTED", example = "PENDING_APPROVAL")
     private ShopStatus status;
 
+    @Schema(description = "Lý do từ chối nếu hồ sơ bị Admin từ chối", example = "Ảnh CCCD không khớp thông tin")
+    private String rejectionReason;
+
     @Schema(description = "Địa chỉ kho hàng", example = "Số 123 Cầu Giấy, Dịch Vọng, Cầu Giấy, Hà Nội")
     private String warehouseAddress;
 
@@ -81,6 +84,7 @@ public class ShopResponse {
                 .bankAccountNumber(shop.getBankAccountNumber())
                 .bankAccountName(shop.getBankAccountName())
                 .status(shop.getStatus())
+                .rejectionReason(shop.getRejectionReason())
                 .warehouseAddress(shop.getWarehouseAddress())
                 .createdAt(shop.getCreatedAt())
                 .updatedAt(shop.getUpdatedAt())

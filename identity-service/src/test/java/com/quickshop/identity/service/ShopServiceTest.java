@@ -1,5 +1,7 @@
 package com.quickshop.identity.service;
 
+import com.quickshop.common.event.ShopApprovedEvent;
+import com.quickshop.common.event.ShopRejectedEvent;
 import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.common.exception.ResourceNotFoundException;
 import com.quickshop.identity.dto.CreateShopRequest;
@@ -10,8 +12,10 @@ import com.quickshop.identity.entity.Shop;
 import com.quickshop.identity.entity.ShopStatus;
 import com.quickshop.identity.entity.User;
 import com.quickshop.identity.entity.UserStatus;
+import com.quickshop.identity.producer.ShopEventProducer;
 import com.quickshop.identity.repository.ShopRepository;
 import com.quickshop.identity.repository.UserRepository;
+import com.quickshop.identity.service.AuditLogService;
 import com.quickshop.identity.service.impl.ShopServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +43,12 @@ class ShopServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ShopEventProducer shopEventProducer;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private ShopServiceImpl shopService;
@@ -233,29 +243,35 @@ class ShopServiceTest {
     }
 
     @Test
-    @DisplayName("Admin phê duyệt gian hàng (approveShop) - Chuyển sang ACTIVE và nâng quyền chủ shop thành ROLE_SELLER")
+    @DisplayName("Admin phê duyệt gian hàng (approveShop) - Chuyển sang ACTIVE, nâng quyền ROLE_SELLER, phát ShopApprovedEvent và ghi audit log")
     void approveShop_Success() {
         when(shopRepository.findById(1L)).thenReturn(Optional.of(sampleShop));
         when(shopRepository.save(any(Shop.class))).thenReturn(sampleShop);
         when(userRepository.findById(10L)).thenReturn(Optional.of(sampleUser));
 
-        ShopResponse response = shopService.approveShop(1L);
+        ShopResponse response = shopService.approveShop(1L, 99L);
 
         assertThat(sampleShop.getStatus()).isEqualTo(ShopStatus.ACTIVE);
         assertThat(sampleUser.getRole()).isEqualTo(Role.ROLE_SELLER);
         verify(userRepository, times(1)).save(sampleUser);
         verify(shopRepository, times(1)).save(sampleShop);
+        verify(shopEventProducer, times(1)).publishShopApproved(any(ShopApprovedEvent.class));
+        verify(auditLogService, times(1)).logSuccess(eq(99L), any(), eq("SHOP_APPROVED"), eq("Shop"), eq(1L), any());
     }
 
     @Test
-    @DisplayName("Admin từ chối gian hàng (rejectShop) - Chuyển sang REJECTED")
+    @DisplayName("Admin từ chối gian hàng (rejectShop) - Chuyển sang REJECTED, phát ShopRejectedEvent và ghi audit log")
     void rejectShop_Success() {
         when(shopRepository.findById(1L)).thenReturn(Optional.of(sampleShop));
         when(shopRepository.save(any(Shop.class))).thenReturn(sampleShop);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(sampleUser));
 
-        ShopResponse response = shopService.rejectShop(1L);
+        ShopResponse response = shopService.rejectShop(1L, 99L, "Thông tin CCCD không rõ ràng");
 
         assertThat(sampleShop.getStatus()).isEqualTo(ShopStatus.REJECTED);
+        assertThat(sampleShop.getRejectionReason()).isEqualTo("Thông tin CCCD không rõ ràng");
         verify(shopRepository, times(1)).save(sampleShop);
+        verify(shopEventProducer, times(1)).publishShopRejected(any(ShopRejectedEvent.class));
+        verify(auditLogService, times(1)).logSuccess(eq(99L), any(), eq("SHOP_REJECTED"), eq("Shop"), eq(1L), any());
     }
 }
