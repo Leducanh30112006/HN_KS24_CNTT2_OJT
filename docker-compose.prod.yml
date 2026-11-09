@@ -320,6 +320,7 @@ services:
       - "443:443"
     volumes:
       - ./deployments/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deployments/nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - api-gateway
       - frontend
