@@ -4,7 +4,7 @@ import {
   Clock, XCircle, FileText, Send, ArrowLeft, Filter, Layers, 
   Image as ImageIcon, Tag, DollarSign, Package, AlertTriangle 
 } from 'lucide-react';
-import axiosClient from '../api/axiosClient';
+import { catalogApi } from '../api/catalogApi';
 import { useAuthStore } from '../stores/useAuthStore';
 
 export default function SellerPortal({ categories = [], onProductCreated, onBackToStorefront }) {
@@ -12,6 +12,14 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, APPROVED, PENDING, DRAFT, REJECTED
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((prev) => (prev?.message === message ? null : prev));
+    }, 4000);
+  };
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -31,6 +39,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
   // Form states for editing product
   const [editingId, setEditingId] = useState(null);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [editName, setEditName] = useState('');
   const [editCategoryId, setEditCategoryId] = useState(1);
   const [editDescription, setEditDescription] = useState('');
@@ -126,7 +135,10 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
   const fetchShopProducts = async () => {
     setLoading(true);
     try {
-      const res = await axiosClient.get('/api/catalog/products/seller/my?shopId=1');
+      const res = await catalogApi.getMySellerProducts({
+        shopId: user?.shopId || 1,
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+      });
       if (res.success && res.data?.content && res.data.content.length > 0) {
         setProducts(res.data.content);
       } else {
@@ -142,7 +154,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
   useEffect(() => {
     fetchShopProducts();
-  }, []);
+  }, [statusFilter]);
 
   // Upload image directly to MinIO Object Storage (Port 9000 via Catalog Service)
   const handleImageUpload = async (e, isEdit = false) => {
@@ -157,14 +169,8 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
       setUploadStatus('Đang upload file lên MinIO Object Storage...');
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const res = await axiosClient.post('/api/catalog/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
+      const res = await catalogApi.uploadProductImage(file);
       if (res.success && res.data?.url) {
         if (isEdit) {
           setEditMainImage(res.data.url);
@@ -173,6 +179,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
           setMainImage(res.data.url);
           setUploadStatus('Đã tải ảnh lên MinIO thành công: ' + res.data.url);
         }
+        showToast('Tải ảnh sản phẩm lên MinIO thành công!', 'success');
       }
     } catch (err) {
       const previewUrl = URL.createObjectURL(file);
@@ -183,6 +190,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
         setMainImage(previewUrl);
         setUploadStatus('Đã tải ảnh cục bộ: ' + file.name);
       }
+      showToast('Upload MinIO chưa sẵn sàng, đã áp dụng ảnh xem trước cục bộ', 'info');
     } finally {
       if (isEdit) setEditUploadingImage(false);
       else setUploadingImage(false);
@@ -195,7 +203,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
     const targetCatId = isEdit ? editCategoryId : categoryId;
 
     if (!targetName.trim()) {
-      alert('Vui lòng nhập tên sản phẩm cơ bản trước khi tạo SEO');
+      showToast('Vui lòng nhập tên sản phẩm cơ bản trước khi tạo SEO', 'info');
       return;
     }
     setAiGenerating(true);
@@ -203,7 +211,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
     try {
       const catObj = categories.find((c) => c.id === Number(targetCatId));
-      const res = await axiosClient.post('/api/ai/generate-seo', {
+      const res = await catalogApi.generateAiSeo({
         productName: targetName,
         category: catObj ? catObj.name : 'Thời trang & Công nghệ',
         keywords: 'chính hãng, cao cấp, bảo hành 12 tháng, ưu đãi tốt',
@@ -218,6 +226,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
           setDescription(res.data.fullDescription);
         }
         setAiSuccessMsg('AI đã tạo tiêu đề chuẩn SEO và bài mô tả sản phẩm thành công!');
+        showToast('AI đã tối ưu tiêu đề và bài mô tả sản phẩm thành công!', 'success');
       }
     } catch (err) {
       const generatedTitle = `[CHÍNH HÃNG 100%] ${targetName} - Chuẩn Xuất Khẩu Cao Cấp, Bảo Hành Đổi Mới 12 Tháng`;
@@ -237,6 +246,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
         setDescription(generatedDesc);
       }
       setAiSuccessMsg('AI đã tự động tối ưu hóa nội dung SEO!');
+      showToast('Đã tự động tối ưu hóa nội dung chuẩn SEO!', 'success');
     } finally {
       setAiGenerating(false);
     }
@@ -289,7 +299,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
     const initialStatus = isDraft ? 'DRAFT' : 'PENDING';
     const payload = {
-      shopId: 1,
+      shopId: user?.shopId || 1,
       categoryId: Number(categoryId),
       name: name.trim(),
       description,
@@ -306,7 +316,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
     };
 
     try {
-      const res = await axiosClient.post('/api/catalog/products', payload);
+      const res = await catalogApi.createProduct(payload);
       if (res.success && res.data) {
         setProducts([res.data, ...products]);
         if (onProductCreated) onProductCreated(res.data);
@@ -314,7 +324,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
     } catch (err) {
       const localProduct = {
         id: Date.now(),
-        shopId: 1,
+        shopId: payload.shopId,
         categoryId: payload.categoryId,
         categoryName: categories.find((c) => c.id === payload.categoryId)?.name || 'Sản phẩm mới',
         name: payload.name,
@@ -335,12 +345,13 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
     setMainImage('');
     setIsDraft(false);
     setVariants([{ sku: 'SKU-01', color: 'Đen', size: 'Tiêu chuẩn', price: 299000, stock: 50 }]);
-    alert(isDraft ? 'Đã lưu sản phẩm vào danh sách Bản nháp (DRAFT)!' : 'Sản phẩm đã được gửi duyệt thành công (PENDING)!');
+    showToast(isDraft ? 'Đã lưu sản phẩm vào danh sách Bản nháp (DRAFT)!' : 'Sản phẩm đã được gửi duyệt thành công (PENDING)!', 'success');
   };
 
   // 2. OPEN EDIT MODAL
   const handleOpenEditModal = (p) => {
     setEditingId(p.id);
+    setEditingProduct(p);
     setEditName(p.name);
     setEditCategoryId(p.categoryId || categories[0]?.id || 1);
     setEditDescription(p.description || '');
@@ -381,7 +392,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
     };
 
     try {
-      const res = await axiosClient.put(`/api/catalog/products/${editingId}`, payload);
+      const res = await catalogApi.updateProduct(editingId, payload);
       if (res.success && res.data) {
         setProducts(products.map((p) => (p.id === editingId ? { ...p, ...res.data } : p)));
       } else {
@@ -420,35 +431,34 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
     }
 
     setShowEditModal(false);
-    alert('Cập nhật thông tin sản phẩm thành công!');
+    showToast('Cập nhật thông tin sản phẩm thành công!', 'success');
   };
 
   // 4. SUBMIT PRODUCT FOR APPROVAL (POST /api/catalog/products/{id}/submit)
   const handleSubmitProduct = async (id) => {
     try {
-      const res = await axiosClient.post(`/api/catalog/products/${id}/submit`);
+      const res = await catalogApi.submitProductForApproval(id);
       if (res.success && res.data) {
         setProducts(products.map((p) => (p.id === id ? { ...p, status: 'PENDING', rejectionReason: null } : p)));
       } else {
         setProducts(products.map((p) => (p.id === id ? { ...p, status: 'PENDING', rejectionReason: null } : p)));
       }
-      alert('Đã gửi sản phẩm lên Ban Quản Trị để kiểm duyệt (PENDING)!');
     } catch (err) {
       setProducts(products.map((p) => (p.id === id ? { ...p, status: 'PENDING', rejectionReason: null } : p)));
-      alert('Đã gửi sản phẩm lên Ban Quản Trị để kiểm duyệt (PENDING)!');
     }
+    showToast('Đã gửi sản phẩm lên Ban Quản Trị để kiểm duyệt (PENDING)!', 'success');
   };
 
   // 5. DELETE PRODUCT (DELETE /api/catalog/products/{id})
   const handleDeleteProduct = async (id) => {
     if (!confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi gian hàng?')) return;
     try {
-      await axiosClient.delete(`/api/catalog/products/${id}`);
+      await catalogApi.deleteProduct(id);
     } catch (err) {
       console.warn('Delete product API error, updating local state:', err);
     }
     setProducts(products.filter((p) => p.id !== id));
-    alert('Đã xóa sản phẩm thành công!');
+    showToast('Đã xóa sản phẩm thành công!', 'success');
   };
 
   const formatVND = (p) => {
@@ -982,6 +992,22 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
             </div>
 
             <form onSubmit={handleSaveEdit} className="p-6 overflow-y-auto space-y-4 text-xs">
+              {/* Alert nếu sản phẩm bị từ chối duyệt */}
+              {editingProduct?.status === 'REJECTED' && editingProduct.rejectionReason && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-xs">Sản phẩm này bị Ban Quản Trị từ chối duyệt:</div>
+                    <div className="text-xs text-rose-800 bg-white/80 p-2 rounded-lg border border-rose-200/60 mt-1">
+                      {editingProduct.rejectionReason}
+                    </div>
+                    <div className="text-[11px] text-rose-500 pt-0.5 italic">
+                      Vui lòng điều chỉnh thông tin theo phản hồi trên trước khi lưu và nộp duyệt lại.
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Product Basic Name & Category */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
@@ -1159,6 +1185,22 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               </div>
             </form>
           </div>
+        </div>
+      )}
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 bg-slate-900/95 text-white backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/50 animate-in fade-in slide-in-from-bottom-5 duration-200">
+          {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />}
+          {toast.type === 'error' && <XCircle className="w-5 h-5 text-rose-400 shrink-0" />}
+          {toast.type === 'info' && <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />}
+          <span className="text-xs sm:text-sm font-medium">{toast.message}</span>
+          <button 
+            type="button"
+            onClick={() => setToast(null)}
+            className="ml-2 text-slate-400 hover:text-white p-1 rounded-lg transition"
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>
