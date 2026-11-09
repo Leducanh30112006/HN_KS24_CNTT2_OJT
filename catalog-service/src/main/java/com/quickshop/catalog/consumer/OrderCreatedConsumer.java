@@ -41,14 +41,17 @@ public class OrderCreatedConsumer {
                 }
             }
 
-            // Real atomic inventory reservation in database
+            // Real atomic inventory reservation in database (có TTL 15 phút)
             inventoryService.reserveStock(event.getOrderId(), reserveItems);
 
             log.info("Stock successfully reserved for orderId: {}", event.getOrderId());
             StockReservedEvent successEvent = StockReservedEvent.builder()
                     .orderId(event.getOrderId())
+                    .masterOrderId(event.getMasterOrderId())
+                    .items(event.getItems())
+                    .ttlSeconds(event.getTtlSeconds() != null ? event.getTtlSeconds() : 900)
                     .success(true)
-                    .reason("Giữ tồn kho thành công trong Catalog Service")
+                    .reason("Giữ tồn kho thành công trong Catalog Service (TTL 15 phút)")
                     .build();
 
             rabbitTemplate.convertAndSend(
@@ -61,6 +64,9 @@ public class OrderCreatedConsumer {
             log.error("Failed to reserve stock for orderId: {}, error: {}", event.getOrderId(), ex.getMessage());
             StockReservedEvent failEvent = StockReservedEvent.builder()
                     .orderId(event.getOrderId())
+                    .masterOrderId(event.getMasterOrderId())
+                    .items(event.getItems())
+                    .ttlSeconds(0)
                     .success(false)
                     .reason(ex.getMessage() != null ? ex.getMessage() : "Hết hàng trong kho")
                     .build();
