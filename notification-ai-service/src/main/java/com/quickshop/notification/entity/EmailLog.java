@@ -27,8 +27,21 @@ public class EmailLog {
     @Column(nullable = false)
     private String subject;
 
+    @Column(name = "template_name", length = 50)
+    private String templateName; // ORDER_CONFIRMATION, SHOP_APPROVED, SHOP_REJECTED, RESET_PASSWORD
+
+    @Column(name = "content_preview", columnDefinition = "TEXT")
+    private String contentPreview;
+
+    @Column(name = "error_message", columnDefinition = "TEXT")
+    private String errorMessage;
+
+    @Builder.Default
+    @Column(name = "retry_count", nullable = false)
+    private int retryCount = 0;
+
     @Column(nullable = false, length = 20)
-    private String status; // SUCCESS, FAILED
+    private String status; // SUCCESS, FAILED, RETRYING
 
     @CreatedDate
     @Column(name = "sent_at", nullable = false, updatable = false)
