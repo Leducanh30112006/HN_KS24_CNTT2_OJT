@@ -5,10 +5,13 @@ import com.quickshop.order.entity.MasterOrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
 public interface MasterOrderRepository extends JpaRepository<MasterOrder, Long> {
     List<MasterOrder> findByUserId(Long userId);
     List<MasterOrder> findByStatus(MasterOrderStatus status);
+    List<MasterOrder> findByStatusInAndCreatedAtBefore(Collection<MasterOrderStatus> statuses, LocalDateTime createdAt);
 }

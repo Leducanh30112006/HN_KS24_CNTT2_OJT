@@ -13,6 +13,7 @@ import com.quickshop.order.entity.*;
 import com.quickshop.order.repository.MasterOrderRepository;
 import com.quickshop.order.repository.OrderItemRepository;
 import com.quickshop.order.repository.SubOrderRepository;
+import com.quickshop.order.saga.OrderSagaOrchestrator;
 import com.quickshop.order.service.CartService;
 import com.quickshop.order.service.CheckoutService;
 import com.quickshop.order.service.VoucherService;
@@ -37,6 +38,7 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final CartService cartService;
     private final CatalogServiceClient catalogServiceClient;
     private final VoucherService voucherService;
+    private final OrderSagaOrchestrator orderSagaOrchestrator;
 
     public static final BigDecimal DEFAULT_SHOP_SHIPPING_FEE = BigDecimal.valueOf(25000); // 25,000 VND / shop
 
@@ -177,6 +179,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         int totalItemsCount = 0;
         List<SubOrderResponse> subOrderResponses = new ArrayList<>();
         Map<Long, Long> subOrderIdsByShop = new HashMap<>();
+        List<OrderItem> allSavedOrderItems = new ArrayList<>();
 
         for (ShopOrderCalculation calc : shopCalculations) {
             SubOrder subOrder = SubOrder.builder()
@@ -208,6 +211,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                         .build();
 
                 orderItem = orderItemRepository.save(orderItem);
+                allSavedOrderItems.add(orderItem);
 
                 itemResponses.add(OrderItemResponse.builder()
                         .id(orderItem.getId())
@@ -269,6 +273,13 @@ public class CheckoutServiceImpl implements CheckoutService {
             log.info("Đã dọn dẹp {} mặt hàng đã thanh toán khỏi Redis Cart của user {}", checkedOutVariantIds.size(), userId);
         } catch (Exception ex) {
             log.warn("Không thể xóa mặt hàng checkout khỏi Redis Cart cho user {}: {}", userId, ex.getMessage());
+        }
+
+        // 9. Kích hoạt Saga Checkout Orchestrator (giữ tồn kho có TTL 15 phút qua OrderCreatedEvent)
+        try {
+            orderSagaOrchestrator.startCheckoutSaga(masterOrder, allSavedOrderItems);
+        } catch (Exception ex) {
+            log.error("Lỗi khi kích hoạt Saga Checkout Orchestrator cho MasterOrder #{}: {}", masterOrderId, ex.getMessage(), ex);
         }
 
         log.info("Tạo thành công MasterOrder #{} cho user {} với {} SubOrders, tổng tiền: {} VND (Giảm sàn: {} VND, Giảm Shop: {} VND)",

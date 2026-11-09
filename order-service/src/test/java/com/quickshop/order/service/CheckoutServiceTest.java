@@ -54,6 +54,9 @@ class CheckoutServiceTest {
     @Mock
     private VoucherService voucherService;
 
+    @Mock
+    private com.quickshop.order.saga.OrderSagaOrchestrator orderSagaOrchestrator;
+
     @InjectMocks
     private CheckoutServiceImpl checkoutService;
 

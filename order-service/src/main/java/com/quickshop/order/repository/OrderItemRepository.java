@@ -4,9 +4,11 @@ import com.quickshop.order.entity.OrderItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 
 @Repository
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     List<OrderItem> findBySubOrderId(Long subOrderId);
+    List<OrderItem> findBySubOrderIdIn(Collection<Long> subOrderIds);
 }
