@@ -232,6 +232,8 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
+            bash ./deployments/nginx/generate-ssl.sh || true
+
             export IMAGE_TAG=$IMAGE_TAG
 
             SERVICES_TO_UPDATE=""

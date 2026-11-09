@@ -44,3 +44,8 @@ node_modules/
 frontend/node_modules/
 .DS_Store
 graphify-out/
+
+# SSL Certificates & Private Keys
+deployments/nginx/ssl/*.crt
+deployments/nginx/ssl/*.key
+deployments/nginx/ssl/*.pem
