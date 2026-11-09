@@ -701,7 +701,7 @@ Triển khai double-entry ledger; ghi Nợ/Có cân bằng, commission và escro
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Payment IPN",2026-11-12,2026-11-12
-Cần làm,"[DevOps & Monitoring] Bổ sung GitHub Actions build/test; cấu hình Docker image, Nginx reverse proxy và secrets mẫu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[DevOps & Monitoring] Bổ sung GitHub Actions build/test; cấu hình Docker image, Nginx reverse proxy và secrets mẫu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Sáu, 2026-11-13
 **Phân hệ:** DevOps & Monitoring
 
@@ -714,7 +714,7 @@ Bổ sung GitHub Actions build/test; cấu hình Docker image, Nginx reverse pro
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Các service build được",2026-11-13,2026-11-13
-Cần làm,"[Frontend Admin] Bổ sung màn GMV/commission và audit log cơ bản; hoàn thiện responsive, loading/error states: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+Đã xong,"[Frontend Admin] Bổ sung màn GMV/commission và audit log cơ bản; hoàn thiện responsive, loading/error states: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Sáu, 2026-11-13
 **Phân hệ:** Frontend Admin
 
@@ -727,7 +727,7 @@ Bổ sung màn GMV/commission và audit log cơ bản; hoàn thiện responsive,
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - API báo cáo/audit",2026-11-13,2026-11-13
-Cần làm,"[Shipping] Tích hợp GHN/GHTK hoặc Mock Simulator; tạo vận đơn, phí ship, tracking code và trạng thái giao hàng: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[Shipping] Tích hợp GHN/GHTK hoặc Mock Simulator; tạo vận đơn, phí ship, tracking code và trạng thái giao hàng: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Sáu, 2026-11-13
 **Phân hệ:** Shipping
 
@@ -740,7 +740,7 @@ Tích hợp GHN/GHTK hoặc Mock Simulator; tạo vận đơn, phí ship, tracki
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Order/Shipping service",2026-11-13,2026-11-13
-Cần làm,"[Security & Observability] Cấu hình Prometheus/Grafana/Loki/Zipkin theo khả năng MVP; rà soát secrets, CORS, rate limit và log nhạy cảm: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[Security & Observability] Cấu hình Prometheus/Grafana/Loki/Zipkin theo khả năng MVP; rà soát secrets, CORS, rate limit và log nhạy cảm: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Bảy, 2026-11-14
 **Phân hệ:** Security & Observability
 
@@ -753,7 +753,7 @@ Cấu hình Prometheus/Grafana/Loki/Zipkin theo khả năng MVP; rà soát secre
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - CI/Nginx",2026-11-14,2026-11-14
-Cần làm,"[Frontend Integration] Tích hợp toàn bộ Buyer/Seller/Admin; sửa lỗi điều hướng, form validation, phân quyền hiển thị và responsive: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+Đã xong,"[Frontend Integration] Tích hợp toàn bộ Buyer/Seller/Admin; sửa lỗi điều hướng, form validation, phân quyền hiển thị và responsive: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Bảy, 2026-11-14
 **Phân hệ:** Frontend Integration
 
@@ -766,7 +766,7 @@ Tích hợp toàn bộ Buyer/Seller/Admin; sửa lỗi điều hướng, form va
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Các API chính",2026-11-14,2026-11-14
-Cần làm,[Shipping & Wallet] Xử lý webhook shipping idempotent theo event_id; hoàn thiện withdrawal/refund và đóng băng escrow: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,[Shipping & Wallet] Xử lý webhook shipping idempotent theo event_id; hoàn thiện withdrawal/refund và đóng băng escrow: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Bảy, 2026-11-14
 **Phân hệ:** Shipping & Wallet
 
@@ -779,7 +779,7 @@ Xử lý webhook shipping idempotent theo event_id; hoàn thiện withdrawal/ref
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Shipping; Ledger",2026-11-14,2026-11-14
-Cần làm,"[Release & Documentation] Chuẩn hóa README, .env.example, hướng dẫn chạy toàn hệ thống; chạy thử deploy từ pipeline: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[Release & Documentation] Chuẩn hóa README, .env.example, hướng dẫn chạy toàn hệ thống; chạy thử deploy từ pipeline: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Chủ Nhật, 2026-11-15
 **Phân hệ:** Release & Documentation
 
@@ -792,7 +792,7 @@ Chuẩn hóa README, .env.example, hướng dẫn chạy toàn hệ thống; ch�
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - CI/CD; monitoring",2026-11-15,2026-11-15
-Cần làm,"[QA Frontend] Kiểm thử luồng Buyer/Seller/Admin; sửa lỗi UI/API; kiểm tra hiển thị trạng thái đơn, thanh toán và vận chuyển: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+Đã xong,"[QA Frontend] Kiểm thử luồng Buyer/Seller/Admin; sửa lỗi UI/API; kiểm tra hiển thị trạng thái đơn, thanh toán và vận chuyển: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Chủ Nhật, 2026-11-15
 **Phân hệ:** QA Frontend
 
@@ -805,7 +805,7 @@ Kiểm thử luồng Buyer/Seller/Admin; sửa lỗi UI/API; kiểm tra hiển t
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Frontend tích hợp",2026-11-15,2026-11-15
-Cần làm,"[QA Backend] Viết/chạy integration test cho checkout, Saga compensation, VNPay/COD, ledger, shipping webhook và scheduled tasks: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[QA Backend] Viết/chạy integration test cho checkout, Saga compensation, VNPay/COD, ledger, shipping webhook và scheduled tasks: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Chủ Nhật, 2026-11-15
 **Phân hệ:** QA Backend
 
@@ -818,7 +818,7 @@ Viết/chạy integration test cho checkout, Saga compensation, VNPay/COD, ledge
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Các service nghiệp vụ",2026-11-15,2026-11-15
-Cần làm,"[Release & Handover] Điều phối regression; rà soát cấu hình bảo mật, pipeline, monitoring; chốt checklist bàn giao và phân công xử lý lỗi tồn: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[Release & Handover] Điều phối regression; rà soát cấu hình bảo mật, pipeline, monitoring; chốt checklist bàn giao và phân công xử lý lỗi tồn: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Hai, 2026-11-16
 **Phân hệ:** Release & Handover
 
@@ -831,7 +831,7 @@ Cần làm,"[Release & Handover] Điều phối regression; rà soát cấu hìn
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Kết quả QA",2026-11-16,2026-11-16
-Cần làm,[Release & Handover] Chạy regression frontend; xác nhận các màn Buyer/Seller/Admin; cập nhật hướng dẫn sử dụng và ảnh minh họa: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
+Đã xong,[Release & Handover] Chạy regression frontend; xác nhận các màn Buyer/Seller/Admin; cập nhật hướng dẫn sử dụng và ảnh minh họa: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Hai, 2026-11-16
 **Phân hệ:** Release & Handover
 
@@ -844,7 +844,7 @@ Chạy regression frontend; xác nhận các màn Buyer/Seller/Admin; cập nh�
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Kết quả QA",2026-11-16,2026-11-16
-Cần làm,"[Release & Handover] Chạy regression backend; kiểm tra dữ liệu/luồng lỗi, tổng hợp test report và danh sách known issues: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[Release & Handover] Chạy regression backend; kiểm tra dữ liệu/luồng lỗi, tổng hợp test report và danh sách known issues: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Hai, 2026-11-16
 **Phân hệ:** Release & Handover
 
