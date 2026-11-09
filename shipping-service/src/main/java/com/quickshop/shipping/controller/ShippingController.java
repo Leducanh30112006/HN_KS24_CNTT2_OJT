@@ -1,18 +1,17 @@
 package com.quickshop.shipping.controller;
 
 import com.quickshop.common.dto.ApiResponse;
+import com.quickshop.shipping.dto.CalculateFeeRequest;
+import com.quickshop.shipping.dto.CalculateFeeResponse;
+import com.quickshop.shipping.dto.CreateShipmentRequest;
+import com.quickshop.shipping.dto.ShipmentStatusUpdateRequest;
 import com.quickshop.shipping.entity.Shipment;
-import com.quickshop.shipping.entity.ShippingWebhookLog;
-import com.quickshop.shipping.repository.ShipmentRepository;
-import com.quickshop.shipping.repository.ShippingWebhookLogRepository;
+import com.quickshop.shipping.service.ShippingService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -20,45 +19,56 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ShippingController {
 
-    private final ShipmentRepository shipmentRepository;
-    private final ShippingWebhookLogRepository webhookLogRepository;
+    private final ShippingService shippingService;
+
+    @PostMapping("/calculate-fee")
+    public ResponseEntity<ApiResponse<CalculateFeeResponse>> calculateFee(@RequestBody CalculateFeeRequest request) {
+        CalculateFeeResponse response = shippingService.calculateFee(request);
+        return ResponseEntity.ok(ApiResponse.success("Tính phí vận chuyển thành công", response));
+    }
+
+    @PostMapping("/create-shipment")
+    public ResponseEntity<ApiResponse<Shipment>> createShipment(@RequestBody CreateShipmentRequest request) {
+        Shipment shipment = shippingService.createShipment(request);
+        return ResponseEntity.ok(ApiResponse.success("Tạo vận đơn thành công", shipment));
+    }
 
     @GetMapping("/track/{trackingCode}")
     public ResponseEntity<ApiResponse<Shipment>> trackShipment(@PathVariable String trackingCode) {
-        Optional<Shipment> shipmentOpt = shipmentRepository.findByTrackingCode(trackingCode);
-        if (shipmentOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(ApiResponse.success(shipmentOpt.get()));
+        Shipment shipment = shippingService.getShipmentByTrackingCode(trackingCode);
+        return ResponseEntity.ok(ApiResponse.success("Tra cứu vận đơn thành công", shipment));
+    }
+
+    @GetMapping("/sub-order/{subOrderId}")
+    public ResponseEntity<ApiResponse<Shipment>> getShipmentBySubOrder(@PathVariable Long subOrderId) {
+        Shipment shipment = shippingService.getShipmentBySubOrderId(subOrderId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin vận đơn thành công", shipment));
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<ApiResponse<Shipment>> updateStatus(
+            @PathVariable Long id,
+            @RequestBody ShipmentStatusUpdateRequest request) {
+        Shipment shipment = shippingService.updateShipmentStatus(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật trạng thái vận đơn thành công", shipment));
     }
 
     @PostMapping("/webhook")
-    @Transactional
     public ResponseEntity<ApiResponse<String>> handleShippingWebhook(@RequestBody WebhookPayload payload) {
-        log.info("Received shipping webhook from {}: eventId={}, trackingCode={}, status={}",
+        log.info("Received shipping webhook: carrier={}, eventId={}, trackingCode={}, status={}",
                 payload.getCarrierName(), payload.getEventId(), payload.getTrackingCode(), payload.getStatus());
 
-        // 1. Kiểm tra tính lũy trùng Idempotency bằng event_id
-        if (webhookLogRepository.existsByEventId(payload.getEventId())) {
-            log.warn("Duplicate webhook detected for eventId: {}, skipping processing", payload.getEventId());
+        boolean processed = shippingService.handleWebhook(payload);
+        if (!processed) {
             return ResponseEntity.ok(ApiResponse.success("Sự kiện đã được xử lý trước đó (Idempotent response)", payload.getEventId()));
         }
-
-        // 2. Ghi nhận log webhook mới
-        webhookLogRepository.save(ShippingWebhookLog.builder()
-                .eventId(payload.getEventId())
-                .carrierName(payload.getCarrierName())
-                .payload(payload.toString())
-                .build());
-
-        // 3. Cập nhật trạng thái vận đơn
-        shipmentRepository.findByTrackingCode(payload.getTrackingCode()).ifPresent(shipment -> {
-            shipment.setShippingStatus(payload.getStatus());
-            shipmentRepository.save(shipment);
-            log.info("Updated shipment trackingCode {} to status {}", payload.getTrackingCode(), payload.getStatus());
-        });
-
         return ResponseEntity.ok(ApiResponse.success("Xử lý webhook vận chuyển thành công", payload.getEventId()));
+    }
+
+    @PostMapping("/simulate-step/{trackingCode}")
+    public ResponseEntity<ApiResponse<Shipment>> simulateNextStep(@PathVariable String trackingCode) {
+        Shipment shipment = shippingService.simulateNextCarrierStep(trackingCode);
+        return ResponseEntity.ok(ApiResponse.success("Mô phỏng bước vận chuyển thành công", shipment));
     }
 
     @Data
