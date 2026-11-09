@@ -201,7 +201,7 @@ jobs:
   # ==========================================================
   deploy-vps:
     needs: [detect-changes, build-and-push]
-    if: github.ref == 'refs/heads/main' && env.VPS_HOST != ''
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Rolling Deployment via SSH
