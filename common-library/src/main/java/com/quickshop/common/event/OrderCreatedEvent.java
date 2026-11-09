@@ -24,6 +24,10 @@ public class OrderCreatedEvent implements Serializable {
     private String customerEmail;
     private List<OrderItemEventDto> items;
     private BigDecimal totalAmount;
+    private String paymentMethod;
+
+    @Builder.Default
+    private Integer ttlSeconds = 900; // 15 phút TTL giữ kho
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     @Builder.Default

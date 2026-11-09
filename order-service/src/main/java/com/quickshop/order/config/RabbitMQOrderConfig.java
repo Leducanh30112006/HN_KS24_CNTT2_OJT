@@ -1,12 +1,16 @@
 package com.quickshop.order.config;
 
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.config.RetryInterceptorBuilder;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.retry.RepublishMessageRecoverer;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.retry.interceptor.RetryOperationsInterceptor;
 
 @Configuration
 public class RabbitMQOrderConfig {
@@ -18,10 +22,18 @@ public class RabbitMQOrderConfig {
     public static final String QUEUE_STOCK_RESERVED = "stock.reserved.queue";
     public static final String QUEUE_STOCK_FAILED = "stock.failed.queue";
     public static final String QUEUE_ORDER_DLQ = "order.dlq";
+    public static final String QUEUE_PAYMENT_COMPLETED = "order.payment.completed.queue";
+    public static final String QUEUE_PAYMENT_FAILED = "order.payment.failed.queue";
 
     public static final String ROUTING_KEY_ORDER_CREATED = "order.created";
     public static final String ROUTING_KEY_STOCK_RESERVED = "stock.reserved";
     public static final String ROUTING_KEY_STOCK_FAILED = "stock.failed";
+    public static final String ROUTING_KEY_STOCK_RELEASE = "stock.release";
+    public static final String ROUTING_KEY_ORDER_COMPENSATION = "order.compensation";
+    public static final String ROUTING_KEY_PAYMENT_REQUESTED = "payment.requested";
+    public static final String ROUTING_KEY_PAYMENT_COMPLETED = "payment.completed";
+    public static final String ROUTING_KEY_PAYMENT_FAILED = "payment.failed";
+    public static final String ROUTING_KEY_ORDER_CONFIRMED = "order.confirmed";
     public static final String ROUTING_KEY_ORDER_DLQ = "order.dlq.routing";
 
     @Bean
@@ -50,6 +62,16 @@ public class RabbitMQOrderConfig {
     }
 
     @Bean
+    public Queue paymentCompletedQueue() {
+        return QueueBuilder.durable(QUEUE_PAYMENT_COMPLETED).build();
+    }
+
+    @Bean
+    public Queue paymentFailedQueue() {
+        return QueueBuilder.durable(QUEUE_PAYMENT_FAILED).build();
+    }
+
+    @Bean
     public Queue orderDeadLetterQueue() {
         return QueueBuilder.durable(QUEUE_ORDER_DLQ).build();
     }
@@ -62,6 +84,16 @@ public class RabbitMQOrderConfig {
     @Bean
     public Binding stockFailedBinding(Queue stockFailedQueue, TopicExchange catalogExchange) {
         return BindingBuilder.bind(stockFailedQueue).to(catalogExchange).with(ROUTING_KEY_STOCK_FAILED);
+    }
+
+    @Bean
+    public Binding paymentCompletedBinding(Queue paymentCompletedQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(paymentCompletedQueue).to(orderExchange).with(ROUTING_KEY_PAYMENT_COMPLETED);
+    }
+
+    @Bean
+    public Binding paymentFailedBinding(Queue paymentFailedQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(paymentFailedQueue).to(orderExchange).with(ROUTING_KEY_PAYMENT_FAILED);
     }
 
     @Bean
@@ -79,5 +111,31 @@ public class RabbitMQOrderConfig {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(jsonMessageConverter());
         return template;
+    }
+
+    /**
+     * Cấu hình Retry tối đa 3 lần với Exponential Backoff (1s -> 2s -> 4s, trần 5s)
+     * Sau 3 lần thất bại, RepublishMessageRecoverer sẽ đẩy thông điệp sang order.dlx.exchange -> order.dlq
+     */
+    @Bean
+    public RetryOperationsInterceptor retryInterceptor(RabbitTemplate rabbitTemplate) {
+        return RetryInterceptorBuilder.stateless()
+                .maxAttempts(3)
+                .backOffOptions(1000, 2.0, 5000)
+                .recoverer(new RepublishMessageRecoverer(rabbitTemplate, EXCHANGE_ORDER_DLX, ROUTING_KEY_ORDER_DLQ))
+                .build();
+    }
+
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            ConnectionFactory connectionFactory,
+            MessageConverter messageConverter,
+            RetryOperationsInterceptor retryInterceptor) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(messageConverter);
+        factory.setAdviceChain(retryInterceptor);
+        factory.setDefaultRequeueRejected(false);
+        return factory;
     }
 }

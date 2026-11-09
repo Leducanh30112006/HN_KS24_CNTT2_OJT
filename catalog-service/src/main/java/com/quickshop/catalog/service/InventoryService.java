@@ -7,19 +7,26 @@ import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class InventoryService {
 
+    public static final String INVENTORY_RESERVE_KEY_PREFIX = "inventory:reserve:";
+    public static final Duration DEFAULT_RESERVE_TTL = Duration.ofMinutes(15); // 900 seconds (15 phút)
+
     private final ProductVariantRepository variantRepository;
     private final CatalogCacheService cacheService;
+    private final StringRedisTemplate redisTemplate;
 
     @Transactional
     public boolean reserveStock(String orderId, List<StockReserveItem> items) {
@@ -71,28 +78,50 @@ public class InventoryService {
                     qty, variant.getSku(), variant.getStock(), variant.getReservedStock());
         }
 
+        // Lưu trạng thái giữ kho vào Redis với TTL 15 phút (900s)
+        if (orderId != null && !orderId.isBlank()) {
+            String redisKey = INVENTORY_RESERVE_KEY_PREFIX + orderId;
+            try {
+                redisTemplate.opsForValue().set(redisKey, "RESERVED", DEFAULT_RESERVE_TTL);
+                log.info("Đã thiết lập Redis key giữ kho: {} với TTL {} giây", redisKey, DEFAULT_RESERVE_TTL.getSeconds());
+            } catch (Exception ex) {
+                log.warn("Lỗi khi lưu key giữ kho Redis {}: {}", redisKey, ex.getMessage());
+            }
+        }
+
         return true;
     }
 
     @Transactional
     public void releaseStock(String orderId, List<StockReserveItem> items) {
         log.info("Releasing reserved stock for orderId: {}, itemCount: {}", orderId, items != null ? items.size() : 0);
-        if (items == null) return;
+        if (items != null) {
+            for (StockReserveItem item : items) {
+                ProductVariant variant = findVariant(item);
+                if (variant != null) {
+                    int qty = item.getQuantity() != null ? item.getQuantity() : 1;
+                    int currentStock = variant.getStock() != null ? variant.getStock() : 0;
+                    variant.setStock(Math.max(0, currentStock + qty));
 
-        for (StockReserveItem item : items) {
-            ProductVariant variant = findVariant(item);
-            if (variant != null) {
-                int qty = item.getQuantity() != null ? item.getQuantity() : 1;
-                int currentStock = variant.getStock() != null ? variant.getStock() : 0;
-                variant.setStock(Math.max(0, currentStock + qty));
+                    int currentReserved = variant.getReservedStock() != null ? variant.getReservedStock() : 0;
+                    variant.setReservedStock(Math.max(0, currentReserved - qty));
+                    variantRepository.save(variant);
 
-                int currentReserved = variant.getReservedStock() != null ? variant.getReservedStock() : 0;
-                variant.setReservedStock(Math.max(0, currentReserved - qty));
-                variantRepository.save(variant);
+                    cacheService.evictProductCaches(variant.getProductId());
+                    log.info("Released {} units for SKU: {}, restored stock: {}, remaining reservedStock: {}",
+                            qty, variant.getSku(), variant.getStock(), variant.getReservedStock());
+                }
+            }
+        }
 
-                cacheService.evictProductCaches(variant.getProductId());
-                log.info("Released {} units for SKU: {}, restored stock: {}, remaining reservedStock: {}",
-                        qty, variant.getSku(), variant.getStock(), variant.getReservedStock());
+        // Xóa key Redis giữ kho khi giải phóng tồn kho thành công
+        if (orderId != null && !orderId.isBlank()) {
+            String redisKey = INVENTORY_RESERVE_KEY_PREFIX + orderId;
+            try {
+                redisTemplate.delete(redisKey);
+                log.info("Đã xóa Redis key giữ kho sau khi giải phóng: {}", redisKey);
+            } catch (Exception ex) {
+                log.warn("Lỗi khi xóa key giữ kho Redis {}: {}", redisKey, ex.getMessage());
             }
         }
     }
@@ -100,18 +129,52 @@ public class InventoryService {
     @Transactional
     public void commitStock(String orderId, List<StockReserveItem> items) {
         log.info("Committing reserved stock after successful payment for orderId: {}", orderId);
-        if (items == null) return;
-
-        for (StockReserveItem item : items) {
-            ProductVariant variant = findVariant(item);
-            if (variant != null) {
-                int qty = item.getQuantity() != null ? item.getQuantity() : 1;
-                int currentReserved = variant.getReservedStock() != null ? variant.getReservedStock() : 0;
-                variant.setReservedStock(Math.max(0, currentReserved - qty));
-                variantRepository.save(variant);
-                log.info("Committed {} units for SKU: {}, remaining reservedStock: {}",
-                        qty, variant.getSku(), variant.getReservedStock());
+        if (items != null) {
+            for (StockReserveItem item : items) {
+                ProductVariant variant = findVariant(item);
+                if (variant != null) {
+                    int qty = item.getQuantity() != null ? item.getQuantity() : 1;
+                    int currentReserved = variant.getReservedStock() != null ? variant.getReservedStock() : 0;
+                    variant.setReservedStock(Math.max(0, currentReserved - qty));
+                    variantRepository.save(variant);
+                    log.info("Committed {} units for SKU: {}, remaining reservedStock: {}",
+                            qty, variant.getSku(), variant.getReservedStock());
+                }
             }
+        }
+
+        // Xóa key Redis giữ kho khi commit tồn kho chính thức
+        if (orderId != null && !orderId.isBlank()) {
+            String redisKey = INVENTORY_RESERVE_KEY_PREFIX + orderId;
+            try {
+                redisTemplate.delete(redisKey);
+                log.info("Đã xóa Redis key giữ kho sau khi commit: {}", redisKey);
+            } catch (Exception ex) {
+                log.warn("Lỗi khi xóa key giữ kho Redis {}: {}", redisKey, ex.getMessage());
+            }
+        }
+    }
+
+    public Long getReservationRemainingTtl(String orderId) {
+        if (orderId == null || orderId.isBlank()) return -1L;
+        String redisKey = INVENTORY_RESERVE_KEY_PREFIX + orderId;
+        try {
+            Long expire = redisTemplate.getExpire(redisKey, TimeUnit.SECONDS);
+            return expire != null ? expire : -1L;
+        } catch (Exception ex) {
+            log.warn("Lỗi khi đọc TTL Redis key {}: {}", redisKey, ex.getMessage());
+            return -1L;
+        }
+    }
+
+    public boolean hasActiveReservation(String orderId) {
+        if (orderId == null || orderId.isBlank()) return false;
+        String redisKey = INVENTORY_RESERVE_KEY_PREFIX + orderId;
+        try {
+            return Boolean.TRUE.equals(redisTemplate.hasKey(redisKey));
+        } catch (Exception ex) {
+            log.warn("Lỗi khi kiểm tra key Redis {}: {}", redisKey, ex.getMessage());
+            return false;
         }
     }
 

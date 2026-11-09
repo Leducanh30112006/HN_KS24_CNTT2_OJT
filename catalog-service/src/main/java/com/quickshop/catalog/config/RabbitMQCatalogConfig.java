@@ -17,6 +17,13 @@ public class RabbitMQCatalogConfig {
     public static final String QUEUE_ORDER_CREATED = "order.created.queue";
     public static final String ROUTING_KEY_ORDER_CREATED = "order.created";
 
+    public static final String QUEUE_STOCK_RELEASE = "stock.release.queue";
+    public static final String ROUTING_KEY_STOCK_RELEASE = "stock.release";
+    public static final String ROUTING_KEY_ORDER_COMPENSATION = "order.compensation";
+
+    public static final String QUEUE_ORDER_CONFIRMED = "order.confirmed.queue";
+    public static final String ROUTING_KEY_ORDER_CONFIRMED = "order.confirmed";
+
     public static final String ROUTING_KEY_STOCK_RESERVED = "stock.reserved";
     public static final String ROUTING_KEY_STOCK_FAILED = "stock.failed";
 
@@ -38,8 +45,33 @@ public class RabbitMQCatalogConfig {
     }
 
     @Bean
+    public Queue stockReleaseQueue() {
+        return QueueBuilder.durable(QUEUE_STOCK_RELEASE).build();
+    }
+
+    @Bean
+    public Queue orderConfirmedQueue() {
+        return QueueBuilder.durable(QUEUE_ORDER_CONFIRMED).build();
+    }
+
+    @Bean
     public Binding orderCreatedBinding(Queue orderCreatedQueue, TopicExchange orderExchange) {
         return BindingBuilder.bind(orderCreatedQueue).to(orderExchange).with(ROUTING_KEY_ORDER_CREATED);
+    }
+
+    @Bean
+    public Binding stockReleaseBinding(Queue stockReleaseQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(stockReleaseQueue).to(orderExchange).with(ROUTING_KEY_STOCK_RELEASE);
+    }
+
+    @Bean
+    public Binding stockCompensationBinding(Queue stockReleaseQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(stockReleaseQueue).to(orderExchange).with(ROUTING_KEY_ORDER_COMPENSATION);
+    }
+
+    @Bean
+    public Binding orderConfirmedBinding(Queue orderConfirmedQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(orderConfirmedQueue).to(orderExchange).with(ROUTING_KEY_ORDER_CONFIRMED);
     }
 
     @Bean

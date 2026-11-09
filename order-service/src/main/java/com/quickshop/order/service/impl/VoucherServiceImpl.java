@@ -260,6 +260,43 @@ public class VoucherServiceImpl implements VoucherService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy voucher với mã " + code));
     }
 
+    @Override
+    @Transactional
+    public void revertUsage(Long masterOrderId) {
+        if (masterOrderId == null) {
+            return;
+        }
+
+        List<VoucherUsage> usages = voucherUsageRepository.findByMasterOrderId(masterOrderId);
+        if (usages.isEmpty()) {
+            log.info("Không có voucher nào được áp dụng cho đơn hàng Master #{} cần hoàn trả", masterOrderId);
+            return;
+        }
+
+        for (VoucherUsage usage : usages) {
+            voucherRepository.findById(usage.getVoucherId()).ifPresent(voucher -> {
+                int currentUsed = voucher.getUsedCount() != null ? voucher.getUsedCount() : 0;
+                voucher.setUsedCount(Math.max(0, currentUsed - 1));
+
+                // Nếu voucher từng bị EXHAUSTED nhưng giờ số lượt dùng giảm xuống dưới giới hạn -> phục hồi ACTIVE
+                if ("EXHAUSTED".equalsIgnoreCase(voucher.getStatus())
+                        && voucher.getUsageLimit() != null
+                        && voucher.getUsedCount() < voucher.getUsageLimit()) {
+                    voucher.setStatus("ACTIVE");
+                    log.info("Voucher [{}] được phục hồi trạng thái ACTIVE sau khi bồi hoàn đơn #{}",
+                            voucher.getCode(), masterOrderId);
+                }
+
+                voucherRepository.save(voucher);
+                log.info("Đã hoàn trả 1 lượt dùng cho Voucher [{}] (usedCount: {}) từ đơn Master #{}",
+                        voucher.getCode(), voucher.getUsedCount(), masterOrderId);
+            });
+        }
+
+        voucherUsageRepository.deleteAll(usages);
+        log.info("Đã xóa {} bản ghi sử dụng voucher của đơn hàng Master #{}", usages.size(), masterOrderId);
+    }
+
     private VoucherValidationResponse buildInvalidResponse(Voucher voucher, String message) {
         return VoucherValidationResponse.builder()
                 .code(voucher.getCode())

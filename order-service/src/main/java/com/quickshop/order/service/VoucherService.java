@@ -59,4 +59,11 @@ public interface VoucherService {
      * @return Thông tin voucher
      */
     VoucherResponse getVoucherByCode(String code);
+
+    /**
+     * Hoàn trả (revert/rollback) việc sử dụng voucher khi đơn hàng bị hủy hoặc Saga thất bại.
+     *
+     * @param masterOrderId ID đơn hàng tổng
+     */
+    void revertUsage(Long masterOrderId);
 }
