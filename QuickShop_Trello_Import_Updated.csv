@@ -493,7 +493,7 @@ Dựng Seller Center: dashboard khung, quản lý sản phẩm, form tạo/sửa
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Frontend/API Catalog",2026-11-07,2026-11-07
-Cần làm,"[Saga & Messaging] Thiết kế Saga checkout; định nghĩa event reserve-stock, payment-request, order-confirmed và compensation: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[Saga & Messaging] Thiết kế Saga checkout; định nghĩa event reserve-stock, payment-request, order-confirmed và compensation: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Bảy, 2026-11-07
 **Phân hệ:** Saga & Messaging
 
@@ -532,7 +532,7 @@ Triển khai đánh giá 1–5 sao chỉ sau đơn COMPLETED; tính rating trung
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Order status contract",2026-11-08,2026-11-08
-Cần làm,[Saga & Inventory] Triển khai reserve stock có TTL 15 phút; xử lý timeout và giải phóng tồn kho khi checkout thất bại: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,[Saga & Inventory] Triển khai reserve stock có TTL 15 phút; xử lý timeout và giải phóng tồn kho khi checkout thất bại: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Chủ Nhật, 2026-11-08
 **Phân hệ:** Saga & Inventory
 
@@ -571,7 +571,7 @@ Kết nối Seller Center với Product API; hoàn thiện trạng thái duyệt
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Seller Center UI; Catalog API",2026-11-09,2026-11-09
-Cần làm,"[Saga & DLQ] Triển khai retry tối đa 3 lần, dead-letter queue order.dlq và log lỗi xử lý sự kiện: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[Saga & DLQ] Triển khai retry tối đa 3 lần, dead-letter queue order.dlq và log lỗi xử lý sự kiện: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Hai, 2026-11-09
 **Phân hệ:** Saga & DLQ
 
