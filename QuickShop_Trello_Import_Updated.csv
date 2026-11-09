@@ -701,7 +701,7 @@ Triển khai double-entry ledger; ghi Nợ/Có cân bằng, commission và escro
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Payment IPN",2026-11-12,2026-11-12
-Cần làm,"[DevOps & Monitoring] Bổ sung GitHub Actions build/test; cấu hình Docker image, Nginx reverse proxy và secrets mẫu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[DevOps & Monitoring] Bổ sung GitHub Actions build/test; cấu hình Docker image, Nginx reverse proxy và secrets mẫu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Sáu, 2026-11-13
 **Phân hệ:** DevOps & Monitoring
 
@@ -740,7 +740,7 @@ Tích hợp GHN/GHTK hoặc Mock Simulator; tạo vận đơn, phí ship, tracki
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Order/Shipping service",2026-11-13,2026-11-13
-Cần làm,"[Security & Observability] Cấu hình Prometheus/Grafana/Loki/Zipkin theo khả năng MVP; rà soát secrets, CORS, rate limit và log nhạy cảm: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[Security & Observability] Cấu hình Prometheus/Grafana/Loki/Zipkin theo khả năng MVP; rà soát secrets, CORS, rate limit và log nhạy cảm: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Bảy, 2026-11-14
 **Phân hệ:** Security & Observability
 
@@ -779,7 +779,7 @@ Xử lý webhook shipping idempotent theo event_id; hoàn thiện withdrawal/ref
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Shipping; Ledger",2026-11-14,2026-11-14
-Cần làm,"[Release & Documentation] Chuẩn hóa README, .env.example, hướng dẫn chạy toàn hệ thống; chạy thử deploy từ pipeline: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[Release & Documentation] Chuẩn hóa README, .env.example, hướng dẫn chạy toàn hệ thống; chạy thử deploy từ pipeline: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Chủ Nhật, 2026-11-15
 **Phân hệ:** Release & Documentation
 
@@ -818,7 +818,7 @@ Viết/chạy integration test cho checkout, Saga compensation, VNPay/COD, ledge
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Các service nghiệp vụ",2026-11-15,2026-11-15
-Cần làm,"[Release & Handover] Điều phối regression; rà soát cấu hình bảo mật, pipeline, monitoring; chốt checklist bàn giao và phân công xử lý lỗi tồn: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[Release & Handover] Điều phối regression; rà soát cấu hình bảo mật, pipeline, monitoring; chốt checklist bàn giao và phân công xử lý lỗi tồn: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Hai, 2026-11-16
 **Phân hệ:** Release & Handover
 
