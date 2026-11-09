@@ -182,9 +182,10 @@ class ShopControllerTest {
                 .status(ShopStatus.ACTIVE)
                 .build();
 
-        when(shopService.approveShop(1L)).thenReturn(approvedShop);
+        when(shopService.approveShop(eq(1L), any())).thenReturn(approvedShop);
 
-        mockMvc.perform(put("/api/shops/1/approve"))
+        mockMvc.perform(put("/api/shops/1/approve")
+                        .header("X-User-Id", "99"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"));
@@ -196,11 +197,15 @@ class ShopControllerTest {
         ShopResponse rejectedShop = ShopResponse.builder()
                 .id(1L)
                 .status(ShopStatus.REJECTED)
+                .rejectionReason("Không đạt yêu cầu")
                 .build();
 
-        when(shopService.rejectShop(1L)).thenReturn(rejectedShop);
+        when(shopService.rejectShop(eq(1L), any(), any())).thenReturn(rejectedShop);
 
-        mockMvc.perform(put("/api/shops/1/reject"))
+        mockMvc.perform(put("/api/shops/1/reject")
+                        .header("X-User-Id", "99")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Không đạt yêu cầu\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("REJECTED"));

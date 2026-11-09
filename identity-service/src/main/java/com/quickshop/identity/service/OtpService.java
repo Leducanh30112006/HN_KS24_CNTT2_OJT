@@ -43,4 +43,20 @@ public interface OtpService {
      * @return Số giây còn lại (0 nếu không tồn tại hoặc đã hết hạn)
      */
     long getRemainingOtpTtl(String email);
+
+    /**
+     * Tạo mã OTP đặt lại mật khẩu và lưu vào Redis với TTL 15 phút.
+     *
+     * @param email Địa chỉ email
+     * @return Mã OTP 6 chữ số
+     */
+    String generateAndSaveResetOtp(String email);
+
+    /**
+     * Xác thực mã OTP đặt lại mật khẩu từ Redis.
+     *
+     * @param email Địa chỉ email
+     * @param otpCode Mã OTP
+     */
+    void verifyResetOtp(String email, String otpCode);
 }

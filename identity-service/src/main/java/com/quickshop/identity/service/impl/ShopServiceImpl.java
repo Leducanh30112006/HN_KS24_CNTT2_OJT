@@ -1,5 +1,7 @@
 package com.quickshop.identity.service.impl;
 
+import com.quickshop.common.event.ShopApprovedEvent;
+import com.quickshop.common.event.ShopRejectedEvent;
 import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.common.exception.ResourceNotFoundException;
 import com.quickshop.identity.dto.CreateShopRequest;
@@ -10,8 +12,10 @@ import com.quickshop.identity.entity.Shop;
 import com.quickshop.identity.entity.ShopStatus;
 import com.quickshop.identity.entity.User;
 import com.quickshop.identity.entity.UserStatus;
+import com.quickshop.identity.producer.ShopEventProducer;
 import com.quickshop.identity.repository.ShopRepository;
 import com.quickshop.identity.repository.UserRepository;
+import com.quickshop.identity.service.AuditLogService;
 import com.quickshop.identity.service.ShopService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,6 +34,8 @@ public class ShopServiceImpl implements ShopService {
 
     private final ShopRepository shopRepository;
     private final UserRepository userRepository;
+    private final ShopEventProducer shopEventProducer;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional
@@ -71,6 +78,9 @@ public class ShopServiceImpl implements ShopService {
         Shop savedShop = shopRepository.save(shop);
         log.info("New shop registered [id={}, name='{}', ownerId={}] with status PENDING_APPROVAL",
                 savedShop.getId(), savedShop.getShopName(), ownerId);
+
+        auditLogService.logSuccess(ownerId, owner.getUsername(), "SHOP_REGISTER", "Shop", savedShop.getId(),
+                "Đăng ký mở gian hàng mới: " + savedShop.getShopName());
 
         return ShopResponse.fromEntity(savedShop);
     }
@@ -182,31 +192,86 @@ public class ShopServiceImpl implements ShopService {
     @Override
     @Transactional
     public ShopResponse approveShop(Long id) {
+        return approveShop(id, null);
+    }
+
+    @Override
+    @Transactional
+    public ShopResponse approveShop(Long id, Long adminId) {
         Shop shop = shopRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", id));
 
         shop.setStatus(ShopStatus.ACTIVE);
+        shop.setRejectionReason(null);
         Shop updated = shopRepository.save(shop);
 
-        userRepository.findById(shop.getOwnerId()).ifPresent(user -> {
-            user.setRole(Role.ROLE_SELLER);
-            userRepository.save(user);
-            log.info("Upgraded user [id={}] to ROLE_SELLER", user.getId());
-        });
+        User owner = userRepository.findById(shop.getOwnerId()).orElse(null);
+        if (owner != null) {
+            owner.setRole(Role.ROLE_SELLER);
+            userRepository.save(owner);
+            log.info("Upgraded user [id={}, email={}] to ROLE_SELLER", owner.getId(), owner.getEmail());
+        }
 
-        log.info("Shop [id={}, name='{}'] APPROVED by Admin", updated.getId(), updated.getShopName());
+        // Phát sự kiện ShopApprovedEvent qua RabbitMQ
+        ShopApprovedEvent approvedEvent = ShopApprovedEvent.builder()
+                .shopId(updated.getId())
+                .ownerId(updated.getOwnerId())
+                .shopName(updated.getShopName())
+                .ownerEmail(owner != null ? owner.getEmail() : null)
+                .ownerFullName(owner != null ? owner.getFullName() : null)
+                .businessType(updated.getBusinessType())
+                .citizenId(updated.getCitizenId())
+                .approvedBy(adminId)
+                .approvedAt(LocalDateTime.now())
+                .build();
+        shopEventProducer.publishShopApproved(approvedEvent);
+
+        // Ghi Audit Log duyệt Shop
+        String adminUsername = adminId != null ? userRepository.findById(adminId).map(User::getUsername).orElse("admin") : "system_admin";
+        auditLogService.logSuccess(adminId, adminUsername, "SHOP_APPROVED", "Shop", updated.getId(),
+                "Phê duyệt hồ sơ gian hàng '" + updated.getShopName() + "' và cấp quyền ROLE_SELLER cho chủ shop");
+
+        log.info("Shop [id={}, name='{}'] APPROVED by Admin [id={}]", updated.getId(), updated.getShopName(), adminId);
         return ShopResponse.fromEntity(updated);
     }
 
     @Override
     @Transactional
     public ShopResponse rejectShop(Long id) {
+        return rejectShop(id, null, null);
+    }
+
+    @Override
+    @Transactional
+    public ShopResponse rejectShop(Long id, Long adminId, String reason) {
         Shop shop = shopRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", id));
 
         shop.setStatus(ShopStatus.REJECTED);
+        shop.setRejectionReason(reason);
         Shop updated = shopRepository.save(shop);
-        log.info("Shop [id={}, name='{}'] REJECTED by Admin", updated.getId(), updated.getShopName());
+
+        User owner = userRepository.findById(shop.getOwnerId()).orElse(null);
+
+        // Phát sự kiện ShopRejectedEvent qua RabbitMQ
+        ShopRejectedEvent rejectedEvent = ShopRejectedEvent.builder()
+                .shopId(updated.getId())
+                .ownerId(updated.getOwnerId())
+                .shopName(updated.getShopName())
+                .ownerEmail(owner != null ? owner.getEmail() : null)
+                .ownerFullName(owner != null ? owner.getFullName() : null)
+                .reason(reason)
+                .rejectedBy(adminId)
+                .rejectedAt(LocalDateTime.now())
+                .build();
+        shopEventProducer.publishShopRejected(rejectedEvent);
+
+        // Ghi Audit Log từ chối Shop
+        String adminUsername = adminId != null ? userRepository.findById(adminId).map(User::getUsername).orElse("admin") : "system_admin";
+        auditLogService.logSuccess(adminId, adminUsername, "SHOP_REJECTED", "Shop", updated.getId(),
+                "Từ chối hồ sơ gian hàng '" + updated.getShopName() + "'. Lý do: " + (reason != null ? reason : "Không đạt tiêu chuẩn kiểm duyệt"));
+
+        log.info("Shop [id={}, name='{}'] REJECTED by Admin [id={}]. Reason: {}", updated.getId(), updated.getShopName(), adminId, reason);
         return ShopResponse.fromEntity(updated);
     }
 }

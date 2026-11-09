@@ -2,10 +2,12 @@ package com.quickshop.identity.service;
 
 import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.identity.dto.AuthResponse;
+import com.quickshop.identity.dto.ForgotPasswordRequest;
 import com.quickshop.identity.dto.LoginRequest;
 import com.quickshop.identity.dto.OtpResponse;
 import com.quickshop.identity.dto.RegisterRequest;
 import com.quickshop.identity.dto.ResendOtpRequest;
+import com.quickshop.identity.dto.ResetPasswordRequest;
 import com.quickshop.identity.dto.VerifyOtpRequest;
 import com.quickshop.identity.entity.Role;
 import com.quickshop.identity.entity.User;
@@ -13,7 +15,10 @@ import com.quickshop.identity.entity.UserStatus;
 import com.quickshop.identity.repository.ShopRepository;
 import com.quickshop.identity.repository.UserRepository;
 import com.quickshop.identity.security.JwtTokenProvider;
+import com.quickshop.identity.service.AuditLogService;
 import com.quickshop.identity.service.impl.AuthServiceImpl;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -50,6 +55,12 @@ class AuthServiceTest {
 
     @Mock
     private OtpService otpService;
+
+    @Mock
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -405,6 +416,10 @@ class AuthServiceTest {
         @Test
         @DisplayName("Làm mới token thành công")
         void refreshToken_Success() {
+            ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+            when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+            when(stringRedisTemplate.hasKey(anyString())).thenReturn(false);
+
             when(tokenProvider.validateToken("valid_refresh_token")).thenReturn(true);
             when(tokenProvider.getTokenType("valid_refresh_token")).thenReturn("REFRESH");
             when(tokenProvider.getUsernameFromToken("valid_refresh_token")).thenReturn("testbuyer");
@@ -438,6 +453,122 @@ class AuthServiceTest {
             assertThatThrownBy(() -> authService.refreshToken("invalid_token"))
                     .isInstanceOf(BadRequestException.class)
                     .hasMessageContaining("Refresh token không hợp lệ");
+        }
+
+        @Test
+        @DisplayName("Làm mới token thất bại - token đã bị thu hồi trong Redis (Blacklist)")
+        void refreshToken_Revoked_ThrowsBadRequest() {
+            when(tokenProvider.validateToken("revoked_refresh_token")).thenReturn(true);
+            when(stringRedisTemplate.hasKey("identity:revoked_token:revoked_refresh_token")).thenReturn(true);
+
+            assertThatThrownBy(() -> authService.refreshToken("revoked_refresh_token"))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("thu hồi hoặc đã đăng xuất");
+        }
+    }
+
+    @Nested
+    @DisplayName("Tests cho luồng Quên mật khẩu & Đặt lại mật khẩu (Reset Password)")
+    class ResetPasswordTests {
+
+        @Test
+        @DisplayName("Yêu cầu gửi OTP quên mật khẩu thành công")
+        void forgotPassword_Success() {
+            when(userRepository.findByEmail("buyer@quickshop.vn")).thenReturn(Optional.of(sampleUser));
+            when(otpService.generateAndSaveResetOtp("buyer@quickshop.vn")).thenReturn("654321");
+
+            ForgotPasswordRequest request = ForgotPasswordRequest.builder()
+                    .email("buyer@quickshop.vn")
+                    .build();
+
+            OtpResponse response = authService.forgotPassword(request);
+
+            assertThat(response).isNotNull();
+            assertThat(response.getEmail()).isEqualTo("buyer@quickshop.vn");
+            assertThat(response.getTtlSeconds()).isEqualTo(900L);
+            verify(otpService, times(1)).generateAndSaveResetOtp("buyer@quickshop.vn");
+            verify(auditLogService, times(1)).logSuccess(eq(1L), eq("testbuyer"), eq("PASSWORD_RESET_REQUEST"), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("Yêu cầu quên mật khẩu thất bại - email không tồn tại")
+        void forgotPassword_UserNotFound_ThrowsBadRequest() {
+            when(userRepository.findByEmail("unknown@quickshop.vn")).thenReturn(Optional.empty());
+
+            ForgotPasswordRequest request = ForgotPasswordRequest.builder()
+                    .email("unknown@quickshop.vn")
+                    .build();
+
+            assertThatThrownBy(() -> authService.forgotPassword(request))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Không tìm thấy tài khoản");
+        }
+
+        @Test
+        @DisplayName("Đặt lại mật khẩu mới thành công khi OTP hợp lệ")
+        void resetPassword_Success() {
+            when(userRepository.findByEmail("buyer@quickshop.vn")).thenReturn(Optional.of(sampleUser));
+            when(passwordEncoder.encode("NewSecretPassword123")).thenReturn("encoded_new_pass");
+
+            ResetPasswordRequest request = ResetPasswordRequest.builder()
+                    .email("buyer@quickshop.vn")
+                    .otp("654321")
+                    .newPassword("NewSecretPassword123")
+                    .confirmPassword("NewSecretPassword123")
+                    .build();
+
+            authService.resetPassword(request);
+
+            verify(otpService, times(1)).verifyResetOtp("buyer@quickshop.vn", "654321");
+            verify(userRepository, times(1)).save(sampleUser);
+            assertThat(sampleUser.getPassword()).isEqualTo("encoded_new_pass");
+            verify(auditLogService, times(1)).logSuccess(eq(1L), eq("testbuyer"), eq("PASSWORD_RESET"), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("Đặt lại mật khẩu thất bại - xác nhận mật khẩu không khớp")
+        void resetPassword_PasswordMismatch_ThrowsBadRequest() {
+            ResetPasswordRequest request = ResetPasswordRequest.builder()
+                    .email("buyer@quickshop.vn")
+                    .otp("654321")
+                    .newPassword("NewSecretPassword123")
+                    .confirmPassword("DifferentPassword123")
+                    .build();
+
+            assertThatThrownBy(() -> authService.resetPassword(request))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("không trùng khớp");
+
+            verify(otpService, never()).verifyResetOtp(any(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("Tests cho Thu hồi Token (Revoke) & Đăng xuất (Logout)")
+    class TokenRevokeTests {
+
+        @Test
+        @DisplayName("Thu hồi token thành công vào Redis blacklist")
+        void revokeToken_Success() {
+            ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+            when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+
+            authService.revokeToken("token_to_revoke", 1L);
+
+            verify(valueOperations, times(1)).set(eq("identity:revoked_token:token_to_revoke"), eq("REVOKED"), any());
+            verify(auditLogService, times(1)).logSuccess(eq(1L), any(), eq("TOKEN_REVOKE"), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("Đăng xuất thành công và ghi audit log")
+        void logout_Success() {
+            ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+            when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+
+            authService.logout("active_session_token", 1L);
+
+            verify(valueOperations, times(1)).set(eq("identity:revoked_token:active_session_token"), eq("REVOKED"), any());
+            verify(auditLogService, times(1)).logSuccess(eq(1L), any(), eq("LOGOUT"), any(), any(), any());
         }
     }
 }

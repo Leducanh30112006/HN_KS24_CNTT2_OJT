@@ -467,7 +467,7 @@ Triển khai áp dụng voucher sàn và voucher Shop; kiểm tra điều kiện
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Checkout multi-shop",2026-11-06,2026-11-06
-Cần làm,[Shop & Admin] Triển khai luồng Admin duyệt/từ chối Shop; sau duyệt gán ROLE_SELLER và phát sự kiện ShopApproved: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
+Đã xong,[Shop & Admin] Triển khai luồng Admin duyệt/từ chối Shop; sau duyệt gán ROLE_SELLER và phát sự kiện ShopApproved: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Bảy, 2026-11-07
 **Phân hệ:** Shop & Admin
 
@@ -506,7 +506,7 @@ Thiết kế Saga checkout; định nghĩa event reserve-stock, payment-request,
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Checkout/Voucher",2026-11-07,2026-11-07
-Cần làm,"[Identity & Shop] Hoàn thiện reset password, refresh/revoke token; bổ sung audit log cho thao tác xác thực và duyệt Shop: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[Identity & Shop] Hoàn thiện reset password, refresh/revoke token; bổ sung audit log cho thao tác xác thực và duyệt Shop: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Chủ Nhật, 2026-11-08
 **Phân hệ:** Identity & Shop
 
@@ -545,7 +545,7 @@ Triển khai reserve stock có TTL 15 phút; xử lý timeout và giải phóng 
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Saga contract; SKU API",2026-11-08,2026-11-08
-Cần làm,"[Notification] Tạo Notification Service; cấu hình RabbitMQ listener, retry cơ bản và cấu trúc email_logs: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[Notification] Tạo Notification Service; cấu hình RabbitMQ listener, retry cơ bản và cấu trúc email_logs: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Hai, 2026-11-09
 **Phân hệ:** Notification
 

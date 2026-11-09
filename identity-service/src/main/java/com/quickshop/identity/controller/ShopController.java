@@ -3,6 +3,7 @@ package com.quickshop.identity.controller;
 import com.quickshop.common.dto.ApiResponse;
 import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.identity.dto.CreateShopRequest;
+import com.quickshop.identity.dto.RejectShopRequest;
 import com.quickshop.identity.dto.ShopResponse;
 import com.quickshop.identity.dto.UpdateShopRequest;
 import com.quickshop.identity.entity.ShopStatus;
@@ -97,15 +98,25 @@ public class ShopController {
 
     @PutMapping("/{id}/approve")
     @Operation(summary = "Admin duyệt mở gian hàng & nâng quyền ROLE_SELLER cho chủ shop")
-    public ResponseEntity<ApiResponse<ShopResponse>> approveShop(@PathVariable Long id) {
-        ShopResponse response = shopService.approveShop(id);
+    public ResponseEntity<ApiResponse<ShopResponse>> approveShop(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String adminIdHeader
+    ) {
+        Long adminId = StringUtils.hasText(adminIdHeader) ? Long.parseLong(adminIdHeader) : null;
+        ShopResponse response = shopService.approveShop(id, adminId);
         return ResponseEntity.ok(ApiResponse.ok("Đã phê duyệt gian hàng thành công và cấp quyền ROLE_SELLER", response));
     }
 
     @PutMapping("/{id}/reject")
-    @Operation(summary = "Admin từ chối hồ sơ mở gian hàng")
-    public ResponseEntity<ApiResponse<ShopResponse>> rejectShop(@PathVariable Long id) {
-        ShopResponse response = shopService.rejectShop(id);
+    @Operation(summary = "Admin từ chối hồ sơ mở gian hàng (kèm lý do)")
+    public ResponseEntity<ApiResponse<ShopResponse>> rejectShop(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String adminIdHeader,
+            @Valid @RequestBody(required = false) RejectShopRequest request
+    ) {
+        Long adminId = StringUtils.hasText(adminIdHeader) ? Long.parseLong(adminIdHeader) : null;
+        String reason = (request != null && StringUtils.hasText(request.getReason())) ? request.getReason().trim() : null;
+        ShopResponse response = shopService.rejectShop(id, adminId, reason);
         return ResponseEntity.ok(ApiResponse.ok("Đã từ chối hồ sơ mở gian hàng", response));
     }
 

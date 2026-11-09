@@ -3,10 +3,13 @@ package com.quickshop.identity.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.identity.dto.AuthResponse;
+import com.quickshop.identity.dto.ForgotPasswordRequest;
 import com.quickshop.identity.dto.LoginRequest;
 import com.quickshop.identity.dto.OtpResponse;
 import com.quickshop.identity.dto.RegisterRequest;
 import com.quickshop.identity.dto.ResendOtpRequest;
+import com.quickshop.identity.dto.ResetPasswordRequest;
+import com.quickshop.identity.dto.RevokeTokenRequest;
 import com.quickshop.identity.dto.VerifyOtpRequest;
 import com.quickshop.identity.entity.Role;
 import com.quickshop.identity.entity.User;
@@ -266,5 +269,60 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.username").value("testuser"));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/forgot-password - Yêu cầu cấp OTP đặt lại mật khẩu")
+    void forgotPassword_Success() throws Exception {
+        ForgotPasswordRequest request = ForgotPasswordRequest.builder()
+                .email("buyer@quickshop.vn")
+                .build();
+
+        OtpResponse response = OtpResponse.builder()
+                .email("buyer@quickshop.vn")
+                .message("OTP sent")
+                .ttlSeconds(900L)
+                .cooldownSeconds(60L)
+                .build();
+
+        when(authService.forgotPassword(any(ForgotPasswordRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.ttlSeconds").value(900));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/reset-password - Đặt lại mật khẩu mới với mã OTP")
+    void resetPassword_Success() throws Exception {
+        ResetPasswordRequest request = ResetPasswordRequest.builder()
+                .email("buyer@quickshop.vn")
+                .otp("123456")
+                .newPassword("NewPass123")
+                .confirmPassword("NewPass123")
+                .build();
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/revoke - Thu hồi token thành công")
+    void revokeToken_Success() throws Exception {
+        RevokeTokenRequest request = RevokeTokenRequest.builder()
+                .token("token_to_blacklist")
+                .build();
+
+        mockMvc.perform(post("/api/auth/revoke")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
     }
 }
