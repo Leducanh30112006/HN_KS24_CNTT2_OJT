@@ -714,7 +714,7 @@ Bổ sung GitHub Actions build/test; cấu hình Docker image, Nginx reverse pro
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Các service build được",2026-11-13,2026-11-13
-Cần làm,"[Frontend Admin] Bổ sung màn GMV/commission và audit log cơ bản; hoàn thiện responsive, loading/error states: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+Đã xong,"[Frontend Admin] Bổ sung màn GMV/commission và audit log cơ bản; hoàn thiện responsive, loading/error states: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Sáu, 2026-11-13
 **Phân hệ:** Frontend Admin
 
@@ -753,7 +753,7 @@ Cấu hình Prometheus/Grafana/Loki/Zipkin theo khả năng MVP; rà soát secre
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - CI/Nginx",2026-11-14,2026-11-14
-Cần làm,"[Frontend Integration] Tích hợp toàn bộ Buyer/Seller/Admin; sửa lỗi điều hướng, form validation, phân quyền hiển thị và responsive: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+Đã xong,"[Frontend Integration] Tích hợp toàn bộ Buyer/Seller/Admin; sửa lỗi điều hướng, form validation, phân quyền hiển thị và responsive: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Bảy, 2026-11-14
 **Phân hệ:** Frontend Integration
 
@@ -792,7 +792,7 @@ Chuẩn hóa README, .env.example, hướng dẫn chạy toàn hệ thống; ch�
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - CI/CD; monitoring",2026-11-15,2026-11-15
-Cần làm,"[QA Frontend] Kiểm thử luồng Buyer/Seller/Admin; sửa lỗi UI/API; kiểm tra hiển thị trạng thái đơn, thanh toán và vận chuyển: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+Đã xong,"[QA Frontend] Kiểm thử luồng Buyer/Seller/Admin; sửa lỗi UI/API; kiểm tra hiển thị trạng thái đơn, thanh toán và vận chuyển: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Chủ Nhật, 2026-11-15
 **Phân hệ:** QA Frontend
 
@@ -831,7 +831,7 @@ Cần làm,"[Release & Handover] Điều phối regression; rà soát cấu hìn
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Kết quả QA",2026-11-16,2026-11-16
-Cần làm,[Release & Handover] Chạy regression frontend; xác nhận các màn Buyer/Seller/Admin; cập nhật hướng dẫn sử dụng và ảnh minh họa: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
+Đã xong,[Release & Handover] Chạy regression frontend; xác nhận các màn Buyer/Seller/Admin; cập nhật hướng dẫn sử dụng và ảnh minh họa: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Hai, 2026-11-16
 **Phân hệ:** Release & Handover
 

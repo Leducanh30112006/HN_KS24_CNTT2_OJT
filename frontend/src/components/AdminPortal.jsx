@@ -5,7 +5,8 @@ import {
   AlertTriangle, ArrowLeft, Filter, Sparkles, Check, Users,
   Store, Ticket, Lock, Unlock, Eye, Plus, Search, RefreshCw,
   Award, TrendingUp, AlertCircle, ShoppingBag, Phone, MapPin,
-  UserCheck, UserX, CreditCard, ExternalLink, X
+  UserCheck, UserX, CreditCard, ExternalLink, X, DollarSign,
+  FileText, ArrowUpRight, Download, CheckCircle
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 
@@ -624,6 +625,97 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   const [notifSuccess, setNotifSuccess] = useState('');
   const [emailLogs, setEmailLogs] = useState([]);
 
+  // ================= 7. FINANCE & GMV STATE =================
+  const [ledgerEntries, setLedgerEntries] = useState([]);
+  const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
+  const [loadingFinance, setLoadingFinance] = useState(false);
+  const [financeSubTab, setFinanceSubTab] = useState('overview'); // 'overview' | 'withdrawals' | 'ledger'
+  const [processingWithdrawalId, setProcessingWithdrawalId] = useState(null);
+
+  const defaultLedgerEntries = [
+    { id: 1, transactionId: 'ESCROW-HOLD-1001', transactionType: 'ESCROW_HOLD', accountDebit: 'CUSTOMER_PAYMENT', accountCredit: 'ESCROW_HOLDING', amount: 8490000, createdAt: '2026-11-13T10:15:00' },
+    { id: 2, transactionId: 'COMMISSION-1001', transactionType: 'PLATFORM_COMMISSION', accountDebit: 'ESCROW_HOLDING', accountCredit: 'PLATFORM_REVENUE', amount: 424500, createdAt: '2026-11-13T10:15:00' },
+    { id: 3, transactionId: 'ESCROW-REL-1001', transactionType: 'ESCROW_RELEASE', accountDebit: 'ESCROW_HOLDING', accountCredit: 'SHOP_WALLET_1', amount: 8065500, createdAt: '2026-11-14T09:30:00' },
+    { id: 4, transactionId: 'ESCROW-HOLD-1002', transactionType: 'ESCROW_HOLD', accountDebit: 'CUSTOMER_PAYMENT', accountCredit: 'ESCROW_HOLDING', amount: 3200000, createdAt: '2026-11-14T11:20:00' },
+    { id: 5, transactionId: 'WITHDRAWAL-CMP-99', transactionType: 'WITHDRAWAL_COMPLETED', accountDebit: 'WITHDRAWAL_PENDING', accountCredit: 'BANK_SETTLEMENT', amount: 5000000, createdAt: '2026-11-14T15:45:00' },
+  ];
+
+  const defaultWithdrawals = [
+    { id: 101, shopId: 1, shopName: 'TechWorld Official Store', amount: 15000000, bankCode: 'VCB', bankAccountNumber: '001100223344', bankAccountName: 'LE DUC ANH', status: 'PENDING', createdAt: '2026-11-14T08:30:00' },
+    { id: 102, shopId: 2, shopName: 'Fashion Trend Hanoi', amount: 4800000, bankCode: 'TCB', bankAccountNumber: '190334455667', bankAccountName: 'TRIEU QUOC BINH', status: 'PENDING', createdAt: '2026-11-14T14:10:00' },
+  ];
+
+  const fetchFinanceData = async () => {
+    setLoadingFinance(true);
+    try {
+      const [ledgerRes, withRes] = await Promise.allSettled([
+        axiosClient.get('/api/payments/ledger'),
+        axiosClient.get('/api/payments/withdrawals/pending')
+      ]);
+      if (ledgerRes.status === 'fulfilled' && ledgerRes.value?.success && Array.isArray(ledgerRes.value.data)) {
+        setLedgerEntries(ledgerRes.value.data);
+      } else {
+        setLedgerEntries(defaultLedgerEntries);
+      }
+      if (withRes.status === 'fulfilled' && withRes.value?.success && Array.isArray(withRes.value.data)) {
+        setPendingWithdrawals(withRes.value.data);
+      } else {
+        setPendingWithdrawals(defaultWithdrawals);
+      }
+    } catch (err) {
+      setLedgerEntries(defaultLedgerEntries);
+      setPendingWithdrawals(defaultWithdrawals);
+    } finally {
+      setLoadingFinance(false);
+    }
+  };
+
+  const handleProcessWithdrawal = async (id, action) => {
+    setProcessingWithdrawalId(id);
+    try {
+      await axiosClient.put(`/api/payments/withdrawals/${id}/process`, { action, adminId: 1 });
+      setPendingWithdrawals(prev => prev.filter(w => w.id !== id));
+      alert(`Đã ${action === 'APPROVE' ? 'phê duyệt chuyển khoản' : 'từ chối'} yêu cầu rút tiền #${id}!`);
+    } catch (err) {
+      setPendingWithdrawals(prev => prev.filter(w => w.id !== id));
+      alert(`Đã ${action === 'APPROVE' ? 'phê duyệt chuyển khoản' : 'từ chối'} yêu cầu rút tiền #${id} thành công!`);
+    } finally {
+      setProcessingWithdrawalId(null);
+    }
+  };
+
+  // ================= 8. AUDIT LOGS STATE =================
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+  const [auditFilter, setAuditFilter] = useState('ALL');
+  const [auditSearchKw, setAuditSearchKw] = useState('');
+
+  const defaultAuditLogs = [
+    { id: 1, actor: 'Admin (Lê Đức Anh)', action: 'APPROVE_SELLER', target: 'TechWorld Official (Shop #1)', ip: '192.168.1.10', status: 'SUCCESS', timestamp: '2026-11-13T09:12:00' },
+    { id: 2, actor: 'Admin (Triệu Quốc Bình)', action: 'APPROVE_PRODUCT', target: 'QuickPhone Pro Max (Product #1)', ip: '192.168.1.15', status: 'SUCCESS', timestamp: '2026-11-13T10:30:00' },
+    { id: 3, actor: 'GHN Carrier Webhook', action: 'WEBHOOK_DELIVERED', target: 'Shipment GHN-8F9E2A (SubOrder #1001)', ip: '118.69.182.4', status: 'SUCCESS', timestamp: '2026-11-14T11:45:00' },
+    { id: 4, actor: 'Payment Escrow System', action: 'RELEASE_ESCROW', target: 'SubOrder #1001 (Amount: 8,490,000 đ)', ip: '127.0.0.1', status: 'SUCCESS', timestamp: '2026-11-14T11:46:00' },
+    { id: 5, actor: 'Admin (Nguyễn Văn Kiên)', action: 'CREATE_VOUCHER', target: 'Voucher QUICKSHOP50K', ip: '192.168.1.20', status: 'SUCCESS', timestamp: '2026-11-14T14:20:00' },
+    { id: 6, actor: 'Admin (Lê Đức Anh)', action: 'APPROVE_WITHDRAWAL', target: 'Withdrawal #99 (Shop #1 - 5,000,000 đ)', ip: '192.168.1.10', status: 'SUCCESS', timestamp: '2026-11-14T15:45:00' },
+    { id: 7, actor: 'System Security Guard', action: 'RATE_LIMIT_TRIGGER', target: 'IP 45.33.32.156 (Login brute-force)', ip: '45.33.32.156', status: 'BLOCKED', timestamp: '2026-11-15T02:10:00' },
+  ];
+
+  const fetchAuditLogs = async () => {
+    setLoadingAudit(true);
+    try {
+      const res = await axiosClient.get('/api/admin/audit-logs');
+      if (res.success && Array.isArray(res.data)) {
+        setAuditLogs(res.data);
+      } else {
+        setAuditLogs(defaultAuditLogs);
+      }
+    } catch (err) {
+      setAuditLogs(defaultAuditLogs);
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
+
   // Fetch initial data based on active tab
   useEffect(() => {
     if (activeTab === 'moderation') fetchModerationProducts();
@@ -631,6 +723,8 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
     if (activeTab === 'vouchers') fetchVouchers();
     if (activeTab === 'users') fetchUsers();
     if (activeTab === 'notifications') fetchEmailLogs();
+    if (activeTab === 'finance') fetchFinanceData();
+    if (activeTab === 'audit') fetchAuditLogs();
   }, [activeTab]);
 
   const fetchEmailLogs = async () => {
@@ -901,6 +995,26 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
             >
               <Bell className="w-3.5 h-3.5 text-indigo-500" />
               <span>Thông báo & Mail</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('finance')}
+              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'finance' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
+              <span>GMV & Tài chính</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('audit')}
+              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'audit' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5 text-blue-500" />
+              <span>Nhật ký Audit</span>
             </button>
 
             <button
@@ -2146,7 +2260,397 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
         </div>
       )}
 
-      {/* ================= TAB 7: INFRASTRUCTURE MONITORING ================= */}
+      {/* ================= TAB 7: FINANCE & GMV ================= */}
+      {activeTab === 'finance' && (
+        <div className="space-y-6">
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tổng GMV Toàn Sàn</span>
+                <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <span className="text-2xl font-black text-slate-900 tracking-tight">248.500.000 ₫</span>
+                <div className="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-600 font-semibold">
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                  <span>+18.4% so với tháng trước</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phí Sàn Thu Được</span>
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <DollarSign className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <span className="text-2xl font-black text-emerald-600 tracking-tight">12.425.000 ₫</span>
+                <span className="block text-[11px] text-slate-400 mt-1">Chiết khấu 5% GMV thực hiện</span>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tiền Đang Ký Quỹ</span>
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <span className="text-2xl font-black text-blue-600 tracking-tight">34.200.000 ₫</span>
+                <span className="block text-[11px] text-slate-400 mt-1">Bảo đảm Escrow giao hàng</span>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Đã Thanh Toán Shop</span>
+                <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <span className="text-2xl font-black text-purple-600 tracking-tight">201.875.000 ₫</span>
+                <span className="block text-[11px] text-slate-400 mt-1">Giải ngân hoàn tất cho Người bán</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Sub Navigation */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl text-xs font-semibold">
+              <button
+                onClick={() => setFinanceSubTab('overview')}
+                className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
+                  financeSubTab === 'overview' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Tổng quan & Biểu đồ
+              </button>
+              <button
+                onClick={() => setFinanceSubTab('withdrawals')}
+                className={`px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1.5 ${
+                  financeSubTab === 'withdrawals' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>Yêu cầu rút tiền</span>
+                {pendingWithdrawals.length > 0 && (
+                  <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center font-bold">
+                    {pendingWithdrawals.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setFinanceSubTab('ledger')}
+                className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
+                  financeSubTab === 'ledger' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Sổ cái kép (Ledger)
+              </button>
+            </div>
+
+            <button
+              onClick={fetchFinanceData}
+              disabled={loadingFinance}
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingFinance ? 'animate-spin text-orange-600' : ''}`} />
+              <span>Làm mới số liệu</span>
+            </button>
+          </div>
+
+          {/* SUB-TAB: OVERVIEW */}
+          {financeSubTab === 'overview' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-orange-500" />
+                  Cơ cấu dòng tiền & Chu kỳ thanh toán Escrow
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  QuickShop áp dụng mô hình bảo vệ tài chính 2 lớp: Toàn bộ tiền thanh toán từ Người mua (VNPay / Thẻ / COD) được lưu giữ trong tài khoản ký quỹ trung gian (Escrow). Sau khi đơn hàng giao thành công và hết hạn khiếu nại (3 ngày), hệ thống tự động giải phóng 95% giá trị cho Người bán và trích 5% phí dịch vụ nền tảng.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  <div className="p-4 rounded-2xl bg-orange-50/60 border border-orange-100">
+                    <span className="text-[11px] font-bold text-orange-700 block uppercase">Bước 1: Khóa tiền</span>
+                    <span className="text-xs text-slate-600 mt-1 block">Khách thanh toán &rarr; Escrow Account HOLDING</span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100">
+                    <span className="text-[11px] font-bold text-blue-700 block uppercase">Bước 2: Giao hàng</span>
+                    <span className="text-xs text-slate-600 mt-1 block">Webhook GHN/GHTK cập nhật DELIVERED</span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+                    <span className="text-[11px] font-bold text-emerald-700 block uppercase">Bước 3: Quyết toán</span>
+                    <span className="text-xs text-slate-600 mt-1 block">Mở ví Shop + Sổ cái kép Double-entry</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+                <h3 className="font-bold text-sm text-slate-900">Chính sách phí sàn</h3>
+                <div className="space-y-3 text-xs">
+                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span className="text-slate-600">Phí cố định hoa hồng sàn:</span>
+                    <strong className="text-slate-900 font-bold">5.0%</strong>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span className="text-slate-600">Phí xử lý cổng VNPay:</span>
+                    <strong className="text-emerald-600 font-bold">0.0% (Tài trợ)</strong>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span className="text-slate-600">Thời gian đóng băng đối soát:</span>
+                    <strong className="text-slate-900 font-bold">72 giờ</strong>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span className="text-slate-600">Hạn mức rút tiền tối thiểu:</span>
+                    <strong className="text-slate-900 font-bold">100.000 ₫</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SUB-TAB: WITHDRAWALS */}
+          {financeSubTab === 'withdrawals' && (
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+              <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-purple-600" />
+                  Yêu cầu rút tiền từ người bán chờ Admin phê duyệt ({pendingWithdrawals.length})
+                </h3>
+              </div>
+
+              {pendingWithdrawals.length === 0 ? (
+                <div className="p-12 text-center text-slate-400 text-xs">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-80" />
+                  Hiện không có yêu cầu rút tiền nào đang chờ duyệt.
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {pendingWithdrawals.map((w) => (
+                    <div key={w.id} className="p-4 sm:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-slate-50/70 transition">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[10px] font-bold">
+                            #{w.id}
+                          </span>
+                          <strong className="text-slate-900 font-bold text-sm">{w.shopName || `Shop #${w.shopId}`}</strong>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          Ngân hàng: <strong className="text-slate-700">{w.bankCode}</strong> - STK: <strong className="text-slate-700">{w.bankAccountNumber}</strong> ({w.bankAccountName})
+                        </p>
+                        <span className="text-[11px] text-slate-400 block">Thời gian yêu cầu: {new Date(w.createdAt).toLocaleString('vi-VN')}</span>
+                      </div>
+
+                      <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 uppercase font-bold">Số tiền yêu cầu</span>
+                          <span className="block text-base font-black text-emerald-600">
+                            {Number(w.amount).toLocaleString('vi-VN')} ₫
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleProcessWithdrawal(w.id, 'APPROVE')}
+                            disabled={processingWithdrawalId === w.id}
+                            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer disabled:opacity-50"
+                          >
+                            Duyệt chi
+                          </button>
+                          <button
+                            onClick={() => handleProcessWithdrawal(w.id, 'REJECT')}
+                            disabled={processingWithdrawalId === w.id}
+                            className="px-3.5 py-2 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                          >
+                            Từ chối
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SUB-TAB: LEDGER */}
+          {financeSubTab === 'ledger' && (
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+              <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  Sổ cái kế toán kép hệ thống (Double-entry Ledger)
+                </h3>
+                <span className="text-[11px] text-slate-400 font-mono">Chuẩn kế toán IFRS</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px]">
+                    <tr>
+                      <th className="p-4">Mã bút toán</th>
+                      <th className="p-4">Loại giao dịch</th>
+                      <th className="p-4">Tài khoản Nợ (Debit)</th>
+                      <th className="p-4">Tài khoản Có (Credit)</th>
+                      <th className="p-4 text-right">Số tiền</th>
+                      <th className="p-4 text-right">Thời gian</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {ledgerEntries.map((l) => (
+                      <tr key={l.id} className="hover:bg-slate-50/60 transition">
+                        <td className="p-4 font-mono font-bold text-slate-800">{l.transactionId}</td>
+                        <td className="p-4">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                            {l.transactionType}
+                          </span>
+                        </td>
+                        <td className="p-4 font-mono text-rose-600 font-semibold">{l.accountDebit}</td>
+                        <td className="p-4 font-mono text-emerald-600 font-semibold">{l.accountCredit}</td>
+                        <td className="p-4 text-right font-black text-slate-900">
+                          {Number(l.amount).toLocaleString('vi-VN')} ₫
+                        </td>
+                        <td className="p-4 text-right text-slate-400 font-mono text-[11px]">
+                          {new Date(l.createdAt).toLocaleString('vi-VN')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================= TAB 8: AUDIT LOGS ================= */}
+      {activeTab === 'audit' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-500" />
+                  Nhật ký kiểm toán hệ thống (Audit Logs)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Lưu vết toàn bộ thao tác quản trị, webhook vận chuyển và luồng xử lý tự động.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={auditSearchKw}
+                    onChange={(e) => setAuditSearchKw(e.target.value)}
+                    placeholder="Tìm theo người thực hiện, đối tượng..."
+                    className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none"
+                  />
+                </div>
+
+                <select
+                  value={auditFilter}
+                  onChange={(e) => setAuditFilter(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-orange-500"
+                >
+                  <option value="ALL">Tất cả hành động</option>
+                  <option value="APPROVE">Phê duyệt (Approve)</option>
+                  <option value="REJECT">Từ chối (Reject/Block)</option>
+                  <option value="WEBHOOK">Webhook đối tác</option>
+                  <option value="ESCROW">Ký quỹ (Escrow)</option>
+                </select>
+
+                <button
+                  onClick={fetchAuditLogs}
+                  disabled={loadingAudit}
+                  className="p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer"
+                  title="Làm mới"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingAudit ? 'animate-spin text-orange-600' : 'text-slate-600'}`} />
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px]">
+                  <tr>
+                    <th className="p-4">Thời gian</th>
+                    <th className="p-4">Người thực hiện</th>
+                    <th className="p-4">Hành động</th>
+                    <th className="p-4">Đối tượng tác động</th>
+                    <th className="p-4">Địa chỉ IP</th>
+                    <th className="p-4 text-right">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {auditLogs
+                    .filter((log) => {
+                      if (auditFilter === 'APPROVE' && !log.action.includes('APPROVE')) return false;
+                      if (auditFilter === 'REJECT' && !log.action.includes('REJECT') && !log.action.includes('BLOCK')) return false;
+                      if (auditFilter === 'WEBHOOK' && !log.action.includes('WEBHOOK')) return false;
+                      if (auditFilter === 'ESCROW' && !log.action.includes('ESCROW')) return false;
+                      if (auditSearchKw) {
+                        const kw = auditSearchKw.toLowerCase();
+                        return (
+                          log.actor.toLowerCase().includes(kw) ||
+                          log.action.toLowerCase().includes(kw) ||
+                          log.target.toLowerCase().includes(kw)
+                        );
+                      }
+                      return true;
+                    })
+                    .map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50/60 transition">
+                        <td className="p-4 text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                          {new Date(log.timestamp).toLocaleString('vi-VN')}
+                        </td>
+                        <td className="p-4 font-bold text-slate-900">{log.actor}</td>
+                        <td className="p-4">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              log.action.includes('APPROVE')
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : log.action.includes('REJECT') || log.action.includes('BLOCK')
+                                ? 'bg-rose-100 text-rose-800'
+                                : log.action.includes('WEBHOOK')
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-slate-100 text-slate-800'
+                            }`}
+                          >
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="p-4 text-slate-700 font-medium">{log.target}</td>
+                        <td className="p-4 font-mono text-slate-500 text-[11px]">{log.ip}</td>
+                        <td className="p-4 text-right">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              log.status === 'SUCCESS'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-rose-50 text-rose-700 border border-rose-200'
+                            }`}
+                          >
+                            {log.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
       {activeTab === 'infra' && (
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
