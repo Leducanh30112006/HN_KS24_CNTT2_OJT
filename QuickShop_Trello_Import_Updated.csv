@@ -480,7 +480,7 @@ Triển khai luồng Admin duyệt/từ chối Shop; sau duyệt gán ROLE_SELLE
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Shop onboarding",2026-11-07,2026-11-07
-Cần làm,"[Frontend Seller] Dựng Seller Center: dashboard khung, quản lý sản phẩm, form tạo/sửa sản phẩm và upload ảnh: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+Đã xong,"[Frontend Seller] Dựng Seller Center: dashboard khung, quản lý sản phẩm, form tạo/sửa sản phẩm và upload ảnh: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Bảy, 2026-11-07
 **Phân hệ:** Frontend Seller
 
@@ -519,7 +519,7 @@ Hoàn thiện reset password, refresh/revoke token; bổ sung audit log cho thao
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Identity APIs",2026-11-08,2026-11-08
-Cần làm,[Catalog & Reviews] Triển khai đánh giá 1–5 sao chỉ sau đơn COMPLETED; tính rating trung bình và validate một đánh giá/đơn: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
+Đã xong,[Catalog & Reviews] Triển khai đánh giá 1–5 sao chỉ sau đơn COMPLETED; tính rating trung bình và validate một đánh giá/đơn: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Chủ Nhật, 2026-11-08
 **Phân hệ:** Catalog & Reviews
 
@@ -558,7 +558,7 @@ Tạo Notification Service; cấu hình RabbitMQ listener, retry cơ bản và c
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - RabbitMQ; event contract",2026-11-09,2026-11-09
-Cần làm,[Frontend Seller] Kết nối Seller Center với Product API; hoàn thiện trạng thái duyệt sản phẩm và thông báo kết quả: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
+Đã xong,[Frontend Seller] Kết nối Seller Center với Product API; hoàn thiện trạng thái duyệt sản phẩm và thông báo kết quả: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Hai, 2026-11-09
 **Phân hệ:** Frontend Seller
 

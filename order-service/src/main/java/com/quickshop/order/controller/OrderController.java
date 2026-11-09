@@ -112,6 +112,48 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.ok("Lấy đơn hàng theo shop thành công", subOrderRepository.findByShopId(shopId)));
     }
 
+    @Operation(summary = "Xác thực điều kiện đánh giá sản phẩm: SubOrder ở trạng thái COMPLETED và thuộc về người dùng")
+    @GetMapping("/sub-orders/{subOrderId}/review-eligibility")
+    public ResponseEntity<ApiResponse<Boolean>> checkReviewEligibility(
+            @PathVariable Long subOrderId,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Long productId
+    ) {
+        Optional<SubOrder> subOrderOpt = subOrderRepository.findById(subOrderId);
+        if (subOrderOpt.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.ok("SubOrder không tồn tại", false));
+        }
+
+        SubOrder subOrder = subOrderOpt.get();
+
+        // 1. Kiểm tra trạng thái đơn: phải là COMPLETED
+        if (subOrder.getStatus() != com.quickshop.order.entity.SubOrderStatus.COMPLETED) {
+            log.info("SubOrder #{} chưa hoàn thành (Trạng thái hiện tại: {})", subOrderId, subOrder.getStatus());
+            return ResponseEntity.ok(ApiResponse.ok("Đơn hàng chưa hoàn thành (COMPLETED)", false));
+        }
+
+        // 2. Nếu truyền userId: kiểm tra đơn hàng có thuộc về user không qua MasterOrder
+        if (userId != null && userId > 0) {
+            Optional<MasterOrder> masterOpt = masterOrderRepository.findById(subOrder.getMasterOrderId());
+            if (masterOpt.isPresent() && !masterOpt.get().getUserId().equals(userId)) {
+                log.warn("User #{} không sở hữu đơn hàng Master #{}", userId, subOrder.getMasterOrderId());
+                return ResponseEntity.ok(ApiResponse.ok("Đơn hàng không thuộc về người dùng", false));
+            }
+        }
+
+        // 3. Nếu truyền productId: kiểm tra đơn hàng có chứa sản phẩm này không
+        if (productId != null && productId > 0) {
+            List<OrderItem> items = orderItemRepository.findBySubOrderId(subOrderId);
+            boolean containsProduct = items.stream().anyMatch(item -> productId.equals(item.getProductId()));
+            if (!containsProduct) {
+                log.warn("SubOrder #{} không chứa sản phẩm #{}", subOrderId, productId);
+                return ResponseEntity.ok(ApiResponse.ok("Đơn hàng không chứa sản phẩm này", false));
+            }
+        }
+
+        return ResponseEntity.ok(ApiResponse.ok("Đơn hàng đủ điều kiện đánh giá", true));
+    }
+
     private Long resolveUserId(Long headerUserId, Long paramUserId) {
         Long userId = headerUserId != null ? headerUserId : paramUserId;
         if (userId == null || userId <= 0) {

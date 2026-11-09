@@ -38,6 +38,7 @@ export const mapPriceRange = (rangeId) => {
 };
 
 export const catalogApi = {
+  // ================= STOREFRONT & BUYER APIs =================
   /**
    * Lấy danh sách sản phẩm có tìm kiếm, lọc đa tiêu chí và phân trang
    * @param {Object} params
@@ -121,13 +122,93 @@ export const catalogApi = {
   },
 
   /**
-   * Gửi đánh giá mới cho sản phẩm (1-5 sao và bình luận)
+   * Gửi đánh giá mới cho sản phẩm (1-5 sao sau đơn hàng COMPLETED)
    * @param {number|string} productId
    * @param {Object} reviewData
    * @returns {Promise<any>}
    */
   async createProductReview(productId, reviewData) {
     return await axiosClient.post(`/api/catalog/products/${productId}/reviews`, reviewData);
+  },
+
+  // ================= SELLER CENTER APIs =================
+  /**
+   * Seller lấy danh sách sản phẩm thuộc quyền sở hữu của Shop
+   * @param {Object} [params]
+   * @param {number} [params.shopId]
+   * @param {string} [params.status] (DRAFT, PENDING, APPROVED, REJECTED)
+   * @param {number} [params.page=0]
+   * @param {number} [params.size=50]
+   * @returns {Promise<any>}
+   */
+  async getMySellerProducts(params = {}) {
+    const queryParams = new URLSearchParams();
+    if (params.shopId) queryParams.append('shopId', params.shopId);
+    if (params.status && params.status !== 'ALL') queryParams.append('status', params.status);
+    queryParams.append('page', params.page ?? 0);
+    queryParams.append('size', params.size ?? 50);
+
+    const url = `/api/catalog/products/seller/my?${queryParams.toString()}`;
+    return await axiosClient.get(url);
+  },
+
+  /**
+   * Seller tạo sản phẩm mới (mặc định DRAFT hoặc PENDING, kiểm tra phân quyền)
+   * @param {Object} productData
+   * @returns {Promise<any>}
+   */
+  async createProduct(productData) {
+    return await axiosClient.post('/api/catalog/products', productData);
+  },
+
+  /**
+   * Seller cập nhật thông tin sản phẩm và các biến thể SKU
+   * @param {number|string} id
+   * @param {Object} productData
+   * @returns {Promise<any>}
+   */
+  async updateProduct(id, productData) {
+    return await axiosClient.put(`/api/catalog/products/${id}`, productData);
+  },
+
+  /**
+   * Seller xóa sản phẩm khỏi gian hàng
+   * @param {number|string} id
+   * @returns {Promise<any>}
+   */
+  async deleteProduct(id) {
+    return await axiosClient.delete(`/api/catalog/products/${id}`);
+  },
+
+  /**
+   * Seller nộp duyệt sản phẩm chuyển từ DRAFT/REJECTED sang PENDING
+   * @param {number|string} id
+   * @returns {Promise<any>}
+   */
+  async submitProductForApproval(id) {
+    return await axiosClient.post(`/api/catalog/products/${id}/submit`);
+  },
+
+  /**
+   * Tải ảnh sản phẩm lên MinIO Object Storage
+   * @param {File} file
+   * @returns {Promise<any>}
+   */
+  async uploadProductImage(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return await axiosClient.post('/api/catalog/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  /**
+   * AI SEO Content Generator Tool
+   * @param {Object} payload
+   * @returns {Promise<any>}
+   */
+  async generateAiSeo(payload) {
+    return await axiosClient.post('/api/ai/generate-seo', payload);
   },
 };
 
