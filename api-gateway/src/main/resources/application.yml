@@ -73,6 +73,17 @@ spring:
                 requiredRole: ROLE_ADMIN
             - StripPrefix=0
 
+        # 3b. Identity Service - Admin Audit Logs
+        - id: identity-admin-audit-logs-route
+          uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/admin/audit-logs/**
+          filters:
+            - name: JwtAuth
+              args:
+                requiredRole: ROLE_ADMIN
+            - StripPrefix=0
+
         # 4. Identity Service - Protected User & Shop Onboarding (Buyer, Seller, Admin)
         - id: identity-protected-route
           uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}

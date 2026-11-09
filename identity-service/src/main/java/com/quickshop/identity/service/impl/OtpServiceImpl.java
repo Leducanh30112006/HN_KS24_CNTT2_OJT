@@ -18,7 +18,10 @@ public class OtpServiceImpl implements OtpService {
 
     public static final String OTP_KEY_PREFIX = "identity:otp:";
     public static final String COOLDOWN_KEY_PREFIX = "identity:otp:cooldown:";
+    public static final String RESET_OTP_KEY_PREFIX = "identity:reset_otp:";
+    public static final String RESET_COOLDOWN_KEY_PREFIX = "identity:reset_otp:cooldown:";
     public static final Duration OTP_TTL = Duration.ofMinutes(5); // 5 phút = 300 giây
+    public static final Duration RESET_OTP_TTL = Duration.ofMinutes(15); // 15 phút
     public static final Duration RESEND_COOLDOWN = Duration.ofSeconds(60); // 60 giây cooldown
 
     private final StringRedisTemplate stringRedisTemplate;
@@ -84,6 +87,49 @@ public class OtpServiceImpl implements OtpService {
         String otpKey = OTP_KEY_PREFIX + email;
         Long expire = stringRedisTemplate.getExpire(otpKey, TimeUnit.SECONDS);
         return (expire != null && expire > 0) ? expire : 0L;
+    }
+
+    @Override
+    public String generateAndSaveResetOtp(String email) {
+        String cooldownKey = RESET_COOLDOWN_KEY_PREFIX + email;
+        Long remainingCooldown = stringRedisTemplate.getExpire(cooldownKey, TimeUnit.SECONDS);
+        if (remainingCooldown != null && remainingCooldown > 0) {
+            throw new BadRequestException("Bạn thao tác quá nhanh. Vui lòng đợi " + remainingCooldown + " giây trước khi yêu cầu gửi lại mã khôi phục mật khẩu");
+        }
+
+        int randomCode = 100000 + secureRandom.nextInt(900000);
+        String otpCode = String.valueOf(randomCode);
+
+        String otpKey = RESET_OTP_KEY_PREFIX + email;
+        stringRedisTemplate.opsForValue().set(otpKey, otpCode, RESET_OTP_TTL);
+        stringRedisTemplate.opsForValue().set(cooldownKey, String.valueOf(System.currentTimeMillis()), RESEND_COOLDOWN);
+
+        log.info("Đã tạo Reset OTP thành công cho email: {} [OTP: {}] (TTL 15 phút)", email, otpCode);
+        return otpCode;
+    }
+
+    @Override
+    public void verifyResetOtp(String email, String otpCode) {
+        if (otpCode == null || otpCode.trim().isEmpty()) {
+            throw new BadRequestException("Mã OTP không được để trống");
+        }
+
+        String otpKey = RESET_OTP_KEY_PREFIX + email;
+        String savedOtp = stringRedisTemplate.opsForValue().get(otpKey);
+
+        if (savedOtp == null) {
+            log.warn("Mã Reset OTP cho email: {} đã hết hạn hoặc không tồn tại", email);
+            throw new BadRequestException("Mã OTP khôi phục mật khẩu đã hết hạn hoặc không tồn tại. Vui lòng yêu cầu mã mới");
+        }
+
+        if (!savedOtp.trim().equals(otpCode.trim())) {
+            log.warn("Mã Reset OTP không chính xác cho email: {}. Nhập: {}, Đúng: {}", email, otpCode, savedOtp);
+            throw new BadRequestException("Mã OTP khôi phục mật khẩu không chính xác");
+        }
+
+        // Xóa OTP sau khi dùng thành công
+        stringRedisTemplate.delete(otpKey);
+        log.info("Xác thực Reset OTP thành công cho email: {}", email);
     }
 
     private void checkCooldown(String email) {

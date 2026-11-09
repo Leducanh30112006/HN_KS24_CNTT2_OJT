@@ -2,10 +2,13 @@ package com.quickshop.identity.controller;
 
 import com.quickshop.common.dto.ApiResponse;
 import com.quickshop.identity.dto.AuthResponse;
+import com.quickshop.identity.dto.ForgotPasswordRequest;
 import com.quickshop.identity.dto.LoginRequest;
 import com.quickshop.identity.dto.OtpResponse;
 import com.quickshop.identity.dto.RegisterRequest;
 import com.quickshop.identity.dto.ResendOtpRequest;
+import com.quickshop.identity.dto.ResetPasswordRequest;
+import com.quickshop.identity.dto.RevokeTokenRequest;
 import com.quickshop.identity.dto.VerifyOtpRequest;
 import com.quickshop.identity.entity.User;
 import com.quickshop.identity.service.AuthService;
@@ -104,8 +107,26 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    @Operation(summary = "Đăng xuất tài khoản & xóa HttpOnly Cookies")
-    public ResponseEntity<ApiResponse<String>> logout() {
+    @Operation(summary = "Đăng xuất tài khoản, thu hồi token trong Redis & xóa HttpOnly Cookies")
+    public ResponseEntity<ApiResponse<String>> logout(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
+            @CookieValue(name = "accessToken", required = false) String cookieAccess,
+            @CookieValue(name = "refreshToken", required = false) String cookieRefresh,
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader
+    ) {
+        Long userId = StringUtils.hasText(userIdHeader) ? Long.parseLong(userIdHeader.trim()) : null;
+
+        String tokenToRevoke = null;
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            tokenToRevoke = authHeader.substring(7);
+        } else if (StringUtils.hasText(cookieAccess)) {
+            tokenToRevoke = cookieAccess;
+        } else if (StringUtils.hasText(cookieRefresh)) {
+            tokenToRevoke = cookieRefresh;
+        }
+
+        authService.logout(tokenToRevoke, userId);
+
         ResponseCookie cleanAccess = createCookie("accessToken", "", 0);
         ResponseCookie cleanRefresh = createCookie("refreshToken", "", 0);
 
@@ -113,6 +134,31 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, cleanAccess.toString())
                 .header(HttpHeaders.SET_COOKIE, cleanRefresh.toString())
                 .body(ApiResponse.ok("Đăng xuất thành công"));
+    }
+
+    @PostMapping("/revoke")
+    @Operation(summary = "Thu hồi Access/Refresh Token (Blacklist Redis)")
+    public ResponseEntity<ApiResponse<String>> revokeToken(
+            @Valid @RequestBody RevokeTokenRequest request,
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader
+    ) {
+        Long userId = StringUtils.hasText(userIdHeader) ? Long.parseLong(userIdHeader.trim()) : null;
+        authService.revokeToken(request.getToken(), userId);
+        return ResponseEntity.ok(ApiResponse.ok("Token đã được thu hồi thành công"));
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Yêu cầu cấp mã OTP đặt lại mật khẩu qua Email (TTL 15 phút, cooldown 60s)")
+    public ResponseEntity<ApiResponse<OtpResponse>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        OtpResponse response = authService.forgotPassword(request);
+        return ResponseEntity.ok(ApiResponse.ok("Mã xác thực đặt lại mật khẩu đã được gửi tới email của bạn", response));
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Xác thực mã OTP và đặt lại mật khẩu mới")
+    public ResponseEntity<ApiResponse<String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.ok("Đặt lại mật khẩu thành công. Vui lòng đăng nhập với mật khẩu mới"));
     }
 
     @GetMapping("/me")
