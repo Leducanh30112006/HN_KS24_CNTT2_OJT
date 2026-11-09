@@ -112,11 +112,11 @@ jobs:
             dockerfile: ./frontend/Dockerfile
     steps:
       - name: Checkout Repository
-        if: matrix.enabled == 'true'
+        if: matrix.enabled == true || matrix.enabled == 'true'
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        if: matrix.enabled == 'true' && matrix.service != 'frontend'
+        if: (matrix.enabled == true || matrix.enabled == 'true') && matrix.service != 'frontend'
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -124,22 +124,22 @@ jobs:
           cache: 'gradle'
 
       - name: Build JAR with Gradle
-        if: matrix.enabled == 'true' && matrix.service != 'frontend'
+        if: (matrix.enabled == true || matrix.enabled == 'true') && matrix.service != 'frontend'
         run: chmod +x ./gradlew && ./gradlew :${{ matrix.service }}:bootJar -x test --no-daemon
 
       - name: Set up Docker Buildx
-        if: matrix.enabled == 'true'
+        if: matrix.enabled == true || matrix.enabled == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
-        if: matrix.enabled == 'true' && github.ref == 'refs/heads/main' && env.DOCKER_USERNAME != ''
+        if: (matrix.enabled == true || matrix.enabled == 'true') && github.ref == 'refs/heads/main' && env.DOCKER_USERNAME != ''
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKER_USERNAME }}
           password: ${{ env.DOCKER_PASSWORD }}
 
       - name: Build & Push Docker Image
-        if: matrix.enabled == 'true'
+        if: matrix.enabled == true || matrix.enabled == 'true'
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.context }}
