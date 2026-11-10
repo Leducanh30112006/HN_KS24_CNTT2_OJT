@@ -39,4 +39,4 @@ springdoc:
 payos:
   client-id: ${PAYOS_CLIENT_ID:0aac9506-4266-46ae-a23f-54f3ebde492c}
   api-key: ${PAYOS_API_KEY:fe0061b1-711b-4b0f-8470-b2f7fa2c3511}
-  checksum-key: ${PAYOS_CHECKSUM_KEY:d0d7ac177459d2dedad4b48eeb82d867f0197350}
+  checksum-key: ${PAYOS_CHECKSUM_KEY:d0d7ac177459d2dedad4b48eeb82d867f01973503f8155aac83e3fe1b6ea621a}
