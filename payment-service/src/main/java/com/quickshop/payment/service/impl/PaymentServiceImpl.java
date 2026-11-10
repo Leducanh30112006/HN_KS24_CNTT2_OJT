@@ -40,6 +40,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -853,6 +854,28 @@ public class PaymentServiceImpl implements PaymentService {
                 } catch (Exception e) {
                     log.debug("Chưa có cập nhật từ PayOS API cho đơn #{}: {}", orderId, e.getMessage());
                 }
+
+                // Nếu vẫn PENDING, kiểm tra xem có giao dịch SUCCESS mồ côi nào từ MB Bank / PayOS có cùng số tiền không
+                if (txn.getStatus() == PaymentStatus.PENDING) {
+                    List<PaymentTransaction> successTxns = paymentTransactionRepository.findByStatus(PaymentStatus.SUCCESS);
+                    Optional<PaymentTransaction> unlinked = successTxns.stream()
+                            .filter(t -> t.getOrderId() != null && (t.getOrderId().equalsIgnoreCase("THANHTOAN") || t.getOrderId().startsWith("PAYOS_STANDALONE")))
+                            .filter(t -> txn.getAmount() == null || t.getAmount() == null || t.getAmount().compareTo(txn.getAmount()) == 0)
+                            .max(Comparator.comparing(PaymentTransaction::getCreatedAt));
+                    if (unlinked.isPresent()) {
+                        PaymentTransaction utxn = unlinked.get();
+                        log.info("checkPaymentStatus: Tự động gắn kết giao dịch thành công {} sang đơn hàng hiện tại #{}", utxn.getTxnRef(), orderId);
+                        utxn.setOrderId(txn.getOrderId());
+                        paymentTransactionRepository.save(utxn);
+
+                        txn.setStatus(PaymentStatus.SUCCESS);
+                        txn.setVnpResponseCode("00");
+                        txn.setVnpTransactionNo(utxn.getVnpTransactionNo());
+                        paymentTransactionRepository.save(txn);
+
+                        publishPaymentCompleted(txn);
+                    }
+                }
             }
 
             boolean isPaid = (txn.getStatus() == PaymentStatus.SUCCESS);
@@ -960,6 +983,28 @@ public class PaymentServiceImpl implements PaymentService {
         final BigDecimal amountToUse = (finalPayOsAmount != null && finalPayOsAmount.compareTo(BigDecimal.ZERO) > 0)
                 ? finalPayOsAmount
                 : BigDecimal.valueOf(50000);
+
+        // Tự động đối soát thông minh: nếu description là "THANHTOAN" hoặc không tìm thấy theo mã đơn,
+        // tự động ghép nối với giao dịch PENDING gần nhất
+        if (txnOpt.isEmpty()) {
+            List<PaymentTransaction> pendingTxns = paymentTransactionRepository.findByStatus(PaymentStatus.PENDING);
+            if (!pendingTxns.isEmpty()) {
+                Optional<PaymentTransaction> matchByAmount = pendingTxns.stream()
+                        .filter(t -> t.getAmount() != null && t.getAmount().compareTo(amountToUse) == 0)
+                        .max(Comparator.comparing(PaymentTransaction::getCreatedAt));
+                if (matchByAmount.isPresent()) {
+                    txnOpt = matchByAmount;
+                    log.info("PayOS Webhook: Khớp tự động giao dịch MB Bank với đơn hàng PENDING theo số tiền: #{}", txnOpt.get().getOrderId());
+                } else {
+                    Optional<PaymentTransaction> latestPending = pendingTxns.stream()
+                            .max(Comparator.comparing(PaymentTransaction::getCreatedAt));
+                    if (latestPending.isPresent()) {
+                        txnOpt = latestPending;
+                        log.info("PayOS Webhook: Khớp tự động giao dịch MB Bank với đơn hàng PENDING mới nhất: #{}", txnOpt.get().getOrderId());
+                    }
+                }
+            }
+        }
 
         final String finalTargetId = (targetOrderId != null && !targetOrderId.isBlank()) ? targetOrderId : orderCodeStr;
 

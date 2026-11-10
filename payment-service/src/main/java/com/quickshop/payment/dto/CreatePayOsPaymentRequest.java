@@ -31,3 +31,4 @@ public class CreatePayOsPaymentRequest {
 
     private String cancelUrl;
 }
+

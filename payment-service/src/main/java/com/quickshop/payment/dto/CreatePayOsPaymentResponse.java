@@ -24,3 +24,4 @@ public class CreatePayOsPaymentResponse {
     private String paymentLinkId;
     private String status;
 }
+
