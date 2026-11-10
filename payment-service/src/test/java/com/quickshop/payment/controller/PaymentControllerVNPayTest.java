@@ -5,6 +5,7 @@ import com.quickshop.payment.dto.CreateVNPayPaymentRequest;
 import com.quickshop.payment.dto.PaymentTransactionResponse;
 import com.quickshop.payment.dto.VNPayPaymentResponse;
 import com.quickshop.payment.entity.PaymentStatus;
+import com.quickshop.payment.service.LedgerService;
 import com.quickshop.payment.service.PaymentService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,9 @@ class PaymentControllerVNPayTest {
 
     @MockBean
     private PaymentService paymentService;
+
+    @MockBean
+    private LedgerService ledgerService;
 
     @Test
     @DisplayName("API POST /api/payments/vnpay/create: Thành công trả về 200 kèm VNPayPaymentResponse")

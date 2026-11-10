@@ -9,10 +9,10 @@ import com.quickshop.payment.dto.VNPayPaymentResponse;
 import com.quickshop.payment.entity.PaymentStatus;
 import com.quickshop.payment.entity.PaymentTransaction;
 import com.quickshop.payment.repository.EscrowAccountRepository;
-import com.quickshop.payment.repository.LedgerEntryRepository;
 import com.quickshop.payment.repository.PaymentTransactionRepository;
 import com.quickshop.payment.repository.WalletRepository;
 import com.quickshop.payment.repository.WithdrawalRepository;
+import com.quickshop.payment.service.LedgerService;
 import com.quickshop.payment.service.impl.PaymentServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,7 +46,7 @@ class PaymentServiceVNPayTest {
     private WithdrawalRepository withdrawalRepository;
 
     @Mock
-    private LedgerEntryRepository ledgerEntryRepository;
+    private LedgerService ledgerService;
 
     @Mock
     private PaymentTransactionRepository paymentTransactionRepository;
@@ -320,6 +320,14 @@ class PaymentServiceVNPayTest {
                 eq(com.quickshop.payment.config.RabbitMQPaymentConfig.EXCHANGE_ORDER),
                 eq(com.quickshop.payment.config.RabbitMQPaymentConfig.ROUTING_KEY_PAYMENT_COMPLETED),
                 any(com.quickshop.common.event.PaymentCompletedEvent.class)
+        );
+
+        verify(ledgerService, times(1)).recordDoubleEntry(
+                eq("VNPAY-PAY-TXN_004"),
+                eq("PAYMENT_VNPAY_SUCCESS"),
+                eq("VNPAY_GATEWAY"),
+                eq("ESCROW_HOLDING"),
+                eq(BigDecimal.valueOf(100000))
         );
     }
 }

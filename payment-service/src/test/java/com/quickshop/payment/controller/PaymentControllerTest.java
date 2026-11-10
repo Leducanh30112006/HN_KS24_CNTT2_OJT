@@ -1,13 +1,12 @@
 package com.quickshop.payment.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.quickshop.payment.dto.HoldEscrowRequest;
-import com.quickshop.payment.dto.ReleaseEscrowRequest;
-import com.quickshop.payment.dto.VNPayPaymentResponse;
-import com.quickshop.payment.dto.WithdrawalRequestDto;
+import com.quickshop.payment.dto.*;
 import com.quickshop.payment.entity.EscrowAccount;
+import com.quickshop.payment.entity.LedgerEntry;
 import com.quickshop.payment.entity.Wallet;
 import com.quickshop.payment.entity.Withdrawal;
+import com.quickshop.payment.service.LedgerService;
 import com.quickshop.payment.service.PaymentService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +17,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -35,6 +37,9 @@ class PaymentControllerTest {
 
     @MockBean
     private PaymentService paymentService;
+
+    @MockBean
+    private LedgerService ledgerService;
 
     @Test
     @DisplayName("API GET /api/payments/wallet/{shopId} trả về 200")
@@ -154,5 +159,60 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.orderId").value("ORD-123"))
                 .andExpect(jsonPath("$.data.paymentUrl").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("API GET /api/payments/ledger/audit trả về 200 kèm báo cáo cân đối sổ cái")
+    void testAuditLedgerApi() throws Exception {
+        LedgerAuditReportDto mockReport = LedgerAuditReportDto.builder()
+                .isBalanced(true)
+                .totalDebits(BigDecimal.valueOf(1000000))
+                .totalCredits(BigDecimal.valueOf(1000000))
+                .discrepancy(BigDecimal.ZERO)
+                .totalEntries(4)
+                .status("BALANCED")
+                .accountBalances(Map.of("CUSTOMER_PAYMENT", BigDecimal.valueOf(500000)))
+                .auditedAt(LocalDateTime.now())
+                .message("Sổ cái kép cân bằng")
+                .build();
+
+        when(ledgerService.auditLedger()).thenReturn(mockReport);
+
+        mockMvc.perform(get("/api/payments/ledger/audit"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.balanced").value(true))
+                .andExpect(jsonPath("$.data.status").value("BALANCED"))
+                .andExpect(jsonPath("$.data.totalDebits").value(1000000));
+    }
+
+    @Test
+    @DisplayName("API GET /api/payments/ledger/accounts/{account} trả về 200 kèm số dư Nợ/Có")
+    void testGetAccountBalanceApi() throws Exception {
+        AccountBalanceDto mockBalance = AccountBalanceDto.builder()
+                .account("ESCROW_HOLDING")
+                .totalDebit(BigDecimal.valueOf(1500000))
+                .totalCredit(BigDecimal.valueOf(1000000))
+                .netBalance(BigDecimal.valueOf(500000))
+                .build();
+
+        when(ledgerService.getAccountBalance("ESCROW_HOLDING")).thenReturn(mockBalance);
+
+        mockMvc.perform(get("/api/payments/ledger/accounts/ESCROW_HOLDING"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.account").value("ESCROW_HOLDING"))
+                .andExpect(jsonPath("$.data.netBalance").value(500000));
+    }
+
+    @Test
+    @DisplayName("API GET /api/payments/ledger/verify/{transactionId} trả về 200 xác nhận bất biến")
+    void testVerifyTransactionApi() throws Exception {
+        when(ledgerService.verifyTransactionInvariant("TXN_123")).thenReturn(true);
+
+        mockMvc.perform(get("/api/payments/ledger/verify/TXN_123"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").value(true));
     }
 }

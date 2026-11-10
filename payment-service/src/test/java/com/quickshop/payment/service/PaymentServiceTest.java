@@ -42,7 +42,7 @@ class PaymentServiceTest {
     private WithdrawalRepository withdrawalRepository;
 
     @Mock
-    private LedgerEntryRepository ledgerEntryRepository;
+    private LedgerService ledgerService;
 
     @Mock
     private PaymentTransactionRepository paymentTransactionRepository;
@@ -97,7 +97,8 @@ class PaymentServiceTest {
         assertEquals("HOLDING", result.getStatus());
         assertEquals(BigDecimal.valueOf(500000), result.getAmount());
         assertEquals(BigDecimal.valueOf(475000), sampleWallet.getFrozenBalance());
-        verify(ledgerEntryRepository, times(1)).save(any(LedgerEntry.class));
+        verify(ledgerService, times(1)).recordDoubleEntry(
+                eq("ESCROW-HOLD-2001"), eq("ESCROW_HOLD"), eq("CUSTOMER_PAYMENT"), eq("ESCROW_HOLDING"), eq(BigDecimal.valueOf(500000)));
     }
 
     @Test
@@ -118,7 +119,8 @@ class PaymentServiceTest {
         assertEquals("RELEASED", released.getStatus());
         assertEquals(BigDecimal.ZERO, sampleWallet.getFrozenBalance());
         assertEquals(BigDecimal.valueOf(1475000), sampleWallet.getBalance()); // 1,000,000 + 475,000
-        verify(ledgerEntryRepository, times(2)).save(any(LedgerEntry.class)); // 1 for shop release, 1 for commission
+        verify(ledgerService, times(1)).recordSplitCreditEntry(
+                eq("ESCROW-REL-2001"), eq("ESCROW_RELEASE"), eq("ESCROW_HOLDING"), anyMap());
     }
 
     @Test
@@ -139,7 +141,8 @@ class PaymentServiceTest {
 
         assertEquals("REFUNDED", refunded.getStatus());
         assertEquals(BigDecimal.ZERO, sampleWallet.getFrozenBalance());
-        verify(ledgerEntryRepository, times(1)).save(any(LedgerEntry.class));
+        verify(ledgerService, times(1)).recordDoubleEntry(
+                eq("ESCROW-REFUND-2001"), eq("ESCROW_REFUND"), eq("ESCROW_HOLDING"), eq("CUSTOMER_REFUND"), eq(BigDecimal.valueOf(500000)));
     }
 
     @Test
@@ -166,7 +169,8 @@ class PaymentServiceTest {
         assertEquals(BigDecimal.valueOf(700000), sampleWallet.getBalance());
         assertEquals(BigDecimal.valueOf(300000), sampleWallet.getFrozenBalance());
         assertEquals("PENDING", withdrawal.getStatus());
-        verify(ledgerEntryRepository, times(1)).save(any(LedgerEntry.class));
+        verify(ledgerService, times(1)).recordDoubleEntry(
+                eq("WITHDRAWAL-REQ-99"), eq("WITHDRAWAL_REQUEST"), eq("SHOP_WALLET_501"), eq("WITHDRAWAL_PENDING"), eq(BigDecimal.valueOf(300000)));
     }
 
     @Test
@@ -209,6 +213,7 @@ class PaymentServiceTest {
         assertEquals("COMPLETED", processed.getStatus());
         assertEquals(BigDecimal.ZERO, sampleWallet.getFrozenBalance());
         assertEquals(BigDecimal.valueOf(700000), sampleWallet.getBalance());
-        verify(ledgerEntryRepository, times(1)).save(any(LedgerEntry.class));
+        verify(ledgerService, times(1)).recordDoubleEntry(
+                eq("WITHDRAWAL-CMP-99"), eq("WITHDRAWAL_COMPLETED"), eq("WITHDRAWAL_PENDING"), eq("BANK_SETTLEMENT"), eq(BigDecimal.valueOf(300000)));
     }
 }
