@@ -1,6 +1,7 @@
 package com.quickshop.payment.service;
 
 import com.quickshop.common.exception.BadRequestException;
+import com.quickshop.payment.config.VNPayConfig;
 import com.quickshop.payment.dto.*;
 import com.quickshop.payment.entity.EscrowAccount;
 import com.quickshop.payment.entity.LedgerEntry;
@@ -8,6 +9,7 @@ import com.quickshop.payment.entity.Wallet;
 import com.quickshop.payment.entity.Withdrawal;
 import com.quickshop.payment.repository.EscrowAccountRepository;
 import com.quickshop.payment.repository.LedgerEntryRepository;
+import com.quickshop.payment.repository.PaymentTransactionRepository;
 import com.quickshop.payment.repository.WalletRepository;
 import com.quickshop.payment.repository.WithdrawalRepository;
 import com.quickshop.payment.service.impl.PaymentServiceImpl;
@@ -40,6 +42,12 @@ class PaymentServiceTest {
 
     @Mock
     private LedgerEntryRepository ledgerEntryRepository;
+
+    @Mock
+    private PaymentTransactionRepository paymentTransactionRepository;
+
+    @Mock
+    private VNPayConfig vnPayConfig;
 
     @InjectMocks
     private PaymentServiceImpl paymentService;

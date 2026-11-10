@@ -3,6 +3,7 @@ package com.quickshop.payment.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quickshop.payment.dto.HoldEscrowRequest;
 import com.quickshop.payment.dto.ReleaseEscrowRequest;
+import com.quickshop.payment.dto.VNPayPaymentResponse;
 import com.quickshop.payment.dto.WithdrawalRequestDto;
 import com.quickshop.payment.entity.EscrowAccount;
 import com.quickshop.payment.entity.Wallet;
@@ -137,6 +138,15 @@ class PaymentControllerTest {
     @Test
     @DisplayName("API POST /api/payments/vnpay-create trả về 200 kèm url")
     void testCreateVNPayUrlApi() throws Exception {
+        VNPayPaymentResponse mockResponse = VNPayPaymentResponse.builder()
+                .orderId("ORD-123")
+                .txnRef("ORD-123_1700000000000")
+                .amount(BigDecimal.valueOf(500000))
+                .paymentUrl("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_TxnRef=ORD-123_1700000000000&vnp_SecureHash=abcdef")
+                .build();
+
+        when(paymentService.createVNPayPayment(any(), any())).thenReturn(mockResponse);
+
         mockMvc.perform(post("/api/payments/vnpay-create")
                         .param("orderId", "ORD-123")
                         .param("amount", "500000"))

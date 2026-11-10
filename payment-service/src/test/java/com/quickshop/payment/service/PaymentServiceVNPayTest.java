@@ -1,0 +1,201 @@
+package com.quickshop.payment.service;
+
+import com.quickshop.common.exception.BadRequestException;
+import com.quickshop.common.exception.ResourceNotFoundException;
+import com.quickshop.payment.config.VNPayConfig;
+import com.quickshop.payment.dto.CreateVNPayPaymentRequest;
+import com.quickshop.payment.dto.PaymentTransactionResponse;
+import com.quickshop.payment.dto.VNPayPaymentResponse;
+import com.quickshop.payment.entity.PaymentStatus;
+import com.quickshop.payment.entity.PaymentTransaction;
+import com.quickshop.payment.repository.EscrowAccountRepository;
+import com.quickshop.payment.repository.LedgerEntryRepository;
+import com.quickshop.payment.repository.PaymentTransactionRepository;
+import com.quickshop.payment.repository.WalletRepository;
+import com.quickshop.payment.repository.WithdrawalRepository;
+import com.quickshop.payment.service.impl.PaymentServiceImpl;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class PaymentServiceVNPayTest {
+
+    @Mock
+    private WalletRepository walletRepository;
+
+    @Mock
+    private EscrowAccountRepository escrowAccountRepository;
+
+    @Mock
+    private WithdrawalRepository withdrawalRepository;
+
+    @Mock
+    private LedgerEntryRepository ledgerEntryRepository;
+
+    @Mock
+    private PaymentTransactionRepository paymentTransactionRepository;
+
+    @Mock
+    private VNPayConfig vnPayConfig;
+
+    @InjectMocks
+    private PaymentServiceImpl paymentService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(vnPayConfig.getTmnCode()).thenReturn("QUICKSHOP");
+        lenient().when(vnPayConfig.getHashSecret()).thenReturn("TESTSECRETKEYVNPAY2026");
+        lenient().when(vnPayConfig.getPaymentUrl()).thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html");
+        lenient().when(vnPayConfig.getReturnUrl()).thenReturn("http://localhost:5173/payment/vnpay-return");
+        lenient().when(vnPayConfig.getVersion()).thenReturn("2.1.0");
+        lenient().when(vnPayConfig.getCommand()).thenReturn("pay");
+        lenient().when(vnPayConfig.getCurrCode()).thenReturn("VND");
+        lenient().when(vnPayConfig.getOrderType()).thenReturn("other");
+        lenient().when(vnPayConfig.getLocale()).thenReturn("vn");
+        lenient().when(vnPayConfig.getExpireMinutes()).thenReturn(15);
+    }
+
+    @Test
+    @DisplayName("createVNPayPayment: Tạo payment URL thành công, nhân 100 số tiền và lưu transaction PENDING")
+    void testCreateVNPayPaymentSuccess() {
+        CreateVNPayPaymentRequest request = CreateVNPayPaymentRequest.builder()
+                .orderId("1001")
+                .amount(BigDecimal.valueOf(250000))
+                .userId(10L)
+                .orderInfo("Thanh toan don hang #1001")
+                .bankCode("NCB")
+                .build();
+
+        when(paymentTransactionRepository.save(any(PaymentTransaction.class)))
+                .thenAnswer(invocation -> {
+                    PaymentTransaction t = invocation.getArgument(0);
+                    t.setId(1L);
+                    return t;
+                });
+
+        VNPayPaymentResponse response = paymentService.createVNPayPayment(request, "192.168.1.1");
+
+        assertThat(response).isNotNull();
+        assertThat(response.getOrderId()).isEqualTo("1001");
+        assertThat(response.getAmount()).isEqualByComparingTo(BigDecimal.valueOf(250000));
+        assertThat(response.getStatus()).isEqualTo(PaymentStatus.PENDING);
+        assertThat(response.getPaymentUrl()).contains("vnp_Amount=25000000"); // 250000 * 100
+        assertThat(response.getPaymentUrl()).contains("vnp_BankCode=NCB");
+        assertThat(response.getPaymentUrl()).contains("vnp_SecureHash=");
+
+        ArgumentCaptor<PaymentTransaction> captor = ArgumentCaptor.forClass(PaymentTransaction.class);
+        verify(paymentTransactionRepository, times(1)).save(captor.capture());
+
+        PaymentTransaction savedTxn = captor.getValue();
+        assertThat(savedTxn.getOrderId()).isEqualTo("1001");
+        assertThat(savedTxn.getAmount()).isEqualByComparingTo(BigDecimal.valueOf(250000));
+        assertThat(savedTxn.getStatus()).isEqualTo(PaymentStatus.PENDING);
+        assertThat(savedTxn.getPaymentMethod()).isEqualTo("VNPAY");
+        assertThat(savedTxn.getSecureHash()).isNotEmpty();
+        assertThat(savedTxn.getExpireAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("createVNPayPayment: Quăng BadRequestException khi request null, thiếu orderId hoặc số tiền < 1000")
+    void testCreateVNPayPaymentValidation() {
+        assertThatThrownBy(() -> paymentService.createVNPayPayment(null, "127.0.0.1"))
+                .isInstanceOf(BadRequestException.class);
+
+        CreateVNPayPaymentRequest missingOrderId = CreateVNPayPaymentRequest.builder()
+                .amount(BigDecimal.valueOf(50000))
+                .build();
+        assertThatThrownBy(() -> paymentService.createVNPayPayment(missingOrderId, "127.0.0.1"))
+                .isInstanceOf(BadRequestException.class);
+
+        CreateVNPayPaymentRequest invalidAmount = CreateVNPayPaymentRequest.builder()
+                .orderId("1002")
+                .amount(BigDecimal.valueOf(500)) // < 1000
+                .build();
+        assertThatThrownBy(() -> paymentService.createVNPayPayment(invalidAmount, "127.0.0.1"))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    @DisplayName("getTransactionByTxnRef: Tìm thấy giao dịch trả về DTO tương ứng")
+    void testGetTransactionByTxnRefFound() {
+        PaymentTransaction txn = PaymentTransaction.builder()
+                .id(1L)
+                .txnRef("TXN_12345")
+                .orderId("1001")
+                .userId(10L)
+                .amount(BigDecimal.valueOf(500000))
+                .paymentMethod("VNPAY")
+                .status(PaymentStatus.PENDING)
+                .orderInfo("Thanh toan don hang")
+                .paymentUrl("https://sandbox.vnpayment.vn/...")
+                .secureHash("hash123")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        when(paymentTransactionRepository.findByTxnRef("TXN_12345")).thenReturn(Optional.of(txn));
+
+        PaymentTransactionResponse response = paymentService.getTransactionByTxnRef("TXN_12345");
+
+        assertThat(response).isNotNull();
+        assertThat(response.getTxnRef()).isEqualTo("TXN_12345");
+        assertThat(response.getOrderId()).isEqualTo("1001");
+        assertThat(response.getStatus()).isEqualTo(PaymentStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("getTransactionByTxnRef: Không tìm thấy quăng ResourceNotFoundException")
+    void testGetTransactionByTxnRefNotFound() {
+        when(paymentTransactionRepository.findByTxnRef("NOT_EXIST")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> paymentService.getTransactionByTxnRef("NOT_EXIST"))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("getTransactionByOrderId: Tìm thấy giao dịch mới nhất của đơn hàng")
+    void testGetTransactionByOrderIdFound() {
+        PaymentTransaction txn = PaymentTransaction.builder()
+                .id(2L)
+                .txnRef("TXN_99999")
+                .orderId("1001")
+                .userId(10L)
+                .amount(BigDecimal.valueOf(150000))
+                .paymentMethod("VNPAY")
+                .status(PaymentStatus.PENDING)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        when(paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc("1001")).thenReturn(Optional.of(txn));
+
+        PaymentTransactionResponse response = paymentService.getTransactionByOrderId("1001");
+
+        assertThat(response).isNotNull();
+        assertThat(response.getOrderId()).isEqualTo("1001");
+        assertThat(response.getTxnRef()).isEqualTo("TXN_99999");
+    }
+
+    @Test
+    @DisplayName("getTransactionByOrderId: Không tìm thấy quăng ResourceNotFoundException")
+    void testGetTransactionByOrderIdNotFound() {
+        when(paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc("NON_EXIST")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> paymentService.getTransactionByOrderId("NON_EXIST"))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+}
