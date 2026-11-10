@@ -7,8 +7,10 @@ import com.quickshop.payment.entity.LedgerEntry;
 import com.quickshop.payment.entity.Wallet;
 import com.quickshop.payment.entity.Withdrawal;
 import com.quickshop.payment.service.PaymentService;
+import com.quickshop.payment.util.VNPayUtil;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,9 +25,6 @@ import java.util.Map;
 public class PaymentController {
 
     private final PaymentService paymentService;
-
-    @Value("${vnpay.payment-url:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}")
-    private String vnpayPaymentUrl;
 
     @GetMapping("/wallet/{shopId}")
     public ResponseEntity<ApiResponse<Wallet>> getShopWallet(@PathVariable Long shopId) {
@@ -92,15 +91,49 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success("Lấy sổ cái thành công", entries));
     }
 
+    @PostMapping("/vnpay/create")
+    public ResponseEntity<ApiResponse<VNPayPaymentResponse>> createVNPayPayment(
+            @Valid @RequestBody CreateVNPayPaymentRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        String clientIp = VNPayUtil.getClientIp(servletRequest);
+        VNPayPaymentResponse response = paymentService.createVNPayPayment(request, clientIp);
+        return ResponseEntity.ok(ApiResponse.success("Tạo URL thanh toán VNPay thành công", response));
+    }
+
     @PostMapping("/vnpay-create")
     public ResponseEntity<ApiResponse<Map<String, String>>> createVNPayUrl(
             @RequestParam String orderId,
-            @RequestParam BigDecimal amount
+            @RequestParam BigDecimal amount,
+            HttpServletRequest servletRequest
     ) {
-        String mockPaymentUrl = vnpayPaymentUrl + "?vnp_Amount=" + amount.multiply(new BigDecimal(100)) + "&vnp_TxnRef=" + orderId;
+        String clientIp = VNPayUtil.getClientIp(servletRequest);
+        CreateVNPayPaymentRequest request = CreateVNPayPaymentRequest.builder()
+                .orderId(orderId)
+                .amount(amount)
+                .orderInfo("Thanh toan don hang #" + orderId)
+                .build();
+        VNPayPaymentResponse vnpResponse = paymentService.createVNPayPayment(request, clientIp);
         Map<String, String> response = new HashMap<>();
-        response.put("paymentUrl", mockPaymentUrl);
+        response.put("paymentUrl", vnpResponse.getPaymentUrl());
         response.put("orderId", orderId);
+        response.put("txnRef", vnpResponse.getTxnRef());
         return ResponseEntity.ok(ApiResponse.success("Tạo URL thanh toán VNPay thành công", response));
+    }
+
+    @GetMapping("/transactions/{txnRef}")
+    public ResponseEntity<ApiResponse<PaymentTransactionResponse>> getTransactionByTxnRef(
+            @PathVariable String txnRef
+    ) {
+        PaymentTransactionResponse response = paymentService.getTransactionByTxnRef(txnRef);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin giao dịch thành công", response));
+    }
+
+    @GetMapping("/order/{orderId}")
+    public ResponseEntity<ApiResponse<PaymentTransactionResponse>> getTransactionByOrderId(
+            @PathVariable String orderId
+    ) {
+        PaymentTransactionResponse response = paymentService.getTransactionByOrderId(orderId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy giao dịch thanh toán của đơn hàng thành công", response));
     }
 }

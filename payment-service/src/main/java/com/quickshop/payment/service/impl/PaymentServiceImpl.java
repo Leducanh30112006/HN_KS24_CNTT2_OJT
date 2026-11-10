@@ -2,16 +2,21 @@ package com.quickshop.payment.service.impl;
 
 import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.common.exception.ResourceNotFoundException;
+import com.quickshop.payment.config.VNPayConfig;
 import com.quickshop.payment.dto.*;
 import com.quickshop.payment.entity.EscrowAccount;
 import com.quickshop.payment.entity.LedgerEntry;
+import com.quickshop.payment.entity.PaymentStatus;
+import com.quickshop.payment.entity.PaymentTransaction;
 import com.quickshop.payment.entity.Wallet;
 import com.quickshop.payment.entity.Withdrawal;
 import com.quickshop.payment.repository.EscrowAccountRepository;
 import com.quickshop.payment.repository.LedgerEntryRepository;
+import com.quickshop.payment.repository.PaymentTransactionRepository;
 import com.quickshop.payment.repository.WalletRepository;
 import com.quickshop.payment.repository.WithdrawalRepository;
 import com.quickshop.payment.service.PaymentService;
+import com.quickshop.payment.util.VNPayUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,7 +24,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -30,6 +41,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final EscrowAccountRepository escrowAccountRepository;
     private final WithdrawalRepository withdrawalRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
+    private final PaymentTransactionRepository paymentTransactionRepository;
+    private final VNPayConfig vnPayConfig;
 
     @Override
     @Transactional
@@ -284,5 +297,137 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional(readOnly = true)
     public List<LedgerEntry> getLedgerEntriesByTxn(String transactionId) {
         return ledgerEntryRepository.findByTransactionId(transactionId);
+    }
+
+    @Override
+    @Transactional
+    public VNPayPaymentResponse createVNPayPayment(CreateVNPayPaymentRequest request, String clientIp) {
+        if (request == null) {
+            throw new BadRequestException("Dữ liệu yêu cầu thanh toán không hợp lệ");
+        }
+        if (request.getOrderId() == null || request.getOrderId().isBlank()) {
+            throw new BadRequestException("Mã đơn hàng không được để trống");
+        }
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.valueOf(1000)) < 0) {
+            throw new BadRequestException("Số tiền thanh toán tối thiểu qua VNPay là 1,000 VND");
+        }
+
+        log.info("Bắt đầu khởi tạo giao dịch VNPay cho đơn hàng #{}, số tiền: {}", request.getOrderId(), request.getAmount());
+
+        ZoneId zoneVn = ZoneId.of("Asia/Ho_Chi_Minh");
+        ZonedDateTime now = ZonedDateTime.now(zoneVn);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+        String vnpCreateDate = now.format(formatter);
+        ZonedDateTime expireTime = now.plusMinutes(vnPayConfig.getExpireMinutes());
+        String vnpExpireDate = expireTime.format(formatter);
+
+        // Mã tham chiếu giao dịch độc nhất cho VNPay Sandbox: ORDER_{orderId}_{timestamp}
+        String txnRef = request.getOrderId() + "_" + System.currentTimeMillis();
+
+        String orderInfo = (request.getOrderInfo() != null && !request.getOrderInfo().isBlank())
+                ? request.getOrderInfo()
+                : "Thanh toan don hang #" + request.getOrderId();
+
+        long amountInVndCents = request.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+        String effectiveIp = (clientIp != null && !clientIp.isBlank()) ? clientIp : "127.0.0.1";
+
+        Map<String, String> vnpParams = new HashMap<>();
+        vnpParams.put("vnp_Version", vnPayConfig.getVersion());
+        vnpParams.put("vnp_Command", vnPayConfig.getCommand());
+        vnpParams.put("vnp_TmnCode", vnPayConfig.getTmnCode());
+        vnpParams.put("vnp_Amount", String.valueOf(amountInVndCents));
+        vnpParams.put("vnp_CurrCode", vnPayConfig.getCurrCode());
+        vnpParams.put("vnp_TxnRef", txnRef);
+        vnpParams.put("vnp_OrderInfo", orderInfo);
+        vnpParams.put("vnp_OrderType", vnPayConfig.getOrderType());
+        vnpParams.put("vnp_Locale", vnPayConfig.getLocale());
+        vnpParams.put("vnp_ReturnUrl", vnPayConfig.getReturnUrl());
+        vnpParams.put("vnp_IpAddr", effectiveIp);
+        vnpParams.put("vnp_CreateDate", vnpCreateDate);
+        vnpParams.put("vnp_ExpireDate", vnpExpireDate);
+
+        if (request.getBankCode() != null && !request.getBankCode().isBlank()) {
+            vnpParams.put("vnp_BankCode", request.getBankCode());
+        }
+
+        // Tạo Payment URL kèm chuỗi chữ ký số HMAC-SHA512
+        String paymentUrl = VNPayUtil.buildPaymentUrl(vnPayConfig.getPaymentUrl(), vnpParams, vnPayConfig.getHashSecret());
+
+        // Lấy vnp_SecureHash từ URL đã tạo
+        String secureHash = "";
+        int hashIdx = paymentUrl.lastIndexOf("vnp_SecureHash=");
+        if (hashIdx != -1) {
+            secureHash = paymentUrl.substring(hashIdx + "vnp_SecureHash=".length());
+        }
+
+        PaymentTransaction transaction = PaymentTransaction.builder()
+                .txnRef(txnRef)
+                .orderId(request.getOrderId())
+                .userId(request.getUserId())
+                .amount(request.getAmount())
+                .paymentMethod("VNPAY")
+                .status(PaymentStatus.PENDING)
+                .orderInfo(orderInfo)
+                .paymentUrl(paymentUrl)
+                .secureHash(secureHash)
+                .bankCode(request.getBankCode())
+                .expireAt(expireTime.toLocalDateTime())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        PaymentTransaction saved = paymentTransactionRepository.save(transaction);
+        log.info("Khởi tạo và lưu giao dịch VNPay thành công. TxnRef: {}, OrderId: {}, ID: {}", txnRef, request.getOrderId(), saved.getId());
+
+        return VNPayPaymentResponse.builder()
+                .txnRef(txnRef)
+                .orderId(request.getOrderId())
+                .amount(request.getAmount())
+                .paymentUrl(paymentUrl)
+                .status(saved.getStatus())
+                .createdAt(saved.getCreatedAt())
+                .expireAt(saved.getExpireAt())
+                .message("Tạo URL thanh toán VNPay thành công")
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaymentTransactionResponse getTransactionByTxnRef(String txnRef) {
+        PaymentTransaction transaction = paymentTransactionRepository.findByTxnRef(txnRef)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giao dịch thanh toán với txnRef: " + txnRef));
+        return mapToTransactionResponse(transaction);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaymentTransactionResponse getTransactionByOrderId(String orderId) {
+        PaymentTransaction transaction = paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giao dịch thanh toán cho đơn hàng: " + orderId));
+        return mapToTransactionResponse(transaction);
+    }
+
+    private PaymentTransactionResponse mapToTransactionResponse(PaymentTransaction txn) {
+        return PaymentTransactionResponse.builder()
+                .id(txn.getId())
+                .txnRef(txn.getTxnRef())
+                .orderId(txn.getOrderId())
+                .userId(txn.getUserId())
+                .amount(txn.getAmount())
+                .paymentMethod(txn.getPaymentMethod())
+                .status(txn.getStatus())
+                .orderInfo(txn.getOrderInfo())
+                .paymentUrl(txn.getPaymentUrl())
+                .secureHash(txn.getSecureHash())
+                .bankCode(txn.getBankCode())
+                .vnpResponseCode(txn.getVnpResponseCode())
+                .vnpTransactionNo(txn.getVnpTransactionNo())
+                .vnpBankCode(txn.getVnpBankCode())
+                .vnpCardType(txn.getVnpCardType())
+                .vnpPayDate(txn.getVnpPayDate())
+                .createdAt(txn.getCreatedAt())
+                .updatedAt(txn.getUpdatedAt())
+                .expireAt(txn.getExpireAt())
+                .build();
     }
 }
