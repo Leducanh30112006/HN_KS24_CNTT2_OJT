@@ -610,7 +610,7 @@ Dựng Admin Dashboard khung; bảng quản lý Shop/sản phẩm chờ duyệt,
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Shop/Product APIs",2026-11-10,2026-11-10
-Cần làm,"[Payment] Tích hợp VNPay Sandbox: tạo payment URL, ký checksum/HMAC theo tài liệu tích hợp và lưu giao dịch: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[Payment] Tích hợp VNPay Sandbox: tạo payment URL, ký checksum/HMAC theo tài liệu tích hợp và lưu giao dịch: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Ba, 2026-11-10
 **Phân hệ:** Payment
 
