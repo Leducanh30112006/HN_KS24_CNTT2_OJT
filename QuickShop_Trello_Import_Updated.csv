@@ -688,7 +688,7 @@ Hoàn thiện trang chi tiết, giỏ hàng và luồng hiển thị checkout; �
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Auth/Cart APIs",2026-11-12,2026-11-12
-Cần làm,"[Wallet & Escrow] Triển khai double-entry ledger; ghi Nợ/Có cân bằng, commission và escrow cho giao dịch thành công: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[Wallet & Escrow] Triển khai double-entry ledger; ghi Nợ/Có cân bằng, commission và escrow cho giao dịch thành công: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Năm, 2026-11-12
 **Phân hệ:** Wallet & Escrow
 
