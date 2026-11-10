@@ -13,3 +13,4 @@ public enum AiShoppingIntent {
     OFF_TOPIC,              // Câu hỏi nằm ngoài phạm vi TMĐT QuickShop (từ chối lịch sự)
     SECURITY_VIOLATION      // Tấn công prompt injection hoặc can thiệp hệ thống
 }
+

@@ -32,3 +32,4 @@ public interface AiAssistantService {
      */
     Map<String, Object> getSafetyPolicy();
 }
+

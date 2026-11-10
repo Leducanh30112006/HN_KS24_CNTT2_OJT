@@ -42,6 +42,11 @@ openai:
   api-key: ${OPENAI_API_KEY:mock-key}
   model: ${OPENAI_MODEL:gpt-4o-mini}
 
+gemini:
+  api-key: ${GEMINI_API_KEY:mock-gemini-key}
+  model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+  api-url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

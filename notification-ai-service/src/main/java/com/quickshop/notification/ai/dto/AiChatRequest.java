@@ -29,3 +29,4 @@ public class AiChatRequest {
     @Schema(description = "Vai trò người dùng (ROLE_BUYER, ROLE_SELLER, ROLE_ADMIN)", example = "ROLE_BUYER")
     private String userRole;
 }
+
