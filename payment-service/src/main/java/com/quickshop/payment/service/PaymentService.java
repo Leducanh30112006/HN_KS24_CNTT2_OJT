@@ -28,6 +28,7 @@ public interface PaymentService {
     PaymentTransactionResponse processVNPayReturn(java.util.Map<String, String> vnpParams);
 
     java.util.Map<String, Object> checkPaymentStatus(String orderId);
+    CreatePayOsPaymentResponse createPayOsPayment(CreatePayOsPaymentRequest request);
     java.util.Map<String, Object> processPayOsWebhook(java.util.Map<String, Object> webhookData);
     PaymentTransactionResponse simulatePaymentSuccess(String orderId, java.math.BigDecimal amount);
 }

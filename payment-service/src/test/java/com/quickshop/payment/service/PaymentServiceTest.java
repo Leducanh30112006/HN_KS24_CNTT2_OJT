@@ -53,6 +53,9 @@ class PaymentServiceTest {
     @Mock
     private RabbitTemplate rabbitTemplate;
 
+    @Mock
+    private vn.payos.PayOS payOS;
+
     @InjectMocks
     private PaymentServiceImpl paymentService;
 
@@ -215,5 +218,88 @@ class PaymentServiceTest {
         assertEquals(BigDecimal.valueOf(700000), sampleWallet.getBalance());
         verify(ledgerService, times(1)).recordDoubleEntry(
                 eq("WITHDRAWAL-CMP-99"), eq("WITHDRAWAL_COMPLETED"), eq("WITHDRAWAL_PENDING"), eq("BANK_SETTLEMENT"), eq(BigDecimal.valueOf(300000)));
+    }
+
+    @Test
+    @DisplayName("PayOS: Tạo yêu cầu thanh toán thành công và lưu PaymentTransaction")
+    void testCreatePayOsPayment_Success() {
+        when(paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc("QS-999999"))
+                .thenReturn(Optional.empty());
+        when(paymentTransactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreatePayOsPaymentRequest req = CreatePayOsPaymentRequest.builder()
+                .orderId("QS-999999")
+                .amount(BigDecimal.valueOf(250000))
+                .userId(1001L)
+                .build();
+
+        CreatePayOsPaymentResponse resp = paymentService.createPayOsPayment(req);
+
+        assertNotNull(resp);
+        assertEquals("QS-999999", resp.getOrderId());
+        assertEquals(BigDecimal.valueOf(250000), resp.getAmount());
+        assertEquals("0346746521", resp.getAccountNumber());
+        assertEquals("NGUYEN VAN KIEN", resp.getAccountName());
+        assertNotNull(resp.getQrCode());
+        verify(paymentTransactionRepository, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("PayOS: Xử lý Webhook thanh toán MB Bank thành công và Idempotent")
+    void testProcessPayOsWebhook_SuccessAndIdempotent() {
+        when(paymentTransactionRepository.findByTxnRef("123456")).thenReturn(Optional.empty());
+        when(paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc("123456")).thenReturn(Optional.empty());
+        when(paymentTransactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        java.util.Map<String, Object> webhookData = new java.util.HashMap<>();
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("orderCode", 123456L);
+        data.put("amount", 250000L);
+        data.put("description", "QS DH123456");
+        data.put("reference", "MB_REF_001");
+        data.put("code", "00");
+        webhookData.put("data", data);
+
+        // Lần 1: Xử lý thành công
+        java.util.Map<String, Object> res1 = paymentService.processPayOsWebhook(webhookData);
+        assertEquals(0, res1.get("error"));
+        verify(ledgerService, times(1)).recordDoubleEntry(
+                anyString(), eq("PAYMENT_PAYOS_MBBANK_SUCCESS"), eq("MBBANK_PAYOS_GATEWAY"), eq("ESCROW_HOLDING"), any());
+
+        // Lần 2: Giả lập gọi lại cùng dữ liệu (Idempotent test)
+        com.quickshop.payment.entity.PaymentTransaction existingSuccess = com.quickshop.payment.entity.PaymentTransaction.builder()
+                .orderId("123456")
+                .txnRef("123456")
+                .amount(BigDecimal.valueOf(250000))
+                .status(com.quickshop.payment.entity.PaymentStatus.SUCCESS)
+                .build();
+        when(paymentTransactionRepository.findByTxnRef("123456")).thenReturn(Optional.of(existingSuccess));
+
+        java.util.Map<String, Object> res2 = paymentService.processPayOsWebhook(webhookData);
+        assertEquals(0, res2.get("error"));
+        assertTrue(String.valueOf(res2.get("message")).contains("Idempotent"));
+        // Đảm bảo không ghi sổ kép
+        verify(ledgerService, times(1)).recordDoubleEntry(anyString(), anyString(), anyString(), anyString(), any());
+    }
+
+    @Test
+    @DisplayName("PayOS: Kiểm tra trạng thái thanh toán checkPaymentStatus")
+    void testCheckPaymentStatus_Success() {
+        com.quickshop.payment.entity.PaymentTransaction existingSuccess = com.quickshop.payment.entity.PaymentTransaction.builder()
+                .orderId("QS-888888")
+                .txnRef("888888")
+                .amount(BigDecimal.valueOf(150000))
+                .status(com.quickshop.payment.entity.PaymentStatus.SUCCESS)
+                .vnpTransactionNo("MB_FAST_888888")
+                .bankCode("MB")
+                .build();
+        when(paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc("QS-888888"))
+                .thenReturn(Optional.of(existingSuccess));
+
+        java.util.Map<String, Object> status = paymentService.checkPaymentStatus("QS-888888");
+        assertTrue((Boolean) status.get("paid"));
+        assertEquals("SUCCESS", status.get("status"));
+        assertEquals("MB", status.get("bankCode"));
+        assertEquals("MB_FAST_888888", status.get("transactionNo"));
     }
 }

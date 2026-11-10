@@ -196,6 +196,17 @@ public class PaymentController {
     }
 
     /**
+     * Tạo yêu cầu thanh toán chuyển khoản PayOS / VietQR (MB Bank)
+     */
+    @PostMapping("/payos/create")
+    public ResponseEntity<ApiResponse<CreatePayOsPaymentResponse>> createPayOsPayment(
+            @Valid @RequestBody CreatePayOsPaymentRequest request
+    ) {
+        CreatePayOsPaymentResponse response = paymentService.createPayOsPayment(request);
+        return ResponseEntity.ok(ApiResponse.success("Tạo yêu cầu thanh toán PayOS thành công", response));
+    }
+
+    /**
      * Webhook tiếp nhận thông báo biến động số dư từ PayOS khi khách chuyển khoản vào MB Bank
      */
     @PostMapping("/payos/webhook")

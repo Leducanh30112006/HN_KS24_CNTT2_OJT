@@ -58,6 +58,8 @@ export default function CheckoutPage({
   const [orderId, setOrderId] = useState('');
   const [vnpayUrl, setVnpayUrl] = useState(null);
   const [isGeneratingVnpay, setIsGeneratingVnpay] = useState(false);
+  const [payOsData, setPayOsData] = useState(null);
+  const [isGeneratingPayOs, setIsGeneratingPayOs] = useState(false);
 
   const formatVND = (price) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -122,14 +124,44 @@ export default function CheckoutPage({
     playSuccessChime();
   };
 
-  // Lắng nghe trạng thái thanh toán thời gian thực qua polling mỗi 2.5s
+  // 1. Lắng nghe Return URL từ PayOS khi người dùng quay lại sau thanh toán
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const returnOrderId = searchParams.get('orderId') || searchParams.get('orderCode');
+
+    if (returnOrderId) {
+      setOrderId(returnOrderId);
+      setOrderSuccess(true);
+      // Xoá param trên URL thanh địa chỉ để trải nghiệm mượt mà
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      // BẢO MẬT: Tuyệt đối không tự ý hiển thị thành công bằng tham số URL
+      // Bắt buộc gọi API backend để xác nhận trạng thái đơn hàng thực tế
+      setIsCheckingPayment(true);
+      axiosClient.get(`/api/payments/status/${encodeURIComponent(returnOrderId)}`)
+        .then((res) => {
+          const data = res?.data?.data || res?.data;
+          if (data && (data.paid === true || data.status === 'SUCCESS')) {
+            triggerSuccessState(data);
+          }
+        })
+        .catch((err) => {
+          console.warn('Lỗi kiểm tra trạng thái thanh toán từ backend:', err);
+        })
+        .finally(() => {
+          setIsCheckingPayment(false);
+        });
+    }
+  }, []);
+
+  // 2. Lắng nghe trạng thái thanh toán thời gian thực qua Polling API mỗi 2.5s
   useEffect(() => {
     if (!orderId || paymentConfirmed) return;
 
     let isMounted = true;
     const interval = setInterval(async () => {
       try {
-        const res = await axiosClient.get(`/api/payments/status/${orderId}`);
+        const res = await axiosClient.get(`/api/payments/status/${encodeURIComponent(orderId)}`);
         const data = res?.data?.data || res?.data;
         if (data && (data.paid === true || data.status === 'SUCCESS')) {
           if (isMounted && !paymentConfirmed) {
@@ -137,7 +169,7 @@ export default function CheckoutPage({
           }
         }
       } catch (e) {
-        // Tiếp tục lắng nghe
+        // Tiếp tục lắng nghe chu kỳ kế tiếp
       }
     }, 2500);
 
@@ -147,12 +179,12 @@ export default function CheckoutPage({
     };
   }, [orderId, paymentConfirmed]);
 
-  // Kiểm tra thủ công ngay lập tức
+  // 3. Nút kiểm tra thủ công trạng thái thanh toán (kết nối trực tiếp backend)
   const handleManualCheckPayment = async () => {
     if (!orderId) return;
     setIsCheckingPayment(true);
     try {
-      const res = await axiosClient.get(`/api/payments/status/${orderId}`);
+      const res = await axiosClient.get(`/api/payments/status/${encodeURIComponent(orderId)}`);
       const data = res?.data?.data || res?.data;
       if (data && (data.paid === true || data.status === 'SUCCESS')) {
         triggerSuccessState(data);
@@ -166,38 +198,30 @@ export default function CheckoutPage({
     }
   };
 
-  // Giả lập chuyển khoản thành công (dành cho Test nhanh / Demo)
-  const handleSimulatePaymentSuccess = async () => {
-    const targetId = orderId || ('QS-' + Math.floor(100000 + Math.random() * 900000));
-    if (!orderId) {
-      setOrderId(targetId);
-      setOrderSuccess(true);
-    }
-    setIsCheckingPayment(true);
+  // 4. Tạo yêu cầu thanh toán chuyển khoản PayOS / MB Bank thực tế từ backend
+  const handleCreatePayOsPayment = async (orderIdToPay, amountToPay) => {
+    setIsGeneratingPayOs(true);
     try {
-      const res = await axiosClient.post(`/api/payments/payos/simulate-success?orderId=${encodeURIComponent(targetId)}&amount=${finalTotal}`);
+      const targetId = String(orderIdToPay || orderId);
+      const res = await axiosClient.post('/api/payments/payos/create', {
+        orderId: targetId,
+        amount: Number(amountToPay || finalTotal),
+        userId: user?.userId || user?.id || 1001,
+        description: `QS DH${targetId.replace(/[^0-9]/g, '') || targetId}`,
+        returnUrl: `${window.location.origin}/?payos_status=success&orderId=${encodeURIComponent(targetId)}`,
+        cancelUrl: `${window.location.origin}/?payos_status=cancelled&orderId=${encodeURIComponent(targetId)}`,
+      });
       const data = res?.data?.data || res?.data;
-      triggerSuccessState(data || {
-        orderId: targetId,
-        amount: finalTotal,
-        paymentMethod: 'PAYOS_MBBANK',
-        status: 'SUCCESS',
-        bankCode: 'MB',
-        transactionNo: 'MB_FAST_' + Date.now()
-      });
+      if (data) {
+        setPayOsData(data);
+        return data;
+      }
     } catch (e) {
-      console.warn('Backend simulate error, fallback local:', e);
-      triggerSuccessState({
-        orderId: targetId,
-        amount: finalTotal,
-        paymentMethod: 'PAYOS_MBBANK',
-        status: 'SUCCESS',
-        bankCode: 'MB',
-        transactionNo: 'MB_FAST_' + Date.now()
-      });
+      console.warn('Lỗi tạo yêu cầu thanh toán PayOS:', e);
     } finally {
-      setIsCheckingPayment(false);
+      setIsGeneratingPayOs(false);
     }
+    return null;
   };
 
   const handleCreateVnpayUrl = async (orderIdToPay, amountToPay) => {
@@ -336,35 +360,27 @@ export default function CheckoutPage({
       let createdOrderId = null;
       let finalAmount = finalTotal;
 
-      if (res && (res.success || res.code === 200) && res.data) {
-        const orderData = res.data;
-        createdOrderId = orderData.masterOrderId ? String(orderData.masterOrderId) : (orderData.orderCode || '1001');
+      if (res && (res.success || res.code === 200 || res.status === 200 || res.status === 201) && res.data) {
+        const orderData = res.data?.data || res.data;
+        const realOrderId = orderData.masterOrderId ? String(orderData.masterOrderId) : (orderData.orderCode || '1001');
         finalAmount = orderData.totalAmount || finalTotal;
-        setOrderId(orderData.orderCode || `QS-${100000 + (orderData.masterOrderId || 1)}`);
+        const displayOrderId = orderData.orderCode || `QS-${orderData.masterOrderId || realOrderId}`;
+        createdOrderId = displayOrderId;
+        setOrderId(displayOrderId);
         setOrderSuccess(true);
         removeMultipleFromCart(displayItems.map((i) => i.variantId));
-      } else {
-        const generatedOrderId = 'QS-' + Math.floor(100000 + Math.random() * 900000);
-        createdOrderId = generatedOrderId;
-        setOrderId(generatedOrderId);
-        setOrderSuccess(true);
-        removeMultipleFromCart(displayItems.map((i) => i.variantId));
-      }
 
-      // NẾU CHỌN THANH TOÁN CHUYỂN KHOẢN: Khởi tạo URL VNPay phụ trợ trong nền
-      if (paymentMethod === 'vnpay' && createdOrderId) {
-        handleCreateVnpayUrl(createdOrderId, finalAmount);
+        // NẾU CHỌN THANH TOÁN CHUYỂN KHOẢN: Khởi tạo URL PayOS & VNPay thực tế từ Backend
+        if (paymentMethod === 'vnpay') {
+          handleCreatePayOsPayment(displayOrderId, finalAmount);
+          handleCreateVnpayUrl(displayOrderId, finalAmount);
+        }
+      } else {
+        alert(res?.message || 'Không thể tạo đơn hàng. Vui lòng kiểm tra lại thông tin giỏ hàng!');
       }
     } catch (err) {
-      console.warn('Backend orders checkout unavailable, falling back to simulated order:', err);
-      const generatedOrderId = 'QS-' + Math.floor(100000 + Math.random() * 900000);
-      setOrderId(generatedOrderId);
-      setOrderSuccess(true);
-      removeMultipleFromCart(displayItems.map((i) => i.variantId));
-
-      if (paymentMethod === 'vnpay') {
-        handleCreateVnpayUrl(generatedOrderId, finalTotal);
-      }
+      console.error('Lỗi khi đặt hàng:', err);
+      alert(err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi gửi yêu cầu đặt hàng. Vui lòng thử lại!');
     } finally {
       setIsSubmitting(false);
     }
@@ -398,7 +414,7 @@ export default function CheckoutPage({
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto leading-relaxed">
               Hệ thống QuickShop đã ghi nhận khoản thanh toán chuyển khoản qua MB Bank cho đơn hàng{' '}
-              <strong className="text-emerald-700 font-mono font-bold text-sm">#{orderId || 'QS-10001'}</strong>.
+              <strong className="text-emerald-700 font-mono font-bold text-sm">#{confirmedPaymentDetails?.orderId || orderId}</strong>.
               Đơn hàng của bạn đã chuyển sang trạng thái <strong>ĐÃ THANH TOÁN (PAID)</strong> và đang được người bán chuẩn bị để giao đến bạn sớm nhất.
             </p>
           </div>
@@ -409,7 +425,7 @@ export default function CheckoutPage({
               <div>
                 <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tổng tiền đã thanh toán</span>
                 <div className="text-2xl sm:text-3xl font-black text-emerald-600 pt-0.5">
-                  {formatVND(finalTotal)}
+                  {formatVND(confirmedPaymentDetails?.amount || finalTotal)}
                 </div>
               </div>
               <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 text-white font-black text-xs rounded-xl shadow-sm self-start sm:self-auto">
@@ -422,12 +438,12 @@ export default function CheckoutPage({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="bg-white p-3.5 rounded-xl border border-emerald-100 space-y-1">
                 <span className="text-slate-500">Mã đơn hàng:</span>
-                <div className="font-mono font-black text-slate-900 text-sm">#{orderId || 'QS-10001'}</div>
+                <div className="font-mono font-black text-slate-900 text-sm">#{confirmedPaymentDetails?.orderId || orderId}</div>
               </div>
               <div className="bg-white p-3.5 rounded-xl border border-emerald-100 space-y-1">
                 <span className="text-slate-500">Mã tham chiếu ngân hàng:</span>
                 <div className="font-mono font-black text-emerald-700 text-sm">
-                  {confirmedPaymentDetails?.transactionNo || 'MB_FAST_' + Date.now()}
+                  {confirmedPaymentDetails?.transactionNo || confirmedPaymentDetails?.txnRef || ('MB_' + (confirmedPaymentDetails?.orderId || orderId))}
                 </div>
               </div>
               <div className="bg-white p-3.5 rounded-xl border border-emerald-100 space-y-1">
@@ -587,7 +603,11 @@ export default function CheckoutPage({
 
               <div className="p-3 bg-white rounded-2xl border-2 border-blue-200 inline-block shadow-md">
                 <img
-                  src={`https://img.vietqr.io/image/970422-0346746521-compact2.png?amount=${finalTotal}&addInfo=${encodeURIComponent('QS DH' + orderId)}&accountName=NGUYEN%20VAN%20KIEN`}
+                  src={
+                    payOsData?.qrCode && payOsData.qrCode.startsWith('http')
+                      ? payOsData.qrCode
+                      : `https://img.vietqr.io/image/970422-0346746521-compact2.png?amount=${finalTotal}&addInfo=${encodeURIComponent('QS DH' + (orderId.replace(/[^0-9]/g, '') || orderId))}&accountName=NGUYEN%20VAN%20KIEN`
+                  }
                   alt="Mã QR PayOS MB Bank"
                   className="w-48 h-48 object-contain rounded-xl mx-auto"
                 />
@@ -639,11 +659,11 @@ export default function CheckoutPage({
                   <span className="text-slate-500">Nội dung chuyển khoản:</span>
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-slate-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                      QS DH{orderId}
+                      QS DH{orderId.replace(/[^0-9]/g, '') || orderId}
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleCopy(`QS DH${orderId}`, 'content_success')}
+                      onClick={() => handleCopy(`QS DH${orderId.replace(/[^0-9]/g, '') || orderId}`, 'content_success')}
                       className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold px-2 py-0.5 bg-blue-50 rounded border border-blue-200 flex items-center gap-1 active:scale-95 transition"
                     >
                       {copiedField === 'content_success' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
@@ -653,7 +673,7 @@ export default function CheckoutPage({
                 </div>
               </div>
 
-              {/* Nút kiểm tra thủ công & giả lập test nhanh */}
+              {/* Nút kiểm tra thủ công & mở trang PayOS */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
                 <button
                   type="button"
@@ -668,16 +688,17 @@ export default function CheckoutPage({
                   )}
                   <span>Kiểm tra trạng thái ngay</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={handleSimulatePaymentSuccess}
-                  disabled={isCheckingPayment}
-                  className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow transition active:scale-95 flex items-center justify-center gap-1.5"
-                  title="Bấm để kích hoạt giao diện đã thanh toán thành công tức thì phục vụ demo"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Giả lập chuyển khoản thành công (Test nhanh)</span>
-                </button>
+                {payOsData?.checkoutUrl && (
+                  <a
+                    href={payOsData.checkoutUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition active:scale-95 flex items-center justify-center gap-1.5"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Mở trang thanh toán PayOS</span>
+                  </a>
+                )}
               </div>
 
               <p className="text-[11px] text-slate-500">
@@ -1178,16 +1199,6 @@ export default function CheckoutPage({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={handleSimulatePaymentSuccess}
-                          disabled={isCheckingPayment}
-                          className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 text-white font-bold rounded-lg shadow-sm transition active:scale-95 flex items-center gap-1 whitespace-nowrap text-[11px]"
-                          title="Bấm để kích hoạt giao diện đã thanh toán thành công tức thì phục vụ demo"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                          <span>Giả lập thanh toán thành công</span>
-                        </button>
-                        <button
-                          type="button"
                           onClick={async () => {
                             const url = await handleCreateVnpayUrl('PREVIEW_' + Date.now(), finalTotal);
                             if (url) window.open(url, '_blank');
@@ -1200,7 +1211,7 @@ export default function CheckoutPage({
                           ) : (
                             <ExternalLink className="w-3.5 h-3.5" />
                           )}
-                          <span>Mở VNPay</span>
+                          <span>Mở VNPay Sandbox</span>
                         </button>
                       </div>
                     </div>
