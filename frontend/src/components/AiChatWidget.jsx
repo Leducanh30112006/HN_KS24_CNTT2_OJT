@@ -133,7 +133,7 @@ export default function AiChatWidget() {
     setLoading(true);
 
     try {
-      const res = await axiosClient.post('/api/ai/chat', { message: text });
+      const res = await axiosClient.post('/api/ai/chat', { message: text }, { timeout: 35000 });
       if (res.success && res.data) {
         setMessages([
           ...newThread,
