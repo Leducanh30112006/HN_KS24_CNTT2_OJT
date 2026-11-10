@@ -16,11 +16,8 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins:
-              - "http://localhost:5173"
-              - "http://localhost:3000"
-              - "https://quickshop.vn"
-              - "https://*.quickshop.vn"
+            allowedOriginPatterns:
+              - "*"
             allowedMethods:
               - GET
               - POST
