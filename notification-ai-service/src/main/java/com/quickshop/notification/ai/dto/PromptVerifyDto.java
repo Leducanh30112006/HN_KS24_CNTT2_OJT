@@ -43,3 +43,4 @@ public class PromptVerifyDto {
         private long inspectedAt;
     }
 }
+

@@ -109,3 +109,4 @@ class AiAssistantControllerTest {
                 .andExpect(jsonPath("$.data.assistantName").value("QuickShop AI Shopping Assistant"));
     }
 }
+
