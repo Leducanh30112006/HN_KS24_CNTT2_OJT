@@ -56,9 +56,32 @@ export default function CheckoutPage({
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [vnpayUrl, setVnpayUrl] = useState(null);
+  const [isGeneratingVnpay, setIsGeneratingVnpay] = useState(false);
 
   const formatVND = (price) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+  };
+
+  const handleCreateVnpayUrl = async (orderIdToPay, amountToPay) => {
+    setIsGeneratingVnpay(true);
+    try {
+      const payRes = await axiosClient.post('/api/payments/vnpay/create', {
+        orderId: String(orderIdToPay || '1001'),
+        amount: Number(amountToPay || finalTotal),
+        userId: user?.userId || user?.id || 1001,
+        orderInfo: `Thanh toan don hang #${orderIdToPay || '1001'}`
+      });
+      const pUrl = payRes?.data?.paymentUrl || payRes?.data?.data?.paymentUrl;
+      if (pUrl) {
+        setVnpayUrl(pUrl);
+        return pUrl;
+      }
+    } catch (e) {
+      console.warn('Lỗi tạo URL VNPay:', e);
+    } finally {
+      setIsGeneratingVnpay(false);
+    }
+    return null;
   };
 
   // Gom nhóm sản phẩm thanh toán theo Shop
@@ -192,22 +215,10 @@ export default function CheckoutPage({
 
       // NẾU CHỌN THANH TOÁN VNPAY: Tự động khởi tạo giao dịch VNPay và chuyển hướng sang Sandbox Gateway
       if (paymentMethod === 'vnpay' && createdOrderId) {
-        try {
-          const payRes = await axiosClient.post('/api/payments/vnpay/create', {
-            orderId: createdOrderId,
-            amount: finalAmount,
-            userId: userId,
-            orderInfo: `Thanh toan don hang #${createdOrderId}`
-          });
-
-          const pUrl = payRes?.data?.paymentUrl || payRes?.data?.data?.paymentUrl;
-          if (pUrl) {
-            setVnpayUrl(pUrl);
-            window.location.href = pUrl;
-            return;
-          }
-        } catch (payErr) {
-          console.warn('Lỗi khi khởi tạo VNPay payment URL:', payErr);
+        const pUrl = await handleCreateVnpayUrl(createdOrderId, finalAmount);
+        if (pUrl) {
+          window.location.href = pUrl;
+          return;
         }
       }
     } catch (err) {
@@ -216,6 +227,14 @@ export default function CheckoutPage({
       setOrderId(generatedOrderId);
       setOrderSuccess(true);
       removeMultipleFromCart(displayItems.map((i) => i.variantId));
+
+      if (paymentMethod === 'vnpay') {
+        const pUrl = await handleCreateVnpayUrl(generatedOrderId, finalTotal);
+        if (pUrl) {
+          window.location.href = pUrl;
+          return;
+        }
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -271,17 +290,76 @@ export default function CheckoutPage({
             </div>
           </div>
 
+          {/* Hộp Mã QR VNPay trên màn hình Đặt hàng Thành công */}
+          {paymentMethod === 'vnpay' && (
+            <div className="bg-gradient-to-br from-blue-50/90 via-white to-blue-50/50 rounded-2xl p-6 border-2 border-blue-400/50 shadow-sm max-w-lg mx-auto text-center space-y-4">
+              <div className="flex items-center justify-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="text-xs font-bold text-blue-900 uppercase tracking-wide">
+                  Mã QR Thanh Toán VNPay cho đơn hàng #{orderId}
+                </span>
+              </div>
+
+              <div className="p-3 bg-white rounded-2xl border-2 border-blue-200 inline-block shadow-md">
+                <img
+                  src={`https://img.vietqr.io/image/970419-9704198526191432198-compact2.png?amount=${finalTotal}&addInfo=${encodeURIComponent('QS DH' + orderId)}&accountName=QUICKSHOP%20MARKETPLACE`}
+                  alt="Mã QR VNPay"
+                  className="w-44 h-44 object-contain rounded-xl mx-auto"
+                />
+                <div className="mt-1.5 text-[11px] font-bold text-blue-700 bg-blue-50 py-1 px-3 rounded-lg">
+                  Quét bằng App Ngân Hàng hoặc Ví VNPay
+                </div>
+              </div>
+
+              <div className="text-xs text-slate-600 bg-white/80 p-3 rounded-xl border border-blue-100 text-left space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Ngân hàng:</span>
+                  <span className="font-bold text-slate-800">NCB (Ngân hàng Quốc Dân - VNPay)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Số thẻ / STK:</span>
+                  <span className="font-mono font-bold text-blue-700">9704198526191432198</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Số tiền:</span>
+                  <span className="font-bold text-rose-600">{formatVND(finalTotal)}</span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-500">
+                Sau khi thanh toán thành công, hệ thống VNPay IPN sẽ tự động cập nhật trạng thái đơn hàng trong giây lát.
+              </p>
+            </div>
+          )}
+
           <div className="pt-2 flex flex-col sm:flex-row justify-center gap-3">
-            {vnpayUrl && (
+            {vnpayUrl ? (
               <a
                 href={vnpayUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition active:scale-95"
               >
-                <span>Chuyển đến cổng VNPay Sandbox</span>
+                <span>Mở Cổng VNPay Sandbox để thanh toán</span>
                 <ExternalLink className="w-4 h-4" />
               </a>
+            ) : paymentMethod === 'vnpay' && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const url = await handleCreateVnpayUrl(orderId, finalTotal);
+                  if (url) window.open(url, '_blank');
+                }}
+                disabled={isGeneratingVnpay}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition active:scale-95"
+              >
+                {isGeneratingVnpay ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ExternalLink className="w-4 h-4" />
+                )}
+                <span>Mở Cổng VNPay Sandbox</span>
+              </button>
             )}
             <button
               onClick={onBack}
@@ -618,31 +696,121 @@ export default function CheckoutPage({
               </label>
 
               {/* Option 2: VNPay QR */}
-              <label
-                onClick={() => setPaymentMethod('vnpay')}
-                className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
-                  paymentMethod === 'vnpay'
-                    ? 'border-orange-500 bg-orange-50/50 ring-2 ring-orange-500/20'
-                    : 'border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
-                    <QrCode className="w-5 h-5" />
+              <div className="space-y-3">
+                <label
+                  onClick={() => setPaymentMethod('vnpay')}
+                  className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
+                    paymentMethod === 'vnpay'
+                      ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-500/20'
+                      : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
+                      <QrCode className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                        <span>Chuyển khoản QR Ngân Hàng (VNPay / VietQR)</span>
+                        <span className="px-1.5 py-0.5 bg-blue-600 text-white font-extrabold text-[9px] rounded-md tracking-wider">
+                          VNPAY
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500">Quét mã QR tức thì qua mọi ứng dụng ngân hàng hoặc ví điện tử</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">Chuyển khoản QR Ngân Hàng (VNPay / VietQR)</div>
-                    <div className="text-[11px] text-slate-500">Quét mã QR qua mọi ứng dụng ngân hàng hoặc ví điện tử</div>
+                  <input
+                    type="radio"
+                    name="payment"
+                    checked={paymentMethod === 'vnpay'}
+                    onChange={() => setPaymentMethod('vnpay')}
+                    className="accent-blue-600 w-4 h-4"
+                  />
+                </label>
+
+                {/* Khung Mã QR VNPay hiện ra ngay khi ấn chọn Chuyển khoản */}
+                {paymentMethod === 'vnpay' && (
+                  <div className="p-4 sm:p-5 bg-gradient-to-br from-blue-50 via-white to-blue-50/60 rounded-2xl border-2 border-blue-400/60 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center justify-between pb-3 border-b border-blue-100">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span className="text-xs font-bold text-blue-900 uppercase tracking-wide">
+                          Mã QR Thanh Toán VNPay / VietQR
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                        Xác nhận tự động
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                      {/* Ảnh mã QR */}
+                      <div className="relative p-2.5 bg-white rounded-2xl border-2 border-blue-200 shadow-md flex-shrink-0 text-center">
+                        <img
+                          src={`https://img.vietqr.io/image/970419-9704198526191432198-compact2.png?amount=${finalTotal}&addInfo=${encodeURIComponent('QS THANHTOAN')}&accountName=QUICKSHOP%20MARKETPLACE`}
+                          alt="Mã QR Chuyển khoản VNPay"
+                          className="w-40 h-40 object-contain rounded-xl mx-auto"
+                        />
+                        <div className="mt-2 text-[10px] font-bold text-blue-700 bg-blue-50 py-1 px-2 rounded-lg">
+                          Quét mã bằng App Ngân Hàng / Ví VNPay
+                        </div>
+                      </div>
+
+                      {/* Thông tin chuyển khoản chi tiết */}
+                      <div className="text-xs space-y-2 flex-1 w-full bg-white/80 p-3.5 rounded-xl border border-blue-100">
+                        <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                          <span className="text-slate-500">Ngân hàng thụ hưởng:</span>
+                          <span className="font-bold text-slate-900">NCB (Ngân hàng Quốc Dân - VNPay)</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                          <span className="text-slate-500">Số tài khoản / Thẻ:</span>
+                          <span className="font-mono font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded text-xs sm:text-sm">
+                            9704198526191432198
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                          <span className="text-slate-500">Tên người nhận:</span>
+                          <span className="font-bold text-slate-800">QUICKSHOP MARKETPLACE</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                          <span className="text-slate-500">Số tiền:</span>
+                          <span className="font-black text-rose-600 text-sm">{formatVND(finalTotal)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-1">
+                          <span className="text-slate-500">Nội dung chuyển khoản:</span>
+                          <span className="font-mono font-bold text-slate-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                            QUICKSHOP THANHTOAN
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-1 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-600 bg-blue-50/70 p-2.5 rounded-xl border border-blue-100">
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                        <span>Hỗ trợ quét qua Vietcombank, MB, Techcombank, VPBank, Agribank, VNPay, MoMo...</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const url = await handleCreateVnpayUrl('PREVIEW_' + Date.now(), finalTotal);
+                          if (url) window.open(url, '_blank');
+                        }}
+                        disabled={isGeneratingVnpay}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap text-[11px]"
+                      >
+                        {isGeneratingVnpay ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        )}
+                        <span>Mở Cổng VNPay Sandbox</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <input
-                  type="radio"
-                  name="payment"
-                  checked={paymentMethod === 'vnpay'}
-                  onChange={() => setPaymentMethod('vnpay')}
-                  className="accent-orange-600 w-4 h-4"
-                />
-              </label>
+                )}
+              </div>
 
               {/* Option 3: Credit Card */}
               <label
@@ -877,7 +1045,11 @@ export default function CheckoutPage({
             <button
               onClick={handlePlaceOrder}
               disabled={isSubmitting}
-              className="w-full py-4 bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 hover:from-orange-600 hover:to-rose-600 text-white font-black text-sm rounded-2xl transition shadow-xl shadow-orange-500/30 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+              className={`w-full py-4 text-white font-black text-sm rounded-2xl transition shadow-xl active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 ${
+                paymentMethod === 'vnpay'
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/30'
+                  : 'bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 hover:from-orange-600 hover:to-rose-600 shadow-orange-500/30'
+              }`}
             >
               {isSubmitting ? (
                 <>
@@ -886,8 +1058,17 @@ export default function CheckoutPage({
                 </>
               ) : (
                 <>
-                  <span>Tiến hành Đặt Hàng Ngay</span>
-                  <ChevronRight className="w-4 h-4" />
+                  {paymentMethod === 'vnpay' ? (
+                    <>
+                      <QrCode className="w-4 h-4" />
+                      <span>Đặt Hàng & Thanh Toán VNPay</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Tiến hành Đặt Hàng Ngay</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </>
+                  )}
                 </>
               )}
             </button>
