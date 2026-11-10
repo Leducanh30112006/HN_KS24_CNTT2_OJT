@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { 
   ShoppingBag, ArrowLeft, Trash2, Store, Tag, CheckCircle2, ShieldCheck, 
   MapPin, Phone, User, Truck, CreditCard, ChevronRight, AlertCircle, 
-  Clock, Sparkles, Check, Edit3, Plus, RefreshCw, DollarSign, QrCode, Ticket
+  Clock, Sparkles, Check, Edit3, Plus, RefreshCw, DollarSign, QrCode, Ticket, ExternalLink
 } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -55,6 +55,7 @@ export default function CheckoutPage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderId, setOrderId] = useState('');
+  const [vnpayUrl, setVnpayUrl] = useState(null);
 
   const formatVND = (price) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -171,16 +172,43 @@ export default function CheckoutPage({
         },
       });
 
+      let createdOrderId = null;
+      let finalAmount = finalTotal;
+
       if (res && (res.success || res.code === 200) && res.data) {
         const orderData = res.data;
+        createdOrderId = orderData.masterOrderId ? String(orderData.masterOrderId) : (orderData.orderCode || '1001');
+        finalAmount = orderData.totalAmount || finalTotal;
         setOrderId(orderData.orderCode || `QS-${100000 + (orderData.masterOrderId || 1)}`);
         setOrderSuccess(true);
         removeMultipleFromCart(displayItems.map((i) => i.variantId));
       } else {
         const generatedOrderId = 'QS-' + Math.floor(100000 + Math.random() * 900000);
+        createdOrderId = generatedOrderId;
         setOrderId(generatedOrderId);
         setOrderSuccess(true);
         removeMultipleFromCart(displayItems.map((i) => i.variantId));
+      }
+
+      // NẾU CHỌN THANH TOÁN VNPAY: Tự động khởi tạo giao dịch VNPay và chuyển hướng sang Sandbox Gateway
+      if (paymentMethod === 'vnpay' && createdOrderId) {
+        try {
+          const payRes = await axiosClient.post('/api/payments/vnpay/create', {
+            orderId: createdOrderId,
+            amount: finalAmount,
+            userId: userId,
+            orderInfo: `Thanh toan don hang #${createdOrderId}`
+          });
+
+          const pUrl = payRes?.data?.paymentUrl || payRes?.data?.data?.paymentUrl;
+          if (pUrl) {
+            setVnpayUrl(pUrl);
+            window.location.href = pUrl;
+            return;
+          }
+        } catch (payErr) {
+          console.warn('Lỗi khi khởi tạo VNPay payment URL:', payErr);
+        }
       }
     } catch (err) {
       console.warn('Backend orders checkout unavailable, falling back to simulated order:', err);
@@ -244,6 +272,17 @@ export default function CheckoutPage({
           </div>
 
           <div className="pt-2 flex flex-col sm:flex-row justify-center gap-3">
+            {vnpayUrl && (
+              <a
+                href={vnpayUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition active:scale-95"
+              >
+                <span>Chuyển đến cổng VNPay Sandbox</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
             <button
               onClick={onBack}
               className="px-6 py-3 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-orange-500/20 transition active:scale-95"

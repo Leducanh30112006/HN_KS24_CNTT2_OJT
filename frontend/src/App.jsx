@@ -17,9 +17,10 @@ import AuthModal from './components/AuthModal';
 import Pagination from './components/Pagination';
 import ApiErrorBanner from './components/ApiErrorBanner';
 import catalogApi, { mapPriceRange } from './api/catalogApi';
+import axiosClient from './api/axiosClient';
 import { 
   Filter, RotateCcw, Star, ChevronRight, ChevronDown, ShieldCheck, 
-  HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft 
+  HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft, CheckCircle2 
 } from 'lucide-react';
 import { useAuthStore } from './stores/useAuthStore';
 import { defaultCategories, defaultProducts } from './data/sampleProducts';
@@ -64,6 +65,7 @@ export default function App() {
   const [checkoutItems, setCheckoutItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [vnpayResult, setVnpayResult] = useState(null);
 
   // Fetch Categories from /api/catalog/categories
   const fetchCategories = async () => {
@@ -184,6 +186,49 @@ export default function App() {
 
   useEffect(() => {
     fetchCategories();
+  }, []);
+
+  // Bắt sự kiện Return Redirect từ cổng thanh toán VNPay Sandbox
+  useEffect(() => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.has('vnp_ResponseCode')) {
+        const responseCode = searchParams.get('vnp_ResponseCode');
+        const isSuccess = responseCode === '00';
+        const txnRef = searchParams.get('vnp_TxnRef') || '';
+        const rawAmount = searchParams.get('vnp_Amount') || '0';
+        const amount = Number(rawAmount) / 100;
+        const bankCode = searchParams.get('vnp_BankCode') || '';
+        const orderInfo = searchParams.get('vnp_OrderInfo') || '';
+
+        // Đồng bộ kết quả thanh toán với Backend Payment Service
+        axiosClient.get(`/api/payments/vnpay/return?${searchParams.toString()}`)
+          .then((res) => {
+            console.log('Xác thực giao dịch VNPay thành công:', res);
+          })
+          .catch((err) => {
+            console.warn('Lỗi xác thực VNPay Return:', err);
+          });
+
+        setVnpayResult({
+          isOpen: true,
+          success: isSuccess,
+          responseCode,
+          txnRef,
+          amount,
+          bankCode,
+          orderInfo,
+          message: isSuccess
+            ? 'Giao dịch thanh toán qua VNPay Sandbox thành công! Đơn hàng của bạn đã được chuyển sang trạng thái xử lý.'
+            : 'Thanh toán qua VNPay không thành công hoặc giao dịch đã bị hủy bởi người dùng.'
+        });
+
+        // Xóa query param trên thanh địa chỉ URL để tránh lặp lại khi refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch (e) {
+      console.warn('Lỗi phân tích URL Return VNPay:', e);
+    }
   }, []);
 
   useEffect(() => {
@@ -972,6 +1017,66 @@ export default function App() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
       />
+
+      {/* 5. Modal Kết quả Thanh toán VNPay Sandbox */}
+      {vnpayResult?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 text-center space-y-5 shadow-2xl border border-slate-100">
+            <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${vnpayResult.success ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+              {vnpayResult.success ? (
+                <CheckCircle2 className="w-10 h-10 stroke-[2.5]" />
+              ) : (
+                <ShieldAlert className="w-10 h-10 stroke-[2.5]" />
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <span className={`inline-block px-3 py-1 text-[11px] font-bold rounded-full uppercase tracking-wider ${vnpayResult.success ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                {vnpayResult.success ? 'Thanh toán VNPay thành công' : 'Thanh toán không thành công'}
+              </span>
+              <h3 className="text-xl font-black text-slate-900 pt-2">
+                {vnpayResult.success ? 'Giao dịch hoàn tất!' : 'Giao dịch thất bại / Bị hủy'}
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
+                {vnpayResult.message}
+              </p>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-4 text-xs space-y-2 border border-slate-200/80 text-left">
+              {vnpayResult.txnRef && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Mã giao dịch:</span>
+                  <span className="font-mono font-bold text-slate-800">{vnpayResult.txnRef}</span>
+                </div>
+              )}
+              {vnpayResult.amount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Số tiền thanh toán:</span>
+                  <span className="font-bold text-orange-600">
+                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(vnpayResult.amount)}
+                  </span>
+                </div>
+              )}
+              {vnpayResult.bankCode && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Ngân hàng thanh toán:</span>
+                  <span className="font-medium text-slate-800">{vnpayResult.bankCode}</span>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => {
+                setVnpayResult(null);
+                setCurrentView('storefront');
+              }}
+              className="w-full py-3 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-orange-500/20 transition active:scale-95"
+            >
+              Đóng và tiếp tục mua sắm
+            </button>
+          </div>
+        </div>
+      )}
 
       <AiChatWidget />
     </div>
