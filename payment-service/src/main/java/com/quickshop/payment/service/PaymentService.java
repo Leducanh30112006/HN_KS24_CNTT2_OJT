@@ -24,4 +24,6 @@ public interface PaymentService {
     VNPayPaymentResponse createVNPayPayment(CreateVNPayPaymentRequest request, String clientIp);
     PaymentTransactionResponse getTransactionByTxnRef(String txnRef);
     PaymentTransactionResponse getTransactionByOrderId(String orderId);
+    java.util.Map<String, String> processVNPayIpn(java.util.Map<String, String> vnpParams);
+    PaymentTransactionResponse processVNPayReturn(java.util.Map<String, String> vnpParams);
 }

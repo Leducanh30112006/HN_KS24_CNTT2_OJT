@@ -128,4 +128,42 @@ class PaymentControllerVNPayTest {
                 .andExpect(jsonPath("$.data.orderId").value("777"))
                 .andExpect(jsonPath("$.data.txnRef").value("TXN_ORDER_777"));
     }
+
+    @Test
+    @DisplayName("API GET /api/payments/vnpay/ipn: Trả về kết quả đối soát chuẩn định dạng VNPay")
+    void testProcessVNPayIpnEndpoint() throws Exception {
+        java.util.Map<String, String> ipnResult = new java.util.HashMap<>();
+        ipnResult.put("RspCode", "00");
+        ipnResult.put("Message", "Confirm Success");
+
+        when(paymentService.processVNPayIpn(any())).thenReturn(ipnResult);
+
+        mockMvc.perform(get("/api/payments/vnpay/ipn")
+                        .param("vnp_TxnRef", "TXN_123")
+                        .param("vnp_ResponseCode", "00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.RspCode").value("00"))
+                .andExpect(jsonPath("$.Message").value("Confirm Success"));
+    }
+
+    @Test
+    @DisplayName("API GET /api/payments/vnpay/return: Trả về thông tin giao dịch hoàn tất sau redirect")
+    void testProcessVNPayReturnEndpoint() throws Exception {
+        PaymentTransactionResponse mockResponse = PaymentTransactionResponse.builder()
+                .id(1L)
+                .txnRef("TXN_123")
+                .orderId("999")
+                .amount(BigDecimal.valueOf(250000))
+                .status(PaymentStatus.SUCCESS)
+                .build();
+
+        when(paymentService.processVNPayReturn(any())).thenReturn(mockResponse);
+
+        mockMvc.perform(get("/api/payments/vnpay/return")
+                        .param("vnp_TxnRef", "TXN_123")
+                        .param("vnp_ResponseCode", "00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("SUCCESS"));
+    }
 }

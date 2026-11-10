@@ -1,7 +1,10 @@
 package com.quickshop.payment.service.impl;
 
+import com.quickshop.common.event.PaymentCompletedEvent;
+import com.quickshop.common.event.PaymentFailedEvent;
 import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.common.exception.ResourceNotFoundException;
+import com.quickshop.payment.config.RabbitMQPaymentConfig;
 import com.quickshop.payment.config.VNPayConfig;
 import com.quickshop.payment.dto.*;
 import com.quickshop.payment.entity.EscrowAccount;
@@ -19,6 +22,7 @@ import com.quickshop.payment.service.PaymentService;
 import com.quickshop.payment.util.VNPayUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +34,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -43,6 +48,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final LedgerEntryRepository ledgerEntryRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final VNPayConfig vnPayConfig;
+    private final RabbitTemplate rabbitTemplate;
 
     @Override
     @Transactional
@@ -405,6 +411,201 @@ public class PaymentServiceImpl implements PaymentService {
         PaymentTransaction transaction = paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giao dịch thanh toán cho đơn hàng: " + orderId));
         return mapToTransactionResponse(transaction);
+    }
+
+    @Override
+    @Transactional
+    public Map<String, String> processVNPayIpn(Map<String, String> vnpParams) {
+        Map<String, String> response = new HashMap<>();
+
+        if (vnpParams == null || vnpParams.isEmpty()) {
+            log.warn("VNPay IPN: Không nhận được tham số nào từ VNPay");
+            response.put("RspCode", "99");
+            response.put("Message", "Empty params");
+            return response;
+        }
+
+        // 1. Kiểm tra chữ ký số (Checksum)
+        if (!VNPayUtil.verifyChecksum(vnpParams, vnPayConfig.getHashSecret())) {
+            log.warn("VNPay IPN: Chữ ký số không hợp lệ! vnp_SecureHash: {}", vnpParams.get("vnp_SecureHash"));
+            response.put("RspCode", "97");
+            response.put("Message", "Invalid Checksum");
+            return response;
+        }
+
+        String txnRef = vnpParams.get("vnp_TxnRef");
+        if (txnRef == null || txnRef.isBlank()) {
+            log.warn("VNPay IPN: Thiếu vnp_TxnRef trong tham số");
+            response.put("RspCode", "01");
+            response.put("Message", "Order not Found");
+            return response;
+        }
+
+        // 2. Tìm kiếm giao dịch trong DB
+        Optional<PaymentTransaction> optTxn = paymentTransactionRepository.findByTxnRef(txnRef);
+        if (optTxn.isEmpty()) {
+            log.warn("VNPay IPN: Không tìm thấy giao dịch với txnRef: {}", txnRef);
+            response.put("RspCode", "01");
+            response.put("Message", "Order not Found");
+            return response;
+        }
+
+        PaymentTransaction txn = optTxn.get();
+
+        // 3. Kiểm tra số tiền (vnp_Amount = amount * 100)
+        String vnpAmountStr = vnpParams.get("vnp_Amount");
+        long vnpAmount = (vnpAmountStr != null && !vnpAmountStr.isBlank()) ? Long.parseLong(vnpAmountStr) : 0L;
+        long expectedAmount = txn.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+        if (vnpAmount != expectedAmount) {
+            log.warn("VNPay IPN: Số tiền không khớp! Nhận: {}, Kỳ vọng: {}", vnpAmount, expectedAmount);
+            response.put("RspCode", "04");
+            response.put("Message", "Invalid Amount");
+            return response;
+        }
+
+        // 4. Kiểm tra tính Idempotent (Chống xử lý trùng)
+        if (txn.getStatus() != PaymentStatus.PENDING) {
+            log.info("VNPay IPN: Giao dịch {} đã được cập nhật trước đó với trạng thái: {}", txnRef, txn.getStatus());
+            response.put("RspCode", "02");
+            response.put("Message", "Order already confirmed");
+            return response;
+        }
+
+        // 5. Cập nhật trạng thái giao dịch
+        String responseCode = vnpParams.get("vnp_ResponseCode");
+        String transactionNo = vnpParams.get("vnp_TransactionNo");
+        String bankCode = vnpParams.get("vnp_BankCode");
+        String cardType = vnpParams.get("vnp_CardType");
+        String payDate = vnpParams.get("vnp_PayDate");
+
+        txn.setVnpResponseCode(responseCode);
+        txn.setVnpTransactionNo(transactionNo);
+        txn.setVnpBankCode(bankCode);
+        txn.setVnpCardType(cardType);
+        txn.setVnpPayDate(payDate);
+
+        if ("00".equals(responseCode)) {
+            txn.setStatus(PaymentStatus.SUCCESS);
+            paymentTransactionRepository.save(txn);
+            log.info("VNPay IPN: Thanh toán thành công cho đơn hàng #{}, txnRef={}", txn.getOrderId(), txnRef);
+
+            // Bắn PaymentCompletedEvent để Order Saga xác nhận đơn hàng
+            publishPaymentCompleted(txn);
+        } else {
+            txn.setStatus("24".equals(responseCode) ? PaymentStatus.CANCELLED : PaymentStatus.FAILED);
+            paymentTransactionRepository.save(txn);
+            log.warn("VNPay IPN: Thanh toán thất bại/hủy cho đơn hàng #{}, mã lỗi: {}", txn.getOrderId(), responseCode);
+
+            // Bắn PaymentFailedEvent để Order Saga hoàn lại hàng tồn kho
+            publishPaymentFailed(txn, "VNPay response code: " + responseCode);
+        }
+
+        response.put("RspCode", "00");
+        response.put("Message", "Confirm Success");
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public PaymentTransactionResponse processVNPayReturn(Map<String, String> vnpParams) {
+        if (vnpParams == null || vnpParams.isEmpty()) {
+            throw new BadRequestException("Không nhận được tham số phản hồi từ VNPay");
+        }
+
+        // 1. Kiểm tra chữ ký số
+        if (!VNPayUtil.verifyChecksum(vnpParams, vnPayConfig.getHashSecret())) {
+            log.warn("VNPay Return: Chữ ký số không hợp lệ!");
+            throw new BadRequestException("Chữ ký số VNPay không hợp lệ hoặc dữ liệu bị thay đổi");
+        }
+
+        String txnRef = vnpParams.get("vnp_TxnRef");
+        PaymentTransaction txn = paymentTransactionRepository.findByTxnRef(txnRef)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giao dịch: " + txnRef));
+
+        // Nếu trạng thái vẫn PENDING (IPN chưa đến hoặc chạy chậm hơn Return URL), cập nhật luôn
+        if (txn.getStatus() == PaymentStatus.PENDING) {
+            String responseCode = vnpParams.get("vnp_ResponseCode");
+            String transactionNo = vnpParams.get("vnp_TransactionNo");
+            String bankCode = vnpParams.get("vnp_BankCode");
+            String cardType = vnpParams.get("vnp_CardType");
+            String payDate = vnpParams.get("vnp_PayDate");
+
+            txn.setVnpResponseCode(responseCode);
+            txn.setVnpTransactionNo(transactionNo);
+            txn.setVnpBankCode(bankCode);
+            txn.setVnpCardType(cardType);
+            txn.setVnpPayDate(payDate);
+
+            if ("00".equals(responseCode)) {
+                txn.setStatus(PaymentStatus.SUCCESS);
+                paymentTransactionRepository.save(txn);
+                log.info("VNPay Return: Xác nhận thanh toán thành công cho đơn #{}, txnRef={}", txn.getOrderId(), txnRef);
+                publishPaymentCompleted(txn);
+            } else {
+                txn.setStatus("24".equals(responseCode) ? PaymentStatus.CANCELLED : PaymentStatus.FAILED);
+                paymentTransactionRepository.save(txn);
+                log.warn("VNPay Return: Giao dịch không thành công cho đơn #{}, code={}", txn.getOrderId(), responseCode);
+                publishPaymentFailed(txn, "VNPay response code: " + responseCode);
+            }
+        }
+
+        return mapToTransactionResponse(txn);
+    }
+
+    private void publishPaymentCompleted(PaymentTransaction txn) {
+        try {
+            Long masterOrderId = null;
+            try {
+                masterOrderId = Long.parseLong(txn.getOrderId());
+            } catch (NumberFormatException ignored) {}
+
+            PaymentCompletedEvent event = PaymentCompletedEvent.builder()
+                    .orderId(txn.getOrderId())
+                    .masterOrderId(masterOrderId)
+                    .userId(txn.getUserId())
+                    .amount(txn.getAmount())
+                    .paymentMethod("VNPAY")
+                    .transactionId(txn.getTxnRef())
+                    .timestamp(LocalDateTime.now())
+                    .build();
+
+            rabbitTemplate.convertAndSend(
+                    RabbitMQPaymentConfig.EXCHANGE_ORDER,
+                    RabbitMQPaymentConfig.ROUTING_KEY_PAYMENT_COMPLETED,
+                    event
+            );
+            log.info("Đã phát PaymentCompletedEvent tới RabbitMQ cho MasterOrder #{}", txn.getOrderId());
+        } catch (Exception e) {
+            log.error("Lỗi khi phát PaymentCompletedEvent cho đơn #{}: {}", txn.getOrderId(), e.getMessage(), e);
+        }
+    }
+
+    private void publishPaymentFailed(PaymentTransaction txn, String reason) {
+        try {
+            Long masterOrderId = null;
+            try {
+                masterOrderId = Long.parseLong(txn.getOrderId());
+            } catch (NumberFormatException ignored) {}
+
+            PaymentFailedEvent event = PaymentFailedEvent.builder()
+                    .orderId(txn.getOrderId())
+                    .masterOrderId(masterOrderId)
+                    .userId(txn.getUserId())
+                    .amount(txn.getAmount())
+                    .paymentMethod("VNPAY")
+                    .reason(reason)
+                    .timestamp(LocalDateTime.now())
+                    .build();
+
+            rabbitTemplate.convertAndSend(
+                    RabbitMQPaymentConfig.EXCHANGE_ORDER,
+                    RabbitMQPaymentConfig.ROUTING_KEY_PAYMENT_FAILED,
+                    event
+            );
+            log.info("Đã phát PaymentFailedEvent tới RabbitMQ cho MasterOrder #{}", txn.getOrderId());
+        } catch (Exception e) {
+            log.error("Lỗi khi phát PaymentFailedEvent cho đơn #{}: {}", txn.getOrderId(), e.getMessage(), e);
+        }
     }
 
     private PaymentTransactionResponse mapToTransactionResponse(PaymentTransaction txn) {
