@@ -1,5 +1,7 @@
 package com.quickshop.notification.ai.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quickshop.notification.ai.dto.AiChatRequest;
 import com.quickshop.notification.ai.dto.AiChatResponse;
 import com.quickshop.notification.ai.dto.PromptVerifyDto;
@@ -11,11 +13,16 @@ import com.quickshop.notification.ai.prompt.SystemPromptBuilder;
 import com.quickshop.notification.ai.service.AiAssistantService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +34,21 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
     private final PromptGuardService promptGuardService;
     private final SystemPromptBuilder systemPromptBuilder;
+    private final ObjectMapper objectMapper;
+
+    @Value("${gemini.api-key:mock-gemini-key}")
+    private String geminiApiKey;
+
+    @Value("${gemini.model:gemini-3.5-flash-lite}")
+    private String geminiModel;
+
+    @Value("${gemini.api-url:https://generativelanguage.googleapis.com/v1beta/models}")
+    private String geminiApiUrl;
 
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
 
     @Override
     public AiChatResponse chat(AiChatRequest request) {
@@ -80,8 +100,21 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
         // Trường hợp 3: Nhận diện Intent mua sắm
         AiShoppingIntent intent = detectIntent(sanitizedPrompt);
-        String reply = generateSmartResponse(sanitizedPrompt, intent);
         List<String> suggestedQuestions = generateSuggestedQuestions(intent);
+
+        // Trường hợp 4: Gọi Google Gemini API nếu có API key hợp lệ
+        String reply = null;
+        boolean fallbackUsed = false;
+
+        if (isGeminiConfigured()) {
+            reply = callGoogleGemini(sanitizedPrompt);
+        }
+
+        // Nếu Gemini không khả dụng hoặc chưa cấu hình key thật -> Fallback sang Smart Rule-based Engine
+        if (reply == null || reply.isBlank()) {
+            fallbackUsed = true;
+            reply = generateSmartResponse(sanitizedPrompt, intent);
+        }
 
         return AiChatResponse.builder()
                 .reply(reply)
@@ -89,7 +122,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 .riskLevel(safetyResult.getRiskLevel())
                 .intent(intent)
                 .suggestedQuestions(suggestedQuestions)
-                .fallbackUsed(true)
+                .fallbackUsed(fallbackUsed)
                 .latencyMs(System.currentTimeMillis() - startTime)
                 .timestamp(LocalDateTime.now().format(ISO_FORMATTER))
                 .build();
@@ -121,6 +154,8 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         Map<String, Object> policy = new HashMap<>();
         policy.put("assistantName", SystemPromptBuilder.ASSISTANT_NAME);
         policy.put("assistantRole", SystemPromptBuilder.ASSISTANT_ROLE);
+        policy.put("activeAiModel", isGeminiConfigured() ? geminiModel : "SmartRuleFallbackEngine");
+        policy.put("provider", isGeminiConfigured() ? "Google Gemini AI" : "Local QuickShop Core");
         policy.put("maxPromptLength", 500);
         policy.put("supportedGuardrails", List.of(
                 "Anti-Prompt Injection Pattern Matching",
@@ -132,6 +167,66 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         ));
         policy.put("supportedIntents", List.of(AiShoppingIntent.values()));
         return policy;
+    }
+
+    /**
+     * Gọi Google Gemini AI v1beta generateContent API
+     */
+    private String callGoogleGemini(String sanitizedPrompt) {
+        try {
+            String uri = String.format("%s/%s:generateContent?key=%s", geminiApiUrl, geminiModel, geminiApiKey);
+
+            Map<String, Object> payload = Map.of(
+                    "system_instruction", Map.of(
+                            "parts", List.of(Map.of("text", systemPromptBuilder.buildSystemPrompt()))
+                    ),
+                    "contents", List.of(
+                            Map.of(
+                                    "role", "user",
+                                    "parts", List.of(Map.of("text", sanitizedPrompt))
+                            )
+                    ),
+                    "generationConfig", Map.of(
+                            "temperature", 0.7,
+                            "maxOutputTokens", 800
+                    )
+            );
+
+            String requestBody = objectMapper.writeValueAsString(payload);
+
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(uri))
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(10))
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                JsonNode root = objectMapper.readTree(response.body());
+                JsonNode candidates = root.path("candidates");
+                if (candidates.isArray() && !candidates.isEmpty()) {
+                    JsonNode textNode = candidates.get(0).path("content").path("parts").get(0).path("text");
+                    if (!textNode.isMissingNode() && !textNode.asText().isBlank()) {
+                        log.info("Successfully received response from Google Gemini AI (model: {})", geminiModel);
+                        return textNode.asText().trim();
+                    }
+                }
+            } else {
+                log.warn("Google Gemini API returned status {} - {}", response.statusCode(), response.body());
+            }
+        } catch (Exception e) {
+            log.warn("Google Gemini API call failed, falling back to smart rule engine: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private boolean isGeminiConfigured() {
+        return geminiApiKey != null &&
+                !geminiApiKey.isBlank() &&
+                !geminiApiKey.equalsIgnoreCase("mock-gemini-key") &&
+                !geminiApiKey.equalsIgnoreCase("mock-key");
     }
 
     private AiShoppingIntent detectIntent(String input) {

@@ -25,7 +25,8 @@ class AiAssistantServiceTest {
     void setUp() {
         PromptGuardServiceImpl promptGuardService = new PromptGuardServiceImpl();
         SystemPromptBuilder systemPromptBuilder = new SystemPromptBuilder();
-        aiAssistantService = new AiAssistantServiceImpl(promptGuardService, systemPromptBuilder);
+        com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        aiAssistantService = new AiAssistantServiceImpl(promptGuardService, systemPromptBuilder, objectMapper);
     }
 
     @Test
@@ -157,3 +158,4 @@ class AiAssistantServiceTest {
         assertTrue(policy.containsKey("supportedGuardrails"));
     }
 }
+

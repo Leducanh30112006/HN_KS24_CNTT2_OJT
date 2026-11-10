@@ -53,3 +53,4 @@ public class AiAssistantController {
         return ResponseEntity.ok(ApiResponse.success(aiAssistantService.getSafetyPolicy()));
     }
 }
+

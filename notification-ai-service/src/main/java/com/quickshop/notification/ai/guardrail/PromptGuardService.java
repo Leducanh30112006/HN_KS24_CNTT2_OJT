@@ -31,3 +31,4 @@ public interface PromptGuardService {
      */
     boolean isShoppingScoped(String prompt);
 }
+
