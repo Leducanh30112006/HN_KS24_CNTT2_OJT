@@ -15,3 +15,4 @@ if [ ! -f "$SSL_DIR/nginx.crt" ] || [ ! -f "$SSL_DIR/nginx.key" ]; then
 else
     echo "SSL Certificate already exists at $SSL_DIR"
 fi
+
