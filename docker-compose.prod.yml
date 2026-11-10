@@ -287,6 +287,8 @@ services:
       SHIPPING_SERVICE_URL: http://shipping-service:8085
       NOTIFICATION_SERVICE_URL: http://notification-ai-service:8086
       JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    volumes:
+      - ./api-gateway/src/main/resources/application.yml:/app/config/application.yml:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -320,6 +322,7 @@ services:
       - "443:443"
     volumes:
       - ./deployments/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deployments/nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - api-gateway
       - frontend

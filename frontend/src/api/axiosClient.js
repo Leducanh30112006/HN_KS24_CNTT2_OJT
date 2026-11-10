@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/useAuthStore';
 
-const BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8080';
+// Sử dụng VITE_API_GATEWAY_URL nếu cấu hình, mặc định dùng relative path '' để tận dụng Nginx reverse proxy / Vite proxy
+const BASE_URL = import.meta.env.VITE_API_GATEWAY_URL ?? '';
 
 const axiosClient = axios.create({
   baseURL: BASE_URL,
