@@ -20,4 +20,10 @@ public interface PaymentService {
     List<Withdrawal> getPendingWithdrawals();
     List<LedgerEntry> getAllLedgerEntries();
     List<LedgerEntry> getLedgerEntriesByTxn(String transactionId);
+
+    VNPayPaymentResponse createVNPayPayment(CreateVNPayPaymentRequest request, String clientIp);
+    PaymentTransactionResponse getTransactionByTxnRef(String txnRef);
+    PaymentTransactionResponse getTransactionByOrderId(String orderId);
+    java.util.Map<String, String> processVNPayIpn(java.util.Map<String, String> vnpParams);
+    PaymentTransactionResponse processVNPayReturn(java.util.Map<String, String> vnpParams);
 }
