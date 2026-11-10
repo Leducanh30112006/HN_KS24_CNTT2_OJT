@@ -649,7 +649,7 @@ Kết nối API duyệt Shop và sản phẩm; hiển thị trạng thái, xác 
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Admin UI; Identity/Catalog APIs",2026-11-11,2026-11-11
-Cần làm,"[Payment] Xử lý VNPay IPN, xác minh chữ ký, chống xử lý giao dịch trùng và cập nhật trạng thái thanh toán: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[Payment] Xử lý VNPay IPN, xác minh chữ ký, chống xử lý giao dịch trùng và cập nhật trạng thái thanh toán: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Tư, 2026-11-11
 **Phân hệ:** Payment
 
