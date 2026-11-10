@@ -185,4 +185,34 @@ public class PaymentController {
                 : "Giao dịch thanh toán VNPay không thành công hoặc đã bị hủy";
         return ResponseEntity.ok(ApiResponse.success(msg, response));
     }
+
+    /**
+     * Kiểm tra trạng thái thanh toán theo đơn hàng (dùng cho polling thời gian thực)
+     */
+    @GetMapping("/status/{orderId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkPaymentStatus(@PathVariable String orderId) {
+        Map<String, Object> status = paymentService.checkPaymentStatus(orderId);
+        return ResponseEntity.ok(ApiResponse.success("Kiểm tra trạng thái thanh toán thành công", status));
+    }
+
+    /**
+     * Webhook tiếp nhận thông báo biến động số dư từ PayOS khi khách chuyển khoản vào MB Bank
+     */
+    @PostMapping("/payos/webhook")
+    public ResponseEntity<Map<String, Object>> handlePayOsWebhook(@RequestBody Map<String, Object> webhookData) {
+        Map<String, Object> response = paymentService.processPayOsWebhook(webhookData);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Endpoint giả lập chuyển khoản MB Bank thành công (dùng cho dev/test và demo kiểm thử tức thì)
+     */
+    @PostMapping("/payos/simulate-success")
+    public ResponseEntity<ApiResponse<PaymentTransactionResponse>> simulateSuccess(
+            @RequestParam String orderId,
+            @RequestParam(required = false) BigDecimal amount
+    ) {
+        PaymentTransactionResponse response = paymentService.simulatePaymentSuccess(orderId, amount);
+        return ResponseEntity.ok(ApiResponse.success("Xác nhận chuyển khoản MB Bank thành công", response));
+    }
 }

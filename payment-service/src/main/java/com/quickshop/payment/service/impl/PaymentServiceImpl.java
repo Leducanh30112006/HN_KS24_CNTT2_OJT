@@ -649,4 +649,165 @@ public class PaymentServiceImpl implements PaymentService {
                 .expireAt(txn.getExpireAt())
                 .build();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> checkPaymentStatus(String orderId) {
+        Map<String, Object> result = new HashMap<>();
+        if (orderId == null || orderId.isBlank()) {
+            result.put("paid", false);
+            result.put("status", "NOT_FOUND");
+            return result;
+        }
+
+        // Tìm theo orderId chính xác hoặc thử các biến thể tiền tố QS-
+        Optional<PaymentTransaction> txnOpt = paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId);
+        if (txnOpt.isEmpty() && orderId.startsWith("QS-")) {
+            txnOpt = paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId.substring(3));
+        }
+        if (txnOpt.isEmpty() && !orderId.startsWith("QS-")) {
+            txnOpt = paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc("QS-" + orderId);
+        }
+
+        if (txnOpt.isPresent()) {
+            PaymentTransaction txn = txnOpt.get();
+            boolean isPaid = (txn.getStatus() == PaymentStatus.SUCCESS);
+            result.put("paid", isPaid);
+            result.put("status", txn.getStatus().name());
+            result.put("orderId", txn.getOrderId());
+            result.put("amount", txn.getAmount());
+            result.put("paymentMethod", txn.getPaymentMethod());
+            result.put("txnRef", txn.getTxnRef());
+            result.put("bankCode", txn.getBankCode() != null ? txn.getBankCode() : "MB");
+            result.put("transactionNo", txn.getVnpTransactionNo());
+            result.put("updatedAt", txn.getUpdatedAt() != null ? txn.getUpdatedAt().toString() : null);
+        } else {
+            result.put("paid", false);
+            result.put("status", "PENDING");
+            result.put("orderId", orderId);
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> processPayOsWebhook(Map<String, Object> webhookData) {
+        Map<String, Object> response = new HashMap<>();
+        if (webhookData == null || webhookData.isEmpty()) {
+            response.put("error", -1);
+            response.put("message", "Dữ liệu webhook rỗng");
+            return response;
+        }
+
+        log.info("PayOS Webhook nhận được: {}", webhookData);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) webhookData.get("data");
+        if (data == null) {
+            data = webhookData;
+        }
+
+        String orderCode = String.valueOf(data.getOrDefault("orderCode", ""));
+        String description = String.valueOf(data.getOrDefault("description", ""));
+        String reference = String.valueOf(data.getOrDefault("reference", "MB_" + System.currentTimeMillis()));
+        Object amountObj = data.get("amount");
+        BigDecimal parsedAmount = BigDecimal.valueOf(50000);
+        if (amountObj instanceof Number) {
+            parsedAmount = BigDecimal.valueOf(((Number) amountObj).doubleValue());
+        }
+        final BigDecimal finalPayOsAmount = parsedAmount;
+
+        String targetOrderId = orderCode;
+        if (description != null && !description.isBlank()) {
+            if (description.contains("DH")) {
+                targetOrderId = description.substring(description.indexOf("DH") + 2).trim();
+            } else if (description.contains("QS")) {
+                targetOrderId = description.substring(description.indexOf("QS") + 2).trim();
+            }
+        }
+        if (targetOrderId == null || targetOrderId.isBlank()) {
+            targetOrderId = orderCode;
+        }
+
+        String finalOrderId = targetOrderId;
+        PaymentTransaction txn = paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc(finalOrderId)
+                .orElseGet(() -> PaymentTransaction.builder()
+                        .orderId(finalOrderId)
+                        .txnRef("PAYOS-" + System.currentTimeMillis())
+                        .amount(finalPayOsAmount)
+                        .paymentMethod("PAYOS_MBBANK")
+                        .status(PaymentStatus.PENDING)
+                        .orderInfo("Thanh toan PayOS MB Bank don hang #" + finalOrderId)
+                        .bankCode("MB")
+                        .build());
+
+        txn.setStatus(PaymentStatus.SUCCESS);
+        txn.setPaymentMethod("PAYOS_MBBANK");
+        txn.setVnpResponseCode("00");
+        txn.setVnpBankCode("MB");
+        txn.setVnpTransactionNo(reference);
+        txn.setVnpPayDate(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        paymentTransactionRepository.save(txn);
+
+        log.info("PayOS Webhook: Xác nhận thanh toán MB Bank thành công cho đơn #{}, số tiền: {}", finalOrderId, txn.getAmount());
+
+        ledgerService.recordDoubleEntry(
+                "PAYOS-" + txn.getTxnRef(),
+                "PAYMENT_PAYOS_MBBANK_SUCCESS",
+                "MBBANK_PAYOS_GATEWAY",
+                "ESCROW_HOLDING",
+                txn.getAmount()
+        );
+
+        publishPaymentCompleted(txn);
+
+        response.put("error", 0);
+        response.put("message", "Xác nhận webhook thành công");
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public PaymentTransactionResponse simulatePaymentSuccess(String orderId, BigDecimal amount) {
+        if (orderId == null || orderId.isBlank()) {
+            throw new BadRequestException("Mã đơn hàng không được để trống");
+        }
+
+        BigDecimal finalAmount = (amount != null && amount.compareTo(BigDecimal.ZERO) > 0)
+                ? amount
+                : BigDecimal.valueOf(100000);
+
+        PaymentTransaction txn = paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId)
+                .orElseGet(() -> PaymentTransaction.builder()
+                        .orderId(orderId)
+                        .txnRef("MB-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 10000))
+                        .amount(finalAmount)
+                        .paymentMethod("PAYOS_MBBANK")
+                        .status(PaymentStatus.PENDING)
+                        .orderInfo("Thanh toan chuyen khoan MB Bank don hang #" + orderId)
+                        .bankCode("MB")
+                        .build());
+
+        txn.setStatus(PaymentStatus.SUCCESS);
+        txn.setPaymentMethod("PAYOS_MBBANK");
+        txn.setVnpResponseCode("00");
+        txn.setVnpBankCode("MB");
+        txn.setVnpTransactionNo("MB_FAST_" + System.currentTimeMillis());
+        txn.setVnpPayDate(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        paymentTransactionRepository.save(txn);
+
+        log.info("Giả lập chuyển khoản MB Bank thành công cho đơn hàng #{}, số tiền: {}", orderId, txn.getAmount());
+
+        ledgerService.recordDoubleEntry(
+                "MBBANK-" + txn.getTxnRef(),
+                "PAYMENT_MBBANK_SUCCESS",
+                "MBBANK_NAPAS_GATEWAY",
+                "ESCROW_HOLDING",
+                txn.getAmount()
+        );
+
+        publishPaymentCompleted(txn);
+
+        return mapToTransactionResponse(txn);
+    }
 }
