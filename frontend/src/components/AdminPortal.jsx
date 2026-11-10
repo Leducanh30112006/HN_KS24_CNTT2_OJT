@@ -6,18 +6,38 @@ import {
   Store, Ticket, Lock, Unlock, Eye, Plus, Search, RefreshCw,
   Award, TrendingUp, AlertCircle, ShoppingBag, Phone, MapPin,
   UserCheck, UserX, CreditCard, ExternalLink, X, DollarSign,
-  FileText, ArrowUpRight, Download, CheckCircle
+  FileText, ArrowUpRight, Download, CheckCircle, LayoutDashboard
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
+import Pagination from './Pagination';
 
 export default function AdminPortal({ categories = [], onCategoriesUpdated, onBackToStorefront }) {
-  // Tabs: 'moderation' | 'sellers' | 'vouchers' | 'users' | 'categories' | 'notifications' | 'infra'
-  const [activeTab, setActiveTab] = useState('moderation');
+  // Tabs: 'dashboard' | 'moderation' | 'sellers' | 'vouchers' | 'users' | 'categories' | 'notifications' | 'finance' | 'audit' | 'infra'
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Toast Notification state
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((prev) => (prev?.message === message ? null : prev));
+    }, 4000);
+  };
+
+  // Rejection Modals
+  const [rejectingProduct, setRejectingProduct] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectingShop, setRejectingShop] = useState(null);
+  const [rejectShopReason, setRejectShopReason] = useState('');
 
   // ================= 1. MODERATION STATE =================
   const [allProducts, setAllProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [moderationFilter, setModerationFilter] = useState('PENDING'); // PENDING, REJECTED, APPROVED, ALL
+  const [moderationSearchKw, setModerationSearchKw] = useState('');
+  const [moderationCategoryFilter, setModerationCategoryFilter] = useState('ALL');
+  const [moderationPage, setModerationPage] = useState(0);
+  const [moderationPageSize, setModerationPageSize] = useState(6);
 
   const defaultModerationProducts = [
     {
@@ -83,8 +103,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   // ================= 2. SELLER MANAGEMENT STATE =================
   const [shops, setShops] = useState([]);
   const [sellerFilter, setSellerFilter] = useState('ALL'); // ALL, PENDING, ACTIVE, SUSPENDED
+  const [sellerMallFilter, setSellerMallFilter] = useState('ALL'); // ALL, MALL, STANDARD
   const [selectedKycShop, setSelectedKycShop] = useState(null);
   const [sellerSearchKw, setSellerSearchKw] = useState('');
+  const [sellerPage, setSellerPage] = useState(0);
+  const [sellerPageSize, setSellerPageSize] = useState(5);
 
   const defaultShops = [
     {
@@ -221,16 +244,23 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
     if (selectedKycShop?.id === id) {
       setSelectedKycShop((prev) => (prev ? { ...prev, status: 'ACTIVE' } : null));
     }
-    alert('Đã phê duyệt hồ sơ KYC gian hàng thành công! Quyền ROLE_SELLER đã được kích hoạt cho chủ shop.');
+    showToast('Đã phê duyệt hồ sơ KYC gian hàng thành công! Quyền ROLE_SELLER đã được kích hoạt cho chủ shop.', 'success');
   };
 
-  // Từ chối gian hàng
-  const handleRejectShop = async (id) => {
-    const reason = prompt('Nhập lý do từ chối hồ sơ mở gian hàng:', 'Thông tin CCCD hoặc giấy tờ kinh doanh không hợp lệ hoặc thiếu chứng từ pháp lý.');
-    if (!reason || !reason.trim()) return;
+  // Mở modal từ chối gian hàng
+  const handleOpenRejectShopModal = (shop) => {
+    setRejectingShop(shop);
+    setRejectShopReason('Thông tin CCCD hoặc giấy tờ kinh doanh không hợp lệ hoặc thiếu chứng từ pháp lý.');
+  };
+
+  // Xác nhận từ chối gian hàng
+  const handleConfirmRejectShop = async () => {
+    if (!rejectingShop || !rejectShopReason.trim()) return;
+    const id = rejectingShop.id;
+    const reason = rejectShopReason.trim();
 
     try {
-      await axiosClient.put(`/api/shops/${id}/reject`);
+      await axiosClient.put(`/api/shops/${id}/reject`, { reason });
     } catch (err) {
       console.warn('API reject shop fallback:', err);
     }
@@ -238,7 +268,17 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
     if (selectedKycShop?.id === id) {
       setSelectedKycShop((prev) => (prev ? { ...prev, status: 'REJECTED' } : null));
     }
-    alert('Đã từ chối hồ sơ gian hàng.');
+    setRejectingShop(null);
+    setRejectShopReason('');
+    showToast('Đã từ chối hồ sơ gian hàng.', 'info');
+  };
+
+  // Từ chối gian hàng
+  const handleRejectShop = (id) => {
+    const shop = shops.find((s) => s.id === id);
+    if (shop) {
+      handleOpenRejectShopModal(shop);
+    }
   };
 
   // Khóa / Mở khóa Shop vi phạm
@@ -718,6 +758,12 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
   // Fetch initial data based on active tab
   useEffect(() => {
+    if (activeTab === 'dashboard') {
+      fetchModerationProducts();
+      fetchShops();
+      fetchUsers();
+      fetchVouchers();
+    }
     if (activeTab === 'moderation') fetchModerationProducts();
     if (activeTab === 'sellers') fetchShops();
     if (activeTab === 'vouchers') fetchVouchers();
@@ -753,23 +799,38 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       console.warn('Approve fallback:', err);
     }
     setAllProducts(allProducts.map((p) => (p.id === id ? { ...p, status: 'APPROVED', rejectionReason: null } : p)));
-    alert('Đã phê duyệt sản phẩm thành công! Sản phẩm đã xuất hiện công khai trên Storefront.');
+    showToast('Đã phê duyệt sản phẩm thành công! Sản phẩm đã xuất hiện công khai trên Storefront.', 'success');
   };
 
-  const handleRejectProduct = async (id) => {
-    const reason = prompt('Nhập lý do từ chối kiểm duyệt sản phẩm:', 'Hình ảnh sản phẩm mờ, thông tin chưa rõ ràng hoặc thiếu giấy tờ kiểm định.');
-    if (!reason || !reason.trim()) return;
+  const handleOpenRejectProductModal = (product) => {
+    setRejectingProduct(product);
+    setRejectReason('Hình ảnh sản phẩm mờ, thông tin chưa rõ ràng hoặc thiếu giấy tờ kiểm định.');
+  };
+
+  const handleConfirmRejectProduct = async () => {
+    if (!rejectingProduct || !rejectReason.trim()) return;
+    const id = rejectingProduct.id;
+    const reason = rejectReason.trim();
 
     try {
       await axiosClient.patch(`/api/catalog/products/${id}/status`, {
         status: 'REJECTED',
-        reason: reason.trim(),
+        reason: reason,
       });
     } catch (err) {
       console.warn('Reject fallback:', err);
     }
-    setAllProducts(allProducts.map((p) => (p.id === id ? { ...p, status: 'REJECTED', rejectionReason: reason.trim() } : p)));
-    alert('Đã từ chối duyệt sản phẩm và gửi thông báo lý do đến Seller.');
+    setAllProducts(allProducts.map((p) => (p.id === id ? { ...p, status: 'REJECTED', rejectionReason: reason } : p)));
+    setRejectingProduct(null);
+    setRejectReason('');
+    showToast('Đã từ chối duyệt sản phẩm và gửi lý do phản hồi đến người bán.', 'info');
+  };
+
+  const handleRejectProduct = (id) => {
+    const product = allProducts.find((p) => p.id === id);
+    if (product) {
+      handleOpenRejectProductModal(product);
+    }
   };
 
   const handleDeleteProduct = async (id) => {
@@ -855,10 +916,36 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
     if (moderationFilter === 'REJECTED') return p.status === 'REJECTED';
     if (moderationFilter === 'APPROVED') return p.status === 'APPROVED' || p.status === 'ACTIVE';
     return true;
+  }).filter((p) => {
+    if (moderationCategoryFilter !== 'ALL') {
+      return Number(p.categoryId) === Number(moderationCategoryFilter);
+    }
+    return true;
+  }).filter((p) => {
+    if (!moderationSearchKw.trim()) return true;
+    const kw = moderationSearchKw.toLowerCase().trim();
+    return (
+      p.name?.toLowerCase().includes(kw) ||
+      p.shopName?.toLowerCase().includes(kw) ||
+      p.categoryName?.toLowerCase().includes(kw) ||
+      String(p.id).includes(kw)
+    );
   });
 
+  const totalModerationElements = filteredModerationProducts.length;
+  const totalModerationPages = Math.ceil(totalModerationElements / moderationPageSize) || 1;
+  const pagedModerationProducts = filteredModerationProducts.slice(
+    moderationPage * moderationPageSize,
+    (moderationPage + 1) * moderationPageSize
+  );
+
   const pendingModerationCount = allProducts.filter((p) => p.status === 'PENDING' || p.status === 'PENDING_APPROVAL').length;
+  const approvedModerationCount = allProducts.filter((p) => p.status === 'APPROVED' || p.status === 'ACTIVE').length;
+  const rejectedModerationCount = allProducts.filter((p) => p.status === 'REJECTED').length;
+
   const pendingSellerCount = shops.filter((s) => s.status === 'PENDING_APPROVAL').length;
+  const activeSellerCount = shops.filter((s) => s.status === 'ACTIVE').length;
+  const mallSellerCount = shops.filter((s) => s.status === 'ACTIVE' && s.isMall).length;
   const activeVoucherCount = vouchers.filter((v) => v.status === 'ACTIVE').length;
 
   // Filter Sellers
@@ -868,10 +955,27 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
     if (sellerFilter === 'SUSPENDED') return s.status === 'SUSPENDED' || s.status === 'REJECTED';
     return true;
   }).filter((s) => {
+    if (sellerMallFilter === 'MALL') return s.isMall === true;
+    if (sellerMallFilter === 'STANDARD') return !s.isMall;
+    return true;
+  }).filter((s) => {
     if (!sellerSearchKw.trim()) return true;
     const kw = sellerSearchKw.toLowerCase().trim();
-    return s.name.toLowerCase().includes(kw) || s.ownerName.toLowerCase().includes(kw) || s.ownerEmail.toLowerCase().includes(kw) || s.ownerPhone.includes(kw);
+    return (
+      s.name?.toLowerCase().includes(kw) ||
+      s.ownerName?.toLowerCase().includes(kw) ||
+      s.ownerEmail?.toLowerCase().includes(kw) ||
+      s.ownerPhone?.includes(kw) ||
+      String(s.id).includes(kw)
+    );
   });
+
+  const totalSellerElements = filteredShops.length;
+  const totalSellerPages = Math.ceil(totalSellerElements / sellerPageSize) || 1;
+  const pagedShops = filteredShops.slice(
+    sellerPage * sellerPageSize,
+    (sellerPage + 1) * sellerPageSize
+  );
 
   // Filter Vouchers
   const filteredVouchers = vouchers.filter((v) => {
@@ -937,6 +1041,16 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
           {/* Navigation Bar Tabs */}
           <div className="flex flex-wrap gap-1 bg-slate-100 p-1.5 rounded-2xl text-xs font-semibold">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'dashboard' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <LayoutDashboard className="w-3.5 h-3.5 text-orange-500" />
+              <span>Tổng quan Dashboard</span>
+            </button>
+
             <button
               onClick={() => setActiveTab('moderation')}
               className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
@@ -1030,10 +1144,450 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
         </div>
       </div>
 
+      {/* ================= TAB 0: ADMIN DASHBOARD OVERVIEW ================= */}
+      {activeTab === 'dashboard' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Welcome & System Status Banner */}
+          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+            <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-orange-500/10 to-transparent pointer-events-none"></div>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    Hệ thống hoạt động bình thường
+                  </span>
+                  <span className="text-xs text-slate-400">QuickShop Enterprise 2.0</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight">
+                  Trung Tâm Điều Hành Quản Trị Hệ Thống
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                  Giám sát toàn diện hàng đợi duyệt sản phẩm, thẩm định hồ sơ gian hàng KYC, kiểm soát dòng tiền ký quỹ Escrow và phân quyền người dùng.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    fetchModerationProducts();
+                    fetchShops();
+                    fetchUsers();
+                    fetchVouchers();
+                    showToast('Đã làm mới toàn bộ dữ liệu tổng quan sàn!', 'success');
+                  }}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-xl backdrop-blur-md transition flex items-center gap-2 border border-white/10 active:scale-95"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Làm mới dữ liệu
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 8 Primary KPI Metric Cards Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {/* 1. Sản phẩm chờ duyệt */}
+            <div 
+              onClick={() => {
+                setActiveTab('moderation');
+                setModerationFilter('PENDING');
+                setModerationPage(0);
+              }}
+              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-amber-400 hover:shadow-md transition cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Chờ duyệt sản phẩm</span>
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition">
+                  <Clock className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+                {pendingModerationCount}
+              </div>
+              <div className="flex items-center gap-1.5 mt-2 text-[11px]">
+                {pendingModerationCount > 0 ? (
+                  <span className="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> Cần duyệt ngay
+                  </span>
+                ) : (
+                  <span className="text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md">
+                    Không có hàng tồn
+                  </span>
+                )}
+                <span className="text-slate-400">/ {allProducts.length} SP</span>
+              </div>
+            </div>
+
+            {/* 2. Shop chờ thẩm định KYC */}
+            <div 
+              onClick={() => {
+                setActiveTab('sellers');
+                setSellerFilter('PENDING');
+                setSellerPage(0);
+              }}
+              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-blue-400 hover:shadow-md transition cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Hồ sơ Shop chờ KYC</span>
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition">
+                  <Store className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+                {pendingSellerCount}
+              </div>
+              <div className="flex items-center gap-1.5 mt-2 text-[11px]">
+                {pendingSellerCount > 0 ? (
+                  <span className="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Thẩm định ngay
+                  </span>
+                ) : (
+                  <span className="text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md">
+                    Đã duyệt hết
+                  </span>
+                )}
+                <span className="text-slate-400">/ {shops.length} shop</span>
+              </div>
+            </div>
+
+            {/* 3. Sản phẩm đang mở bán */}
+            <div 
+              onClick={() => {
+                setActiveTab('moderation');
+                setModerationFilter('APPROVED');
+                setModerationPage(0);
+              }}
+              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-emerald-400 hover:shadow-md transition cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">SP đang mở bán</span>
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition">
+                  <ShoppingBag className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-emerald-600 mt-2">
+                {approvedModerationCount}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-2">
+                APPROVED trên Storefront
+              </div>
+            </div>
+
+            {/* 4. Gian hàng hoạt động */}
+            <div 
+              onClick={() => {
+                setActiveTab('sellers');
+                setSellerFilter('ACTIVE');
+                setSellerPage(0);
+              }}
+              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-purple-400 hover:shadow-md transition cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Gian hàng hoạt động</span>
+                <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition">
+                  <Award className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+                {activeSellerCount}
+              </div>
+              <div className="text-[11px] text-purple-600 font-medium mt-2">
+                Gồm {mallSellerCount} gian hàng Mall
+              </div>
+            </div>
+
+            {/* 5. Tài khoản người dùng */}
+            <div 
+              onClick={() => setActiveTab('users')}
+              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-indigo-400 hover:shadow-md transition cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Tài khoản người dùng</span>
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition">
+                  <Users className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+                {users.length}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-2">
+                {users.filter((u) => u.role === 'ROLE_SELLER').length} Nhà bán • {users.filter((u) => u.role === 'ROLE_CUSTOMER').length} Khách hàng
+              </div>
+            </div>
+
+            {/* 6. Voucher toàn sàn */}
+            <div 
+              onClick={() => setActiveTab('vouchers')}
+              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-pink-400 hover:shadow-md transition cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Voucher đang mở</span>
+                <div className="w-10 h-10 rounded-2xl bg-pink-50 text-pink-600 flex items-center justify-center group-hover:scale-110 transition">
+                  <Ticket className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+                {activeVoucherCount}
+              </div>
+              <div className="text-[11px] text-pink-600 font-medium mt-2">
+                Giảm giá & Freeship sàn
+              </div>
+            </div>
+
+            {/* 7. Ước tính GMV & Ký quỹ */}
+            <div 
+              onClick={() => setActiveTab('finance')}
+              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-emerald-400 hover:shadow-md transition cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Doanh số sàn (GMV)</span>
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition">
+                  <DollarSign className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-2 truncate">
+                329.800.000 ₫
+              </div>
+              <div className="text-[11px] text-slate-400 mt-2">
+                Ví ký quỹ Escrow bảo đảm
+              </div>
+            </div>
+
+            {/* 8. Hạ tầng Microservices */}
+            <div 
+              onClick={() => setActiveTab('infra')}
+              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-slate-400 hover:shadow-md transition cursor-pointer group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Hạ tầng phân tán</span>
+                <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:scale-110 transition">
+                  <Server className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+                7 / 7 Online
+              </div>
+              <div className="text-[11px] text-emerald-600 font-bold mt-2 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Tất cả dịch vụ sẵn sàng
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Management Shortcuts Toolbar */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-sm">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 mb-3">
+              Lối tắt quản lý nhanh Ban Quản Trị
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
+              <button
+                onClick={() => {
+                  setActiveTab('moderation');
+                  setModerationFilter('PENDING');
+                  setModerationPage(0);
+                }}
+                className="p-3 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-2xl font-semibold flex flex-col items-center justify-center gap-1.5 transition border border-amber-200/60 active:scale-95"
+              >
+                <Clock className="w-5 h-5 text-amber-600" />
+                <span>Duyệt SP ({pendingModerationCount})</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab('sellers');
+                  setSellerFilter('PENDING');
+                  setSellerPage(0);
+                }}
+                className="p-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-2xl font-semibold flex flex-col items-center justify-center gap-1.5 transition border border-blue-200/60 active:scale-95"
+              >
+                <Store className="w-5 h-5 text-blue-600" />
+                <span>Thẩm định KYC ({pendingSellerCount})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('vouchers')}
+                className="p-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-2xl font-semibold flex flex-col items-center justify-center gap-1.5 transition border border-emerald-200/60 active:scale-95"
+              >
+                <Ticket className="w-5 h-5 text-emerald-600" />
+                <span>Tạo Voucher Sàn</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('categories')}
+                className="p-3 bg-orange-50 hover:bg-orange-100 text-orange-800 rounded-2xl font-semibold flex flex-col items-center justify-center gap-1.5 transition border border-orange-200/60 active:scale-95"
+              >
+                <FolderPlus className="w-5 h-5 text-orange-600" />
+                <span>Quản lý Danh mục</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('notifications')}
+                className="p-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 rounded-2xl font-semibold flex flex-col items-center justify-center gap-1.5 transition border border-indigo-200/60 active:scale-95"
+              >
+                <Bell className="w-5 h-5 text-indigo-600" />
+                <span>Gửi Thông Báo / Mail</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('audit')}
+                className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-2xl font-semibold flex flex-col items-center justify-center gap-1.5 transition border border-slate-200 active:scale-95"
+              >
+                <FileText className="w-5 h-5 text-slate-600" />
+                <span>Nhật ký Audit</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 2 Live Workload Queues: Pending Products & Pending KYC */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Queue 1: Pending Products Preview */}
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col">
+              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-amber-50/40">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-900">Sản phẩm chờ kiểm duyệt gần nhất</h3>
+                    <span className="text-[11px] text-slate-500">Xem nhanh và phê duyệt trực tiếp</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setActiveTab('moderation');
+                    setModerationFilter('PENDING');
+                    setModerationPage(0);
+                  }}
+                  className="text-xs font-bold text-orange-600 hover:underline flex items-center gap-1"
+                >
+                  Xem tất cả ({pendingModerationCount}) <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="divide-y divide-slate-100 flex-1">
+                {allProducts.filter((p) => p.status === 'PENDING' || p.status === 'PENDING_APPROVAL').slice(0, 3).length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 text-xs">
+                    🎉 Tuyệt vời! Hiện không còn sản phẩm nào tồn đọng cần duyệt.
+                  </div>
+                ) : (
+                  allProducts
+                    .filter((p) => p.status === 'PENDING' || p.status === 'PENDING_APPROVAL')
+                    .slice(0, 3)
+                    .map((p) => (
+                      <div key={p.id} className="p-4 hover:bg-slate-50/60 transition flex items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center space-x-3 min-w-0">
+                          <img
+                            src={p.mainImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'}
+                            alt={p.name}
+                            className="w-12 h-12 rounded-xl object-cover border border-slate-200 bg-slate-100 shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-slate-900 truncate">{p.name}</h4>
+                            <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                              <span className="text-orange-600 font-semibold">{p.categoryName || 'Sản phẩm'}</span>
+                              <span>•</span>
+                              <span>{p.shopName || `Shop #${p.shopId}`}</span>
+                            </div>
+                            <span className="font-bold text-rose-600 text-xs mt-0.5 block">{formatVND(p.minPrice)}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => handleApproveProduct(p.id)}
+                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 active:scale-95 shadow-xs"
+                          >
+                            <Check className="w-3 h-3" />
+                            Duyệt
+                          </button>
+                          <button
+                            onClick={() => handleOpenRejectProductModal(p)}
+                            className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-[11px] font-bold transition flex items-center gap-1 active:scale-95 border border-rose-200"
+                          >
+                            <X className="w-3 h-3" />
+                            Từ chối
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+
+            {/* Queue 2: Pending KYC Shops Preview */}
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col">
+              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-blue-50/40">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                    <Store className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-900">Hồ sơ Shop chờ thẩm định KYC</h3>
+                    <span className="text-[11px] text-slate-500">Cấp quyền bán hàng chính thức</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setActiveTab('sellers');
+                    setSellerFilter('PENDING');
+                    setSellerPage(0);
+                  }}
+                  className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+                >
+                  Xem tất cả ({pendingSellerCount}) <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="divide-y divide-slate-100 flex-1">
+                {shops.filter((s) => s.status === 'PENDING_APPROVAL').slice(0, 3).length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 text-xs">
+                    ✅ Toàn bộ hồ sơ đăng ký gian hàng đã được thẩm định xong.
+                  </div>
+                ) : (
+                  shops
+                    .filter((s) => s.status === 'PENDING_APPROVAL')
+                    .slice(0, 3)
+                    .map((s) => (
+                      <div key={s.id} className="p-4 hover:bg-slate-50/60 transition flex items-center justify-between gap-3 text-xs">
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-slate-900 truncate">{s.name}</h4>
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            Chủ shop: <strong className="text-slate-700">{s.ownerName}</strong> ({s.ownerPhone})
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">
+                            CCCD: {s.idCardNumber || 'Chưa cung cấp'} • MST: {s.taxCode || 'Cá nhân'}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => setSelectedKycShop(s)}
+                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[11px] font-semibold transition flex items-center gap-1 active:scale-95"
+                          >
+                            <Eye className="w-3 h-3" />
+                            Xem KYC
+                          </button>
+                          <button
+                            onClick={() => handleApproveShop(s.id)}
+                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 active:scale-95 shadow-xs"
+                          >
+                            <Check className="w-3 h-3" />
+                            Duyệt
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ================= TAB 1: PRODUCT MODERATION ================= */}
       {activeTab === 'moderation' && (
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50/50">
+          <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 bg-slate-50/50">
             <div>
               <h2 className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-2">
                 <Clock className="w-5 h-5 text-amber-500" />
@@ -1042,7 +1596,40 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               <p className="text-xs text-slate-500">Các bài đăng mới từ Seller cần Admin duyệt trước khi xuất hiện trên sàn</p>
             </div>
 
-            <div className="flex items-center space-x-1.5 text-xs">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              {/* Search input */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={moderationSearchKw}
+                  onChange={(e) => {
+                    setModerationSearchKw(e.target.value);
+                    setModerationPage(0);
+                  }}
+                  placeholder="Tìm tên sản phẩm, tên shop..."
+                  className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:outline-orange-500 w-48 sm:w-56 bg-white"
+                />
+              </div>
+
+              {/* Category Filter */}
+              <select
+                value={moderationCategoryFilter}
+                onChange={(e) => {
+                  setModerationCategoryFilter(e.target.value);
+                  setModerationPage(0);
+                }}
+                className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-orange-500 font-medium"
+              >
+                <option value="ALL">Tất cả ngành hàng</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.parentId ? `  ↳ ${c.name}` : `● ${c.name}`}
+                  </option>
+                ))}
+              </select>
+
+              {/* Status Tabs */}
               {[
                 { id: 'PENDING', label: `Chờ duyệt (${pendingModerationCount})` },
                 { id: 'REJECTED', label: 'Bị từ chối' },
@@ -1051,7 +1638,10 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               ].map((f) => (
                 <button
                   key={f.id}
-                  onClick={() => setModerationFilter(f.id)}
+                  onClick={() => {
+                    setModerationFilter(f.id);
+                    setModerationPage(0);
+                  }}
                   className={`px-3 py-1.5 rounded-xl font-medium transition cursor-pointer ${
                     moderationFilter === f.id
                       ? 'bg-orange-600 text-white shadow-sm font-bold'
@@ -1061,9 +1651,10 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   {f.label}
                 </button>
               ))}
+
               <button
                 onClick={fetchModerationProducts}
-                className="text-xs font-semibold text-orange-600 hover:underline ml-2 cursor-pointer flex items-center gap-1"
+                className="text-xs font-semibold text-orange-600 hover:underline ml-1 cursor-pointer flex items-center gap-1"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 Làm mới
@@ -1072,12 +1663,12 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
           </div>
 
           <div className="divide-y divide-slate-100">
-            {filteredModerationProducts.length === 0 ? (
+            {pagedModerationProducts.length === 0 ? (
               <div className="p-12 text-center text-slate-400 text-sm">
-                Không có sản phẩm nào thuộc bộ lọc kiểm duyệt này.
+                Không tìm thấy sản phẩm nào phù hợp với bộ lọc kiểm duyệt này.
               </div>
             ) : (
-              filteredModerationProducts.map((p) => (
+              pagedModerationProducts.map((p) => (
                 <div key={p.id} className="p-5 hover:bg-slate-50/60 transition flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                   <div className="flex items-start space-x-4">
                     <img
@@ -1133,7 +1724,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                     )}
                     {p.status !== 'REJECTED' && (
                       <button
-                        onClick={() => handleRejectProduct(p.id)}
+                        onClick={() => handleOpenRejectProductModal(p)}
                         className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer active:scale-95"
                       >
                         <XCircle className="w-3.5 h-3.5" />
@@ -1151,6 +1742,21 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 </div>
               ))
             )}
+          </div>
+
+          {/* Pagination for Products */}
+          <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+            <Pagination
+              currentPage={moderationPage}
+              totalPages={totalModerationPages}
+              totalElements={totalModerationElements}
+              pageSize={moderationPageSize}
+              onPageChange={setModerationPage}
+              onPageSizeChange={(newSize) => {
+                setModerationPageSize(newSize);
+                setModerationPage(0);
+              }}
+            />
           </div>
         </div>
       )}
@@ -1219,13 +1825,30 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <input
                     type="text"
                     value={sellerSearchKw}
-                    onChange={(e) => setSellerSearchKw(e.target.value)}
+                    onChange={(e) => {
+                      setSellerSearchKw(e.target.value);
+                      setSellerPage(0);
+                    }}
                     placeholder="Tìm tên shop, chủ shop, SĐT..."
-                    className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:outline-orange-500 w-52 bg-white"
+                    className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:outline-orange-500 w-48 sm:w-56 bg-white"
                   />
                 </div>
 
-                {/* Filters */}
+                {/* Mall Type Filter */}
+                <select
+                  value={sellerMallFilter}
+                  onChange={(e) => {
+                    setSellerMallFilter(e.target.value);
+                    setSellerPage(0);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-orange-500 font-medium"
+                >
+                  <option value="ALL">Tất cả loại gian hàng</option>
+                  <option value="MALL">⭐ QuickShop Mall</option>
+                  <option value="STANDARD">Shop tiêu chuẩn</option>
+                </select>
+
+                {/* Status Filters */}
                 {[
                   { id: 'ALL', label: 'Tất cả' },
                   { id: 'PENDING', label: `Chờ duyệt KYC (${pendingSellerCount})` },
@@ -1234,7 +1857,10 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 ].map((f) => (
                   <button
                     key={f.id}
-                    onClick={() => setSellerFilter(f.id)}
+                    onClick={() => {
+                      setSellerFilter(f.id);
+                      setSellerPage(0);
+                    }}
                     className={`px-3 py-1.5 rounded-xl font-medium transition cursor-pointer ${
                       sellerFilter === f.id
                         ? 'bg-blue-600 text-white font-bold shadow-sm'
@@ -1260,14 +1886,14 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredShops.length === 0 ? (
+                  {pagedShops.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="text-center py-10 text-slate-400 text-xs">
                         Không tìm thấy gian hàng nào phù hợp với bộ lọc tìm kiếm.
                       </td>
                     </tr>
                   ) : (
-                    filteredShops.map((s) => (
+                    pagedShops.map((s) => (
                       <tr key={s.id} className="hover:bg-slate-50/80 transition">
                         <td className="px-5 py-4">
                           <div className="flex items-center space-x-3">
@@ -1359,7 +1985,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                                   Duyệt Shop
                                 </button>
                                 <button
-                                  onClick={() => handleRejectShop(s.id)}
+                                  onClick={() => handleOpenRejectShopModal(s)}
                                   className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer active:scale-95"
                                   title="Từ chối hồ sơ KYC"
                                 >
@@ -1396,6 +2022,21 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Pagination for Sellers */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+              <Pagination
+                currentPage={sellerPage}
+                totalPages={totalSellerPages}
+                totalElements={totalSellerElements}
+                pageSize={sellerPageSize}
+                onPageChange={setSellerPage}
+                onPageSizeChange={(newSize) => {
+                  setSellerPageSize(newSize);
+                  setSellerPage(0);
+                }}
+              />
             </div>
           </div>
 
@@ -2698,6 +3339,181 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: TỪ CHỐI DUYỆT SẢN PHẨM ================= */}
+      {rejectingProduct && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                  <XCircle className="w-5 h-5 text-rose-600" />
+                  Từ Chối Duyệt Sản Phẩm #{rejectingProduct.id}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium line-clamp-1">
+                  {rejectingProduct.name}
+                </p>
+              </div>
+              <button
+                onClick={() => setRejectingProduct(null)}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-700 font-bold mb-1.5">Chọn nhanh lý do từ chối mẫu:</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {[
+                    'Hình ảnh mờ, không đạt độ phân giải tiêu chuẩn',
+                    'Thiếu giấy tờ kiểm định hợp quy / xuất xứ nguồn gốc',
+                    'Tên hoặc mô tả vi phạm chính sách cộng đồng sàn',
+                    'Giá bán hoặc tồn kho biến thể SKU bất hợp lý',
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setRejectReason(preset)}
+                      className="p-2 text-left bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl border border-slate-200/80 transition text-[11px] active:scale-95"
+                    >
+                      • {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1.5">
+                  Chi tiết phản hồi gửi đến Nhà bán hàng (Seller) *:
+                </label>
+                <textarea
+                  rows="3"
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Nhập chi tiết yêu cầu chỉnh sửa để Seller nắm rõ..."
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-rose-500 focus:bg-white resize-none"
+                ></textarea>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setRejectingProduct(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRejectProduct}
+                disabled={!rejectReason.trim()}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-sm active:scale-95 disabled:opacity-50"
+              >
+                Xác nhận từ chối
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: TỪ CHỐI DUYỆT GIAN HÀNG KYC ================= */}
+      {rejectingShop && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                  <XCircle className="w-5 h-5 text-rose-600" />
+                  Từ Chối Hồ Sơ KYC Gian Hàng #{rejectingShop.id}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                  {rejectingShop.name} (Chủ shop: {rejectingShop.ownerName})
+                </p>
+              </div>
+              <button
+                onClick={() => setRejectingShop(null)}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-700 font-bold mb-1.5">Gợi ý lý do từ chối KYC:</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {[
+                    'CCCD / Hộ chiếu không trùng khớp thông tin chủ sở hữu',
+                    'Mã số thuế doanh nghiệp không tồn tại hoặc đã giải thể',
+                    'Địa chỉ kho hàng không hợp lệ cho việc lấy hàng giao',
+                    'Tài khoản ngân hàng thụ hưởng không chính chủ',
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setRejectShopReason(preset)}
+                      className="p-2 text-left bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl border border-slate-200/80 transition text-[11px] active:scale-95"
+                    >
+                      • {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1.5">
+                  Nội dung phản hồi từ chối KYC *:
+                </label>
+                <textarea
+                  rows="3"
+                  value={rejectShopReason}
+                  onChange={(e) => setRejectShopReason(e.target.value)}
+                  placeholder="Ghi rõ lý do và tài liệu bổ sung cần nộp lại..."
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-rose-500 focus:bg-white resize-none"
+                ></textarea>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setRejectingShop(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRejectShop}
+                disabled={!rejectShopReason.trim()}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-sm active:scale-95 disabled:opacity-50"
+              >
+                Xác nhận từ chối KYC
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= TOAST NOTIFICATION BANNER ================= */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 bg-slate-900/95 text-white backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/50 animate-in fade-in slide-in-from-bottom-5 duration-200 text-xs sm:text-sm font-medium">
+          {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />}
+          {toast.type === 'info' && <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />}
+          {toast.type === 'error' && <XCircle className="w-5 h-5 text-rose-400 shrink-0" />}
+          <span>{toast.message}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="ml-2 text-slate-400 hover:text-white p-1 rounded-lg transition"
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>
