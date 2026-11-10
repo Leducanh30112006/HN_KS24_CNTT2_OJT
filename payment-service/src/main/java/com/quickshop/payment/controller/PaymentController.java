@@ -7,6 +7,7 @@ import com.quickshop.payment.entity.LedgerEntry;
 import com.quickshop.payment.entity.PaymentStatus;
 import com.quickshop.payment.entity.Wallet;
 import com.quickshop.payment.entity.Withdrawal;
+import com.quickshop.payment.service.LedgerService;
 import com.quickshop.payment.service.PaymentService;
 import com.quickshop.payment.util.VNPayUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +27,7 @@ import java.util.Map;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final LedgerService ledgerService;
 
     @GetMapping("/wallet/{shopId}")
     public ResponseEntity<ApiResponse<Wallet>> getShopWallet(@PathVariable Long shopId) {
@@ -85,11 +87,35 @@ public class PaymentController {
 
     @GetMapping("/ledger")
     public ResponseEntity<ApiResponse<List<LedgerEntry>>> getLedger(
-            @RequestParam(required = false) String transactionId) {
-        List<LedgerEntry> entries = (transactionId != null && !transactionId.isBlank())
-                ? paymentService.getLedgerEntriesByTxn(transactionId)
-                : paymentService.getAllLedgerEntries();
-        return ResponseEntity.ok(ApiResponse.success("Lấy sổ cái thành công", entries));
+            @RequestParam(required = false) String transactionId,
+            @RequestParam(required = false) String account) {
+        List<LedgerEntry> entries;
+        if (transactionId != null && !transactionId.isBlank()) {
+            entries = ledgerService.getEntriesByTransaction(transactionId);
+        } else if (account != null && !account.isBlank()) {
+            entries = ledgerService.getEntriesByAccount(account);
+        } else {
+            entries = ledgerService.getAllEntries();
+        }
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách bút toán sổ cái thành công", entries));
+    }
+
+    @GetMapping("/ledger/audit")
+    public ResponseEntity<ApiResponse<LedgerAuditReportDto>> auditLedger() {
+        LedgerAuditReportDto report = ledgerService.auditLedger();
+        return ResponseEntity.ok(ApiResponse.success("Kiểm toán sổ cái đối soát dòng tiền thành công", report));
+    }
+
+    @GetMapping("/ledger/accounts/{account}")
+    public ResponseEntity<ApiResponse<AccountBalanceDto>> getAccountBalance(@PathVariable String account) {
+        AccountBalanceDto balance = ledgerService.getAccountBalance(account);
+        return ResponseEntity.ok(ApiResponse.success("Lấy số dư tài khoản sổ cái thành công", balance));
+    }
+
+    @GetMapping("/ledger/verify/{transactionId}")
+    public ResponseEntity<ApiResponse<Boolean>> verifyTransaction(@PathVariable String transactionId) {
+        boolean isValid = ledgerService.verifyTransactionInvariant(transactionId);
+        return ResponseEntity.ok(ApiResponse.success("Xác thực tính bất biến Nợ/Có giao dịch thành công", isValid));
     }
 
     @PostMapping("/vnpay/create")

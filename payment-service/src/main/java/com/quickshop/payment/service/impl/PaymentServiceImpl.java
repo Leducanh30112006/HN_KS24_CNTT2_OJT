@@ -14,10 +14,10 @@ import com.quickshop.payment.entity.PaymentTransaction;
 import com.quickshop.payment.entity.Wallet;
 import com.quickshop.payment.entity.Withdrawal;
 import com.quickshop.payment.repository.EscrowAccountRepository;
-import com.quickshop.payment.repository.LedgerEntryRepository;
 import com.quickshop.payment.repository.PaymentTransactionRepository;
 import com.quickshop.payment.repository.WalletRepository;
 import com.quickshop.payment.repository.WithdrawalRepository;
+import com.quickshop.payment.service.LedgerService;
 import com.quickshop.payment.service.PaymentService;
 import com.quickshop.payment.util.VNPayUtil;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +32,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,7 +46,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final WalletRepository walletRepository;
     private final EscrowAccountRepository escrowAccountRepository;
     private final WithdrawalRepository withdrawalRepository;
-    private final LedgerEntryRepository ledgerEntryRepository;
+    private final LedgerService ledgerService;
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final VNPayConfig vnPayConfig;
     private final RabbitTemplate rabbitTemplate;
@@ -95,13 +96,13 @@ public class PaymentServiceImpl implements PaymentService {
                     }
 
                     // Ghi sổ cái kép Ledger
-                    ledgerEntryRepository.save(LedgerEntry.builder()
-                            .transactionId("ESCROW-HOLD-" + request.getSubOrderId())
-                            .transactionType("ESCROW_HOLD")
-                            .accountDebit("CUSTOMER_PAYMENT")
-                            .accountCredit("ESCROW_HOLDING")
-                            .amount(request.getAmount())
-                            .build());
+                    ledgerService.recordDoubleEntry(
+                            "ESCROW-HOLD-" + request.getSubOrderId(),
+                            "ESCROW_HOLD",
+                            "CUSTOMER_PAYMENT",
+                            "ESCROW_HOLDING",
+                            request.getAmount()
+                    );
 
                     log.info("Held escrow for subOrder {}: total={}, commission={}",
                             request.getSubOrderId(), request.getAmount(), commission);
@@ -127,26 +128,24 @@ public class PaymentServiceImpl implements PaymentService {
             wallet.setFrozenBalance(wallet.getFrozenBalance().subtract(netAmount).max(BigDecimal.ZERO));
             wallet.setBalance(wallet.getBalance().add(netAmount));
             walletRepository.save(wallet);
-
-            // Ghi sổ cái cho shop
-            ledgerEntryRepository.save(LedgerEntry.builder()
-                    .transactionId("ESCROW-REL-" + request.getSubOrderId())
-                    .transactionType("ESCROW_RELEASE")
-                    .accountDebit("ESCROW_HOLDING")
-                    .accountCredit("SHOP_WALLET_" + request.getShopId())
-                    .amount(netAmount)
-                    .build());
         }
 
-        // Ghi sổ cái hoa hồng sàn
-        if (escrow.getCommissionFee().compareTo(BigDecimal.ZERO) > 0) {
-            ledgerEntryRepository.save(LedgerEntry.builder()
-                    .transactionId("COMMISSION-" + request.getSubOrderId())
-                    .transactionType("PLATFORM_COMMISSION")
-                    .accountDebit("ESCROW_HOLDING")
-                    .accountCredit("PLATFORM_REVENUE")
-                    .amount(escrow.getCommissionFee())
-                    .build());
+        // Ghi sổ cái phân bổ doanh thu Shop và hoa hồng Sàn bảo đảm Nợ/Có cân bằng
+        Map<String, BigDecimal> creditSplits = new LinkedHashMap<>();
+        if (request.getShopId() != null && netAmount.compareTo(BigDecimal.ZERO) > 0) {
+            creditSplits.put("SHOP_WALLET_" + request.getShopId(), netAmount);
+        }
+        if (escrow.getCommissionFee() != null && escrow.getCommissionFee().compareTo(BigDecimal.ZERO) > 0) {
+            creditSplits.put("PLATFORM_REVENUE", escrow.getCommissionFee());
+        }
+
+        if (!creditSplits.isEmpty()) {
+            ledgerService.recordSplitCreditEntry(
+                    "ESCROW-REL-" + request.getSubOrderId(),
+                    "ESCROW_RELEASE",
+                    "ESCROW_HOLDING",
+                    creditSplits
+            );
         }
 
         log.info("Released escrow for subOrder {}: netToShop={}, platformCommission={}",
@@ -174,13 +173,13 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         // Ghi sổ cái hoàn tiền
-        ledgerEntryRepository.save(LedgerEntry.builder()
-                .transactionId("ESCROW-REFUND-" + request.getSubOrderId())
-                .transactionType("ESCROW_REFUND")
-                .accountDebit("ESCROW_HOLDING")
-                .accountCredit("CUSTOMER_REFUND")
-                .amount(escrow.getAmount())
-                .build());
+        ledgerService.recordDoubleEntry(
+                "ESCROW-REFUND-" + request.getSubOrderId(),
+                "ESCROW_REFUND",
+                "ESCROW_HOLDING",
+                "CUSTOMER_REFUND",
+                escrow.getAmount()
+        );
 
         log.info("Refunded escrow for subOrder {}: amount={}", request.getSubOrderId(), escrow.getAmount());
         return updated;
@@ -214,13 +213,13 @@ public class PaymentServiceImpl implements PaymentService {
         Withdrawal saved = withdrawalRepository.save(withdrawal);
 
         // Ghi sổ cái
-        ledgerEntryRepository.save(LedgerEntry.builder()
-                .transactionId("WITHDRAWAL-REQ-" + saved.getId())
-                .transactionType("WITHDRAWAL_REQUEST")
-                .accountDebit("SHOP_WALLET_" + request.getShopId())
-                .accountCredit("WITHDRAWAL_PENDING")
-                .amount(request.getAmount())
-                .build());
+        ledgerService.recordDoubleEntry(
+                "WITHDRAWAL-REQ-" + saved.getId(),
+                "WITHDRAWAL_REQUEST",
+                "SHOP_WALLET_" + request.getShopId(),
+                "WITHDRAWAL_PENDING",
+                request.getAmount()
+        );
 
         log.info("Shop {} requested withdrawal id={}: amount={}", request.getShopId(), saved.getId(), request.getAmount());
         return saved;
@@ -249,13 +248,13 @@ public class PaymentServiceImpl implements PaymentService {
             withdrawal.setAdminId(request.getAdminId());
             withdrawal.setProcessedAt(LocalDateTime.now());
 
-            ledgerEntryRepository.save(LedgerEntry.builder()
-                    .transactionId("WITHDRAWAL-REJ-" + withdrawal.getId())
-                    .transactionType("WITHDRAWAL_REJECTED")
-                    .accountDebit("WITHDRAWAL_PENDING")
-                    .accountCredit("SHOP_WALLET_" + withdrawal.getShopId())
-                    .amount(withdrawal.getAmount())
-                    .build());
+            ledgerService.recordDoubleEntry(
+                    "WITHDRAWAL-REJ-" + withdrawal.getId(),
+                    "WITHDRAWAL_REJECTED",
+                    "WITHDRAWAL_PENDING",
+                    "SHOP_WALLET_" + withdrawal.getShopId(),
+                    withdrawal.getAmount()
+            );
 
             log.info("Rejected withdrawal id={}, refunded {} to shop {}", withdrawal.getId(), withdrawal.getAmount(), withdrawal.getShopId());
         } else {
@@ -267,13 +266,13 @@ public class PaymentServiceImpl implements PaymentService {
             withdrawal.setAdminId(request.getAdminId());
             withdrawal.setProcessedAt(LocalDateTime.now());
 
-            ledgerEntryRepository.save(LedgerEntry.builder()
-                    .transactionId("WITHDRAWAL-CMP-" + withdrawal.getId())
-                    .transactionType("WITHDRAWAL_COMPLETED")
-                    .accountDebit("WITHDRAWAL_PENDING")
-                    .accountCredit("BANK_SETTLEMENT")
-                    .amount(withdrawal.getAmount())
-                    .build());
+            ledgerService.recordDoubleEntry(
+                    "WITHDRAWAL-CMP-" + withdrawal.getId(),
+                    "WITHDRAWAL_COMPLETED",
+                    "WITHDRAWAL_PENDING",
+                    "BANK_SETTLEMENT",
+                    withdrawal.getAmount()
+            );
 
             log.info("Completed withdrawal id={}, paid out {} to shop {}", withdrawal.getId(), withdrawal.getAmount(), withdrawal.getShopId());
         }
@@ -296,13 +295,13 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional(readOnly = true)
     public List<LedgerEntry> getAllLedgerEntries() {
-        return ledgerEntryRepository.findAll();
+        return ledgerService.getAllEntries();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<LedgerEntry> getLedgerEntriesByTxn(String transactionId) {
-        return ledgerEntryRepository.findByTransactionId(transactionId);
+        return ledgerService.getEntriesByTransaction(transactionId);
     }
 
     @Override
@@ -489,6 +488,15 @@ public class PaymentServiceImpl implements PaymentService {
             paymentTransactionRepository.save(txn);
             log.info("VNPay IPN: Thanh toán thành công cho đơn hàng #{}, txnRef={}", txn.getOrderId(), txnRef);
 
+            // Ghi nhận sổ cái kép cho giao dịch thanh toán VNPay thành công
+            ledgerService.recordDoubleEntry(
+                    "VNPAY-PAY-" + txn.getTxnRef(),
+                    "PAYMENT_VNPAY_SUCCESS",
+                    "VNPAY_GATEWAY",
+                    "ESCROW_HOLDING",
+                    txn.getAmount()
+            );
+
             // Bắn PaymentCompletedEvent để Order Saga xác nhận đơn hàng
             publishPaymentCompleted(txn);
         } else {
@@ -540,6 +548,16 @@ public class PaymentServiceImpl implements PaymentService {
                 txn.setStatus(PaymentStatus.SUCCESS);
                 paymentTransactionRepository.save(txn);
                 log.info("VNPay Return: Xác nhận thanh toán thành công cho đơn #{}, txnRef={}", txn.getOrderId(), txnRef);
+
+                // Ghi nhận sổ cái kép cho giao dịch thanh toán VNPay thành công
+                ledgerService.recordDoubleEntry(
+                        "VNPAY-PAY-" + txn.getTxnRef(),
+                        "PAYMENT_VNPAY_SUCCESS",
+                        "VNPAY_GATEWAY",
+                        "ESCROW_HOLDING",
+                        txn.getAmount()
+                );
+
                 publishPaymentCompleted(txn);
             } else {
                 txn.setStatus("24".equals(responseCode) ? PaymentStatus.CANCELLED : PaymentStatus.FAILED);
