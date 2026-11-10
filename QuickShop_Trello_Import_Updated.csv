@@ -584,7 +584,7 @@ Triển khai retry tối đa 3 lần, dead-letter queue order.dlq và log lỗi 
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - RabbitMQ; Saga",2026-11-09,2026-11-09
-Cần làm,"[AI Assistant] Tạo AI Assistant module; thiết kế system prompt an toàn, giới hạn phạm vi dữ liệu và chống prompt injection cơ bản: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[AI Assistant] Tạo AI Assistant module; thiết kế system prompt an toàn, giới hạn phạm vi dữ liệu và chống prompt injection cơ bản: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Ba, 2026-11-10
 **Phân hệ:** AI Assistant
 
