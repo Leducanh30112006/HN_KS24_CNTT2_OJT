@@ -610,7 +610,7 @@ Dựng Admin Dashboard khung; bảng quản lý Shop/sản phẩm chờ duyệt,
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Shop/Product APIs",2026-11-10,2026-11-10
-Cần làm,"[Payment] Tích hợp VNPay Sandbox: tạo payment URL, ký checksum/HMAC theo tài liệu tích hợp và lưu giao dịch: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[Payment] Tích hợp VNPay Sandbox: tạo payment URL, ký checksum/HMAC theo tài liệu tích hợp và lưu giao dịch: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Ba, 2026-11-10
 **Phân hệ:** Payment
 
@@ -649,7 +649,7 @@ Kết nối API duyệt Shop và sản phẩm; hiển thị trạng thái, xác 
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Admin UI; Identity/Catalog APIs",2026-11-11,2026-11-11
-Cần làm,"[Payment] Xử lý VNPay IPN, xác minh chữ ký, chống xử lý giao dịch trùng và cập nhật trạng thái thanh toán: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[Payment] Xử lý VNPay IPN, xác minh chữ ký, chống xử lý giao dịch trùng và cập nhật trạng thái thanh toán: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Tư, 2026-11-11
 **Phân hệ:** Payment
 
@@ -688,7 +688,7 @@ Hoàn thiện trang chi tiết, giỏ hàng và luồng hiển thị checkout; �
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Auth/Cart APIs",2026-11-12,2026-11-12
-Cần làm,"[Wallet & Escrow] Triển khai double-entry ledger; ghi Nợ/Có cân bằng, commission và escrow cho giao dịch thành công: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[Wallet & Escrow] Triển khai double-entry ledger; ghi Nợ/Có cân bằng, commission và escrow cho giao dịch thành công: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Năm, 2026-11-12
 **Phân hệ:** Wallet & Escrow
 
