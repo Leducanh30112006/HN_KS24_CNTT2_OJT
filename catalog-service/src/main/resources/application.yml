@@ -48,6 +48,10 @@ minio:
 catalog:
   cache:
     enabled: ${CATALOG_CACHE_ENABLED:true}
+
+order:
+  service:
+    url: ${ORDER_SERVICE_URL:http://localhost:8083}
     product-ttl: ${CATALOG_PRODUCT_TTL:600s} # 10 phút cho chi tiết sản phẩm
     products-page-ttl: ${CATALOG_PRODUCTS_PAGE_TTL:300s} # 5 phút cho danh sách tìm kiếm / bộ lọc
     category-ttl: ${CATALOG_CATEGORY_TTL:1800s} # 30 phút cho danh mục sản phẩm
