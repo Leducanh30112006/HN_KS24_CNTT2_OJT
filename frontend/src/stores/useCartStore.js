@@ -117,6 +117,7 @@ export const useCartStore = create(
               'X-User-Id': userId,
               'X-Idempotency-Key': payload.requestId,
             },
+            timeout: 8000,
           });
 
           const data = res.data?.data;
