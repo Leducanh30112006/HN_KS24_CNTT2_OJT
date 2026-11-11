@@ -30,4 +30,8 @@ public interface ShopService {
     ShopResponse rejectShop(Long id);
 
     ShopResponse rejectShop(Long id, Long adminId, String reason);
+
+    ShopResponse suspendShop(Long id, Long adminId, String reason);
+
+    ShopResponse activateShop(Long id, Long adminId);
 }

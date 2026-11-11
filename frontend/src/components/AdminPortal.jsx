@@ -9,6 +9,19 @@ import {
   FileText, ArrowUpRight, Download, CheckCircle, LayoutDashboard
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
+import {
+  fetchAdminProducts,
+  updateAdminProductStatus,
+  deleteAdminProduct,
+  fetchAdminShops,
+  approveAdminShop,
+  rejectAdminShop,
+  suspendAdminShop,
+  activateAdminShop,
+  extractApiErrorMessage,
+  normalizeShopDto,
+} from '../api/adminApi';
+import ApiErrorBanner from './ApiErrorBanner';
 import Pagination from './Pagination';
 
 export default function AdminPortal({ categories = [], onCategoriesUpdated, onBackToStorefront }) {
@@ -24,15 +37,25 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
     }, 4000);
   };
 
-  // Rejection Modals
+  // Confirmation & Rejection Modals + API action state
   const [rejectingProduct, setRejectingProduct] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectingShop, setRejectingShop] = useState(null);
   const [rejectShopReason, setRejectShopReason] = useState('');
+  const [rejectModalError, setRejectModalError] = useState(null);
+  const [submittingModalAction, setSubmittingModalAction] = useState(false);
+
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [confirmNote, setConfirmNote] = useState('');
+  const [confirmModalError, setConfirmModalError] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
   // ================= 1. MODERATION STATE =================
   const [allProducts, setAllProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [moderationError, setModerationError] = useState(null);
+  const [usingProductFallback, setUsingProductFallback] = useState(false);
+  const [processingProductId, setProcessingProductId] = useState(null);
   const [moderationFilter, setModerationFilter] = useState('PENDING'); // PENDING, REJECTED, APPROVED, ALL
   const [moderationSearchKw, setModerationSearchKw] = useState('');
   const [moderationCategoryFilter, setModerationCategoryFilter] = useState('ALL');
@@ -86,15 +109,16 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
   const fetchModerationProducts = async () => {
     setLoadingProducts(true);
+    setModerationError(null);
     try {
-      const res = await axiosClient.get('/api/catalog/products?size=50');
-      if (res.success && res.data?.content && res.data.content.length > 0) {
-        setAllProducts(res.data.content);
-      } else {
-        setAllProducts(defaultModerationProducts);
-      }
+      const { items } = await fetchAdminProducts({ page: 0, size: 100 });
+      setAllProducts(items);
+      setUsingProductFallback(false);
     } catch (err) {
-      setAllProducts(defaultModerationProducts);
+      const msg = extractApiErrorMessage(err, 'Không thể tải danh sách kiểm duyệt sản phẩm từ Catalog API.');
+      setModerationError(msg);
+      setAllProducts((prev) => (prev.length > 0 ? prev : defaultModerationProducts));
+      setUsingProductFallback(true);
     } finally {
       setLoadingProducts(false);
     }
@@ -102,6 +126,10 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
   // ================= 2. SELLER MANAGEMENT STATE =================
   const [shops, setShops] = useState([]);
+  const [loadingShops, setLoadingShops] = useState(false);
+  const [sellersError, setSellersError] = useState(null);
+  const [usingShopFallback, setUsingShopFallback] = useState(false);
+  const [processingShopId, setProcessingShopId] = useState(null);
   const [sellerFilter, setSellerFilter] = useState('ALL'); // ALL, PENDING, ACTIVE, SUSPENDED
   const [sellerMallFilter, setSellerMallFilter] = useState('ALL'); // ALL, MALL, STANDARD
   const [selectedKycShop, setSelectedKycShop] = useState(null);
@@ -220,79 +248,185 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
     },
   ];
 
+  const syncShopInState = (updatedShop) => {
+    if (!updatedShop) return;
+    setShops((prev) => prev.map((s) => (s.id === updatedShop.id ? { ...s, ...updatedShop } : s)));
+    setSelectedKycShop((prev) => (prev?.id === updatedShop.id ? { ...prev, ...updatedShop } : prev));
+  };
+
   const fetchShops = async () => {
+    setLoadingShops(true);
+    setSellersError(null);
     try {
-      const res = await axiosClient.get('/api/shops');
-      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-        setShops(res.data);
-      } else {
-        setShops(defaultShops);
-      }
+      const normalized = await fetchAdminShops();
+      setShops(normalized);
+      setUsingShopFallback(false);
     } catch (err) {
-      setShops(defaultShops);
+      const msg = extractApiErrorMessage(err, 'Không thể tải danh sách gian hàng KYC từ Identity API.');
+      setSellersError(msg);
+      setShops((prev) => (prev.length > 0 ? prev : defaultShops.map(normalizeShopDto)));
+      setUsingShopFallback(true);
+    } finally {
+      setLoadingShops(false);
     }
   };
 
-  // Duyệt gian hàng KYC
-  const handleApproveShop = async (id) => {
+  // Mở hộp thoại xác nhận duyệt gian hàng KYC
+  const requestApproveShop = (shopOrId) => {
+    const shop = typeof shopOrId === 'object' ? shopOrId : shops.find((s) => s.id === shopOrId);
+    if (!shop) return;
+    setConfirmModalError(null);
+    setConfirmNote('');
+    setConfirmDialog({
+      type: 'APPROVE_SHOP',
+      targetId: shop.id,
+      title: `Xác nhận phê duyệt gian hàng #${shop.id}`,
+      description: `Bạn xác nhận hồ sơ KYC của "${shop.name}" hợp lệ và đồng ý kích hoạt trạng thái ACTIVE (cấp quyền ROLE_SELLER cho chủ shop)?`,
+      detailLines: [
+        `Chủ sở hữu: ${shop.ownerName || 'Chưa cập nhật'}`,
+        `CCCD: ${shop.idCardNumber || 'Chưa cung cấp'} • MST: ${shop.taxCode || 'Cá nhân'}`,
+      ],
+      confirmLabel: 'Phê duyệt & Cấp quyền Seller',
+      tone: 'emerald',
+    });
+  };
+
+  const executeApproveShop = async (id) => {
+    setProcessingShopId(id);
+    setActionError(null);
+    setConfirmModalError(null);
     try {
-      await axiosClient.put(`/api/shops/${id}/approve`);
+      const updated = await approveAdminShop(id);
+      syncShopInState(updated || { id, status: 'ACTIVE', rejectionReason: null });
+      setConfirmDialog(null);
+      showToast('Đã phê duyệt hồ sơ KYC gian hàng thành công! Quyền ROLE_SELLER đã được kích hoạt.', 'success');
     } catch (err) {
-      console.warn('API approve shop fallback:', err);
+      const msg = extractApiErrorMessage(err, 'Phê duyệt gian hàng thất bại.');
+      setConfirmModalError(msg);
+      setActionError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setProcessingShopId(null);
     }
-    setShops(shops.map((s) => (s.id === id ? { ...s, status: 'ACTIVE' } : s)));
-    if (selectedKycShop?.id === id) {
-      setSelectedKycShop((prev) => (prev ? { ...prev, status: 'ACTIVE' } : null));
-    }
-    showToast('Đã phê duyệt hồ sơ KYC gian hàng thành công! Quyền ROLE_SELLER đã được kích hoạt cho chủ shop.', 'success');
   };
 
   // Mở modal từ chối gian hàng
   const handleOpenRejectShopModal = (shop) => {
+    setRejectModalError(null);
     setRejectingShop(shop);
     setRejectShopReason('Thông tin CCCD hoặc giấy tờ kinh doanh không hợp lệ hoặc thiếu chứng từ pháp lý.');
   };
 
-  // Xác nhận từ chối gian hàng
+  // Xác nhận từ chối gian hàng (Gửi PUT /api/shops/{id}/reject)
   const handleConfirmRejectShop = async () => {
-    if (!rejectingShop || !rejectShopReason.trim()) return;
-    const id = rejectingShop.id;
+    if (!rejectingShop) return;
     const reason = rejectShopReason.trim();
+    if (!reason) {
+      setRejectModalError('Vui lòng nhập lý do từ chối hồ sơ KYC.');
+      return;
+    }
+
+    const id = rejectingShop.id;
+    setSubmittingModalAction(true);
+    setProcessingShopId(id);
+    setRejectModalError(null);
+    setActionError(null);
 
     try {
-      await axiosClient.put(`/api/shops/${id}/reject`, { reason });
+      const updated = await rejectAdminShop(id, reason);
+      syncShopInState(updated || { id, status: 'REJECTED', rejectionReason: reason });
+      setRejectingShop(null);
+      setRejectShopReason('');
+      showToast('Đã từ chối hồ sơ KYC gian hàng và lưu phản hồi.', 'info');
     } catch (err) {
-      console.warn('API reject shop fallback:', err);
+      const msg = extractApiErrorMessage(err, 'Từ chối hồ sơ KYC thất bại.');
+      setRejectModalError(msg);
+      setActionError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setSubmittingModalAction(false);
+      setProcessingShopId(null);
     }
-    setShops(shops.map((s) => (s.id === id ? { ...s, status: 'REJECTED' } : s)));
-    if (selectedKycShop?.id === id) {
-      setSelectedKycShop((prev) => (prev ? { ...prev, status: 'REJECTED' } : null));
-    }
-    setRejectingShop(null);
-    setRejectShopReason('');
-    showToast('Đã từ chối hồ sơ gian hàng.', 'info');
   };
 
   // Từ chối gian hàng
   const handleRejectShop = (id) => {
-    const shop = shops.find((s) => s.id === id);
+    const shop = shops.find((s) => s.id === id) || selectedKycShop;
     if (shop) {
       handleOpenRejectShopModal(shop);
     }
   };
 
-  // Khóa / Mở khóa Shop vi phạm
-  const handleToggleLockShop = (id) => {
-    const targetShop = shops.find((s) => s.id === id);
+  // Mở hộp thoại xác nhận Khóa / Mở khóa Shop
+  const requestToggleLockShop = (shopOrId) => {
+    const targetShop = typeof shopOrId === 'object' ? shopOrId : shops.find((s) => s.id === shopOrId);
     if (!targetShop) return;
 
     const isCurrentlySuspended = targetShop.status === 'SUSPENDED' || targetShop.status === 'REJECTED';
-    const actionText = isCurrentlySuspended ? 'mở khóa hoạt động' : 'tạm khóa gian hàng do vi phạm';
-    if (!confirm(`Bạn có chắc chắn muốn ${actionText} cho gian hàng "${targetShop.name}"?`)) return;
+    setConfirmModalError(null);
+    setConfirmNote(
+      isCurrentlySuspended ? '' : 'Gian hàng tạm đình chỉ do cần kiểm tra hoặc vi phạm chính sách vận hành.'
+    );
+    setConfirmDialog({
+      type: isCurrentlySuspended ? 'ACTIVATE_SHOP' : 'SUSPEND_SHOP',
+      targetId: targetShop.id,
+      title: isCurrentlySuspended
+        ? `Xác nhận mở khóa gian hàng #${targetShop.id}`
+        : `Xác nhận tạm khóa gian hàng #${targetShop.id}`,
+      description: isCurrentlySuspended
+        ? `Mở khóa để "${targetShop.name}" hoạt động trở lại (ACTIVE) trên sàn QuickShop?`
+        : `Tạm khóa hoạt động của "${targetShop.name}" (chuyển sang SUSPENDED)?`,
+      detailLines: [`Trạng thái hiện tại: ${targetShop.status}`, `Số điện thoại: ${targetShop.ownerPhone || 'N/A'}`],
+      requireNote: !isCurrentlySuspended,
+      noteLabel: 'Lý do tạm khóa gian hàng *',
+      confirmLabel: isCurrentlySuspended ? 'Mở khóa hoạt động' : 'Xác nhận tạm khóa Shop',
+      tone: isCurrentlySuspended ? 'emerald' : 'rose',
+    });
+  };
 
-    const nextStatus = isCurrentlySuspended ? 'ACTIVE' : 'SUSPENDED';
-    setShops(shops.map((s) => (s.id === id ? { ...s, status: nextStatus } : s)));
-    alert(`Đã cập nhật trạng thái gian hàng thành công (${nextStatus})!`);
+  const executeSuspendShop = async (id, reason) => {
+    const trimmedReason = (reason || '').trim();
+    if (!trimmedReason) {
+      setConfirmModalError('Vui lòng nhập lý do tạm khóa gian hàng.');
+      return;
+    }
+
+    setProcessingShopId(id);
+    setActionError(null);
+    setConfirmModalError(null);
+    try {
+      const updated = await suspendAdminShop(id, trimmedReason);
+      syncShopInState(updated || { id, status: 'SUSPENDED', rejectionReason: trimmedReason });
+      setConfirmDialog(null);
+      setConfirmNote('');
+      showToast('Đã tạm khóa gian hàng thành công (SUSPENDED).', 'info');
+    } catch (err) {
+      const msg = extractApiErrorMessage(err, 'Tạm khóa gian hàng thất bại.');
+      setConfirmModalError(msg);
+      setActionError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setProcessingShopId(null);
+    }
+  };
+
+  const executeActivateShop = async (id) => {
+    setProcessingShopId(id);
+    setActionError(null);
+    setConfirmModalError(null);
+    try {
+      const updated = await activateAdminShop(id);
+      syncShopInState(updated || { id, status: 'ACTIVE', rejectionReason: null });
+      setConfirmDialog(null);
+      showToast('Đã mở khóa gian hàng hoạt động trở lại (ACTIVE)!', 'success');
+    } catch (err) {
+      const msg = extractApiErrorMessage(err, 'Mở khóa gian hàng thất bại.');
+      setConfirmModalError(msg);
+      setActionError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setProcessingShopId(null);
+    }
   };
 
   // ================= 3. VOUCHER MANAGEMENT STATE =================
@@ -788,60 +922,143 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
     }
   };
 
-  // Product moderation handlers
-  const handleApproveProduct = async (id) => {
+  // Product moderation handlers (kèm xác nhận thao tác & xử lý lỗi API tường minh)
+  const requestApproveProduct = (productOrId) => {
+    const product = typeof productOrId === 'object' ? productOrId : allProducts.find((p) => p.id === productOrId);
+    if (!product) return;
+    setConfirmModalError(null);
+    setConfirmNote('');
+    setConfirmDialog({
+      type: 'APPROVE_PRODUCT',
+      targetId: product.id,
+      title: `Xác nhận phê duyệt sản phẩm #${product.id}`,
+      description: `Sản phẩm "${product.name}" sẽ chuyển sang trạng thái APPROVED và hiển thị công khai trên Storefront.`,
+      detailLines: [
+        `Gian hàng: ${product.shopName || `Shop #${product.shopId}`}`,
+        `Ngành hàng: ${product.categoryName || 'Sản phẩm sàn'} • Giá từ: ${formatVND(product.minPrice)}`,
+      ],
+      confirmLabel: 'Xác nhận duyệt đăng sàn',
+      tone: 'emerald',
+    });
+  };
+
+  const executeApproveProduct = async (id) => {
+    setProcessingProductId(id);
+    setActionError(null);
+    setConfirmModalError(null);
     try {
-      await axiosClient.patch(`/api/catalog/products/${id}/status`, {
+      const updated = await updateAdminProductStatus(id, {
         status: 'APPROVED',
         reason: 'Sản phẩm hợp lệ chuẩn chính sách sàn QuickShop Mall',
       });
+      setAllProducts((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, ...(updated || {}), status: updated?.status || 'APPROVED', rejectionReason: null }
+            : p
+        )
+      );
+      setConfirmDialog(null);
+      showToast('Đã phê duyệt sản phẩm thành công! Sản phẩm đã xuất hiện công khai trên Storefront.', 'success');
     } catch (err) {
-      console.warn('Approve fallback:', err);
+      const msg = extractApiErrorMessage(err, 'Phê duyệt sản phẩm thất bại.');
+      setConfirmModalError(msg);
+      setActionError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setProcessingProductId(null);
     }
-    setAllProducts(allProducts.map((p) => (p.id === id ? { ...p, status: 'APPROVED', rejectionReason: null } : p)));
-    showToast('Đã phê duyệt sản phẩm thành công! Sản phẩm đã xuất hiện công khai trên Storefront.', 'success');
   };
 
   const handleOpenRejectProductModal = (product) => {
+    setRejectModalError(null);
     setRejectingProduct(product);
     setRejectReason('Hình ảnh sản phẩm mờ, thông tin chưa rõ ràng hoặc thiếu giấy tờ kiểm định.');
   };
 
   const handleConfirmRejectProduct = async () => {
-    if (!rejectingProduct || !rejectReason.trim()) return;
-    const id = rejectingProduct.id;
+    if (!rejectingProduct) return;
     const reason = rejectReason.trim();
+    if (!reason) {
+      setRejectModalError('Vui lòng nhập lý do từ chối sản phẩm để Seller nắm rõ.');
+      return;
+    }
+
+    const id = rejectingProduct.id;
+    setSubmittingModalAction(true);
+    setProcessingProductId(id);
+    setRejectModalError(null);
+    setActionError(null);
 
     try {
-      await axiosClient.patch(`/api/catalog/products/${id}/status`, {
+      const updated = await updateAdminProductStatus(id, {
         status: 'REJECTED',
-        reason: reason,
+        reason,
       });
+      setAllProducts((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, ...(updated || {}), status: updated?.status || 'REJECTED', rejectionReason: reason }
+            : p
+        )
+      );
+      setRejectingProduct(null);
+      setRejectReason('');
+      showToast('Đã từ chối duyệt sản phẩm và gửi lý do phản hồi đến người bán.', 'info');
     } catch (err) {
-      console.warn('Reject fallback:', err);
-    }
-    setAllProducts(allProducts.map((p) => (p.id === id ? { ...p, status: 'REJECTED', rejectionReason: reason } : p)));
-    setRejectingProduct(null);
-    setRejectReason('');
-    showToast('Đã từ chối duyệt sản phẩm và gửi lý do phản hồi đến người bán.', 'info');
-  };
-
-  const handleRejectProduct = (id) => {
-    const product = allProducts.find((p) => p.id === id);
-    if (product) {
-      handleOpenRejectProductModal(product);
+      const msg = extractApiErrorMessage(err, 'Từ chối sản phẩm thất bại.');
+      setRejectModalError(msg);
+      setActionError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setSubmittingModalAction(false);
+      setProcessingProductId(null);
     }
   };
 
-  const handleDeleteProduct = async (id) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa vĩnh viễn sản phẩm vi phạm này?')) return;
+  const requestDeleteProduct = (productOrId) => {
+    const product = typeof productOrId === 'object' ? productOrId : allProducts.find((p) => p.id === productOrId);
+    if (!product) return;
+    setConfirmModalError(null);
+    setConfirmNote('');
+    setConfirmDialog({
+      type: 'DELETE_PRODUCT',
+      targetId: product.id,
+      title: `Xác nhận xóa vĩnh viễn sản phẩm #${product.id}`,
+      description: `Thao tác này sẽ xóa "${product.name}" và toàn bộ biến thể SKU khỏi hệ thống Catalog. Hành động không thể hoàn tác.`,
+      detailLines: [`Gian hàng: ${product.shopName || `Shop #${product.shopId}`}`],
+      confirmLabel: 'Xóa vĩnh viễn sản phẩm',
+      tone: 'rose',
+    });
+  };
+
+  const executeDeleteProduct = async (id) => {
+    setProcessingProductId(id);
+    setActionError(null);
+    setConfirmModalError(null);
     try {
-      await axiosClient.delete(`/api/catalog/products/${id}`);
+      await deleteAdminProduct(id);
+      setAllProducts((prev) => prev.filter((p) => p.id !== id));
+      setConfirmDialog(null);
+      showToast('Đã xóa sản phẩm khỏi cơ sở dữ liệu hệ thống.', 'info');
     } catch (err) {
-      console.warn('Delete product error:', err);
+      const msg = extractApiErrorMessage(err, 'Xóa sản phẩm thất bại.');
+      setConfirmModalError(msg);
+      setActionError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setProcessingProductId(null);
     }
-    setAllProducts(allProducts.filter((p) => p.id !== id));
-    alert('Đã xóa sản phẩm khỏi cơ sở dữ liệu hệ thống!');
+  };
+
+  const handleConfirmDialogSubmit = async () => {
+    if (!confirmDialog) return;
+    const { type, targetId } = confirmDialog;
+    if (type === 'APPROVE_PRODUCT') return executeApproveProduct(targetId);
+    if (type === 'DELETE_PRODUCT') return executeDeleteProduct(targetId);
+    if (type === 'APPROVE_SHOP') return executeApproveShop(targetId);
+    if (type === 'SUSPEND_SHOP') return executeSuspendShop(targetId, confirmNote);
+    if (type === 'ACTIVATE_SHOP') return executeActivateShop(targetId);
   };
 
   // Category handlers
@@ -1143,6 +1360,40 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
           </div>
         </div>
       </div>
+
+      {/* Explicit Action / Sync Error Feedback Banners */}
+      {actionError && (
+        <ApiErrorBanner
+          error={actionError}
+          title="Thao tác quản trị không thành công"
+          fallbackActive={false}
+          onDismiss={() => setActionError(null)}
+        />
+      )}
+
+      {activeTab === 'dashboard' && moderationError && (
+        <ApiErrorBanner
+          error={moderationError}
+          title="Không thể đồng bộ hàng đợi sản phẩm từ Catalog API"
+          fallbackActive={usingProductFallback}
+          fallbackHint="Đang hiển thị dữ liệu mẫu cục bộ; vui lòng kiểm tra API Gateway / Catalog Service."
+          isRetrying={loadingProducts}
+          onRetry={fetchModerationProducts}
+          onDismiss={() => setModerationError(null)}
+        />
+      )}
+
+      {activeTab === 'dashboard' && sellersError && (
+        <ApiErrorBanner
+          error={sellersError}
+          title="Không thể đồng bộ danh sách gian hàng KYC từ Identity API"
+          fallbackActive={usingShopFallback}
+          fallbackHint="Đang hiển thị dữ liệu mẫu cục bộ; vui lòng kiểm tra API Gateway / Identity Service."
+          isRetrying={loadingShops}
+          onRetry={fetchShops}
+          onDismiss={() => setSellersError(null)}
+        />
+      )}
 
       {/* ================= TAB 0: ADMIN DASHBOARD OVERVIEW ================= */}
       {activeTab === 'dashboard' && (
@@ -1494,15 +1745,21 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button
-                            onClick={() => handleApproveProduct(p.id)}
-                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 active:scale-95 shadow-xs"
+                            onClick={() => requestApproveProduct(p)}
+                            disabled={processingProductId === p.id}
+                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 active:scale-95 shadow-xs disabled:opacity-50"
                           >
-                            <Check className="w-3 h-3" />
+                            {processingProductId === p.id ? (
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Check className="w-3 h-3" />
+                            )}
                             Duyệt
                           </button>
                           <button
                             onClick={() => handleOpenRejectProductModal(p)}
-                            className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-[11px] font-bold transition flex items-center gap-1 active:scale-95 border border-rose-200"
+                            disabled={processingProductId === p.id}
+                            className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-[11px] font-bold transition flex items-center gap-1 active:scale-95 border border-rose-200 disabled:opacity-50"
                           >
                             <X className="w-3 h-3" />
                             Từ chối
@@ -1568,10 +1825,15 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                             Xem KYC
                           </button>
                           <button
-                            onClick={() => handleApproveShop(s.id)}
-                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 active:scale-95 shadow-xs"
+                            onClick={() => requestApproveShop(s)}
+                            disabled={processingShopId === s.id}
+                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 active:scale-95 shadow-xs disabled:opacity-50"
                           >
-                            <Check className="w-3 h-3" />
+                            {processingShopId === s.id ? (
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Check className="w-3 h-3" />
+                            )}
                             Duyệt
                           </button>
                         </div>
@@ -1586,177 +1848,220 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
       {/* ================= TAB 1: PRODUCT MODERATION ================= */}
       {activeTab === 'moderation' && (
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 bg-slate-50/50">
-            <div>
-              <h2 className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-amber-500" />
-                Hàng đợi kiểm duyệt sản phẩm đăng bán ({filteredModerationProducts.length})
-              </h2>
-              <p className="text-xs text-slate-500">Các bài đăng mới từ Seller cần Admin duyệt trước khi xuất hiện trên sàn</p>
-            </div>
+        <div className="space-y-4">
+          {moderationError && (
+            <ApiErrorBanner
+              error={moderationError}
+              title="Lỗi kết nối API Kiểm duyệt Sản phẩm"
+              fallbackActive={usingProductFallback}
+              fallbackHint="Hiện đang hiển thị dữ liệu mẫu để tham khảo; bấm Thử lại ngay sau khi bật Catalog Service / API Gateway."
+              isRetrying={loadingProducts}
+              onRetry={fetchModerationProducts}
+              onDismiss={() => setModerationError(null)}
+            />
+          )}
 
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              {/* Search input */}
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={moderationSearchKw}
-                  onChange={(e) => {
-                    setModerationSearchKw(e.target.value);
-                    setModerationPage(0);
-                  }}
-                  placeholder="Tìm tên sản phẩm, tên shop..."
-                  className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:outline-orange-500 w-48 sm:w-56 bg-white"
-                />
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 bg-slate-50/50">
+              <div>
+                <h2 className="font-bold text-sm sm:text-base text-slate-900 flex flex-wrap items-center gap-2">
+                  <Clock className="w-5 h-5 text-amber-500" />
+                  Hàng đợi kiểm duyệt sản phẩm đăng bán ({filteredModerationProducts.length})
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      usingProductFallback
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-emerald-100 text-emerald-700'
+                    }`}
+                  >
+                    {usingProductFallback ? 'Dữ liệu dự phòng' : 'Đã đồng bộ API'}
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-500">Các bài đăng mới từ Seller cần Admin duyệt trước khi xuất hiện trên sàn</p>
               </div>
 
-              {/* Category Filter */}
-              <select
-                value={moderationCategoryFilter}
-                onChange={(e) => {
-                  setModerationCategoryFilter(e.target.value);
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {/* Search input */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={moderationSearchKw}
+                    onChange={(e) => {
+                      setModerationSearchKw(e.target.value);
+                      setModerationPage(0);
+                    }}
+                    placeholder="Tìm tên sản phẩm, tên shop..."
+                    className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:outline-orange-500 w-48 sm:w-56 bg-white"
+                  />
+                </div>
+
+                {/* Category Filter */}
+                <select
+                  value={moderationCategoryFilter}
+                  onChange={(e) => {
+                    setModerationCategoryFilter(e.target.value);
+                    setModerationPage(0);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-orange-500 font-medium"
+                >
+                  <option value="ALL">Tất cả ngành hàng</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.parentId ? `  ↳ ${c.name}` : `● ${c.name}`}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Status Tabs */}
+                {[
+                  { id: 'PENDING', label: `Chờ duyệt (${pendingModerationCount})` },
+                  { id: 'REJECTED', label: `Bị từ chối (${rejectedModerationCount})` },
+                  { id: 'APPROVED', label: `Đã duyệt (${approvedModerationCount})` },
+                  { id: 'ALL', label: `Tất cả (${allProducts.length})` },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => {
+                      setModerationFilter(f.id);
+                      setModerationPage(0);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-medium transition cursor-pointer ${
+                      moderationFilter === f.id
+                        ? 'bg-orange-600 text-white shadow-sm font-bold'
+                        : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+
+                <button
+                  onClick={fetchModerationProducts}
+                  disabled={loadingProducts}
+                  className="text-xs font-semibold text-orange-600 hover:underline ml-1 cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingProducts ? 'animate-spin' : ''}`} />
+                  {loadingProducts ? 'Đang tải...' : 'Làm mới'}
+                </button>
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {loadingProducts && allProducts.length === 0 ? (
+                <div className="p-12 text-center text-slate-500 text-xs flex flex-col items-center gap-2">
+                  <RefreshCw className="w-5 h-5 text-orange-500 animate-spin" />
+                  <span>Đang tải danh sách kiểm duyệt sản phẩm từ Catalog Service...</span>
+                </div>
+              ) : pagedModerationProducts.length === 0 ? (
+                <div className="p-12 text-center text-slate-400 text-sm">
+                  Không tìm thấy sản phẩm nào phù hợp với bộ lọc kiểm duyệt này.
+                </div>
+              ) : (
+                pagedModerationProducts.map((p) => {
+                  const isBusy = processingProductId === p.id;
+                  const isApproved = p.status === 'APPROVED' || p.status === 'ACTIVE';
+                  return (
+                    <div key={p.id} className="p-5 hover:bg-slate-50/60 transition flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                      <div className="flex items-start space-x-4">
+                        <img
+                          src={p.mainImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'}
+                          alt={p.name}
+                          className="w-16 h-16 object-cover rounded-xl border border-slate-200 bg-slate-100 flex-shrink-0"
+                        />
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-bold text-orange-600">{p.categoryName || 'Sản phẩm sàn'}</span>
+                            <span className="text-slate-300">•</span>
+                            <span className="text-xs text-slate-500 font-medium">{p.shopName || `Shop #${p.shopId || 1}`}</span>
+                            {(p.status === 'PENDING' || p.status === 'PENDING_APPROVAL') && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
+                                Chờ Admin Duyệt
+                              </span>
+                            )}
+                            {isApproved && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                                Đã Phê Duyệt
+                              </span>
+                            )}
+                            {p.status === 'REJECTED' && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">
+                                Bị Từ Chối
+                              </span>
+                            )}
+                            {p.status === 'DRAFT' && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                                Bản nháp
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="font-bold text-sm text-slate-900 mt-1">{p.name}</h3>
+                          <p className="text-xs text-slate-500 line-clamp-1 mt-0.5 max-w-xl">{p.description}</p>
+                          <div className="mt-2 flex items-center gap-4 text-xs">
+                            <span className="font-bold text-rose-600 text-sm">{formatVND(p.minPrice)}</span>
+                            <span className="text-slate-400">
+                              Tồn kho ban đầu: {p.variants ? p.variants.reduce((acc, v) => acc + (v.stock || 0), 0) : '0'}
+                            </span>
+                          </div>
+                          {p.rejectionReason && (
+                            <div className="mt-2 text-xs text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-100">
+                              <strong>Lý do từ chối:</strong> {p.rejectionReason}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center space-x-2 w-full lg:w-auto justify-end">
+                        {!isApproved && (
+                          <button
+                            onClick={() => requestApproveProduct(p)}
+                            disabled={isBusy}
+                            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer active:scale-95 disabled:opacity-50"
+                          >
+                            {isBusy ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                            Duyệt đăng sàn
+                          </button>
+                        )}
+                        {p.status !== 'REJECTED' && (
+                          <button
+                            onClick={() => handleOpenRejectProductModal(p)}
+                            disabled={isBusy}
+                            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer active:scale-95 disabled:opacity-50"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            Từ chối
+                          </button>
+                        )}
+                        <button
+                          onClick={() => requestDeleteProduct(p)}
+                          disabled={isBusy}
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer disabled:opacity-50"
+                          title="Xóa sản phẩm vĩnh viễn"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Pagination for Products */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+              <Pagination
+                currentPage={moderationPage}
+                totalPages={totalModerationPages}
+                totalElements={totalModerationElements}
+                pageSize={moderationPageSize}
+                onPageChange={setModerationPage}
+                onPageSizeChange={(newSize) => {
+                  setModerationPageSize(newSize);
                   setModerationPage(0);
                 }}
-                className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-orange-500 font-medium"
-              >
-                <option value="ALL">Tất cả ngành hàng</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.parentId ? `  ↳ ${c.name}` : `● ${c.name}`}
-                  </option>
-                ))}
-              </select>
-
-              {/* Status Tabs */}
-              {[
-                { id: 'PENDING', label: `Chờ duyệt (${pendingModerationCount})` },
-                { id: 'REJECTED', label: 'Bị từ chối' },
-                { id: 'APPROVED', label: 'Đã duyệt' },
-                { id: 'ALL', label: 'Tất cả' },
-              ].map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => {
-                    setModerationFilter(f.id);
-                    setModerationPage(0);
-                  }}
-                  className={`px-3 py-1.5 rounded-xl font-medium transition cursor-pointer ${
-                    moderationFilter === f.id
-                      ? 'bg-orange-600 text-white shadow-sm font-bold'
-                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-
-              <button
-                onClick={fetchModerationProducts}
-                className="text-xs font-semibold text-orange-600 hover:underline ml-1 cursor-pointer flex items-center gap-1"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Làm mới
-              </button>
+              />
             </div>
-          </div>
-
-          <div className="divide-y divide-slate-100">
-            {pagedModerationProducts.length === 0 ? (
-              <div className="p-12 text-center text-slate-400 text-sm">
-                Không tìm thấy sản phẩm nào phù hợp với bộ lọc kiểm duyệt này.
-              </div>
-            ) : (
-              pagedModerationProducts.map((p) => (
-                <div key={p.id} className="p-5 hover:bg-slate-50/60 transition flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                  <div className="flex items-start space-x-4">
-                    <img
-                      src={p.mainImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'}
-                      alt={p.name}
-                      className="w-16 h-16 object-cover rounded-xl border border-slate-200 bg-slate-100 flex-shrink-0"
-                    />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-orange-600">{p.categoryName || 'Sản phẩm sàn'}</span>
-                        <span className="text-slate-300">•</span>
-                        <span className="text-xs text-slate-500 font-medium">{p.shopName || `Shop #${p.shopId || 1}`}</span>
-                        {p.status === 'PENDING' && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
-                            Chờ Admin Duyệt
-                          </span>
-                        )}
-                        {p.status === 'APPROVED' && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
-                            Đã Phê Duyệt
-                          </span>
-                        )}
-                        {p.status === 'REJECTED' && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">
-                            Bị Từ Chối
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="font-bold text-sm text-slate-900 mt-1">{p.name}</h3>
-                      <p className="text-xs text-slate-500 line-clamp-1 mt-0.5 max-w-xl">{p.description}</p>
-                      <div className="mt-2 flex items-center gap-4 text-xs">
-                        <span className="font-bold text-rose-600 text-sm">{formatVND(p.minPrice)}</span>
-                        <span className="text-slate-400">Tồn kho ban đầu: {p.variants ? p.variants.reduce((acc, v) => acc + (v.stock || 0), 0) : '0'}</span>
-                      </div>
-                      {p.rejectionReason && (
-                        <div className="mt-2 text-xs text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-100">
-                          <strong>Lý do từ chối:</strong> {p.rejectionReason}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center space-x-2 w-full lg:w-auto justify-end">
-                    {p.status !== 'APPROVED' && (
-                      <button
-                        onClick={() => handleApproveProduct(p.id)}
-                        className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer active:scale-95"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        Duyệt đăng sàn
-                      </button>
-                    )}
-                    {p.status !== 'REJECTED' && (
-                      <button
-                        onClick={() => handleOpenRejectProductModal(p)}
-                        className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer active:scale-95"
-                      >
-                        <XCircle className="w-3.5 h-3.5" />
-                        Từ chối
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDeleteProduct(p.id)}
-                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
-                      title="Xóa sản phẩm vĩnh viễn"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Pagination for Products */}
-          <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-            <Pagination
-              currentPage={moderationPage}
-              totalPages={totalModerationPages}
-              totalElements={totalModerationElements}
-              pageSize={moderationPageSize}
-              onPageChange={setModerationPage}
-              onPageSizeChange={(newSize) => {
-                setModerationPageSize(newSize);
-                setModerationPage(0);
-              }}
-            />
           </div>
         </div>
       )}
@@ -1764,6 +2069,18 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       {/* ================= TAB 2: SELLER & SHOP KYC MANAGEMENT ================= */}
       {activeTab === 'sellers' && (
         <div className="space-y-6">
+          {sellersError && (
+            <ApiErrorBanner
+              error={sellersError}
+              title="Lỗi kết nối API Quản lý Gian hàng & KYC"
+              fallbackActive={usingShopFallback}
+              fallbackHint="Hiện đang hiển thị dữ liệu mẫu cục bộ; bấm Thử lại ngay sau khi bật Identity Service / API Gateway."
+              isRetrying={loadingShops}
+              onRetry={fetchShops}
+              onDismiss={() => setSellersError(null)}
+            />
+          )}
+
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm flex items-center space-x-4">
@@ -1801,7 +2118,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 <Lock className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-xs text-slate-500 font-medium">Tạm Khóa / Vi Phạm</span>
+                <span className="text-xs text-slate-500 font-medium">Tạm Khóa / Từ Chối</span>
                 <h3 className="text-xl font-bold text-rose-600">{shops.filter((s) => s.status === 'SUSPENDED' || s.status === 'REJECTED').length}</h3>
               </div>
             </div>
@@ -1811,9 +2128,18 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-slate-50/50">
               <div>
-                <h2 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                <h2 className="font-bold text-base text-slate-900 flex flex-wrap items-center gap-2">
                   <Store className="w-5 h-5 text-blue-600" />
                   Danh sách Nhà Bán Hàng & Thẩm định KYC ({filteredShops.length})
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      usingShopFallback
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-emerald-100 text-emerald-700'
+                    }`}
+                  >
+                    {usingShopFallback ? 'Dữ liệu dự phòng' : 'Đã đồng bộ API'}
+                  </span>
                 </h2>
                 <p className="text-xs text-slate-500">Phê duyệt hồ sơ người bán mới, cấp quyền ROLE_SELLER và quản lý gian hàng</p>
               </div>
@@ -1853,7 +2179,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   { id: 'ALL', label: 'Tất cả' },
                   { id: 'PENDING', label: `Chờ duyệt KYC (${pendingSellerCount})` },
                   { id: 'ACTIVE', label: 'Hoạt động' },
-                  { id: 'SUSPENDED', label: 'Đã khóa' },
+                  { id: 'SUSPENDED', label: 'Đã khóa / Từ chối' },
                 ].map((f) => (
                   <button
                     key={f.id}
@@ -1870,6 +2196,15 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                     {f.label}
                   </button>
                 ))}
+
+                <button
+                  onClick={fetchShops}
+                  disabled={loadingShops}
+                  className="text-xs font-semibold text-blue-600 hover:underline ml-1 cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingShops ? 'animate-spin' : ''}`} />
+                  {loadingShops ? 'Đang tải...' : 'Làm mới'}
+                </button>
               </div>
             </div>
 
@@ -1886,139 +2221,166 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {pagedShops.length === 0 ? (
+                  {loadingShops && shops.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="text-center py-12 text-slate-500 text-xs">
+                        <div className="flex flex-col items-center gap-2">
+                          <RefreshCw className="w-5 h-5 text-blue-600 animate-spin" />
+                          <span>Đang tải danh sách gian hàng từ Identity Service...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : pagedShops.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="text-center py-10 text-slate-400 text-xs">
                         Không tìm thấy gian hàng nào phù hợp với bộ lọc tìm kiếm.
                       </td>
                     </tr>
                   ) : (
-                    pagedShops.map((s) => (
-                      <tr key={s.id} className="hover:bg-slate-50/80 transition">
-                        <td className="px-5 py-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-sm flex items-center justify-center shadow-sm">
-                              {s.name.charAt(0)}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-slate-900 text-xs">{s.name}</span>
-                                {s.isMall && (
-                                  <span className="bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded shadow-xs uppercase">
-                                    MALL
-                                  </span>
-                                )}
+                    pagedShops.map((s) => {
+                      const isBusy = processingShopId === s.id;
+                      const resolvedProductCount =
+                        s.productCount ?? allProducts.filter((p) => Number(p.shopId) === Number(s.id)).length;
+                      return (
+                        <tr key={s.id} className="hover:bg-slate-50/80 transition">
+                          <td className="px-5 py-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-sm flex items-center justify-center shadow-sm">
+                                {(s.name || 'S').charAt(0).toUpperCase()}
                               </div>
-                              <span className="text-[11px] text-slate-400">Shop ID: #{s.id} • {s.productCount} SP</span>
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-slate-900 text-xs">{s.name}</span>
+                                  {s.isMall && (
+                                    <span className="bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded shadow-xs uppercase">
+                                      MALL
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[11px] text-slate-400">Shop ID: #{s.id} • {resolvedProductCount} SP</span>
+                              </div>
                             </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        <td className="px-4 py-4">
-                          <div className="font-semibold text-slate-900">{s.ownerName}</div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1">
-                            <Mail className="w-3 h-3 text-slate-400" />
-                            {s.ownerEmail}
-                          </div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1">
-                            <Phone className="w-3 h-3 text-slate-400" />
-                            {s.ownerPhone}
-                          </div>
-                        </td>
-
-                        <td className="px-4 py-4">
-                          <div className="space-y-0.5">
-                            <div className="text-[11px] text-slate-600">
-                              CCCD: <strong className="font-mono text-slate-800">{s.idCardNumber || 'Chưa cung cấp'}</strong>
+                          <td className="px-4 py-4">
+                            <div className="font-semibold text-slate-900">{s.ownerName}</div>
+                            <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                              <Mail className="w-3 h-3 text-slate-400" />
+                              {s.ownerEmail}
                             </div>
-                            <div className="text-[11px] text-slate-600">
-                              MST: <span className="font-mono">{s.taxCode || 'Hộ kinh doanh'}</span>
+                            <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-slate-400" />
+                              {s.ownerPhone}
                             </div>
-                            <button
-                              onClick={() => setSelectedKycShop(s)}
-                              className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1 mt-1 cursor-pointer"
-                            >
-                              <Eye className="w-3 h-3" />
-                              Xem hồ sơ KYC chi tiết
-                            </button>
-                          </div>
-                        </td>
+                          </td>
 
-                        <td className="px-4 py-4">
-                          <div className="font-bold text-slate-900">{formatVND(s.totalRevenue)}</div>
-                          <div className="text-[11px] text-amber-500 font-semibold flex items-center gap-1">
-                            ★ {s.rating} / 5.0
-                          </div>
-                        </td>
-
-                        <td className="px-4 py-4">
-                          {s.status === 'ACTIVE' && (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 flex items-center gap-1 w-fit">
-                              <CheckCircle2 className="w-3 h-3" />
-                              Đang hoạt động
-                            </span>
-                          )}
-                          {s.status === 'PENDING_APPROVAL' && (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 flex items-center gap-1 w-fit animate-pulse">
-                              <Clock className="w-3 h-3" />
-                              Chờ duyệt KYC
-                            </span>
-                          )}
-                          {(s.status === 'SUSPENDED' || s.status === 'REJECTED') && (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 flex items-center gap-1 w-fit">
-                              <Lock className="w-3 h-3" />
-                              Tạm khóa / Từ chối
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="px-5 py-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {s.status === 'PENDING_APPROVAL' ? (
-                              <>
-                                <button
-                                  onClick={() => handleApproveShop(s.id)}
-                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer active:scale-95"
-                                  title="Phê duyệt mở shop & cấp quyền ROLE_SELLER"
-                                >
-                                  <Check className="w-3.5 h-3.5" />
-                                  Duyệt Shop
-                                </button>
-                                <button
-                                  onClick={() => handleOpenRejectShopModal(s)}
-                                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer active:scale-95"
-                                  title="Từ chối hồ sơ KYC"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                  Từ chối
-                                </button>
-                              </>
-                            ) : (
+                          <td className="px-4 py-4">
+                            <div className="space-y-0.5">
+                              <div className="text-[11px] text-slate-600">
+                                CCCD: <strong className="font-mono text-slate-800">{s.idCardNumber || 'Chưa cung cấp'}</strong>
+                              </div>
+                              <div className="text-[11px] text-slate-600">
+                                MST: <span className="font-mono">{s.taxCode || 'Hộ kinh doanh'}</span>
+                              </div>
                               <button
-                                onClick={() => handleToggleLockShop(s.id)}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95 ${
-                                  s.status === 'ACTIVE'
-                                    ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200'
-                                    : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200'
-                                }`}
+                                onClick={() => setSelectedKycShop(s)}
+                                className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1 mt-1 cursor-pointer"
                               >
-                                {s.status === 'ACTIVE' ? (
-                                  <>
-                                    <Lock className="w-3.5 h-3.5" />
-                                    Khóa Shop
-                                  </>
-                                ) : (
-                                  <>
-                                    <Unlock className="w-3.5 h-3.5" />
-                                    Mở khóa
-                                  </>
-                                )}
+                                <Eye className="w-3 h-3" />
+                                Xem hồ sơ KYC chi tiết
                               </button>
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-4">
+                            <div className="font-bold text-slate-900">
+                              {s.totalRevenue !== null ? formatVND(s.totalRevenue) : 'Chưa đối soát'}
+                            </div>
+                            <div className="text-[11px] text-amber-500 font-semibold flex items-center gap-1">
+                              {s.rating !== null ? `★ ${s.rating} / 5.0` : 'Hồ sơ mới đăng ký'}
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-4 space-y-1">
+                            {s.status === 'ACTIVE' && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 flex items-center gap-1 w-fit">
+                                <CheckCircle2 className="w-3 h-3" />
+                                Đang hoạt động
+                              </span>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                            {s.status === 'PENDING_APPROVAL' && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 flex items-center gap-1 w-fit animate-pulse">
+                                <Clock className="w-3 h-3" />
+                                Chờ duyệt KYC
+                              </span>
+                            )}
+                            {s.status === 'SUSPENDED' && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 flex items-center gap-1 w-fit">
+                                <Lock className="w-3 h-3" />
+                                Tạm khóa
+                              </span>
+                            )}
+                            {s.status === 'REJECTED' && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 flex items-center gap-1 w-fit">
+                                <XCircle className="w-3 h-3" />
+                                Từ chối KYC
+                              </span>
+                            )}
+                            {s.rejectionReason && (
+                              <p className="text-[10px] text-rose-600 line-clamp-2 max-w-[180px]" title={s.rejectionReason}>
+                                Lý do: {s.rejectionReason}
+                              </p>
+                            )}
+                          </td>
+
+                          <td className="px-5 py-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {s.status === 'PENDING_APPROVAL' ? (
+                                <>
+                                  <button
+                                    onClick={() => requestApproveShop(s)}
+                                    disabled={isBusy}
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer active:scale-95 disabled:opacity-50"
+                                    title="Phê duyệt mở shop & cấp quyền ROLE_SELLER"
+                                  >
+                                    {isBusy ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                    Duyệt Shop
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenRejectShopModal(s)}
+                                    disabled={isBusy}
+                                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer active:scale-95 disabled:opacity-50"
+                                    title="Từ chối hồ sơ KYC"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                    Từ chối
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => requestToggleLockShop(s)}
+                                  disabled={isBusy}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95 disabled:opacity-50 ${
+                                    s.status === 'ACTIVE'
+                                      ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200'
+                                      : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200'
+                                  }`}
+                                >
+                                  {isBusy ? (
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                  ) : s.status === 'ACTIVE' ? (
+                                    <Lock className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <Unlock className="w-3.5 h-3.5" />
+                                  )}
+                                  {s.status === 'ACTIVE' ? 'Khóa Shop' : 'Mở khóa'}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -2049,6 +2411,17 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                     <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                       <ShieldCheck className="w-5 h-5 text-blue-600" />
                       Hồ Sơ Xác Minh KYC Gian Hàng
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                          selectedKycShop.status === 'ACTIVE'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : selectedKycShop.status === 'PENDING_APPROVAL'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-rose-100 text-rose-700'
+                        }`}
+                      >
+                        {selectedKycShop.status}
+                      </span>
                     </h3>
                     <span className="text-xs text-slate-500 font-medium">Mã hồ sơ: #{selectedKycShop.id} - {selectedKycShop.name}</span>
                   </div>
@@ -2067,6 +2440,10 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                       <strong className="text-slate-900">{selectedKycShop.ownerName}</strong>
                     </div>
                     <div className="flex justify-between">
+                      <span className="text-slate-500">Số điện thoại liên hệ:</span>
+                      <strong className="text-slate-900">{selectedKycShop.ownerPhone}</strong>
+                    </div>
+                    <div className="flex justify-between">
                       <span className="text-slate-500">Số Căn cước công dân (CCCD):</span>
                       <strong className="font-mono text-slate-900">{selectedKycShop.idCardNumber}</strong>
                     </div>
@@ -2076,7 +2453,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Tài khoản ngân hàng đối soát:</span>
-                      <strong className="text-slate-900">{selectedKycShop.bankAccount}</strong>
+                      <strong className="text-slate-900 text-right">{selectedKycShop.bankAccount}</strong>
                     </div>
                   </div>
 
@@ -2087,6 +2464,16 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                       {selectedKycShop.warehouseAddress}
                     </p>
                   </div>
+
+                  {selectedKycShop.rejectionReason && (
+                    <div className="p-3 bg-rose-50 rounded-2xl border border-rose-200 text-rose-800 space-y-1">
+                      <strong className="font-bold flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4 text-rose-600" />
+                        Lý do từ chối / tạm khóa gần nhất
+                      </strong>
+                      <p className="text-[11px] leading-relaxed">{selectedKycShop.rejectionReason}</p>
+                    </div>
+                  )}
 
                   <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200/80 text-amber-800 space-y-1">
                     <strong className="font-bold flex items-center gap-1.5">
@@ -2104,24 +2491,39 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                     <>
                       <button
                         onClick={() => handleRejectShop(selectedKycShop.id)}
-                        className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                        disabled={processingShopId === selectedKycShop.id}
+                        className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-50"
                       >
                         Từ chối KYC
                       </button>
                       <button
-                        onClick={() => handleApproveShop(selectedKycShop.id)}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                        onClick={() => requestApproveShop(selectedKycShop)}
+                        disabled={processingShopId === selectedKycShop.id}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-50"
                       >
                         Duyệt mở Shop & Cấp quyền
                       </button>
                     </>
                   ) : (
-                    <button
-                      onClick={() => setSelectedKycShop(null)}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
-                    >
-                      Đóng
-                    </button>
+                    <>
+                      <button
+                        onClick={() => requestToggleLockShop(selectedKycShop)}
+                        disabled={processingShopId === selectedKycShop.id}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-50 ${
+                          selectedKycShop.status === 'ACTIVE'
+                            ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        }`}
+                      >
+                        {selectedKycShop.status === 'ACTIVE' ? 'Tạm khóa Shop' : 'Mở khóa hoạt động'}
+                      </button>
+                      <button
+                        onClick={() => setSelectedKycShop(null)}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                      >
+                        Đóng
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -3342,6 +3744,110 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
         </div>
       )}
 
+      {/* ================= MODAL: XÁC NHẬN THAO TÁC QUẢN TRỊ (Duyệt / Xóa / Khóa Shop) ================= */}
+      {confirmDialog && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div className="flex items-start gap-2.5">
+                <div
+                  className={`p-2 rounded-xl shrink-0 ${
+                    confirmDialog.tone === 'rose'
+                      ? 'bg-rose-100 text-rose-600'
+                      : 'bg-emerald-100 text-emerald-600'
+                  }`}
+                >
+                  {confirmDialog.tone === 'rose' ? (
+                    <AlertTriangle className="w-5 h-5" />
+                  ) : (
+                    <ShieldCheck className="w-5 h-5" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">{confirmDialog.title}</h3>
+                  <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{confirmDialog.description}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={Boolean(processingProductId || processingShopId)}
+                onClick={() => {
+                  setConfirmDialog(null);
+                  setConfirmModalError(null);
+                }}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {confirmDialog.detailLines?.length > 0 && (
+              <div className="bg-slate-50 p-3 rounded-2xl space-y-1 text-xs text-slate-700 border border-slate-200/70">
+                {confirmDialog.detailLines.map((line, idx) => (
+                  <div key={idx}>{line}</div>
+                ))}
+              </div>
+            )}
+
+            {confirmDialog.requireNote && (
+              <div className="space-y-1.5 text-xs">
+                <label className="block text-slate-700 font-bold">{confirmDialog.noteLabel || 'Ghi chú thao tác *'}</label>
+                <textarea
+                  rows="3"
+                  value={confirmNote}
+                  onChange={(e) => setConfirmNote(e.target.value)}
+                  placeholder="Nhập lý do chi tiết..."
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-rose-500 focus:bg-white resize-none"
+                />
+              </div>
+            )}
+
+            {confirmModalError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-start gap-2">
+                <XCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                <span>{confirmModalError}</span>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={Boolean(processingProductId || processingShopId)}
+                onClick={() => {
+                  setConfirmDialog(null);
+                  setConfirmModalError(null);
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition disabled:opacity-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={
+                  Boolean(processingProductId || processingShopId) ||
+                  (confirmDialog.requireNote && !confirmNote.trim())
+                }
+                onClick={handleConfirmDialogSubmit}
+                className={`px-5 py-2 text-white rounded-xl text-xs font-bold transition shadow-sm active:scale-95 disabled:opacity-50 flex items-center gap-1.5 ${
+                  confirmDialog.tone === 'rose'
+                    ? 'bg-rose-600 hover:bg-rose-700'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+              >
+                {Boolean(processingProductId || processingShopId) && (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                )}
+                <span>
+                  {Boolean(processingProductId || processingShopId)
+                    ? 'Đang gửi yêu cầu...'
+                    : confirmDialog.confirmLabel}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ================= MODAL: TỪ CHỐI DUYỆT SẢN PHẨM ================= */}
       {rejectingProduct && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -3357,8 +3863,13 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 </p>
               </div>
               <button
-                onClick={() => setRejectingProduct(null)}
-                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                type="button"
+                disabled={submittingModalAction}
+                onClick={() => {
+                  setRejectingProduct(null);
+                  setRejectModalError(null);
+                }}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-50"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -3377,8 +3888,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                     <button
                       key={idx}
                       type="button"
+                      disabled={submittingModalAction}
                       onClick={() => setRejectReason(preset)}
-                      className="p-2 text-left bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl border border-slate-200/80 transition text-[11px] active:scale-95"
+                      className="p-2 text-left bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl border border-slate-200/80 transition text-[11px] active:scale-95 disabled:opacity-50"
                     >
                       • {preset}
                     </button>
@@ -3398,23 +3910,35 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-rose-500 focus:bg-white resize-none"
                 ></textarea>
               </div>
+
+              {rejectModalError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-start gap-2">
+                  <XCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                  <span>{rejectModalError}</span>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => setRejectingProduct(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition"
+                disabled={submittingModalAction}
+                onClick={() => {
+                  setRejectingProduct(null);
+                  setRejectModalError(null);
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition disabled:opacity-50"
               >
                 Hủy bỏ
               </button>
               <button
                 type="button"
                 onClick={handleConfirmRejectProduct}
-                disabled={!rejectReason.trim()}
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-sm active:scale-95 disabled:opacity-50"
+                disabled={submittingModalAction || !rejectReason.trim()}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-sm active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
               >
-                Xác nhận từ chối
+                {submittingModalAction && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                <span>{submittingModalAction ? 'Đang gửi từ chối...' : 'Xác nhận từ chối'}</span>
               </button>
             </div>
           </div>
@@ -3436,8 +3960,13 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 </p>
               </div>
               <button
-                onClick={() => setRejectingShop(null)}
-                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                type="button"
+                disabled={submittingModalAction}
+                onClick={() => {
+                  setRejectingShop(null);
+                  setRejectModalError(null);
+                }}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-50"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -3456,8 +3985,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                     <button
                       key={idx}
                       type="button"
+                      disabled={submittingModalAction}
                       onClick={() => setRejectShopReason(preset)}
-                      className="p-2 text-left bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl border border-slate-200/80 transition text-[11px] active:scale-95"
+                      className="p-2 text-left bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl border border-slate-200/80 transition text-[11px] active:scale-95 disabled:opacity-50"
                     >
                       • {preset}
                     </button>
@@ -3477,23 +4007,35 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-rose-500 focus:bg-white resize-none"
                 ></textarea>
               </div>
+
+              {rejectModalError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-start gap-2">
+                  <XCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                  <span>{rejectModalError}</span>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => setRejectingShop(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition"
+                disabled={submittingModalAction}
+                onClick={() => {
+                  setRejectingShop(null);
+                  setRejectModalError(null);
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition disabled:opacity-50"
               >
                 Hủy bỏ
               </button>
               <button
                 type="button"
                 onClick={handleConfirmRejectShop}
-                disabled={!rejectShopReason.trim()}
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-sm active:scale-95 disabled:opacity-50"
+                disabled={submittingModalAction || !rejectShopReason.trim()}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-sm active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
               >
-                Xác nhận từ chối KYC
+                {submittingModalAction && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                <span>{submittingModalAction ? 'Đang gửi từ chối...' : 'Xác nhận từ chối KYC'}</span>
               </button>
             </div>
           </div>

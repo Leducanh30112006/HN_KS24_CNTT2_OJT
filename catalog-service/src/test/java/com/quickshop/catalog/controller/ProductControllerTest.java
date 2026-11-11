@@ -224,4 +224,37 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.availableStock").value(45))
                 .andExpect(jsonPath("$.data.active").value(true));
     }
+
+    @Test
+    @DisplayName("GET /api/catalog/products/admin - Admin lấy danh sách kiểm duyệt mọi trạng thái (200 OK)")
+    void getProductsForAdmin_Success() throws Exception {
+        PageResult<ProductDto> adminPage = PageResult.<ProductDto>builder()
+                .content(List.of(ProductDto.builder().id(100L).name("SP Chờ duyệt").status(ProductStatus.PENDING).build()))
+                .page(0)
+                .size(50)
+                .totalElements(1L)
+                .totalPages(1)
+                .build();
+
+        when(productService.getProductsForAdmin(isNull(), isNull(), isNull(), isNull(), eq(0), eq(50), eq("ROLE_ADMIN")))
+                .thenReturn(adminPage);
+
+        mockMvc.perform(get("/api/catalog/products/admin")
+                        .header("X-User-Role", "ROLE_ADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].status").value("PENDING"));
+    }
+
+    @Test
+    @DisplayName("GET /api/catalog/products/admin - Không phải Admin bị từ chối 403 Forbidden")
+    void getProductsForAdmin_AsNonAdmin_ReturnsForbidden() throws Exception {
+        when(productService.getProductsForAdmin(any(), any(), any(), any(), anyInt(), anyInt(), eq("ROLE_BUYER")))
+                .thenThrow(new ForbiddenException("Chỉ Admin mới có quyền truy cập danh sách kiểm duyệt toàn hệ thống"));
+
+        mockMvc.perform(get("/api/catalog/products/admin")
+                        .header("X-User-Role", "ROLE_BUYER"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false));
+    }
 }

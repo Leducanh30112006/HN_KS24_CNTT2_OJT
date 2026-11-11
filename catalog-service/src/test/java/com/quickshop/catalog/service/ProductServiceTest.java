@@ -500,5 +500,32 @@ class ProductServiceTest {
             verify(productRepository).findAll(any(Specification.class), any(Pageable.class));
             verify(cacheService).cacheProductPage(anyString(), any(PageResult.class));
         }
+
+        @Test
+        @DisplayName("getProductsForAdmin - Admin bỏ qua Redis storefront cache và lấy tất cả trạng thái sản phẩm")
+        @SuppressWarnings("unchecked")
+        void getProductsForAdmin_AsAdmin_BypassesCacheAndReturnsAll() {
+            sampleProduct.setStatus(ProductStatus.PENDING);
+            when(productRepository.findAll(any(Specification.class), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(sampleProduct)));
+            when(variantRepository.findByProductId(100L)).thenReturn(List.of(sampleVariant));
+
+            PageResult<ProductDto> result = productService.getProductsForAdmin(
+                    null, null, null, null, 0, 50, "ROLE_ADMIN");
+
+            assertThat(result).isNotNull();
+            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getContent().get(0).getStatus()).isEqualTo(ProductStatus.PENDING);
+            verify(cacheService, never()).getCachedProductPage(anyString());
+            verify(cacheService, never()).cacheProductPage(anyString(), any());
+        }
+
+        @Test
+        @DisplayName("getProductsForAdmin - Không phải Admin bị từ chối ForbiddenException")
+        void getProductsForAdmin_AsNonAdmin_ThrowsForbidden() {
+            assertThatThrownBy(() -> productService.getProductsForAdmin(
+                    null, null, null, null, 0, 50, "ROLE_SELLER"))
+                    .isInstanceOf(ForbiddenException.class);
+        }
     }
 }

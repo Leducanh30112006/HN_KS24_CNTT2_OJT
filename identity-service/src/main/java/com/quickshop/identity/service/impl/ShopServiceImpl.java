@@ -227,8 +227,7 @@ public class ShopServiceImpl implements ShopService {
         shopEventProducer.publishShopApproved(approvedEvent);
 
         // Ghi Audit Log duyệt Shop
-        String adminUsername = adminId != null ? userRepository.findById(adminId).map(User::getUsername).orElse("admin") : "system_admin";
-        auditLogService.logSuccess(adminId, adminUsername, "SHOP_APPROVED", "Shop", updated.getId(),
+        auditLogService.logSuccess(adminId, resolveAdminUsername(adminId), "SHOP_APPROVED", "Shop", updated.getId(),
                 "Phê duyệt hồ sơ gian hàng '" + updated.getShopName() + "' và cấp quyền ROLE_SELLER cho chủ shop");
 
         log.info("Shop [id={}, name='{}'] APPROVED by Admin [id={}]", updated.getId(), updated.getShopName(), adminId);
@@ -267,11 +266,59 @@ public class ShopServiceImpl implements ShopService {
         shopEventProducer.publishShopRejected(rejectedEvent);
 
         // Ghi Audit Log từ chối Shop
-        String adminUsername = adminId != null ? userRepository.findById(adminId).map(User::getUsername).orElse("admin") : "system_admin";
-        auditLogService.logSuccess(adminId, adminUsername, "SHOP_REJECTED", "Shop", updated.getId(),
+        auditLogService.logSuccess(adminId, resolveAdminUsername(adminId), "SHOP_REJECTED", "Shop", updated.getId(),
                 "Từ chối hồ sơ gian hàng '" + updated.getShopName() + "'. Lý do: " + (reason != null ? reason : "Không đạt tiêu chuẩn kiểm duyệt"));
 
         log.info("Shop [id={}, name='{}'] REJECTED by Admin [id={}]. Reason: {}", updated.getId(), updated.getShopName(), adminId, reason);
         return ShopResponse.fromEntity(updated);
+    }
+
+    @Override
+    @Transactional
+    public ShopResponse suspendShop(Long id, Long adminId, String reason) {
+        Shop shop = shopRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", id));
+
+        String suspendNote = (reason != null && !reason.isBlank())
+                ? reason.trim()
+                : "Gian hàng tạm đình chỉ bởi quản trị viên";
+        shop.setStatus(ShopStatus.SUSPENDED);
+        shop.setRejectionReason(suspendNote);
+        Shop updated = shopRepository.save(shop);
+
+        auditLogService.logSuccess(adminId, resolveAdminUsername(adminId), "SHOP_SUSPENDED", "Shop", updated.getId(),
+                "Tạm khóa gian hàng '" + updated.getShopName() + "'. Lý do: " + suspendNote);
+
+        log.info("Shop [id={}, name='{}'] SUSPENDED by Admin [id={}]. Reason: {}", updated.getId(), updated.getShopName(), adminId, suspendNote);
+        return ShopResponse.fromEntity(updated);
+    }
+
+    @Override
+    @Transactional
+    public ShopResponse activateShop(Long id, Long adminId) {
+        Shop shop = shopRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Shop", "id", id));
+
+        shop.setStatus(ShopStatus.ACTIVE);
+        shop.setRejectionReason(null);
+        Shop updated = shopRepository.save(shop);
+
+        User owner = userRepository.findById(shop.getOwnerId()).orElse(null);
+        if (owner != null && owner.getRole() == Role.ROLE_BUYER) {
+            owner.setRole(Role.ROLE_SELLER);
+            userRepository.save(owner);
+        }
+
+        auditLogService.logSuccess(adminId, resolveAdminUsername(adminId), "SHOP_ACTIVATED", "Shop", updated.getId(),
+                "Mở khóa hoạt động trở lại cho gian hàng '" + updated.getShopName() + "'");
+
+        log.info("Shop [id={}, name='{}'] ACTIVATED by Admin [id={}]", updated.getId(), updated.getShopName(), adminId);
+        return ShopResponse.fromEntity(updated);
+    }
+
+    private String resolveAdminUsername(Long adminId) {
+        return adminId != null
+                ? userRepository.findById(adminId).map(User::getUsername).orElse("admin")
+                : "system_admin";
     }
 }
