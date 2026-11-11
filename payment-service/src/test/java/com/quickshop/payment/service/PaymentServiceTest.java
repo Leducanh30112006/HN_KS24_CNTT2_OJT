@@ -54,7 +54,7 @@ class PaymentServiceTest {
     private RabbitTemplate rabbitTemplate;
 
     @Mock
-    private vn.payos.PayOS payOS;
+    private PayOsService payOsService;
 
     @InjectMocks
     private PaymentServiceImpl paymentService;
@@ -221,85 +221,52 @@ class PaymentServiceTest {
     }
 
     @Test
-    @DisplayName("PayOS: Tạo yêu cầu thanh toán thành công và lưu PaymentTransaction")
-    void testCreatePayOsPayment_Success() {
-        when(paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc("QS-999999"))
-                .thenReturn(Optional.empty());
-        when(paymentTransactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
+    @DisplayName("PayOS: Tạo yêu cầu thanh toán chuyển khoản ủy quyền cho PayOsService")
+    void testCreatePayOsPayment_DelegatesToPayOsService() {
         CreatePayOsPaymentRequest req = CreatePayOsPaymentRequest.builder()
                 .orderId("QS-999999")
                 .amount(BigDecimal.valueOf(250000))
                 .userId(1001L)
                 .build();
 
-        CreatePayOsPaymentResponse resp = paymentService.createPayOsPayment(req);
+        CreatePayOsPaymentResponse expected = CreatePayOsPaymentResponse.builder()
+                .orderId("QS-999999")
+                .amount(BigDecimal.valueOf(250000))
+                .accountNumber("0346746521")
+                .accountName("NGUYEN VAN KIEN")
+                .qrCode("https://img.vietqr.io/...")
+                .build();
 
+        when(payOsService.createPaymentLink(req)).thenReturn(expected);
+
+        CreatePayOsPaymentResponse resp = paymentService.createPayOsPayment(req);
         assertNotNull(resp);
         assertEquals("QS-999999", resp.getOrderId());
-        assertEquals(BigDecimal.valueOf(250000), resp.getAmount());
-        assertEquals("0346746521", resp.getAccountNumber());
-        assertEquals("NGUYEN VAN KIEN", resp.getAccountName());
-        assertNotNull(resp.getQrCode());
-        verify(paymentTransactionRepository, times(1)).save(any());
+        verify(payOsService, times(1)).createPaymentLink(req);
     }
 
     @Test
-    @DisplayName("PayOS: Xử lý Webhook thanh toán MB Bank thành công và Idempotent")
-    void testProcessPayOsWebhook_SuccessAndIdempotent() {
-        when(paymentTransactionRepository.findByTxnRef("123456")).thenReturn(Optional.empty());
-        when(paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc("123456")).thenReturn(Optional.empty());
-        when(paymentTransactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    @DisplayName("PayOS: Xử lý Webhook ủy quyền cho PayOsService")
+    void testProcessPayOsWebhook_DelegatesToPayOsService() {
+        java.util.Map<String, Object> webhookData = java.util.Map.of("code", "00");
+        java.util.Map<String, Object> expected = java.util.Map.of("error", 0, "message", "OK");
 
-        java.util.Map<String, Object> webhookData = new java.util.HashMap<>();
-        java.util.Map<String, Object> data = new java.util.HashMap<>();
-        data.put("orderCode", 123456L);
-        data.put("amount", 250000L);
-        data.put("description", "QS DH123456");
-        data.put("reference", "MB_REF_001");
-        data.put("code", "00");
-        webhookData.put("data", data);
+        when(payOsService.processWebhook(webhookData)).thenReturn(expected);
 
-        // Lần 1: Xử lý thành công
-        java.util.Map<String, Object> res1 = paymentService.processPayOsWebhook(webhookData);
-        assertEquals(0, res1.get("error"));
-        verify(ledgerService, times(1)).recordDoubleEntry(
-                anyString(), eq("PAYMENT_PAYOS_MBBANK_SUCCESS"), eq("MBBANK_PAYOS_GATEWAY"), eq("ESCROW_HOLDING"), any());
-
-        // Lần 2: Giả lập gọi lại cùng dữ liệu (Idempotent test)
-        com.quickshop.payment.entity.PaymentTransaction existingSuccess = com.quickshop.payment.entity.PaymentTransaction.builder()
-                .orderId("123456")
-                .txnRef("123456")
-                .amount(BigDecimal.valueOf(250000))
-                .status(com.quickshop.payment.entity.PaymentStatus.SUCCESS)
-                .build();
-        when(paymentTransactionRepository.findByTxnRef("123456")).thenReturn(Optional.of(existingSuccess));
-
-        java.util.Map<String, Object> res2 = paymentService.processPayOsWebhook(webhookData);
-        assertEquals(0, res2.get("error"));
-        assertTrue(String.valueOf(res2.get("message")).contains("Idempotent"));
-        // Đảm bảo không ghi sổ kép
-        verify(ledgerService, times(1)).recordDoubleEntry(anyString(), anyString(), anyString(), anyString(), any());
+        java.util.Map<String, Object> res = paymentService.processPayOsWebhook(webhookData);
+        assertEquals(0, res.get("error"));
+        verify(payOsService, times(1)).processWebhook(webhookData);
     }
 
     @Test
-    @DisplayName("PayOS: Kiểm tra trạng thái thanh toán checkPaymentStatus")
-    void testCheckPaymentStatus_Success() {
-        com.quickshop.payment.entity.PaymentTransaction existingSuccess = com.quickshop.payment.entity.PaymentTransaction.builder()
-                .orderId("QS-888888")
-                .txnRef("888888")
-                .amount(BigDecimal.valueOf(150000))
-                .status(com.quickshop.payment.entity.PaymentStatus.SUCCESS)
-                .vnpTransactionNo("MB_FAST_888888")
-                .bankCode("MB")
-                .build();
-        when(paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc("QS-888888"))
-                .thenReturn(Optional.of(existingSuccess));
+    @DisplayName("PayOS: Kiểm tra trạng thái checkPaymentStatus ủy quyền cho PayOsService")
+    void testCheckPaymentStatus_DelegatesToPayOsService() {
+        java.util.Map<String, Object> expected = java.util.Map.of("paid", true, "status", "SUCCESS");
+
+        when(payOsService.checkPaymentStatus("QS-888888")).thenReturn(expected);
 
         java.util.Map<String, Object> status = paymentService.checkPaymentStatus("QS-888888");
         assertTrue((Boolean) status.get("paid"));
-        assertEquals("SUCCESS", status.get("status"));
-        assertEquals("MB", status.get("bankCode"));
-        assertEquals("MB_FAST_888888", status.get("transactionNo"));
+        verify(payOsService, times(1)).checkPaymentStatus("QS-888888");
     }
 }

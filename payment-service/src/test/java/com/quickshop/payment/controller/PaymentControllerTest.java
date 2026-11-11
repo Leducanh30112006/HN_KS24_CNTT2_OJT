@@ -7,6 +7,7 @@ import com.quickshop.payment.entity.LedgerEntry;
 import com.quickshop.payment.entity.Wallet;
 import com.quickshop.payment.entity.Withdrawal;
 import com.quickshop.payment.service.LedgerService;
+import com.quickshop.payment.service.PayOsService;
 import com.quickshop.payment.service.PaymentService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,9 @@ class PaymentControllerTest {
 
     @MockBean
     private PaymentService paymentService;
+
+    @MockBean
+    private PayOsService payOsService;
 
     @MockBean
     private LedgerService ledgerService;
@@ -141,24 +145,27 @@ class PaymentControllerTest {
     }
 
     @Test
-    @DisplayName("API POST /api/payments/vnpay-create trả về 200 kèm url")
-    void testCreateVNPayUrlApi() throws Exception {
-        VNPayPaymentResponse mockResponse = VNPayPaymentResponse.builder()
+    @DisplayName("API POST /api/payments/payos/create chỉ cần nhận orderId trả về 200")
+    void testCreatePayOsPaymentApi() throws Exception {
+        CreatePayOsPaymentResponse mockResponse = CreatePayOsPaymentResponse.builder()
                 .orderId("ORD-123")
-                .txnRef("ORD-123_1700000000000")
+                .orderCode(123L)
                 .amount(BigDecimal.valueOf(500000))
-                .paymentUrl("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_TxnRef=ORD-123_1700000000000&vnp_SecureHash=abcdef")
+                .checkoutUrl("https://pay.payos.vn/web/mock123")
+                .qrCode("https://img.vietqr.io/image/970422-0346746521-compact2.png")
+                .accountNumber("0346746521")
+                .accountName("NGUYEN VAN KIEN")
+                .status("PENDING")
                 .build();
 
-        when(paymentService.createVNPayPayment(any(), any())).thenReturn(mockResponse);
+        when(payOsService.createPayment("ORD-123")).thenReturn(mockResponse);
 
-        mockMvc.perform(post("/api/payments/vnpay-create")
-                        .param("orderId", "ORD-123")
-                        .param("amount", "500000"))
+        mockMvc.perform(post("/api/payments/payos/create")
+                        .param("orderIdParam", "ORD-123"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.orderId").value("ORD-123"))
-                .andExpect(jsonPath("$.data.paymentUrl").isNotEmpty());
+                .andExpect(jsonPath("$.data.checkoutUrl").value("https://pay.payos.vn/web/mock123"));
     }
 
     @Test
