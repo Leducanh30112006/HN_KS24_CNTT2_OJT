@@ -1,23 +1,20 @@
 package com.quickshop.payment.controller;
 
 import com.quickshop.common.dto.ApiResponse;
+import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.payment.dto.*;
 import com.quickshop.payment.entity.EscrowAccount;
 import com.quickshop.payment.entity.LedgerEntry;
-import com.quickshop.payment.entity.PaymentStatus;
 import com.quickshop.payment.entity.Wallet;
 import com.quickshop.payment.entity.Withdrawal;
 import com.quickshop.payment.service.LedgerService;
+import com.quickshop.payment.service.PayOsService;
 import com.quickshop.payment.service.PaymentService;
-import com.quickshop.payment.util.VNPayUtil;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +24,7 @@ import java.util.Map;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final PayOsService payOsService;
     private final LedgerService ledgerService;
 
     @GetMapping("/wallet/{shopId}")
@@ -118,34 +116,98 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success("Xác thực tính bất biến Nợ/Có giao dịch thành công", isValid));
     }
 
-    @PostMapping("/vnpay/create")
-    public ResponseEntity<ApiResponse<VNPayPaymentResponse>> createVNPayPayment(
-            @Valid @RequestBody CreateVNPayPaymentRequest request,
-            HttpServletRequest servletRequest
+    // =========================================================================
+    // CỔNG THANH TOÁN CHUYỂN KHOẢN PAYOS (MB BANK 24/7)
+    // =========================================================================
+
+    /**
+     * Tạo yêu cầu thanh toán PayOS chuyển khoản MB Bank chỉ cần nhận orderId.
+     * Tự động tra cứu số tiền đơn hàng, tự sinh request và đóng gói response đầy đủ.
+     * Hỗ trợ nhận orderId qua Query Param (?orderId=...), Path Variable (/payos/create/{orderId}),
+     * hoặc JSON Request Body ({ "orderId": "..." }).
+     */
+    @PostMapping({"/create", "/payos/create", "/payos/create/{orderId}"})
+    public ResponseEntity<ApiResponse<CreatePayOsPaymentResponse>> createPayment(
+            @PathVariable(required = false) String orderId,
+            @RequestParam(required = false, name = "orderId") String orderIdQuery,
+            @RequestParam(required = false, name = "orderIdParam") String orderIdParam,
+            @RequestBody(required = false) Map<String, Object> body
     ) {
-        String clientIp = VNPayUtil.getClientIp(servletRequest);
-        VNPayPaymentResponse response = paymentService.createVNPayPayment(request, clientIp);
-        return ResponseEntity.ok(ApiResponse.success("Tạo URL thanh toán VNPay thành công", response));
+        String targetOrderId = orderId;
+        if (targetOrderId == null || targetOrderId.isBlank()) {
+            targetOrderId = orderIdQuery;
+        }
+        if (targetOrderId == null || targetOrderId.isBlank()) {
+            targetOrderId = orderIdParam;
+        }
+        if ((targetOrderId == null || targetOrderId.isBlank()) && body != null) {
+            targetOrderId = String.valueOf(body.getOrDefault("orderId", ""));
+        }
+        if (targetOrderId == null || targetOrderId.isBlank()) {
+            throw new BadRequestException("Mã đơn hàng (orderId) không được để trống");
+        }
+
+        BigDecimal customAmount = null;
+        if (body != null && body.containsKey("amount")) {
+            try {
+                customAmount = new BigDecimal(String.valueOf(body.get("amount")));
+            } catch (Exception ignored) {}
+        }
+
+        CreatePayOsPaymentResponse response = (customAmount != null && customAmount.compareTo(BigDecimal.ZERO) > 0)
+                ? payOsService.createPayment(targetOrderId, customAmount)
+                : payOsService.createPayment(targetOrderId);
+
+        return ResponseEntity.ok(ApiResponse.success("Tạo yêu cầu thanh toán PayOS thành công", response));
     }
 
-    @PostMapping("/vnpay-create")
-    public ResponseEntity<ApiResponse<Map<String, String>>> createVNPayUrl(
-            @RequestParam String orderId,
-            @RequestParam BigDecimal amount,
-            HttpServletRequest servletRequest
+    /**
+     * Kiểm tra trạng thái thanh toán xem đã chuyển tiền chưa (Active Polling qua PayOS API)
+     */
+    @GetMapping({"/status/{orderId}", "/payos/status/{orderId}"})
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkPaymentStatus(@PathVariable String orderId) {
+        Map<String, Object> status = payOsService.checkPaymentStatus(orderId);
+        return ResponseEntity.ok(ApiResponse.success("Kiểm tra trạng thái thanh toán thành công", status));
+    }
+
+    /**
+     * Webhook tiếp nhận thông báo biến động số dư từ PayOS khi khách chuyển khoản vào MB Bank
+     */
+    @PostMapping("/payos/webhook")
+    public ResponseEntity<Map<String, Object>> handlePayOsWebhook(@RequestBody Map<String, Object> webhookData) {
+        Map<String, Object> response = payOsService.processWebhook(webhookData);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Xác nhận và đăng ký Webhook URL với PayOS server
+     */
+    @PostMapping("/payos/confirm-webhook")
+    public ResponseEntity<ApiResponse<String>> confirmPayOsWebhook(
+            @RequestParam(required = false) String webhookUrl,
+            @RequestBody(required = false) Map<String, String> body
     ) {
-        String clientIp = VNPayUtil.getClientIp(servletRequest);
-        CreateVNPayPaymentRequest request = CreateVNPayPaymentRequest.builder()
-                .orderId(orderId)
-                .amount(amount)
-                .orderInfo("Thanh toan don hang #" + orderId)
-                .build();
-        VNPayPaymentResponse vnpResponse = paymentService.createVNPayPayment(request, clientIp);
-        Map<String, String> response = new HashMap<>();
-        response.put("paymentUrl", vnpResponse.getPaymentUrl());
-        response.put("orderId", orderId);
-        response.put("txnRef", vnpResponse.getTxnRef());
-        return ResponseEntity.ok(ApiResponse.success("Tạo URL thanh toán VNPay thành công", response));
+        String targetUrl = webhookUrl;
+        if ((targetUrl == null || targetUrl.isBlank()) && body != null) {
+            targetUrl = body.getOrDefault("webhookUrl", "");
+        }
+        if (targetUrl == null || targetUrl.isBlank()) {
+            throw new BadRequestException("Webhook URL không được để trống");
+        }
+        String result = payOsService.confirmWebhook(targetUrl);
+        return ResponseEntity.ok(ApiResponse.success("Xác nhận Webhook PayOS thành công", result));
+    }
+
+    /**
+     * Hủy liên kết thanh toán PayOS
+     */
+    @PostMapping("/payos/cancel")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> cancelPayOsPayment(
+            @RequestParam String orderId,
+            @RequestParam(required = false, defaultValue = "Khách hàng hủy thanh toán") String reason
+    ) {
+        Map<String, Object> result = payOsService.cancelPaymentLink(orderId, reason);
+        return ResponseEntity.ok(ApiResponse.success("Hủy liên kết thanh toán PayOS thành công", result));
     }
 
     @GetMapping("/transactions/{txnRef}")
@@ -165,24 +227,14 @@ public class PaymentController {
     }
 
     /**
-     * VNPay IPN (Instant Payment Notification) Webhook
-     * VNPay Server gọi sang endpoint này sau khi khách hoàn tất giao dịch
+     * Endpoint giả lập chuyển khoản MB Bank thành công (dùng cho dev/test và demo kiểm thử tức thì)
      */
-    @GetMapping({"/vnpay/ipn", "/vnpay-ipn"})
-    public ResponseEntity<Map<String, String>> processVNPayIpn(@RequestParam Map<String, String> allParams) {
-        Map<String, String> result = paymentService.processVNPayIpn(allParams);
-        return ResponseEntity.ok(result);
-    }
-
-    /**
-     * VNPay Return URL: Khách hàng được redirect về sau khi thanh toán trên cổng VNPay
-     */
-    @GetMapping({"/vnpay/return", "/vnpay-return"})
-    public ResponseEntity<ApiResponse<PaymentTransactionResponse>> processVNPayReturn(@RequestParam Map<String, String> allParams) {
-        PaymentTransactionResponse response = paymentService.processVNPayReturn(allParams);
-        String msg = (response.getStatus() == PaymentStatus.SUCCESS)
-                ? "Thanh toán đơn hàng qua VNPay thành công"
-                : "Giao dịch thanh toán VNPay không thành công hoặc đã bị hủy";
-        return ResponseEntity.ok(ApiResponse.success(msg, response));
+    @PostMapping("/payos/simulate-success")
+    public ResponseEntity<ApiResponse<PaymentTransactionResponse>> simulateSuccess(
+            @RequestParam String orderId,
+            @RequestParam(required = false) BigDecimal amount
+    ) {
+        PaymentTransactionResponse response = paymentService.simulatePaymentSuccess(orderId, amount);
+        return ResponseEntity.ok(ApiResponse.success("Xác nhận chuyển khoản MB Bank thành công", response));
     }
 }

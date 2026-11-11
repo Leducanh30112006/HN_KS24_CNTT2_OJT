@@ -123,7 +123,15 @@ spring:
                 allowedRoles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN"
             - StripPrefix=0
 
-        # 7. Payment Service - VNPay & Wallet (Yêu cầu đăng nhập)
+        # 7a. Payment Service - Public Webhooks, Callbacks & Status (VNPay IPN, PayOS Webhook, Polling)
+        - id: payment-public-route
+          uri: ${PAYMENT_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/payments/vnpay/**, /api/payments/payos/**, /api/payments/status/**, /api/payments/vnpay-ipn, /api/payments/vnpay-return, /api/payments/vnpay-create
+          filters:
+            - StripPrefix=0
+
+        # 7b. Payment Service - VNPay & Wallet (Yêu cầu đăng nhập)
         - id: payment-service-route
           uri: ${PAYMENT_SERVICE_URL:http://localhost:8084}
           predicates:

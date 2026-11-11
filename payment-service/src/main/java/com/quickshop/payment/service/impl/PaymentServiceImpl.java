@@ -18,6 +18,7 @@ import com.quickshop.payment.repository.PaymentTransactionRepository;
 import com.quickshop.payment.repository.WalletRepository;
 import com.quickshop.payment.repository.WithdrawalRepository;
 import com.quickshop.payment.service.LedgerService;
+import com.quickshop.payment.service.PayOsService;
 import com.quickshop.payment.service.PaymentService;
 import com.quickshop.payment.util.VNPayUtil;
 import lombok.RequiredArgsConstructor;
@@ -25,12 +26,22 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.payos.PayOS;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
+import vn.payos.model.v2.paymentRequests.PaymentLink;
+import vn.payos.model.v2.paymentRequests.PaymentLinkItem;
+import vn.payos.model.v2.paymentRequests.PaymentLinkStatus;
+import vn.payos.model.webhooks.WebhookData;
 
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -50,6 +61,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final VNPayConfig vnPayConfig;
     private final RabbitTemplate rabbitTemplate;
+    private final PayOsService payOsService;
 
     @Override
     @Transactional
@@ -574,15 +586,20 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             Long masterOrderId = null;
             try {
-                masterOrderId = Long.parseLong(txn.getOrderId());
-            } catch (NumberFormatException ignored) {}
+                String digits = txn.getOrderId().replaceAll("[^0-9]", "");
+                if (!digits.isEmpty()) {
+                    masterOrderId = Long.parseLong(digits);
+                }
+            } catch (Exception ignored) {}
+
+            String method = txn.getPaymentMethod() != null ? txn.getPaymentMethod() : "PAYOS_MBBANK";
 
             PaymentCompletedEvent event = PaymentCompletedEvent.builder()
                     .orderId(txn.getOrderId())
                     .masterOrderId(masterOrderId)
                     .userId(txn.getUserId())
                     .amount(txn.getAmount())
-                    .paymentMethod("VNPAY")
+                    .paymentMethod(method)
                     .transactionId(txn.getTxnRef())
                     .timestamp(LocalDateTime.now())
                     .build();
@@ -592,7 +609,7 @@ public class PaymentServiceImpl implements PaymentService {
                     RabbitMQPaymentConfig.ROUTING_KEY_PAYMENT_COMPLETED,
                     event
             );
-            log.info("Đã phát PaymentCompletedEvent tới RabbitMQ cho MasterOrder #{}", txn.getOrderId());
+            log.info("Đã phát PaymentCompletedEvent tới RabbitMQ cho MasterOrder #{}, method={}", txn.getOrderId(), method);
         } catch (Exception e) {
             log.error("Lỗi khi phát PaymentCompletedEvent cho đơn #{}: {}", txn.getOrderId(), e.getMessage(), e);
         }
@@ -602,15 +619,18 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             Long masterOrderId = null;
             try {
-                masterOrderId = Long.parseLong(txn.getOrderId());
-            } catch (NumberFormatException ignored) {}
+                String digits = txn.getOrderId().replaceAll("[^0-9]", "");
+                if (!digits.isEmpty()) {
+                    masterOrderId = Long.parseLong(digits);
+                }
+            } catch (Exception ignored) {}
 
             PaymentFailedEvent event = PaymentFailedEvent.builder()
                     .orderId(txn.getOrderId())
                     .masterOrderId(masterOrderId)
                     .userId(txn.getUserId())
                     .amount(txn.getAmount())
-                    .paymentMethod("VNPAY")
+                    .paymentMethod(txn.getPaymentMethod() != null ? txn.getPaymentMethod() : "PAYOS_MBBANK")
                     .reason(reason)
                     .timestamp(LocalDateTime.now())
                     .build();
@@ -648,5 +668,99 @@ public class PaymentServiceImpl implements PaymentService {
                 .updatedAt(txn.getUpdatedAt())
                 .expireAt(txn.getExpireAt())
                 .build();
+    }
+
+    private Long resolveNumericOrderCode(String orderId) {
+        if (orderId == null || orderId.isBlank()) {
+            return (System.currentTimeMillis() % 100000000L);
+        }
+        String digits = orderId.replaceAll("[^0-9]", "");
+        if (!digits.isEmpty() && digits.length() <= 15) {
+            try {
+                long val = Long.parseLong(digits);
+                if (val > 0) return val;
+            } catch (NumberFormatException ignored) {}
+        }
+        return Math.abs((long) orderId.hashCode() % 100000000L) + 100000L;
+    }
+
+    @Override
+    public CreatePayOsPaymentResponse createPayOsPayment(String orderId) {
+        return payOsService.createPayment(orderId);
+    }
+
+    @Override
+    public CreatePayOsPaymentResponse createPayOsPayment(String orderId, BigDecimal amount) {
+        return payOsService.createPayment(orderId, amount);
+    }
+
+    @Override
+    public CreatePayOsPaymentResponse createPayOsPayment(CreatePayOsPaymentRequest request) {
+        return payOsService.createPaymentLink(request);
+    }
+
+    @Override
+    public Map<String, Object> checkPaymentStatus(String orderId) {
+        return payOsService.checkPaymentStatus(orderId);
+    }
+
+    @Override
+    public Map<String, Object> processPayOsWebhook(Map<String, Object> webhookData) {
+        return payOsService.processWebhook(webhookData);
+    }
+
+    @Override
+    public String confirmPayOsWebhook(String webhookUrl) {
+        return payOsService.confirmWebhook(webhookUrl);
+    }
+
+    @Override
+    public Map<String, Object> cancelPayOsPayment(String orderId, String reason) {
+        return payOsService.cancelPaymentLink(orderId, reason);
+    }
+
+    @Override
+    @Transactional
+    public PaymentTransactionResponse simulatePaymentSuccess(String orderId, BigDecimal amount) {
+        if (orderId == null || orderId.isBlank()) {
+            throw new BadRequestException("Mã đơn hàng không được để trống");
+        }
+
+        BigDecimal finalAmount = (amount != null && amount.compareTo(BigDecimal.ZERO) > 0)
+                ? amount
+                : BigDecimal.valueOf(100000);
+
+        PaymentTransaction txn = paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId)
+                .orElseGet(() -> PaymentTransaction.builder()
+                        .orderId(orderId)
+                        .txnRef("MB-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 10000))
+                        .amount(finalAmount)
+                        .paymentMethod("PAYOS_MBBANK")
+                        .status(PaymentStatus.PENDING)
+                        .orderInfo("Thanh toan chuyen khoan MB Bank don hang #" + orderId)
+                        .bankCode("MB")
+                        .build());
+
+        txn.setStatus(PaymentStatus.SUCCESS);
+        txn.setPaymentMethod("PAYOS_MBBANK");
+        txn.setVnpResponseCode("00");
+        txn.setVnpBankCode("MB");
+        txn.setVnpTransactionNo("MB_FAST_" + System.currentTimeMillis());
+        txn.setVnpPayDate(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        paymentTransactionRepository.save(txn);
+
+        log.info("Giả lập chuyển khoản MB Bank thành công cho đơn hàng #{}, số tiền: {}", orderId, txn.getAmount());
+
+        ledgerService.recordDoubleEntry(
+                "MBBANK-" + txn.getTxnRef(),
+                "PAYMENT_MBBANK_SUCCESS",
+                "MBBANK_NAPAS_GATEWAY",
+                "ESCROW_HOLDING",
+                txn.getAmount()
+        );
+
+        publishPaymentCompleted(txn);
+
+        return mapToTransactionResponse(txn);
     }
 }

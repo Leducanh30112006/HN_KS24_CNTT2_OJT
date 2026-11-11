@@ -53,6 +53,9 @@ class PaymentServiceTest {
     @Mock
     private RabbitTemplate rabbitTemplate;
 
+    @Mock
+    private PayOsService payOsService;
+
     @InjectMocks
     private PaymentServiceImpl paymentService;
 
@@ -215,5 +218,55 @@ class PaymentServiceTest {
         assertEquals(BigDecimal.valueOf(700000), sampleWallet.getBalance());
         verify(ledgerService, times(1)).recordDoubleEntry(
                 eq("WITHDRAWAL-CMP-99"), eq("WITHDRAWAL_COMPLETED"), eq("WITHDRAWAL_PENDING"), eq("BANK_SETTLEMENT"), eq(BigDecimal.valueOf(300000)));
+    }
+
+    @Test
+    @DisplayName("PayOS: Tạo yêu cầu thanh toán chuyển khoản ủy quyền cho PayOsService")
+    void testCreatePayOsPayment_DelegatesToPayOsService() {
+        CreatePayOsPaymentRequest req = CreatePayOsPaymentRequest.builder()
+                .orderId("QS-999999")
+                .amount(BigDecimal.valueOf(250000))
+                .userId(1001L)
+                .build();
+
+        CreatePayOsPaymentResponse expected = CreatePayOsPaymentResponse.builder()
+                .orderId("QS-999999")
+                .amount(BigDecimal.valueOf(250000))
+                .accountNumber("0346746521")
+                .accountName("NGUYEN VAN KIEN")
+                .qrCode("https://img.vietqr.io/...")
+                .build();
+
+        when(payOsService.createPaymentLink(req)).thenReturn(expected);
+
+        CreatePayOsPaymentResponse resp = paymentService.createPayOsPayment(req);
+        assertNotNull(resp);
+        assertEquals("QS-999999", resp.getOrderId());
+        verify(payOsService, times(1)).createPaymentLink(req);
+    }
+
+    @Test
+    @DisplayName("PayOS: Xử lý Webhook ủy quyền cho PayOsService")
+    void testProcessPayOsWebhook_DelegatesToPayOsService() {
+        java.util.Map<String, Object> webhookData = java.util.Map.of("code", "00");
+        java.util.Map<String, Object> expected = java.util.Map.of("error", 0, "message", "OK");
+
+        when(payOsService.processWebhook(webhookData)).thenReturn(expected);
+
+        java.util.Map<String, Object> res = paymentService.processPayOsWebhook(webhookData);
+        assertEquals(0, res.get("error"));
+        verify(payOsService, times(1)).processWebhook(webhookData);
+    }
+
+    @Test
+    @DisplayName("PayOS: Kiểm tra trạng thái checkPaymentStatus ủy quyền cho PayOsService")
+    void testCheckPaymentStatus_DelegatesToPayOsService() {
+        java.util.Map<String, Object> expected = java.util.Map.of("paid", true, "status", "SUCCESS");
+
+        when(payOsService.checkPaymentStatus("QS-888888")).thenReturn(expected);
+
+        java.util.Map<String, Object> status = paymentService.checkPaymentStatus("QS-888888");
+        assertTrue((Boolean) status.get("paid"));
+        verify(payOsService, times(1)).checkPaymentStatus("QS-888888");
     }
 }
