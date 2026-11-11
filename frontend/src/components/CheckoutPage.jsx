@@ -37,17 +37,10 @@ export default function CheckoutPage({
   });
 
   // Voucher states (Phân chia rõ ràng Voucher Sàn & Voucher Shop chuẩn Shopee)
+  // Mặc định KHÔNG áp dụng voucher tự động, chỉ áp dụng khi người dùng bấm chọn hoặc nhập mã
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
-  const [appliedShippingVoucher, setAppliedShippingVoucher] = useState({
-    code: 'FREESHIPMAX',
-    discount: 25000,
-    title: 'Miễn Phí Vận Chuyển Toàn Quốc',
-  });
-  const [appliedPlatformVoucher, setAppliedPlatformVoucher] = useState({
-    code: 'QUICKSHOP50K',
-    discount: 50000,
-    title: 'Giảm 50.000₫ Đơn Hàng Sàn',
-  });
+  const [appliedShippingVoucher, setAppliedShippingVoucher] = useState(null);
+  const [appliedPlatformVoucher, setAppliedPlatformVoucher] = useState(null);
   const [appliedShopVouchers, setAppliedShopVouchers] = useState({});
   const [voucherCode, setVoucherCode] = useState('');
   const [voucherApplied, setVoucherApplied] = useState('');
