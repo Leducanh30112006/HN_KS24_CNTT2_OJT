@@ -1,6 +1,11 @@
 package com.quickshop.notification.ai.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.quickshop.notification.ai.catalog.AiCatalogItemDto;
+import com.quickshop.notification.ai.catalog.AiCatalogSearchRequest;
+import com.quickshop.notification.ai.catalog.AiCatalogSearchResult;
+import com.quickshop.notification.ai.catalog.AiCatalogSearchService;
+import com.quickshop.notification.ai.catalog.CircuitBreakerState;
 import com.quickshop.notification.ai.dto.AiChatRequest;
 import com.quickshop.notification.ai.dto.AiChatResponse;
 import com.quickshop.notification.ai.dto.PromptVerifyDto;
@@ -16,10 +21,12 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -39,6 +46,9 @@ class AiAssistantControllerTest {
 
     @MockBean
     private AiAssistantService aiAssistantService;
+
+    @MockBean
+    private AiCatalogSearchService aiCatalogSearchService;
 
     @Test
     @DisplayName("POST /api/ai/chat - Trò chuyện tư vấn mua sắm thành công")
@@ -107,6 +117,77 @@ class AiAssistantControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.assistantName").value("QuickShop AI Shopping Assistant"));
+    }
+
+    @Test
+    @DisplayName("GET /api/ai/catalog/search - Tìm kiếm sản phẩm catalog RAG thành công")
+    void searchCatalog_Success() throws Exception {
+        AiCatalogItemDto item = AiCatalogItemDto.builder()
+                .id(1L)
+                .name("Laptop QuickBook Ultra 14 inch")
+                .categoryName("Laptop & Máy tính")
+                .minPrice(BigDecimal.valueOf(45990000))
+                .maxPrice(BigDecimal.valueOf(57990000))
+                .totalStock(30)
+                .averageRating(5.0)
+                .status("ACTIVE")
+                .build();
+
+        AiCatalogSearchResult result = AiCatalogSearchResult.builder()
+                .items(List.of(item))
+                .snippets(List.of(item.toSnippet()))
+                .totalFound(1)
+                .source("CATALOG_SERVICE_LIVE")
+                .fallbackUsed(false)
+                .circuitBreakerState(CircuitBreakerState.CLOSED)
+                .executionTimeMs(25)
+                .build();
+
+        when(aiCatalogSearchService.searchProducts(any(AiCatalogSearchRequest.class))).thenReturn(result);
+
+        mockMvc.perform(get("/api/ai/catalog/search")
+                        .param("keyword", "laptop")
+                        .header("X-User-Role", "ROLE_BUYER"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.totalFound").value(1))
+                .andExpect(jsonPath("$.data.circuitBreakerState").value("CLOSED"))
+                .andExpect(jsonPath("$.data.items[0].name").value("Laptop QuickBook Ultra 14 inch"));
+    }
+
+    @Test
+    @DisplayName("GET /api/ai/circuit-breaker - Tra cứu trạng thái Circuit Breaker")
+    void getCircuitBreakerStatus_Success() throws Exception {
+        Map<String, Object> statusMap = Map.of(
+                "state", "CLOSED",
+                "failureCount", 0,
+                "failureThreshold", 3,
+                "resetTimeoutMs", 30000L
+        );
+
+        when(aiCatalogSearchService.getCircuitBreakerStatus()).thenReturn(statusMap);
+
+        mockMvc.perform(get("/api/ai/circuit-breaker"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.state").value("CLOSED"))
+                .andExpect(jsonPath("$.data.failureCount").value(0));
+    }
+
+    @Test
+    @DisplayName("POST /api/ai/circuit-breaker/reset - Reset Circuit Breaker về CLOSED")
+    void resetCircuitBreaker_Success() throws Exception {
+        doNothing().when(aiCatalogSearchService).resetCircuitBreaker();
+        when(aiCatalogSearchService.getCircuitBreakerStatus()).thenReturn(Map.of(
+                "state", "CLOSED",
+                "failureCount", 0
+        ));
+
+        mockMvc.perform(post("/api/ai/circuit-breaker/reset"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.state").value("CLOSED"))
+                .andExpect(jsonPath("$.data.message").exists());
     }
 }
 

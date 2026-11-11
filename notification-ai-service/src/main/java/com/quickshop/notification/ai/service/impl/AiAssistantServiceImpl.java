@@ -2,6 +2,9 @@ package com.quickshop.notification.ai.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.quickshop.notification.ai.catalog.AiCatalogSearchRequest;
+import com.quickshop.notification.ai.catalog.AiCatalogSearchResult;
+import com.quickshop.notification.ai.catalog.AiCatalogSearchService;
 import com.quickshop.notification.ai.dto.AiChatRequest;
 import com.quickshop.notification.ai.dto.AiChatResponse;
 import com.quickshop.notification.ai.dto.PromptVerifyDto;
@@ -11,8 +14,8 @@ import com.quickshop.notification.ai.model.PromptRiskLevel;
 import com.quickshop.notification.ai.model.PromptSafetyResult;
 import com.quickshop.notification.ai.prompt.SystemPromptBuilder;
 import com.quickshop.notification.ai.service.AiAssistantService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -23,18 +26,36 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AiAssistantServiceImpl implements AiAssistantService {
 
     private final PromptGuardService promptGuardService;
     private final SystemPromptBuilder systemPromptBuilder;
     private final ObjectMapper objectMapper;
+    private final AiCatalogSearchService aiCatalogSearchService;
+
+    public AiAssistantServiceImpl(PromptGuardService promptGuardService,
+                                  SystemPromptBuilder systemPromptBuilder,
+                                  ObjectMapper objectMapper) {
+        this(promptGuardService, systemPromptBuilder, objectMapper, null);
+    }
+
+    @Autowired
+    public AiAssistantServiceImpl(PromptGuardService promptGuardService,
+                                  SystemPromptBuilder systemPromptBuilder,
+                                  ObjectMapper objectMapper,
+                                  @Autowired(required = false) AiCatalogSearchService aiCatalogSearchService) {
+        this.promptGuardService = promptGuardService;
+        this.systemPromptBuilder = systemPromptBuilder;
+        this.objectMapper = objectMapper;
+        this.aiCatalogSearchService = aiCatalogSearchService;
+    }
 
     @Value("${gemini.api-key:mock-gemini-key}")
     private String geminiApiKey;
@@ -47,7 +68,8 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(15))
             .build();
 
     @Override
@@ -102,18 +124,36 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         AiShoppingIntent intent = detectIntent(sanitizedPrompt);
         List<String> suggestedQuestions = generateSuggestedQuestions(intent);
 
-        // Trường hợp 4: Gọi Google Gemini API nếu có API key hợp lệ
+        // Trường hợp 4: Truy xuất Catalog Snippets qua Function calling / Search Service (RAG)
+        List<String> catalogSnippets = Collections.emptyList();
+        if (aiCatalogSearchService != null && (intent == AiShoppingIntent.PRODUCT_RECOMMENDATION || isCatalogQuery(sanitizedPrompt))) {
+            try {
+                AiCatalogSearchRequest searchReq = AiCatalogSearchRequest.builder()
+                        .keyword(sanitizedPrompt)
+                        .limit(5)
+                        .userRole("ROLE_BUYER")
+                        .build();
+                AiCatalogSearchResult searchRes = aiCatalogSearchService.searchProducts(searchReq);
+                if (searchRes != null && searchRes.getSnippets() != null && !searchRes.getSnippets().isEmpty()) {
+                    catalogSnippets = searchRes.getSnippets();
+                }
+            } catch (Exception e) {
+                log.warn("Catalog search encountered an exception, proceeding with static catalog: {}", e.getMessage());
+            }
+        }
+
+        // Trường hợp 5: Gọi Google Gemini API nếu có API key hợp lệ
         String reply = null;
         boolean fallbackUsed = false;
 
         if (isGeminiConfigured()) {
-            reply = callGoogleGemini(sanitizedPrompt);
+            reply = callGoogleGemini(sanitizedPrompt, catalogSnippets);
         }
 
         // Nếu Gemini không khả dụng hoặc chưa cấu hình key thật -> Fallback sang Smart Rule-based Engine
         if (reply == null || reply.isBlank()) {
             fallbackUsed = true;
-            reply = generateSmartResponse(sanitizedPrompt, intent);
+            reply = generateSmartResponse(sanitizedPrompt, intent, catalogSnippets);
         }
 
         return AiChatResponse.builder()
@@ -173,12 +213,20 @@ public class AiAssistantServiceImpl implements AiAssistantService {
      * Gọi Google Gemini AI v1beta generateContent API
      */
     private String callGoogleGemini(String sanitizedPrompt) {
+        return callGoogleGemini(sanitizedPrompt, Collections.emptyList());
+    }
+
+    private String callGoogleGemini(String sanitizedPrompt, List<String> catalogSnippets) {
         try {
             String uri = String.format("%s/%s:generateContent?key=%s", geminiApiUrl, geminiModel, geminiApiKey);
 
+            String systemPromptText = (catalogSnippets != null && !catalogSnippets.isEmpty())
+                    ? systemPromptBuilder.buildContextualPrompt(sanitizedPrompt, catalogSnippets)
+                    : systemPromptBuilder.buildSystemPrompt();
+
             Map<String, Object> payload = Map.of(
                     "system_instruction", Map.of(
-                            "parts", List.of(Map.of("text", systemPromptBuilder.buildSystemPrompt()))
+                            "parts", List.of(Map.of("text", systemPromptText))
                     ),
                     "contents", List.of(
                             Map.of(
@@ -188,7 +236,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                     ),
                     "generationConfig", Map.of(
                             "temperature", 0.7,
-                            "maxOutputTokens", 500
+                            "maxOutputTokens", 800
                     )
             );
 
@@ -253,7 +301,22 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         return AiShoppingIntent.PRODUCT_RECOMMENDATION;
     }
 
+    private boolean isCatalogQuery(String prompt) {
+        if (prompt == null) return false;
+        String lower = prompt.toLowerCase();
+        return lower.contains("mua") || lower.contains("tìm") || lower.contains("giá") ||
+                lower.contains("sản phẩm") || lower.contains("mã") || lower.contains("hàng") ||
+                lower.contains("shop") || lower.contains("gợi ý") || lower.contains("tư vấn") ||
+                lower.contains("điện thoại") || lower.contains("laptop") || lower.contains("quần") ||
+                lower.contains("áo") || lower.contains("giày") || lower.contains("tai nghe") ||
+                lower.contains("mỹ phẩm") || lower.contains("robot");
+    }
+
     private String generateSmartResponse(String sanitizedPrompt, AiShoppingIntent intent) {
+        return generateSmartResponse(sanitizedPrompt, intent, Collections.emptyList());
+    }
+
+    private String generateSmartResponse(String sanitizedPrompt, AiShoppingIntent intent, List<String> catalogSnippets) {
         String lower = sanitizedPrompt.toLowerCase();
 
         // 1. Tư vấn Quần áo & Thời trang
@@ -322,6 +385,16 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                     "- **Đổi trả miễn phí 7 ngày**: Áp dụng cho các sản phẩm có lỗi từ nhà sản xuất hoặc không đúng mô tả.\n" +
                     "- **Bảo hành chính hãng 12-24 tháng** theo tiêu chuẩn của từng thương hiệu phân phối.\n" +
                     "- **Đảm bảo hoàn tiền 100%**: Tiền thanh toán sẽ được giữ tại Ví Ký Quỹ (Escrow) cho đến khi bạn xác nhận đã nhận hàng nguyên vẹn.";
+        }
+
+        // Nếu có catalogSnippets được tìm thấy từ Catalog Service / Fallback
+        if (catalogSnippets != null && !catalogSnippets.isEmpty()) {
+            StringBuilder sb = new StringBuilder("Dưới đây là một số sản phẩm nổi bật trên QuickShop phù hợp với nhu cầu của bạn:\n");
+            for (String snippet : catalogSnippets) {
+                sb.append("- ").append(snippet).append("\n");
+            }
+            sb.append("\nBạn cần mình tư vấn chi tiết hơn về thông số kỹ thuật hay ưu đãi của sản phẩm nào không?");
+            return sb.toString();
         }
 
         // Phản hồi chào mừng và gợi ý các ngành hàng
