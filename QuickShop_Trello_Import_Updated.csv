@@ -623,7 +623,7 @@ Tích hợp VNPay Sandbox: tạo payment URL, ký checksum/HMAC theo tài liệu
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Payment DB; Order events",2026-11-10,2026-11-10
-Cần làm,"[AI Assistant & Gateway] Tạo function gọi tìm kiếm Catalog; thêm timeout, circuit breaker/fallback và kiểm tra quyền truy cập dữ liệu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[AI Assistant & Gateway] Tạo function gọi tìm kiếm Catalog; thêm timeout, circuit breaker/fallback và kiểm tra quyền truy cập dữ liệu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Tư, 2026-11-11
 **Phân hệ:** AI Assistant & Gateway
 
@@ -636,7 +636,7 @@ Tạo function gọi tìm kiếm Catalog; thêm timeout, circuit breaker/fallbac
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - AI module; Catalog API",2026-11-11,2026-11-11
-Cần làm,"[Frontend Admin] Kết nối API duyệt Shop và sản phẩm; hiển thị trạng thái, xác nhận thao tác và lỗi: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+Đã xong,"[Frontend Admin] Kết nối API duyệt Shop và sản phẩm; hiển thị trạng thái, xác nhận thao tác và lỗi: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Tư, 2026-11-11
 **Phân hệ:** Frontend Admin
 

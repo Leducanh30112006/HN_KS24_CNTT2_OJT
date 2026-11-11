@@ -58,12 +58,24 @@ spring:
           filters:
             - StripPrefix=0
 
-        # 3. Identity Service - Admin Shop Approval (Admin duyệt/từ chối gian hàng KYC)
+        # 3. Identity Service - Admin Shop Approval & Suspension (Admin duyệt/từ chối/khóa/mở khóa gian hàng)
         - id: identity-admin-shops-route
           uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/shops/*/approve, /api/shops/*/reject
+            - Path=/api/shops/*/approve, /api/shops/*/reject, /api/shops/*/suspend, /api/shops/*/activate
             - Method=PUT
+          filters:
+            - name: JwtAuth
+              args:
+                requiredRole: ROLE_ADMIN
+            - StripPrefix=0
+
+        # 3a. Identity Service - Admin Filter Shops by Status
+        - id: identity-admin-shops-status-route
+          uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/shops/status/**
+            - Method=GET
           filters:
             - name: JwtAuth
               args:

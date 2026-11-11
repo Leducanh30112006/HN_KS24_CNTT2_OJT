@@ -102,8 +102,7 @@ public class ShopController {
             @PathVariable Long id,
             @RequestHeader(value = "X-User-Id", required = false) String adminIdHeader
     ) {
-        Long adminId = StringUtils.hasText(adminIdHeader) ? Long.parseLong(adminIdHeader) : null;
-        ShopResponse response = shopService.approveShop(id, adminId);
+        ShopResponse response = shopService.approveShop(id, parseAdminId(adminIdHeader));
         return ResponseEntity.ok(ApiResponse.ok("Đã phê duyệt gian hàng thành công và cấp quyền ROLE_SELLER", response));
     }
 
@@ -114,10 +113,35 @@ public class ShopController {
             @RequestHeader(value = "X-User-Id", required = false) String adminIdHeader,
             @Valid @RequestBody(required = false) RejectShopRequest request
     ) {
-        Long adminId = StringUtils.hasText(adminIdHeader) ? Long.parseLong(adminIdHeader) : null;
         String reason = (request != null && StringUtils.hasText(request.getReason())) ? request.getReason().trim() : null;
-        ShopResponse response = shopService.rejectShop(id, adminId, reason);
+        ShopResponse response = shopService.rejectShop(id, parseAdminId(adminIdHeader), reason);
         return ResponseEntity.ok(ApiResponse.ok("Đã từ chối hồ sơ mở gian hàng", response));
+    }
+
+    @PutMapping("/{id}/suspend")
+    @Operation(summary = "Admin tạm khóa (SUSPENDED) gian hàng đang hoạt động")
+    public ResponseEntity<ApiResponse<ShopResponse>> suspendShop(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String adminIdHeader,
+            @Valid @RequestBody(required = false) RejectShopRequest request
+    ) {
+        String reason = (request != null && StringUtils.hasText(request.getReason())) ? request.getReason().trim() : null;
+        ShopResponse response = shopService.suspendShop(id, parseAdminId(adminIdHeader), reason);
+        return ResponseEntity.ok(ApiResponse.ok("Đã tạm khóa gian hàng", response));
+    }
+
+    @PutMapping("/{id}/activate")
+    @Operation(summary = "Admin mở khóa hoạt động trở lại (ACTIVE) cho gian hàng bị tạm khóa")
+    public ResponseEntity<ApiResponse<ShopResponse>> activateShop(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String adminIdHeader
+    ) {
+        ShopResponse response = shopService.activateShop(id, parseAdminId(adminIdHeader));
+        return ResponseEntity.ok(ApiResponse.ok("Đã mở khóa gian hàng hoạt động trở lại", response));
+    }
+
+    private Long parseAdminId(String adminIdHeader) {
+        return StringUtils.hasText(adminIdHeader) ? Long.parseLong(adminIdHeader) : null;
     }
 
     private Long parseUserId(String userIdHeader) {

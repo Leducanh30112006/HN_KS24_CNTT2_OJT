@@ -11,7 +11,7 @@ RUN chown -R quickshop:quickshop /app
 USER quickshop:quickshop
 
 # Lightweight JVM tuning for VPS (SerialGC uses minimal CPU & RAM)
-ENV JAVA_OPTS="-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"
+ENV JAVA_OPTS="-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
 
 EXPOSE 8080 8081 8082 8083 8084 8085 8086
 

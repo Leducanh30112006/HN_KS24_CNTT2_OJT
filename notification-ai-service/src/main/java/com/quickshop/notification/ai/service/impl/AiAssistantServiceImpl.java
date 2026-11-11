@@ -2,6 +2,9 @@ package com.quickshop.notification.ai.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.quickshop.notification.ai.catalog.AiCatalogSearchRequest;
+import com.quickshop.notification.ai.catalog.AiCatalogSearchResult;
+import com.quickshop.notification.ai.catalog.AiCatalogSearchService;
 import com.quickshop.notification.ai.dto.AiChatRequest;
 import com.quickshop.notification.ai.dto.AiChatResponse;
 import com.quickshop.notification.ai.dto.PromptVerifyDto;
@@ -11,8 +14,8 @@ import com.quickshop.notification.ai.model.PromptRiskLevel;
 import com.quickshop.notification.ai.model.PromptSafetyResult;
 import com.quickshop.notification.ai.prompt.SystemPromptBuilder;
 import com.quickshop.notification.ai.service.AiAssistantService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -23,18 +26,36 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AiAssistantServiceImpl implements AiAssistantService {
 
     private final PromptGuardService promptGuardService;
     private final SystemPromptBuilder systemPromptBuilder;
     private final ObjectMapper objectMapper;
+    private final AiCatalogSearchService aiCatalogSearchService;
+
+    public AiAssistantServiceImpl(PromptGuardService promptGuardService,
+                                  SystemPromptBuilder systemPromptBuilder,
+                                  ObjectMapper objectMapper) {
+        this(promptGuardService, systemPromptBuilder, objectMapper, null);
+    }
+
+    @Autowired
+    public AiAssistantServiceImpl(PromptGuardService promptGuardService,
+                                  SystemPromptBuilder systemPromptBuilder,
+                                  ObjectMapper objectMapper,
+                                  @Autowired(required = false) AiCatalogSearchService aiCatalogSearchService) {
+        this.promptGuardService = promptGuardService;
+        this.systemPromptBuilder = systemPromptBuilder;
+        this.objectMapper = objectMapper;
+        this.aiCatalogSearchService = aiCatalogSearchService;
+    }
 
     @Value("${gemini.api-key:mock-gemini-key}")
     private String geminiApiKey;
@@ -47,7 +68,8 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(15))
             .build();
 
     @Override
@@ -102,18 +124,36 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         AiShoppingIntent intent = detectIntent(sanitizedPrompt);
         List<String> suggestedQuestions = generateSuggestedQuestions(intent);
 
-        // Trường hợp 4: Gọi Google Gemini API nếu có API key hợp lệ
+        // Trường hợp 4: Truy xuất Catalog Snippets qua Function calling / Search Service (RAG)
+        List<String> catalogSnippets = Collections.emptyList();
+        if (aiCatalogSearchService != null && (intent == AiShoppingIntent.PRODUCT_RECOMMENDATION || isCatalogQuery(sanitizedPrompt))) {
+            try {
+                AiCatalogSearchRequest searchReq = AiCatalogSearchRequest.builder()
+                        .keyword(sanitizedPrompt)
+                        .limit(5)
+                        .userRole("ROLE_BUYER")
+                        .build();
+                AiCatalogSearchResult searchRes = aiCatalogSearchService.searchProducts(searchReq);
+                if (searchRes != null && searchRes.getSnippets() != null && !searchRes.getSnippets().isEmpty()) {
+                    catalogSnippets = searchRes.getSnippets();
+                }
+            } catch (Exception e) {
+                log.warn("Catalog search encountered an exception, proceeding with static catalog: {}", e.getMessage());
+            }
+        }
+
+        // Trường hợp 5: Gọi Google Gemini API nếu có API key hợp lệ
         String reply = null;
         boolean fallbackUsed = false;
 
         if (isGeminiConfigured()) {
-            reply = callGoogleGemini(sanitizedPrompt);
+            reply = callGoogleGemini(sanitizedPrompt, catalogSnippets);
         }
 
         // Nếu Gemini không khả dụng hoặc chưa cấu hình key thật -> Fallback sang Smart Rule-based Engine
         if (reply == null || reply.isBlank()) {
             fallbackUsed = true;
-            reply = generateSmartResponse(sanitizedPrompt, intent);
+            reply = generateSmartResponse(sanitizedPrompt, intent, catalogSnippets);
         }
 
         return AiChatResponse.builder()
@@ -173,12 +213,20 @@ public class AiAssistantServiceImpl implements AiAssistantService {
      * Gọi Google Gemini AI v1beta generateContent API
      */
     private String callGoogleGemini(String sanitizedPrompt) {
+        return callGoogleGemini(sanitizedPrompt, Collections.emptyList());
+    }
+
+    private String callGoogleGemini(String sanitizedPrompt, List<String> catalogSnippets) {
         try {
             String uri = String.format("%s/%s:generateContent?key=%s", geminiApiUrl, geminiModel, geminiApiKey);
 
+            String systemPromptText = (catalogSnippets != null && !catalogSnippets.isEmpty())
+                    ? systemPromptBuilder.buildContextualPrompt(sanitizedPrompt, catalogSnippets)
+                    : systemPromptBuilder.buildSystemPrompt();
+
             Map<String, Object> payload = Map.of(
                     "system_instruction", Map.of(
-                            "parts", List.of(Map.of("text", systemPromptBuilder.buildSystemPrompt()))
+                            "parts", List.of(Map.of("text", systemPromptText))
                     ),
                     "contents", List.of(
                             Map.of(
@@ -197,7 +245,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
             HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(URI.create(uri))
                     .header("Content-Type", "application/json")
-                    .timeout(Duration.ofSeconds(10))
+                    .timeout(Duration.ofSeconds(25))
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                     .build();
 
@@ -253,29 +301,77 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         return AiShoppingIntent.PRODUCT_RECOMMENDATION;
     }
 
+    private boolean isCatalogQuery(String prompt) {
+        if (prompt == null) return false;
+        String lower = prompt.toLowerCase();
+        return lower.contains("mua") || lower.contains("tìm") || lower.contains("giá") ||
+                lower.contains("sản phẩm") || lower.contains("mã") || lower.contains("hàng") ||
+                lower.contains("shop") || lower.contains("gợi ý") || lower.contains("tư vấn") ||
+                lower.contains("điện thoại") || lower.contains("laptop") || lower.contains("quần") ||
+                lower.contains("áo") || lower.contains("giày") || lower.contains("tai nghe") ||
+                lower.contains("mỹ phẩm") || lower.contains("robot");
+    }
+
     private String generateSmartResponse(String sanitizedPrompt, AiShoppingIntent intent) {
+        return generateSmartResponse(sanitizedPrompt, intent, Collections.emptyList());
+    }
+
+    private String generateSmartResponse(String sanitizedPrompt, AiShoppingIntent intent, List<String> catalogSnippets) {
         String lower = sanitizedPrompt.toLowerCase();
 
-        // 1. Tư vấn điện thoại
-        if (lower.contains("điện thoại") || lower.contains("phone")) {
-            return "Chào bạn! Mình gợi ý bạn tham khảo dòng **QuickPhone Pro Max 256GB** tại gian hàng TechWorld Official Store, hiện đang có sẵn màu Titan Tự Nhiên với giá ưu đãi cực tốt!";
+        // 1. Tư vấn Quần áo & Thời trang
+        if (lower.contains("quần") || lower.contains("áo") || lower.contains("thời trang") || lower.contains("mặc") || lower.contains("polo") || lower.contains("sơ mi") || lower.contains("váy") || lower.contains("jean")) {
+            return "Các mẫu thời trang & quần áo bán chạy nhất trên QuickShop hiện nay:\n" +
+                    "- **Áo Polo Nam QuickStyle Premium**: Vải dệt sợi bã cafe tự nhiên khử mùi, co giãn 4 chiều, chống nhăn và chống tia UV - Giá chỉ **289.000đ**.\n" +
+                    "- **Quần Tây / Quần Jean QuickStyle**: Thiết kế dáng Slim-fit thanh lịch, thoải mái vận động - Giá từ **320.000đ**.\n" +
+                    "- **Áo Thun Cotton Compact 100%**: Mát nhẹ thấm hút mồ hôi tối đa - Giá **189.000đ**.\n" +
+                    "🎁 Đừng quên áp mã **FASHION20** để được giảm ngay 20% khi thanh toán bạn nhé!";
         }
 
-        // 2. Tư vấn laptop
-        if (lower.contains("laptop") || lower.contains("máy tính")) {
-            return "Bạn có thể tham khảo **QuickBook Ultra 14 inch M3 Pro** cấu hình 16GB/512GB siêu mượt cho lập trình viên và đồ họa nhé!";
+        // 2. Tư vấn Giày dép & Phụ kiện
+        if (lower.contains("giày") || lower.contains("dép") || lower.contains("sneaker") || lower.contains("túi")) {
+            return "Gợi ý giày dép & túi xách hot nhất QuickShop:\n" +
+                    "- **Giày Sneaker QuickRunner Pro**: Đế đệm khí êm nhẹ trợ lực, thân vải dệt Flyknit thoáng khí kháng khuẩn - Giá ưu đãi **890.000đ**.\n" +
+                    "- **Túi xách & Balo chống nước**: Ngăn chống sốc bảo vệ laptop 14-16 inch - Giá từ **250.000đ**.";
         }
 
-        // 3. Tư vấn Voucher & Khuyến mãi
+        // 3. Tư vấn Laptop
+        if (lower.contains("laptop") || lower.contains("máy tính") || lower.contains("pc")) {
+            if (lower.contains("sinh viên") || lower.contains("cntt") || lower.contains("lập trình") || lower.contains("code") || lower.contains("đồ họa")) {
+                return "Dành riêng cho sinh viên CNTT, lập trình viên và thiết kế đồ họa:\n" +
+                        "- **QuickBook Ultra 14 inch M3 Pro**: Chip 11-core CPU, 14-core GPU, RAM 18GB, SSD 512GB, màn hình Liquid Retina XDR 120Hz siêu nét. Cực mượt khi build code Docker, Android Studio, IntelliJ IDEA và Photoshop/Premiere - Giá: **45.990.000đ**.\n" +
+                        "- Ngoài ra có dòng **QuickBook Air 16GB/512GB** mỏng nhẹ pin 18 tiếng, giá mềm chỉ từ **19.500.000đ**.\n" +
+                        "Tất cả đều hỗ trợ trả góp 0% và tặng kèm balo chống sốc cao cấp!";
+            }
+            return "Bạn có thể tham khảo **QuickBook Ultra 14 inch M3 Pro** cấu hình 18GB/512GB siêu mượt cho lập trình viên và đồ họa nhé!";
+        }
+
+        // 4. Tư vấn Điện thoại & Tai nghe
+        if (lower.contains("điện thoại") || lower.contains("phone") || lower.contains("smartphone") || lower.contains("tai nghe")) {
+            return "Gợi ý thiết bị di động hàng đầu tại QuickShop:\n" +
+                    "- **QuickPhone Pro Max 256GB**: Flagship chip AI 3nm, màn hình OLED 120Hz, camera zoom quang học 5x - Giá từ **29.990.000đ**.\n" +
+                    "- **Tai nghe Bluetooth QuickPods Pro 2**: Khử tiếng ồn chủ động ANC thế hệ mới, pin 30h - Giá **4.990.000đ**.\n" +
+                    "Nhập mã **QUICKPHONE** để giảm ngay 500.000đ tại bước thanh toán!";
+        }
+
+        // 5. Tư vấn Mỹ phẩm & Đời sống gia đình
+        if (lower.contains("mỹ phẩm") || lower.contains("serum") || lower.contains("da") || lower.contains("robot") || lower.contains("hút bụi")) {
+            return "Sản phẩm chăm sóc sắc đẹp & nhà cửa tiện ích:\n" +
+                    "- **Serum Niacinamide 10% + Zinc 1%**: Làm mờ vết thâm, kiềm dầu, dưỡng sáng da sau 14 ngày - Giá **199.000đ**.\n" +
+                    "- **Robot Hút Bụi Lau Nhà QuickBot Omni 3000Pa**: Cảm biến laser LiDAR 360 độ, tự động giặt sấy giẻ lau - Giá **8.490.000đ**.";
+        }
+
+        // 6. Tư vấn Voucher & Khuyến mãi
         if (intent == AiShoppingIntent.PROMOTION_DISCOUNT) {
             return "Hiện tại QuickShop đang có các chương trình ưu đãi độc quyền:\n" +
                     "- **QUICKSHOP50K**: Giảm ngay 50.000đ cho đơn hàng từ 500k.\n" +
                     "- **FREESHIPMAX**: Giảm 25.000đ phí vận chuyển toàn quốc.\n" +
                     "- **MALL100K**: Giảm 100.000đ cho sản phẩm thuộc gian hàng chính hãng QuickShop Mall.\n" +
+                    "- **FASHION20**: Giảm 20% cho toàn bộ sản phẩm thời trang.\n" +
                     "Bạn chỉ cần chọn mã ngay tại bước thanh toán để áp dụng tự động nhé!";
         }
 
-        // 4. Tra cứu đơn hàng & vận chuyển
+        // 7. Tra cứu đơn hàng & vận chuyển
         if (intent == AiShoppingIntent.ORDER_INQUIRY) {
             return "Để theo dõi tình trạng đơn hàng của bạn:\n" +
                     "1. Truy cập mục **Đơn Mua** trên thanh menu người dùng.\n" +
@@ -283,7 +379,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                     "Hệ thống QuickShop luôn cập nhật trạng thái đơn hàng thời gian thực qua Webhook!";
         }
 
-        // 5. Chính sách đổi trả & bảo hành
+        // 8. Chính sách đổi trả & bảo hành
         if (intent == AiShoppingIntent.SHIPPING_POLICY) {
             return "Chính sách mua sắm an tâm tại QuickShop:\n" +
                     "- **Đổi trả miễn phí 7 ngày**: Áp dụng cho các sản phẩm có lỗi từ nhà sản xuất hoặc không đúng mô tả.\n" +
@@ -291,8 +387,18 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                     "- **Đảm bảo hoàn tiền 100%**: Tiền thanh toán sẽ được giữ tại Ví Ký Quỹ (Escrow) cho đến khi bạn xác nhận đã nhận hàng nguyên vẹn.";
         }
 
-        // Phản hồi chào mừng mặc định
-        return "Chào bạn! Tôi là Trợ lý Mua sắm QuickShop AI. Bạn cần tư vấn sản phẩm, kiểm tra khuyến mãi hay theo dõi đơn hàng hôm nay?";
+        // Nếu có catalogSnippets được tìm thấy từ Catalog Service / Fallback
+        if (catalogSnippets != null && !catalogSnippets.isEmpty()) {
+            StringBuilder sb = new StringBuilder("Dưới đây là một số sản phẩm nổi bật trên QuickShop phù hợp với nhu cầu của bạn:\n");
+            for (String snippet : catalogSnippets) {
+                sb.append("- ").append(snippet).append("\n");
+            }
+            sb.append("\nBạn cần mình tư vấn chi tiết hơn về thông số kỹ thuật hay ưu đãi của sản phẩm nào không?");
+            return sb.toString();
+        }
+
+        // Phản hồi chào mừng và gợi ý các ngành hàng
+        return "Chào bạn! Tôi là Trợ lý Mua sắm QuickShop AI. Bạn cần tư vấn sản phẩm (Điện thoại, Laptop, Quần áo thời trang, Mỹ phẩm), kiểm tra mã giảm giá hay theo dõi đơn hàng hôm nay?";
     }
 
     private List<String> generateSuggestedQuestions(AiShoppingIntent intent) {

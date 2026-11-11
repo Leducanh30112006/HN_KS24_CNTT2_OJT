@@ -159,6 +159,7 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       MINIO_ENDPOINT: http://minio:9000
+      ORDER_SERVICE_URL: http://order-service:8083
     depends_on:
       mysql:
         condition: service_healthy
@@ -185,6 +186,7 @@ services:
       REDIS_PORT: 6379
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
+      CATALOG_SERVICE_URL: http://catalog-service:8082
     depends_on:
       mysql:
         condition: service_healthy
@@ -261,7 +263,9 @@ services:
       RABBITMQ_PORT: 5672
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      CATALOG_SERVICE_URL: http://catalog-service:8082
+      JAVA_OPTS: "-XX:+UseContainerSupport -Xms64m -Xmx160m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
     volumes:
       - ./notification-ai-service/src/main/resources/application.yml:/app/config/application.yml:ro
     depends_on:

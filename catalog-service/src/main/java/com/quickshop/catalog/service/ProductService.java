@@ -69,13 +69,91 @@ public class ProductService {
         }
 
         // 2. Tạo Spring Data JPA Specification
-        Specification<Product> spec = (root, query, cb) -> {
+        Specification<Product> spec = buildProductSpec(keyword, categoryId, shopId, status, true);
+
+        // 3. Phân trang & sắp xếp
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
+        if ("price_asc".equalsIgnoreCase(sortBy)) {
+            sort = Sort.by(Sort.Direction.ASC, "id");
+        } else if ("price_desc".equalsIgnoreCase(sortBy)) {
+            sort = Sort.by(Sort.Direction.DESC, "id");
+        } else if ("popular".equalsIgnoreCase(sortBy)) {
+            sort = Sort.by(Sort.Direction.DESC, "id");
+        }
+
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size), sort);
+        Page<Product> productPage = productRepository.findAll(spec, pageable);
+
+        // 4. Ánh xạ sang DTO kèm thông tin biến thể & rating
+        List<ProductDto> dtoList = productPage.getContent().stream()
+                .map(this::mapToDto)
+                .filter(dto -> {
+                    if (minPrice != null && dto.getMinPrice().compareTo(minPrice) < 0) {
+                        return false;
+                    }
+                    if (maxPrice != null && dto.getMaxPrice().compareTo(maxPrice) > 0) {
+                        return false;
+                    }
+                    if (minRating != null && dto.getAverageRating() < minRating) {
+                        return false;
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
+
+        PageResult<ProductDto> result = toPageResult(productPage, dtoList);
+
+        // 5. Lưu kết quả vào Redis Cache
+        cacheService.cacheProductPage(filterHash, result);
+
+        return result;
+    }
+
+    /**
+     * Endpoint dành riêng cho Admin xem toàn bộ sản phẩm ở mọi trạng thái (DRAFT, PENDING, APPROVED, REJECTED),
+     * bỏ qua Redis storefront cache để luôn phản ánh trạng thái kiểm duyệt thời gian thực.
+     */
+    @Transactional(readOnly = true)
+    public PageResult<ProductDto> getProductsForAdmin(
+            String keyword,
+            Long categoryId,
+            Long shopId,
+            ProductStatus status,
+            int page,
+            int size,
+            String callerRole
+    ) {
+        if (!isAdmin(callerRole)) {
+            throw new ForbiddenException("Chỉ Admin mới có quyền truy cập danh sách kiểm duyệt toàn hệ thống");
+        }
+
+        Specification<Product> spec = buildProductSpec(keyword, categoryId, shopId, status, false);
+        Pageable pageable = PageRequest.of(
+                Math.max(0, page),
+                Math.max(1, size),
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+        Page<Product> productPage = productRepository.findAll(spec, pageable);
+        List<ProductDto> dtoList = productPage.getContent().stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
+        return toPageResult(productPage, dtoList);
+    }
+
+    private Specification<Product> buildProductSpec(
+            String keyword,
+            Long categoryId,
+            Long shopId,
+            ProductStatus status,
+            boolean publicOnly
+    ) {
+        return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Bộ lọc trạng thái: nếu không truyền status, mặc định chỉ hiển thị sản phẩm đã APPROVED hoặc ACTIVE cho khách
+            // Storefront mặc định chỉ hiển thị APPROVED/ACTIVE; Admin khi status == null xem tất cả trạng thái
             if (status != null) {
                 predicates.add(cb.equal(root.get("status"), status));
-            } else {
+            } else if (publicOnly) {
                 predicates.add(root.get("status").in(List.of(ProductStatus.APPROVED, ProductStatus.ACTIVE)));
             }
 
@@ -109,38 +187,10 @@ public class ProductService {
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
 
-        // 3. Phân trang & sắp xếp
-        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
-        if ("price_asc".equalsIgnoreCase(sortBy)) {
-            sort = Sort.by(Sort.Direction.ASC, "id");
-        } else if ("price_desc".equalsIgnoreCase(sortBy)) {
-            sort = Sort.by(Sort.Direction.DESC, "id");
-        } else if ("popular".equalsIgnoreCase(sortBy)) {
-            sort = Sort.by(Sort.Direction.DESC, "id");
-        }
-
-        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size), sort);
-        Page<Product> productPage = productRepository.findAll(spec, pageable);
-
-        // 4. Ánh xạ sang DTO kèm thông tin biến thể & rating
-        List<ProductDto> dtoList = productPage.getContent().stream()
-                .map(this::mapToDto)
-                .filter(dto -> {
-                    if (minPrice != null && dto.getMinPrice().compareTo(minPrice) < 0) {
-                        return false;
-                    }
-                    if (maxPrice != null && dto.getMaxPrice().compareTo(maxPrice) > 0) {
-                        return false;
-                    }
-                    if (minRating != null && dto.getAverageRating() < minRating) {
-                        return false;
-                    }
-                    return true;
-                })
-                .collect(Collectors.toList());
-
-        PageResult<ProductDto> result = PageResult.<ProductDto>builder()
+    private PageResult<ProductDto> toPageResult(Page<Product> productPage, List<ProductDto> dtoList) {
+        return PageResult.<ProductDto>builder()
                 .content(dtoList)
                 .page(productPage.getNumber())
                 .size(productPage.getSize())
@@ -149,11 +199,6 @@ public class ProductService {
                 .hasNext(productPage.hasNext())
                 .hasPrevious(productPage.hasPrevious())
                 .build();
-
-        // 5. Lưu kết quả vào Redis Cache
-        cacheService.cacheProductPage(filterHash, result);
-
-        return result;
     }
 
     public ProductDto getProductById(Long id, Long authShopId, String callerRole) {

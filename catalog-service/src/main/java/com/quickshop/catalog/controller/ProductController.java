@@ -46,6 +46,23 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", result));
     }
 
+    @GetMapping("/products/admin")
+    @Operation(summary = "Admin lấy danh sách sản phẩm mọi trạng thái kiểm duyệt (Không cache - Yêu cầu ROLE_ADMIN)")
+    public ResponseEntity<ApiResponse<PageResult<ProductDto>>> getProductsForAdmin(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long shopId,
+            @RequestParam(required = false) ProductStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestHeader(value = "X-User-Role", required = false) String userRoleHeader
+    ) {
+        PageResult<ProductDto> result = productService.getProductsForAdmin(
+                keyword, categoryId, shopId, status, page, size, userRoleHeader
+        );
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm kiểm duyệt thành công", result));
+    }
+
     @GetMapping("/products/{id}")
     @Operation(summary = "Chi tiết sản phẩm, danh sách biến thể SKU & số sao đánh giá (Kiểm tra quyền nếu chưa APPROVED)")
     public ResponseEntity<ApiResponse<ProductDto>> getProductDetails(

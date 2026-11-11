@@ -12,6 +12,9 @@ export default function ApiErrorBanner({
   onRetry,
   onDismiss,
   fallbackActive = true,
+  title = 'Sự cố kết nối máy chủ Catalog API',
+  fallbackBadge = 'Chế độ dữ liệu dự phòng',
+  fallbackHint = 'Hệ thống đang hiển thị dữ liệu dự phòng để bạn tiếp tục trải nghiệm mua sắm.',
 }) {
   if (!error) return null;
 
@@ -23,16 +26,16 @@ export default function ApiErrorBanner({
         </div>
         <div className="space-y-0.5">
           <div className="font-bold text-amber-950 flex items-center gap-2">
-            <span>Sự cố kết nối máy chủ Catalog API</span>
+            <span>{title}</span>
             {fallbackActive && (
               <span className="bg-amber-200/80 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                Chế độ dữ liệu dự phòng
+                {fallbackBadge}
               </span>
             )}
           </div>
           <p className="text-amber-800/90 leading-relaxed">
-            {typeof error === 'string' ? error : error?.message || 'Không thể đồng bộ dữ liệu thời gian thực từ API Catalog.'}
-            {fallbackActive && ' Hệ thống đang hiển thị dữ liệu dự phòng để bạn tiếp tục trải nghiệm mua sắm.'}
+            {typeof error === 'string' ? error : error?.message || 'Không thể đồng bộ dữ liệu thời gian thực từ máy chủ.'}
+            {fallbackActive && fallbackHint ? ` ${fallbackHint}` : ''}
           </p>
         </div>
       </div>
