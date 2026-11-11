@@ -56,8 +56,6 @@ export default function CheckoutPage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderId, setOrderId] = useState('');
-  const [vnpayUrl, setVnpayUrl] = useState(null);
-  const [isGeneratingVnpay, setIsGeneratingVnpay] = useState(false);
   const [payOsData, setPayOsData] = useState(null);
   const [isGeneratingPayOs, setIsGeneratingPayOs] = useState(false);
 
@@ -199,17 +197,14 @@ export default function CheckoutPage({
   };
 
   // 4. Tạo yêu cầu thanh toán chuyển khoản PayOS / MB Bank thực tế từ backend
+  // Backend PayOsService tự động lấy số tiền đơn hàng, tự sinh request và response đầy đủ chỉ với orderId
   const handleCreatePayOsPayment = async (orderIdToPay, amountToPay) => {
     setIsGeneratingPayOs(true);
     try {
       const targetId = String(orderIdToPay || orderId);
-      const res = await axiosClient.post('/api/payments/payos/create', {
+      const res = await axiosClient.post('/api/payments/create', {
         orderId: targetId,
-        amount: Number(amountToPay || finalTotal),
-        userId: user?.userId || user?.id || 1001,
-        description: `QS DH${targetId.replace(/[^0-9]/g, '') || targetId}`,
-        returnUrl: `${window.location.origin}/?payos_status=success&orderId=${encodeURIComponent(targetId)}`,
-        cancelUrl: `${window.location.origin}/?payos_status=cancelled&orderId=${encodeURIComponent(targetId)}`,
+        amount: Number(amountToPay || finalTotal)
       });
       const data = res?.data?.data || res?.data;
       if (data) {
@@ -220,28 +215,6 @@ export default function CheckoutPage({
       console.warn('Lỗi tạo yêu cầu thanh toán PayOS:', e);
     } finally {
       setIsGeneratingPayOs(false);
-    }
-    return null;
-  };
-
-  const handleCreateVnpayUrl = async (orderIdToPay, amountToPay) => {
-    setIsGeneratingVnpay(true);
-    try {
-      const payRes = await axiosClient.post('/api/payments/vnpay/create', {
-        orderId: String(orderIdToPay || '1001'),
-        amount: Number(amountToPay || finalTotal),
-        userId: user?.userId || user?.id || 1001,
-        orderInfo: `Thanh toan don hang #${orderIdToPay || '1001'}`
-      });
-      const pUrl = payRes?.data?.paymentUrl || payRes?.data?.data?.paymentUrl;
-      if (pUrl) {
-        setVnpayUrl(pUrl);
-        return pUrl;
-      }
-    } catch (e) {
-      console.warn('Lỗi tạo URL VNPay:', e);
-    } finally {
-      setIsGeneratingVnpay(false);
     }
     return null;
   };
@@ -338,13 +311,14 @@ export default function CheckoutPage({
     const userId = user?.userId || user?.id || 1001;
 
     try {
+      const isBankTransfer = paymentMethod === 'payos' || paymentMethod === 'vnpay';
       const payload = {
-        paymentMethod: paymentMethod.toUpperCase(),
+        paymentMethod: isBankTransfer ? 'PAYOS' : paymentMethod.toUpperCase(),
         recipientName: address.name || 'Người nhận',
         recipientPhone: address.phone || '0987654321',
         shippingAddress: `${address.addressLine || ''}, ${address.city || 'TP. Hồ Chí Minh'}`.trim(),
         note: orderNote || '',
-        voucherCode: selectedPlatformVoucher?.code || '',
+        voucherCode: appliedPlatformVoucher?.code || '',
         items: displayItems.map((item) => ({
           variantId: Number(item.variantId || item.id),
           quantity: Number(item.quantity) || 1,
@@ -370,10 +344,9 @@ export default function CheckoutPage({
         setOrderSuccess(true);
         removeMultipleFromCart(displayItems.map((i) => i.variantId));
 
-        // NẾU CHỌN THANH TOÁN CHUYỂN KHOẢN: Khởi tạo URL PayOS & VNPay thực tế từ Backend
-        if (paymentMethod === 'vnpay') {
+        // NẾU CHỌN THANH TOÁN CHUYỂN KHOẢN: Khởi tạo URL PayOS thực tế từ Backend
+        if (isBankTransfer) {
           handleCreatePayOsPayment(displayOrderId, finalAmount);
-          handleCreateVnpayUrl(displayOrderId, finalAmount);
         }
       } else {
         alert(res?.message || 'Không thể tạo đơn hàng. Vui lòng kiểm tra lại thông tin giỏ hàng!');
@@ -574,7 +547,7 @@ export default function CheckoutPage({
               <span className="text-slate-500">Phương thức thanh toán:</span>
               <span className="font-semibold text-slate-900">
                 {paymentMethod === 'cod' && 'Thanh toán tiền mặt khi nhận hàng (COD)'}
-                {paymentMethod === 'vnpay' && 'Chuyển khoản QR Ngân Hàng (PayOS / MB Bank / VietQR)'}
+                {(paymentMethod === 'payos' || paymentMethod === 'vnpay') && 'Chuyển khoản QR Ngân Hàng (PayOS / MB Bank / VietQR)'}
                 {paymentMethod === 'credit' && 'Thẻ tín dụng / Ghi nợ Quốc tế'}
                 {paymentMethod === 'momo' && 'Ví điện tử MoMo'}
               </span>
@@ -586,7 +559,7 @@ export default function CheckoutPage({
           </div>
 
           {/* Hộp Mã QR PayOS / MB Bank */}
-          {paymentMethod === 'vnpay' && (
+          {(paymentMethod === 'payos' || paymentMethod === 'vnpay') && (
             <div className="bg-gradient-to-br from-blue-50/90 via-white to-blue-50/50 rounded-2xl p-6 border-2 border-blue-400/50 shadow-sm max-w-lg mx-auto text-center space-y-4">
               <div className="flex items-center justify-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -625,11 +598,11 @@ export default function CheckoutPage({
                   <span className="text-slate-500">Số tài khoản:</span>
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-black text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded text-sm tracking-wider">
-                      0346746521
+                      {payOsData?.accountNumber || '0346746521'}
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleCopy('0346746521', 'stk_success')}
+                      onClick={() => handleCopy(payOsData?.accountNumber || '0346746521', 'stk_success')}
                       className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold px-2 py-0.5 bg-blue-50 rounded border border-blue-200 flex items-center gap-1 active:scale-95 transition"
                     >
                       {copiedField === 'stk_success' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
@@ -639,7 +612,7 @@ export default function CheckoutPage({
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-100">
                   <span className="text-slate-500">Chủ sở hữu (Chủ TK):</span>
-                  <span className="font-bold text-slate-900 uppercase">NGUYỄN VĂN KIÊN</span>
+                  <span className="font-bold text-slate-900 uppercase">{payOsData?.accountName || 'NGUYỄN VĂN KIÊN'}</span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-100">
                   <span className="text-slate-500">Số tiền:</span>
@@ -659,11 +632,11 @@ export default function CheckoutPage({
                   <span className="text-slate-500">Nội dung chuyển khoản:</span>
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-slate-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                      QS DH{orderId.replace(/[^0-9]/g, '') || orderId}
+                      {payOsData?.orderCode ? `QS DH${payOsData.orderCode}` : `QS DH${orderId.replace(/[^0-9]/g, '') || orderId}`}
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleCopy(`QS DH${orderId.replace(/[^0-9]/g, '') || orderId}`, 'content_success')}
+                      onClick={() => handleCopy(payOsData?.orderCode ? `QS DH${payOsData.orderCode}` : `QS DH${orderId.replace(/[^0-9]/g, '') || orderId}`, 'content_success')}
                       className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold px-2 py-0.5 bg-blue-50 rounded border border-blue-200 flex items-center gap-1 active:scale-95 transition"
                     >
                       {copiedField === 'content_success' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
@@ -708,32 +681,32 @@ export default function CheckoutPage({
           )}
 
           <div className="pt-2 flex flex-col sm:flex-row justify-center gap-3">
-            {vnpayUrl ? (
+            {payOsData?.checkoutUrl ? (
               <a
-                href={vnpayUrl}
+                href={payOsData.checkoutUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition active:scale-95"
               >
-                <span>Mở Cổng VNPay Sandbox để thanh toán</span>
+                <span>Mở Cổng Thanh Toán PayOS (MB Bank)</span>
                 <ExternalLink className="w-4 h-4" />
               </a>
-            ) : paymentMethod === 'vnpay' && (
+            ) : (paymentMethod === 'payos' || paymentMethod === 'vnpay') && (
               <button
                 type="button"
                 onClick={async () => {
-                  const url = await handleCreateVnpayUrl(orderId, finalTotal);
-                  if (url) window.open(url, '_blank');
+                  const data = await handleCreatePayOsPayment(orderId, finalTotal);
+                  if (data?.checkoutUrl) window.open(data.checkoutUrl, '_blank');
                 }}
-                disabled={isGeneratingVnpay}
+                disabled={isGeneratingPayOs}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition active:scale-95"
               >
-                {isGeneratingVnpay ? (
+                {isGeneratingPayOs ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
                 ) : (
                   <ExternalLink className="w-4 h-4" />
                 )}
-                <span>Mở Cổng VNPay Sandbox</span>
+                <span>Mở Cổng Thanh Toán PayOS</span>
               </button>
             )}
             <button
@@ -1073,9 +1046,9 @@ export default function CheckoutPage({
               {/* Option 2: VNPay QR */}
               <div className="space-y-3">
                 <label
-                  onClick={() => setPaymentMethod('vnpay')}
+                  onClick={() => setPaymentMethod('payos')}
                   className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
-                    paymentMethod === 'vnpay'
+                    paymentMethod === 'payos' || paymentMethod === 'vnpay'
                       ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-500/20'
                       : 'border-slate-200 hover:bg-slate-50'
                   }`}
@@ -1086,31 +1059,31 @@ export default function CheckoutPage({
                     </div>
                     <div>
                       <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                        <span>Chuyển khoản QR Ngân Hàng (PayOS / MB Bank / VietQR)</span>
+                        <span>Chuyển khoản QR Ngân Hàng (PayOS / MB Bank 24/7)</span>
                         <span className="px-1.5 py-0.5 bg-blue-600 text-white font-extrabold text-[9px] rounded-md tracking-wider">
                           PayOS & VietQR
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-500">Quét mã QR chuyển khoản tức thì 24/7 qua MB Bank / mọi ngân hàng</div>
+                      <div className="text-[11px] text-slate-500">Quét mã QR chuyển khoản tức thì 24/7 qua MB Bank hoặc mọi App Ngân Hàng</div>
                     </div>
                   </div>
                   <input
                     type="radio"
                     name="payment"
-                    checked={paymentMethod === 'vnpay'}
-                    onChange={() => setPaymentMethod('vnpay')}
+                    checked={paymentMethod === 'payos' || paymentMethod === 'vnpay'}
+                    onChange={() => setPaymentMethod('payos')}
                     className="accent-blue-600 w-4 h-4"
                   />
                 </label>
 
-                {/* Khung Mã QR PayOS / VietQR (MB Bank) & Cổng VNPay hiện ra ngay khi ấn chọn Chuyển khoản */}
-                {paymentMethod === 'vnpay' && (
+                {/* Khung Mã QR PayOS / VietQR (MB Bank) hiện ra ngay khi ấn chọn Chuyển khoản */}
+                {(paymentMethod === 'payos' || paymentMethod === 'vnpay') && (
                   <div className="p-4 sm:p-5 bg-gradient-to-br from-blue-50 via-white to-blue-50/60 rounded-2xl border-2 border-blue-400/60 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center justify-between pb-3 border-b border-blue-100">
                       <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                         <span className="text-xs font-bold text-blue-900 uppercase tracking-wide">
-                          Mã QR Chuyển Khoản PayOS / VietQR / VNPay (MB Bank)
+                          Mã QR Chuyển Khoản PayOS / VietQR (MB Bank)
                         </span>
                       </div>
                       <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full flex items-center gap-1">
@@ -1124,11 +1097,11 @@ export default function CheckoutPage({
                       <div className="relative p-2.5 bg-white rounded-2xl border-2 border-blue-200 shadow-md flex-shrink-0 text-center">
                         <img
                           src={`https://img.vietqr.io/image/970422-0346746521-compact2.png?amount=${finalTotal}&addInfo=${encodeURIComponent('QS THANHTOAN')}&accountName=NGUYEN%20VAN%20KIEN`}
-                          alt="Mã QR Chuyển khoản PayOS VNPay MB Bank"
+                          alt="Mã QR Chuyển khoản PayOS MB Bank"
                           className="w-48 h-48 object-contain rounded-xl mx-auto"
                         />
                         <div className="mt-2 text-[10px] font-bold text-blue-700 bg-blue-50 py-1 px-2 rounded-lg">
-                          Quét mã bằng MB Bank, VNPay hoặc mọi App Ngân Hàng
+                          Quét mã bằng MB Bank hoặc mọi App Ngân Hàng
                         </div>
                       </div>
 
@@ -1195,9 +1168,9 @@ export default function CheckoutPage({
                     <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200/90 flex items-start gap-2.5 text-xs text-amber-950">
                       <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                       <div className="space-y-0.5">
-                        <div className="font-bold text-amber-900">👉 Bước tiếp theo: Bấm nút "ĐẶT HÀNG & THANH TOÁN NGAY" ở cuối trang</div>
+                        <div className="font-bold text-amber-900">👉 Bước tiếp theo: Bấm nút "ĐẶT HÀNG & THANH TOÁN PAYOS" ở cuối trang</div>
                         <div className="text-[11px] text-amber-800 leading-relaxed">
-                          Sau khi quét mã chuyển khoản, bạn chỉ cần bấm nút <strong>"ĐẶT HÀNG & THANH TOÁN NGAY"</strong>. Hệ thống sẽ tự động đối soát số tiền và hiển thị ngay màn hình <strong>ĐÃ THANH TOÁN THÀNH CÔNG</strong>!
+                          Sau khi quét mã chuyển khoản, bạn chỉ cần bấm nút <strong>"ĐẶT HÀNG & THANH TOÁN PAYOS"</strong>. Hệ thống sẽ tự động đối soát số tiền và hiển thị ngay màn hình <strong>ĐÃ THANH TOÁN THÀNH CÔNG</strong>!
                         </div>
                       </div>
                     </div>
@@ -1205,24 +1178,24 @@ export default function CheckoutPage({
                     <div className="pt-1 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-600 bg-blue-50/70 p-2.5 rounded-xl border border-blue-100">
                       <div className="flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                        <span>Hỗ trợ quét qua MB, Vietcombank, Techcombank, VPBank, VNPay, MoMo...</span>
+                        <span>Hỗ trợ quét qua MB, Vietcombank, Techcombank, VPBank, PayOS, MoMo...</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={async () => {
-                            const url = await handleCreateVnpayUrl('PREVIEW_' + Date.now(), finalTotal);
-                            if (url) window.open(url, '_blank');
+                            const data = await handleCreatePayOsPayment('PREVIEW_' + Date.now(), finalTotal);
+                            if (data?.checkoutUrl) window.open(data.checkoutUrl, '_blank');
                           }}
-                          disabled={isGeneratingVnpay}
+                          disabled={isGeneratingPayOs}
                           className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap text-[11px]"
                         >
-                          {isGeneratingVnpay ? (
+                          {isGeneratingPayOs ? (
                             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                           ) : (
                             <ExternalLink className="w-3.5 h-3.5" />
                           )}
-                          <span>Mở VNPay Sandbox</span>
+                          <span>Xem Trang Thanh Toán PayOS</span>
                         </button>
                       </div>
                     </div>
@@ -1464,7 +1437,7 @@ export default function CheckoutPage({
               onClick={handlePlaceOrder}
               disabled={isSubmitting}
               className={`w-full py-4 text-white font-black text-sm rounded-2xl transition shadow-xl active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 ${
-                paymentMethod === 'vnpay'
+                (paymentMethod === 'payos' || paymentMethod === 'vnpay')
                   ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/30'
                   : 'bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 hover:from-orange-600 hover:to-rose-600 shadow-orange-500/30'
               }`}
@@ -1476,10 +1449,10 @@ export default function CheckoutPage({
                 </>
               ) : (
                 <>
-                  {paymentMethod === 'vnpay' ? (
+                  {(paymentMethod === 'payos' || paymentMethod === 'vnpay') ? (
                     <>
                       <QrCode className="w-4 h-4" />
-                      <span>Đặt Hàng & Thanh Toán VNPay</span>
+                      <span>Đặt Hàng & Thanh Toán PayOS (MB Bank)</span>
                     </>
                   ) : (
                     <>

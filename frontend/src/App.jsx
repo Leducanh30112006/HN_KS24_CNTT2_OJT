@@ -188,10 +188,22 @@ export default function App() {
     fetchCategories();
   }, []);
 
-  // Bắt sự kiện Return Redirect từ cổng thanh toán VNPay Sandbox
+  // Bắt sự kiện Return Redirect từ cổng thanh toán PayOS / MB Bank hoặc VNPay
   useEffect(() => {
     try {
       const searchParams = new URLSearchParams(window.location.search);
+
+      // Nếu người dùng quay lại từ PayOS (có tham số payos_status hoặc orderId/orderCode)
+      if (
+        searchParams.has('payos_status') ||
+        searchParams.has('orderCode') ||
+        (searchParams.has('orderId') && !searchParams.has('vnp_ResponseCode'))
+      ) {
+        setCurrentView('checkout');
+        return;
+      }
+
+      // Xử lý fallback nếu có phản hồi từ VNPay cũ
       if (searchParams.has('vnp_ResponseCode')) {
         const responseCode = searchParams.get('vnp_ResponseCode');
         const isSuccess = responseCode === '00';
@@ -200,15 +212,6 @@ export default function App() {
         const amount = Number(rawAmount) / 100;
         const bankCode = searchParams.get('vnp_BankCode') || '';
         const orderInfo = searchParams.get('vnp_OrderInfo') || '';
-
-        // Đồng bộ kết quả thanh toán với Backend Payment Service
-        axiosClient.get(`/api/payments/vnpay/return?${searchParams.toString()}`)
-          .then((res) => {
-            console.log('Xác thực giao dịch VNPay thành công:', res);
-          })
-          .catch((err) => {
-            console.warn('Lỗi xác thực VNPay Return:', err);
-          });
 
         setVnpayResult({
           isOpen: true,
@@ -219,7 +222,7 @@ export default function App() {
           bankCode,
           orderInfo,
           message: isSuccess
-            ? 'Giao dịch thanh toán qua VNPay Sandbox thành công! Đơn hàng của bạn đã được chuyển sang trạng thái xử lý.'
+            ? 'Giao dịch thanh toán qua VNPay thành công! Đơn hàng của bạn đã được chuyển sang trạng thái xử lý.'
             : 'Thanh toán qua VNPay không thành công hoặc giao dịch đã bị hủy bởi người dùng.'
         });
 
@@ -227,7 +230,7 @@ export default function App() {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     } catch (e) {
-      console.warn('Lỗi phân tích URL Return VNPay:', e);
+      console.warn('Lỗi phân tích URL Return thanh toán:', e);
     }
   }, []);
 
