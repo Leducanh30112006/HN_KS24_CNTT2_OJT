@@ -44,8 +44,17 @@ openai:
 
 gemini:
   api-key: ${GEMINI_API_KEY:mock-gemini-key}
-  model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+  model: ${GEMINI_MODEL:gemini-3.8-flash}
   api-url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models}
+
+catalog:
+  service:
+    url: ${CATALOG_SERVICE_URL:http://localhost:8082}
+    connect-timeout-ms: 3000
+    read-timeout-ms: 8000
+    circuit-breaker:
+      failure-threshold: 3
+      reset-timeout-ms: 30000
 
 springdoc:
   swagger-ui:
