@@ -274,4 +274,34 @@ class ShopServiceTest {
         verify(shopEventProducer, times(1)).publishShopRejected(any(ShopRejectedEvent.class));
         verify(auditLogService, times(1)).logSuccess(eq(99L), any(), eq("SHOP_REJECTED"), eq("Shop"), eq(1L), any());
     }
+
+    @Test
+    @DisplayName("Admin tạm khóa gian hàng (suspendShop) - Chuyển sang SUSPENDED và ghi audit log")
+    void suspendShop_Success() {
+        sampleShop.setStatus(ShopStatus.ACTIVE);
+        when(shopRepository.findById(1L)).thenReturn(Optional.of(sampleShop));
+        when(shopRepository.save(any(Shop.class))).thenReturn(sampleShop);
+
+        ShopResponse response = shopService.suspendShop(1L, 99L, "Vi phạm quy định bán hàng");
+
+        assertThat(response.getStatus()).isEqualTo(ShopStatus.SUSPENDED);
+        assertThat(sampleShop.getRejectionReason()).isEqualTo("Vi phạm quy định bán hàng");
+        verify(auditLogService, times(1)).logSuccess(eq(99L), any(), eq("SHOP_SUSPENDED"), eq("Shop"), eq(1L), any());
+    }
+
+    @Test
+    @DisplayName("Admin mở khóa gian hàng (activateShop) - Khôi phục ACTIVE, xóa lý do khóa và ghi audit log")
+    void activateShop_Success() {
+        sampleShop.setStatus(ShopStatus.SUSPENDED);
+        sampleShop.setRejectionReason("Tạm khóa trước đó");
+        when(shopRepository.findById(1L)).thenReturn(Optional.of(sampleShop));
+        when(shopRepository.save(any(Shop.class))).thenReturn(sampleShop);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(sampleUser));
+
+        ShopResponse response = shopService.activateShop(1L, 99L);
+
+        assertThat(response.getStatus()).isEqualTo(ShopStatus.ACTIVE);
+        assertThat(sampleShop.getRejectionReason()).isNull();
+        verify(auditLogService, times(1)).logSuccess(eq(99L), any(), eq("SHOP_ACTIVATED"), eq("Shop"), eq(1L), any());
+    }
 }

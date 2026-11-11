@@ -210,4 +210,41 @@ class ShopControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("REJECTED"));
     }
+
+    @Test
+    @DisplayName("PUT /api/shops/{id}/suspend - Tạm khóa gian hàng thành công (Admin)")
+    void suspendShop_Success() throws Exception {
+        ShopResponse suspendedShop = ShopResponse.builder()
+                .id(1L)
+                .status(ShopStatus.SUSPENDED)
+                .rejectionReason("Vi phạm chính sách")
+                .build();
+
+        when(shopService.suspendShop(eq(1L), any(), any())).thenReturn(suspendedShop);
+
+        mockMvc.perform(put("/api/shops/1/suspend")
+                        .header("X-User-Id", "99")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Vi phạm chính sách\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("SUSPENDED"));
+    }
+
+    @Test
+    @DisplayName("PUT /api/shops/{id}/activate - Mở khóa gian hàng thành công (Admin)")
+    void activateShop_Success() throws Exception {
+        ShopResponse activatedShop = ShopResponse.builder()
+                .id(1L)
+                .status(ShopStatus.ACTIVE)
+                .build();
+
+        when(shopService.activateShop(eq(1L), any())).thenReturn(activatedShop);
+
+        mockMvc.perform(put("/api/shops/1/activate")
+                        .header("X-User-Id", "99"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+    }
 }
