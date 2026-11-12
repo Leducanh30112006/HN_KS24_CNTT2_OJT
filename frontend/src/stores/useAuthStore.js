@@ -1,9 +1,16 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
+const logoutListeners = new Set();
+
+export const registerOnLogoutListener = (listener) => {
+  logoutListeners.add(listener);
+  return () => logoutListeners.delete(listener);
+};
+
 export const useAuthStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       accessToken: null,
       refreshToken: null,
@@ -26,8 +33,9 @@ export const useAuthStore = create(
         });
       },
 
-      // Action: Xóa thông tin đăng nhập
+      // Action: Xóa thông tin đăng nhập và thông báo cho các store liên quan (ví dụ Cart)
       logout: () => {
+        const prevUserId = get().user?.userId ?? null;
         localStorage.removeItem('quickshop_access_token');
         localStorage.removeItem('quickshop_refresh_token');
 
@@ -36,6 +44,14 @@ export const useAuthStore = create(
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
+        });
+
+        logoutListeners.forEach((listener) => {
+          try {
+            listener(prevUserId);
+          } catch (err) {
+            console.error('Lỗi khi thực thi listener đăng xuất:', err);
+          }
         });
       },
 

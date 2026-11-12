@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { X, User, Key, ShieldCheck, Store, ShoppingBag, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useCartStore } from '../stores/useCartStore';
 import axiosClient from '../api/axiosClient';
 
 export default function AuthModal({ isOpen, onClose }) {
   const { login } = useAuthStore();
+  const { syncCartOnLogin } = useCartStore();
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
@@ -26,26 +28,45 @@ export default function AuthModal({ isOpen, onClose }) {
       });
 
       if (res.success && res.data) {
-        login(res.data);
+        const userId = res.data.userId ?? res.data.id ?? 1001;
+        login({ ...res.data, userId });
+        try {
+          await syncCartOnLogin(userId);
+        } catch {}
         setSuccessMsg(`Đăng nhập thành công! Vai trò: ${res.data.fullName} [${res.data.role}]`);
         setTimeout(() => {
           onClose();
         }, 1200);
+      } else {
+        setErrorMsg(res?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
       }
     } catch (err) {
+      if (err?.response && err.response.status >= 400 && err.response.status < 500 && err.response.status !== 404) {
+        setErrorMsg(err.response?.data?.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
+        setLoading(false);
+        return;
+      }
+
       // Local demo fallback for local dev when identity service isn't actively running
+      const uLower = username.trim().toLowerCase();
       let role = 'ROLE_BUYER';
       let fullName = 'Nguyễn Văn Mua Hàng';
-      if (username.toLowerCase().includes('admin')) {
+      let demoUserId = 2;
+      if (uLower.includes('admin')) {
         role = 'ROLE_ADMIN';
         fullName = 'Quản Trị Viên QuickShop';
-      } else if (username.toLowerCase().includes('seller')) {
+        demoUserId = 99;
+      } else if (uLower.includes('seller')) {
         role = 'ROLE_SELLER';
         fullName = 'Chủ Gian Hàng TechWorld';
+        demoUserId = 1;
+      } else if (uLower && uLower !== 'buyer') {
+        demoUserId = Array.from(uLower).reduce((acc, ch) => acc * 31 + ch.charCodeAt(0), 7) % 100000 + 100;
+        fullName = username;
       }
 
       const mockData = {
-        userId: role === 'ROLE_ADMIN' ? 99 : (role === 'ROLE_SELLER' ? 1 : 2),
+        userId: demoUserId,
         username: username,
         email: `${username}@quickshop.vn`,
         fullName,
@@ -54,6 +75,9 @@ export default function AuthModal({ isOpen, onClose }) {
       };
 
       login(mockData);
+      try {
+        await syncCartOnLogin(mockData.userId);
+      } catch {}
       setSuccessMsg(`Đăng nhập phiên Demo: ${fullName} [${role}]`);
       setTimeout(() => {
         onClose();
