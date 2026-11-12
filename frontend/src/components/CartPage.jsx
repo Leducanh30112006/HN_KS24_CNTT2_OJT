@@ -1,21 +1,56 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   ShoppingBag, ArrowLeft, Trash2, Store, Tag, ShieldCheck, 
   Truck, ChevronRight, Check, Sparkles, MessageSquare, AlertCircle
 } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
+import { useAuthStore } from '../stores/useAuthStore';
 
 export default function CartPage({ 
   onProceedToCheckout, 
   onBack, 
-  onSelectProduct 
+  onSelectProduct,
+  onRequireAuth 
 }) {
-  const { items, updateQuantity, removeFromCart, removeMultipleFromCart, getItemsByShop } = useCartStore();
+  const {
+    items,
+    updateQuantity,
+    removeFromCart,
+    removeMultipleFromCart,
+    getItemsByShop,
+    syncError,
+    clearSyncError,
+  } = useCartStore();
+  const { isAuthenticated } = useAuthStore();
 
-  // Selected item variantIds for checkout (Mặc định chọn tất cả)
+  // Selected item variantIds for checkout (Mặc định chọn tất cả sản phẩm còn hàng)
   const [selectedVariantIds, setSelectedVariantIds] = useState(() => {
-    return new Set(items.map((i) => i.variantId));
+    return new Set(items.filter((i) => !i.outOfStock).map((i) => i.variantId));
   });
+  const [confirmDeleteSelected, setConfirmDeleteSelected] = useState(false);
+  const [chatNotice, setChatNotice] = useState('');
+  const knownVariantIdsRef = useRef(new Set(items.map((i) => i.variantId)));
+
+  useEffect(() => {
+    const currentIdSet = new Set(items.map((i) => i.variantId));
+    const prevKnown = knownVariantIdsRef.current;
+
+    setSelectedVariantIds((prevSelected) => {
+      const next = new Set();
+      for (const item of items) {
+        if (item.outOfStock) continue;
+        if (prevSelected.has(item.variantId) || !prevKnown.has(item.variantId)) {
+          next.add(item.variantId);
+        }
+      }
+      return next;
+    });
+
+    if (items.length === 0) {
+      setConfirmDeleteSelected(false);
+    }
+    knownVariantIdsRef.current = currentIdSet;
+  }, [items]);
 
   const shopGroups = getItemsByShop();
 
@@ -65,10 +100,13 @@ export default function CartPage({
   // Delete all selected items
   const handleDeleteSelected = () => {
     if (selectedVariantIds.size === 0) return;
-    if (window.confirm(`Bạn có chắc chắn muốn xóa ${selectedVariantIds.size} sản phẩm đã chọn khỏi giỏ hàng?`)) {
-      removeMultipleFromCart(Array.from(selectedVariantIds));
-      setSelectedVariantIds(new Set());
+    if (!confirmDeleteSelected) {
+      setConfirmDeleteSelected(true);
+      return;
     }
+    removeMultipleFromCart(Array.from(selectedVariantIds));
+    setSelectedVariantIds(new Set());
+    setConfirmDeleteSelected(false);
   };
 
   // Filter out the selected items for checkout
@@ -78,10 +116,20 @@ export default function CartPage({
 
   const selectedCount = selectedItems.reduce((sum, i) => sum + i.quantity, 0);
   const selectedTotal = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const hasStockConflict = selectedItems.some(
+    (item) =>
+      item.outOfStock ||
+      item.quantityExceedsStock ||
+      (item.availableStock !== null && item.availableStock !== undefined && item.quantity > item.availableStock)
+  );
 
   // Handle Checkout click
   const handleCheckoutClick = () => {
-    if (selectedItems.length === 0) return;
+    if (selectedItems.length === 0 || hasStockConflict) return;
+    if (!isAuthenticated) {
+      if (onRequireAuth) onRequireAuth('Vui lòng đăng nhập để tiến hành thanh toán!');
+      return;
+    }
     onProceedToCheckout(selectedItems);
   };
 
@@ -142,6 +190,27 @@ export default function CartPage({
         </div>
       </div>
 
+      {syncError && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 font-medium">
+            <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+            <span>{syncError}</span>
+          </div>
+          <button onClick={clearSyncError} className="text-rose-600 hover:underline font-bold">
+            Đóng
+          </button>
+        </div>
+      )}
+
+      {chatNotice && (
+        <div className="bg-orange-50 border border-orange-200 text-orange-800 px-4 py-3 rounded-2xl text-xs flex items-center justify-between gap-3">
+          <span className="font-medium">{chatNotice}</span>
+          <button onClick={() => setChatNotice('')} className="text-orange-600 hover:underline font-bold">
+            Đóng
+          </button>
+        </div>
+      )}
+
       {/* 3. Table Header Bar (Chuẩn Shopee) */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-sm hidden md:grid grid-cols-12 gap-4 text-xs font-bold text-slate-600 items-center">
         <div className="col-span-5 flex items-center space-x-3">
@@ -188,7 +257,10 @@ export default function CartPage({
                     Giao từ Hà Nội
                   </span>
                   <button 
-                    onClick={() => alert(`Đang mở trung tâm chat với ${group.shopName}...`)}
+                    onClick={() => {
+                      setChatNotice(`Đã mở kênh hỗ trợ trực tuyến tới gian hàng ${group.shopName}.`);
+                      setTimeout(() => setChatNotice(''), 3500);
+                    }}
                     className="text-orange-600 hover:text-orange-700 font-bold flex items-center gap-1 transition"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
@@ -240,6 +312,16 @@ export default function CartPage({
                             {item.size && (
                               <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium text-slate-700">
                                 {item.size}
+                              </span>
+                            )}
+                            {item.outOfStock && (
+                              <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md font-bold">
+                                Hết hàng
+                              </span>
+                            )}
+                            {!item.outOfStock && item.quantityExceedsStock && (
+                              <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-bold">
+                                Vượt tồn kho (còn {item.availableStock ?? 0})
                               </span>
                             )}
                           </div>
@@ -320,13 +402,31 @@ export default function CartPage({
             </label>
 
             {selectedVariantIds.size > 0 && (
-              <button
-                onClick={handleDeleteSelected}
-                className="text-slate-400 hover:text-rose-600 transition flex items-center gap-1"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Xóa các mục đã chọn ({selectedVariantIds.size})</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDeleteSelected}
+                  className={`transition flex items-center gap-1 ${
+                    confirmDeleteSelected
+                      ? 'bg-rose-600 text-white px-3 py-1.5 rounded-xl font-bold shadow-sm'
+                      : 'text-slate-400 hover:text-rose-600'
+                  }`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>
+                    {confirmDeleteSelected
+                      ? `Xác nhận xóa (${selectedVariantIds.size})`
+                      : `Xóa các mục đã chọn (${selectedVariantIds.size})`}
+                  </span>
+                </button>
+                {confirmDeleteSelected && (
+                  <button
+                    onClick={() => setConfirmDeleteSelected(false)}
+                    className="text-slate-500 hover:text-slate-800 px-2 py-1"
+                  >
+                    Hủy
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
@@ -339,13 +439,18 @@ export default function CartPage({
               <div className="text-lg sm:text-2xl font-black text-rose-600">
                 {formatVND(selectedTotal)}
               </div>
+              {hasStockConflict && (
+                <div className="text-[11px] text-rose-600 font-semibold">
+                  Vui lòng điều chỉnh sản phẩm hết hàng / vượt tồn kho
+                </div>
+              )}
             </div>
 
             <button
               onClick={handleCheckoutClick}
-              disabled={selectedCount === 0}
+              disabled={selectedCount === 0 || hasStockConflict}
               className={`px-8 sm:px-12 py-3.5 sm:py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wide transition shadow-xl active:scale-95 flex items-center gap-2 ${
-                selectedCount > 0
+                selectedCount > 0 && !hasStockConflict
                   ? 'bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 hover:from-orange-600 hover:to-rose-600 text-white shadow-orange-500/30 cursor-pointer'
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
               }`}
