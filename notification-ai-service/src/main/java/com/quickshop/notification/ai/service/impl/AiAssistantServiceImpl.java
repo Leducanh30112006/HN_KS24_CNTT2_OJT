@@ -7,8 +7,13 @@ import com.quickshop.notification.ai.catalog.AiCatalogSearchResult;
 import com.quickshop.notification.ai.catalog.AiCatalogSearchService;
 import com.quickshop.notification.ai.dto.AiChatRequest;
 import com.quickshop.notification.ai.dto.AiChatResponse;
+import com.quickshop.notification.ai.dto.AiSeoGenerateRequest;
+import com.quickshop.notification.ai.dto.AiSeoGenerateResponse;
 import com.quickshop.notification.ai.dto.PromptVerifyDto;
 import com.quickshop.notification.ai.guardrail.PromptGuardService;
+import com.quickshop.notification.ai.guardrail.SeoContentGuardrail;
+import com.quickshop.notification.ai.guardrail.SeoContentGuardrail.PreparedSeoInput;
+import com.quickshop.notification.ai.guardrail.SeoContentGuardrail.SanitizedSeoOutput;
 import com.quickshop.notification.ai.model.AiShoppingIntent;
 import com.quickshop.notification.ai.model.PromptRiskLevel;
 import com.quickshop.notification.ai.model.PromptSafetyResult;
@@ -39,22 +44,25 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     private final SystemPromptBuilder systemPromptBuilder;
     private final ObjectMapper objectMapper;
     private final AiCatalogSearchService aiCatalogSearchService;
+    private final SeoContentGuardrail seoContentGuardrail;
 
     public AiAssistantServiceImpl(PromptGuardService promptGuardService,
                                   SystemPromptBuilder systemPromptBuilder,
                                   ObjectMapper objectMapper) {
-        this(promptGuardService, systemPromptBuilder, objectMapper, null);
+        this(promptGuardService, systemPromptBuilder, objectMapper, null, new SeoContentGuardrail());
     }
 
     @Autowired
     public AiAssistantServiceImpl(PromptGuardService promptGuardService,
                                   SystemPromptBuilder systemPromptBuilder,
                                   ObjectMapper objectMapper,
-                                  @Autowired(required = false) AiCatalogSearchService aiCatalogSearchService) {
+                                  @Autowired(required = false) AiCatalogSearchService aiCatalogSearchService,
+                                  @Autowired(required = false) SeoContentGuardrail seoContentGuardrail) {
         this.promptGuardService = promptGuardService;
         this.systemPromptBuilder = systemPromptBuilder;
         this.objectMapper = objectMapper;
         this.aiCatalogSearchService = aiCatalogSearchService;
+        this.seoContentGuardrail = seoContentGuardrail != null ? seoContentGuardrail : new SeoContentGuardrail();
     }
 
     @Value("${gemini.api-key:mock-gemini-key}")
@@ -169,6 +177,55 @@ public class AiAssistantServiceImpl implements AiAssistantService {
     }
 
     @Override
+    public AiSeoGenerateResponse generateSeoDescription(AiSeoGenerateRequest request) {
+        long startTime = System.currentTimeMillis();
+        PreparedSeoInput input = seoContentGuardrail.prepareAndLimitInput(request, promptGuardService);
+
+        boolean fallbackUsed = false;
+        String modelUsed = geminiModel;
+        SanitizedSeoOutput output = null;
+
+        if (isGeminiConfigured()) {
+            String rawGeminiJson = callGoogleGeminiRaw(
+                    systemPromptBuilder.buildSeoSystemPrompt(),
+                    input.getBoundedPrompt(),
+                    0.5,
+                    900,
+                    true
+            );
+            if (rawGeminiJson != null && !rawGeminiJson.isBlank()) {
+                output = parseAndSanitizeGeminiSeo(rawGeminiJson, input);
+            }
+        }
+
+        if (output == null || !output.isValid()) {
+            fallbackUsed = true;
+            modelUsed = "QuickShopSeoFallbackEngine";
+            output = buildFallbackSeoOutput(input);
+        }
+
+        return AiSeoGenerateResponse.builder()
+                .optimizedTitle(output.getOptimizedTitle())
+                .fullDescription(output.getFullDescription())
+                .metaTitle(output.getMetaTitle())
+                .metaDescription(output.getMetaDescription())
+                .slug(output.getSlug())
+                .seoKeywords(output.getSeoKeywords())
+                .outputFormat(input.getOutputFormat())
+                .sanitized(output.isSanitized())
+                .promptTruncated(input.isPromptTruncated())
+                .promptLengthUsed(input.getBoundedPrompt().length())
+                .maxPromptLengthLimit(input.getMaxPromptLengthLimit())
+                .outputValid(output.isValid())
+                .safetyWarnings(output.getWarnings())
+                .fallbackUsed(fallbackUsed)
+                .modelUsed(modelUsed)
+                .latencyMs(System.currentTimeMillis() - startTime)
+                .timestamp(LocalDateTime.now().format(ISO_FORMATTER))
+                .build();
+    }
+
+    @Override
     public PromptVerifyDto.Response verifyPrompt(PromptVerifyDto.Request request) {
         PromptSafetyResult safety = promptGuardService.inspectPrompt(request.getPrompt());
 
@@ -197,32 +254,40 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         policy.put("activeAiModel", isGeminiConfigured() ? geminiModel : "SmartRuleFallbackEngine");
         policy.put("provider", isGeminiConfigured() ? "Google Gemini AI" : "Local QuickShop Core");
         policy.put("maxPromptLength", 500);
+        policy.put("maxSeoPromptLength", SeoContentGuardrail.HARD_MAX_PROMPT_LENGTH);
         policy.put("supportedGuardrails", List.of(
                 "Anti-Prompt Injection Pattern Matching",
                 "Jailbreak & DAN Mode Detection",
                 "XSS & SQL Injection Normalization",
                 "Strict E-commerce Scope Limiting",
                 "Unicode NFKC Normalization & Zero-width Filtering",
-                "Inviolable System Prompt Secrecy"
+                "Inviolable System Prompt Secrecy",
+                "SEO Output Validation & HTML/Markdown Filtering"
         ));
         policy.put("supportedIntents", List.of(AiShoppingIntent.values()));
         return policy;
     }
 
-    /**
-     * Gọi Google Gemini AI v1beta generateContent API
-     */
-    private String callGoogleGemini(String sanitizedPrompt) {
-        return callGoogleGemini(sanitizedPrompt, Collections.emptyList());
+    private String callGoogleGemini(String sanitizedPrompt, List<String> catalogSnippets) {
+        String systemPromptText = (catalogSnippets != null && !catalogSnippets.isEmpty())
+                ? systemPromptBuilder.buildContextualPrompt(sanitizedPrompt, catalogSnippets)
+                : systemPromptBuilder.buildSystemPrompt();
+        return callGoogleGeminiRaw(systemPromptText, sanitizedPrompt, 0.7, 800, false);
     }
 
-    private String callGoogleGemini(String sanitizedPrompt, List<String> catalogSnippets) {
+    /**
+     * Gọi Google Gemini AI v1beta generateContent API dùng chung cho Chat và SEO Generator
+     */
+    private String callGoogleGeminiRaw(String systemPromptText, String userPrompt, double temperature, int maxOutputTokens, boolean jsonMode) {
         try {
             String uri = String.format("%s/%s:generateContent?key=%s", geminiApiUrl, geminiModel, geminiApiKey);
 
-            String systemPromptText = (catalogSnippets != null && !catalogSnippets.isEmpty())
-                    ? systemPromptBuilder.buildContextualPrompt(sanitizedPrompt, catalogSnippets)
-                    : systemPromptBuilder.buildSystemPrompt();
+            Map<String, Object> generationConfig = new HashMap<>();
+            generationConfig.put("temperature", temperature);
+            generationConfig.put("maxOutputTokens", maxOutputTokens);
+            if (jsonMode) {
+                generationConfig.put("responseMimeType", "application/json");
+            }
 
             Map<String, Object> payload = Map.of(
                     "system_instruction", Map.of(
@@ -231,13 +296,10 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                     "contents", List.of(
                             Map.of(
                                     "role", "user",
-                                    "parts", List.of(Map.of("text", sanitizedPrompt))
+                                    "parts", List.of(Map.of("text", userPrompt))
                             )
                     ),
-                    "generationConfig", Map.of(
-                            "temperature", 0.7,
-                            "maxOutputTokens", 800
-                    )
+                    "generationConfig", generationConfig
             );
 
             String requestBody = objectMapper.writeValueAsString(payload);
@@ -265,9 +327,91 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 log.warn("Google Gemini API returned status {} - {}", response.statusCode(), response.body());
             }
         } catch (Exception e) {
-            log.warn("Google Gemini API call failed, falling back to smart rule engine: {}", e.getMessage());
+            log.warn("Google Gemini API call failed, falling back to local engine: {}", e.getMessage());
         }
         return null;
+    }
+
+    private SanitizedSeoOutput parseAndSanitizeGeminiSeo(String rawJson, PreparedSeoInput input) {
+        try {
+            String trimmed = rawJson.trim();
+            if (trimmed.startsWith("```")) {
+                trimmed = trimmed.replaceAll("^```[a-zA-Z]*\\s*", "").replaceAll("\\s*```$", "").trim();
+            }
+            JsonNode node = objectMapper.readTree(trimmed);
+            String title = node.path("optimizedTitle").asText("");
+            String metaTitle = node.path("metaTitle").asText("");
+            String metaDesc = node.path("metaDescription").asText("");
+            String fullDesc = node.path("fullDescription").asText("");
+
+            List<String> aiKeywords = new java.util.ArrayList<>();
+            JsonNode kwNode = node.path("seoKeywords");
+            if (kwNode.isArray()) {
+                kwNode.forEach(item -> {
+                    if (item.isTextual() && !item.asText().isBlank()) {
+                        aiKeywords.add(item.asText());
+                    }
+                });
+            }
+            return seoContentGuardrail.sanitizeAndValidateOutput(title, fullDesc, metaTitle, metaDesc, aiKeywords, input);
+        } catch (Exception e) {
+            log.warn("Failed to parse Gemini SEO JSON output, falling back: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private SanitizedSeoOutput buildFallbackSeoOutput(PreparedSeoInput input) {
+        String title = buildFallbackSeoTitle(input);
+        StringBuilder desc = new StringBuilder();
+
+        String introHighlight = switch (input.getTone()) {
+            case "TRE_TRUNG" -> "lựa chọn cực chất cho phong cách năng động và tiện lợi mỗi ngày";
+            case "SANG_TRONG" -> "tuyệt tác thiết kế tinh xảo khẳng định đẳng cấp người sở hữu";
+            default -> "giải pháp tối ưu kết hợp hiệu năng bền bỉ và thiết kế hiện đại";
+        };
+
+        desc.append("### GIỚI THIỆU SẢN PHẨM: ").append(input.getProductName()).append("\n\n");
+        desc.append("**").append(input.getProductName()).append("** ");
+        if (!input.getBrand().isBlank()) {
+            desc.append("đến từ thương hiệu **").append(input.getBrand()).append("** ");
+        }
+        desc.append("thuộc ngành hàng **").append(input.getCategory()).append("** là ").append(introHighlight).append(".\n\n");
+
+        if (!input.getSpecifications().isEmpty() || !input.getSpecificationsText().isBlank()) {
+            desc.append("#### THÔNG SỐ KỸ THUẬT NỔI BẬT:\n");
+            input.getSpecifications().forEach((k, v) -> desc.append("- **").append(k).append(":** ").append(v).append("\n"));
+            if (!input.getSpecificationsText().isBlank()) {
+                desc.append("- **Chi tiết cấu hình:** ").append(input.getSpecificationsText()).append("\n");
+            }
+            desc.append("\n");
+        }
+
+        desc.append("#### LÝ DO NÊN CHỌN MUA TẠI QUICKSHOP:\n");
+        if (!input.getPrice().isBlank()) {
+            desc.append("- **Giá ưu đãi tham khảo:** ").append(input.getPrice()).append("đ kèm nhiều voucher giảm giá theo đơn hàng.\n");
+        }
+        desc.append("- **Cam kết chính hãng 100%:** Kiểm định nguồn gốc rõ ràng, bảo hành minh bạch.\n");
+        desc.append("- **Giao hàng nhanh toàn quốc:** Đóng gói chống sốc tiêu chuẩn, hỗ trợ đổi trả trong 7 ngày nếu có lỗi từ nhà sản xuất.\n");
+        if (!input.getKeywords().isEmpty()) {
+            desc.append("- **Từ khóa nổi bật:** ").append(String.join(", ", input.getKeywords())).append(".");
+        }
+
+        String metaTitle = input.getProductName() + " | Chính hãng QuickShop";
+        String metaDesc = input.getProductName() + " (" + input.getCategory() + ") chính hãng giá tốt tại QuickShop, giao nhanh toàn quốc, bảo hành uy tín.";
+
+        return seoContentGuardrail.sanitizeAndValidateOutput(title, desc.toString(), metaTitle, metaDesc, input.getKeywords(), input);
+    }
+
+    private String buildFallbackSeoTitle(PreparedSeoInput input) {
+        StringBuilder sb = new StringBuilder("[Chính Hãng] ");
+        sb.append(input.getProductName());
+        if (!input.getBrand().isBlank() && !input.getProductName().toLowerCase().contains(input.getBrand().toLowerCase())) {
+            sb.append(" - ").append(input.getBrand());
+        }
+        if (!input.getCategory().isBlank()) {
+            sb.append(" | ").append(input.getCategory());
+        }
+        return sb.toString();
     }
 
     private boolean isGeminiConfigured() {

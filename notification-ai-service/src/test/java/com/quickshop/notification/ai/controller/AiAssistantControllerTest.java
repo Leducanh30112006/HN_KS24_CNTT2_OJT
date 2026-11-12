@@ -6,8 +6,11 @@ import com.quickshop.notification.ai.catalog.AiCatalogSearchRequest;
 import com.quickshop.notification.ai.catalog.AiCatalogSearchResult;
 import com.quickshop.notification.ai.catalog.AiCatalogSearchService;
 import com.quickshop.notification.ai.catalog.CircuitBreakerState;
+import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.notification.ai.dto.AiChatRequest;
 import com.quickshop.notification.ai.dto.AiChatResponse;
+import com.quickshop.notification.ai.dto.AiSeoGenerateRequest;
+import com.quickshop.notification.ai.dto.AiSeoGenerateResponse;
 import com.quickshop.notification.ai.dto.PromptVerifyDto;
 import com.quickshop.notification.ai.model.AiShoppingIntent;
 import com.quickshop.notification.ai.model.PromptRiskLevel;
@@ -188,6 +191,79 @@ class AiAssistantControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.state").value("CLOSED"))
                 .andExpect(jsonPath("$.data.message").exists());
+    }
+
+    @Test
+    @DisplayName("POST /api/ai/generate-seo - Sinh mô tả sản phẩm chuẩn SEO thành công")
+    void generateSeo_Success() throws Exception {
+        AiSeoGenerateRequest request = AiSeoGenerateRequest.builder()
+                .productName("Laptop QuickBook Ultra 14 Pro")
+                .category("Laptop & Máy tính")
+                .specifications(Map.of("RAM", "18GB", "SSD", "512GB"))
+                .keywords("laptop mỏng nhẹ, chính hãng")
+                .build();
+
+        AiSeoGenerateResponse response = AiSeoGenerateResponse.builder()
+                .optimizedTitle("[Chính Hãng] Laptop QuickBook Ultra 14 Pro")
+                .fullDescription("### GIỚI THIỆU SẢN PHẨM\n- RAM 18GB, SSD 512GB hiệu năng cao.")
+                .metaTitle("Laptop QuickBook Ultra 14 Pro | QuickShop")
+                .metaDescription("Laptop QuickBook Ultra 14 Pro chính hãng tại QuickShop.")
+                .slug("chinh-hang-laptop-quickbook-ultra-14-pro")
+                .seoKeywords(List.of("laptop mỏng nhẹ", "chính hãng"))
+                .outputFormat("MARKDOWN")
+                .sanitized(false)
+                .promptTruncated(false)
+                .promptLengthUsed(140)
+                .maxPromptLengthLimit(800)
+                .outputValid(true)
+                .fallbackUsed(true)
+                .modelUsed("QuickShopSeoFallbackEngine")
+                .build();
+
+        when(aiAssistantService.generateSeoDescription(any(AiSeoGenerateRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/ai/generate-seo")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.optimizedTitle").value("[Chính Hãng] Laptop QuickBook Ultra 14 Pro"))
+                .andExpect(jsonPath("$.data.outputValid").value(true))
+                .andExpect(jsonPath("$.data.slug").value("chinh-hang-laptop-quickbook-ultra-14-pro"));
+    }
+
+    @Test
+    @DisplayName("POST /api/ai/generate-seo - Trả về 400 khi thiếu tên sản phẩm")
+    void generateSeo_ValidationError() throws Exception {
+        AiSeoGenerateRequest request = AiSeoGenerateRequest.builder()
+                .productName("")
+                .category("Laptop")
+                .build();
+
+        mockMvc.perform(post("/api/ai/generate-seo")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.data.productName").exists());
+    }
+
+    @Test
+    @DisplayName("POST /api/ai/generate-seo - Trả về 400 khi phát hiện prompt injection")
+    void generateSeo_BlockedInjection() throws Exception {
+        AiSeoGenerateRequest request = AiSeoGenerateRequest.builder()
+                .productName("Điện thoại <script>alert(1)</script>")
+                .build();
+
+        when(aiAssistantService.generateSeoDescription(any(AiSeoGenerateRequest.class)))
+                .thenThrow(new BadRequestException("Vi phạm kiểm soát an toàn prompt"));
+
+        mockMvc.perform(post("/api/ai/generate-seo")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Vi phạm kiểm soát an toàn prompt"));
     }
 }
 
