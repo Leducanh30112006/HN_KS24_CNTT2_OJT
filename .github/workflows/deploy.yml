@@ -170,6 +170,15 @@ jobs:
         if: (matrix.enabled == true || matrix.enabled == 'true') && matrix.service != 'frontend'
         run: chmod +x ./gradlew && ./gradlew :${{ matrix.service }}:bootJar -x test --no-daemon
 
+      - name: Upload Built JAR Artifact
+        if: (matrix.enabled == true || matrix.enabled == 'true') && matrix.service != 'frontend' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.service }}
+          path: ${{ matrix.service }}/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Set up Docker Buildx
         if: matrix.enabled == true || matrix.enabled == 'true'
         uses: docker/setup-buildx-action@v3
@@ -204,6 +213,31 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      - name: Download Built JAR Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: built-jars
+
+      - name: Upload Built JARs to VPS
+        if: env.VPS_HOST != ''
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          if [ -d "built-jars" ] && [ "$(ls -A built-jars)" ]; then
+            mkdir -p ~/.ssh
+            printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+            chmod 600 ~/.ssh/deploy_key
+            for svc_dir in built-jars/*/; do
+              [ -d "$svc_dir" ] || continue
+              svc=$(basename "$svc_dir")
+              echo "Uploading JAR for $svc to VPS..."
+              ssh -i ~/.ssh/deploy_key -p "${{ env.VPS_PORT }}" -o StrictHostKeyChecking=no "${{ env.VPS_USERNAME }}@${{ env.VPS_HOST }}" "mkdir -p /opt/quickshop/$svc/build/libs && rm -f /opt/quickshop/$svc/build/libs/*.jar"
+              find "$svc_dir" -type f -name '*.jar' -exec scp -i ~/.ssh/deploy_key -P "${{ env.VPS_PORT }}" -o StrictHostKeyChecking=no {} "${{ env.VPS_USERNAME }}@${{ env.VPS_HOST }}:/opt/quickshop/$svc/build/libs/" \;
+            done
+          else
+            echo "No backend JAR artifacts to upload."
+          fi
+
       - name: Trigger Rolling Deployment via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
@@ -248,8 +282,12 @@ jobs:
 
             if [ -n "$SERVICES_TO_UPDATE" ]; then
               echo "Updating services:$SERVICES_TO_UPDATE"
-              docker compose -f docker-compose.prod.yml pull $SERVICES_TO_UPDATE || true
-              docker compose -f docker-compose.prod.yml up -d --no-deps $SERVICES_TO_UPDATE
+              for svc in $SERVICES_TO_UPDATE; do
+                echo "Rebuilding and restarting $svc..."
+                docker compose -f docker-compose.prod.yml pull "$svc" || true
+                docker compose -f docker-compose.prod.yml up -d --no-deps --build "$svc"
+                sleep 5
+              done
             else
               echo "No service images changed, verifying container health..."
               docker compose -f docker-compose.prod.yml ps
