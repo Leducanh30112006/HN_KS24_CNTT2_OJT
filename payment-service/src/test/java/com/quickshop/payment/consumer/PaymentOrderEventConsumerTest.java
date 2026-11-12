@@ -27,6 +27,9 @@ class PaymentOrderEventConsumerTest {
     @Mock
     private PaymentService paymentService;
 
+    @Mock
+    private com.quickshop.payment.service.PayOsService payOsService;
+
     @InjectMocks
     private PaymentOrderEventConsumer consumer;
 
@@ -63,6 +66,23 @@ class PaymentOrderEventConsumerTest {
         assertThat(captured.getOrderId()).isEqualTo("ORD_888");
         assertThat(captured.getAmount()).isEqualByComparingTo(BigDecimal.valueOf(150000));
         assertThat(captured.getUserId()).isEqualTo(12L);
+    }
+
+    @Test
+    @DisplayName("handlePaymentRequested: Nhận sự kiện với paymentMethod=PAYOS -> Gọi payOsService.createPayment")
+    void testHandlePaymentRequestedPAYOS() {
+        PaymentRequestedEvent event = PaymentRequestedEvent.builder()
+                .orderId("ORD_777")
+                .masterOrderId(777L)
+                .userId(18L)
+                .amount(BigDecimal.valueOf(250000))
+                .paymentMethod("PAYOS")
+                .build();
+
+        consumer.handlePaymentRequested(event);
+
+        verify(payOsService, times(1)).createPayment("ORD_777", BigDecimal.valueOf(250000));
+        verify(paymentService, never()).createVNPayPayment(any(), any());
     }
 
     @Test
