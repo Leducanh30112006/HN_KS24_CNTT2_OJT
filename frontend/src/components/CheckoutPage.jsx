@@ -29,12 +29,22 @@ export default function CheckoutPage({
   // Shipping Address State
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [address, setAddress] = useState({
-    name: user?.fullName || user?.username || 'Lê Đức Anh',
+    name: user?.fullName || user?.username || 'Khách hàng QuickShop',
     phone: user?.phone || '0988 123 456',
     addressLine: 'Số 18, Phố Nguyễn Trãi, Phường Mộ Lao, Quận Hà Đông',
     city: 'Hà Nội',
     label: 'Nhà riêng (Mặc định)',
   });
+
+  useEffect(() => {
+    if (user?.userId) {
+      setAddress((prev) => ({
+        ...prev,
+        name: user.fullName || user.username || prev.name,
+        phone: user.phone || prev.phone,
+      }));
+    }
+  }, [user?.userId]);
 
   // Voucher states (Phân chia rõ ràng Voucher Sàn & Voucher Shop chuẩn Shopee)
   // Mặc định KHÔNG áp dụng voucher tự động, chỉ áp dụng khi người dùng bấm chọn hoặc nhập mã
@@ -45,12 +55,14 @@ export default function CheckoutPage({
   const [voucherCode, setVoucherCode] = useState('');
   const [voucherApplied, setVoucherApplied] = useState('');
 
-  // Order Placement status
+  // Order Placement & Payment status
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderError, setOrderError] = useState('');
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [payOsData, setPayOsData] = useState(null);
   const [isGeneratingPayOs, setIsGeneratingPayOs] = useState(false);
+  const [paymentStatusMsg, setPaymentStatusMsg] = useState('');
 
   const formatVND = (price) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -175,16 +187,17 @@ export default function CheckoutPage({
   const handleManualCheckPayment = async () => {
     if (!orderId) return;
     setIsCheckingPayment(true);
+    setPaymentStatusMsg('');
     try {
       const res = await axiosClient.get(`/api/payments/status/${encodeURIComponent(orderId)}`);
       const data = res?.data?.data || res?.data;
       if (data && (data.paid === true || data.status === 'SUCCESS')) {
         triggerSuccessState(data);
       } else {
-        alert('Hệ thống đang tiếp tục đợi tiền về tài khoản MB Bank. Vui lòng bấm kiểm tra lại sau vài giây!');
+        setPaymentStatusMsg('Hệ thống đang tiếp tục đợi tiền về tài khoản MB Bank. Vui lòng bấm kiểm tra lại sau vài giây!');
       }
     } catch (e) {
-      alert('Chưa nhận được giao dịch. Vui lòng kiểm tra lại nội dung chuyển khoản!');
+      setPaymentStatusMsg('Chưa nhận được giao dịch. Vui lòng kiểm tra lại nội dung chuyển khoản!');
     } finally {
       setIsCheckingPayment(false);
     }
@@ -301,6 +314,7 @@ export default function CheckoutPage({
 
     if (displayItems.length === 0) return;
 
+    setOrderError('');
     setIsSubmitting(true);
     const userId = user?.userId || user?.id || 1001;
 
@@ -343,11 +357,11 @@ export default function CheckoutPage({
           handleCreatePayOsPayment(displayOrderId, finalAmount);
         }
       } else {
-        alert(res?.message || 'Không thể tạo đơn hàng. Vui lòng kiểm tra lại thông tin giỏ hàng!');
+        setOrderError(res?.message || 'Không thể tạo đơn hàng. Vui lòng kiểm tra lại thông tin giỏ hàng!');
       }
     } catch (err) {
       console.error('Lỗi khi đặt hàng:', err);
-      alert(err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi gửi yêu cầu đặt hàng. Vui lòng thử lại!');
+      setOrderError(err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi gửi yêu cầu đặt hàng. Vui lòng thử lại!');
     } finally {
       setIsSubmitting(false);
     }
@@ -672,6 +686,11 @@ export default function CheckoutPage({
               <p className="text-[11px] text-slate-500">
                 Sau khi chuyển khoản thành công, hệ thống sẽ tự động phát hiện, phát âm thanh chuông báo và chuyển ngay sang giao diện <strong>ĐÃ THANH TOÁN THÀNH CÔNG! CẢM ƠN QUÝ KHÁCH</strong>!
               </p>
+              {paymentStatusMsg && (
+                <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs font-medium">
+                  {paymentStatusMsg}
+                </div>
+              )}
             </div>
 
             <div className="pt-2 flex flex-col sm:flex-row justify-center gap-3">
@@ -1383,6 +1402,13 @@ export default function CheckoutPage({
                 (Đã bao gồm thuế GTGT nếu có)
               </div>
             </div>
+
+            {orderError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                <span className="font-medium">{orderError}</span>
+              </div>
+            )}
 
             {/* Place Order CTA Button */}
             <button

@@ -55,6 +55,17 @@ axiosClient.interceptors.request.use(
 );
 
 // Response Interceptor: Bóc tách response và Tự động Refresh Token khi gặp lỗi 401
+const formatRejectedError = (err) => {
+  if (err?.response?.data && typeof err.response.data === 'object') {
+    return {
+      ...err.response.data,
+      status: err.response.status,
+      response: err.response,
+    };
+  }
+  return err;
+};
+
 axiosClient.interceptors.response.use(
   (response) => {
     return response.data;
@@ -93,7 +104,7 @@ axiosClient.interceptors.response.use(
         isRefreshing = false;
         useAuthStore.getState().logout();
         processQueue(new Error('Phiên đăng nhập hết hạn'), null);
-        return Promise.reject(error.response?.data || error);
+        return Promise.reject(formatRejectedError(error));
       }
 
       try {
@@ -130,7 +141,7 @@ axiosClient.interceptors.response.use(
       }
     }
 
-    return Promise.reject(error.response?.data || error);
+    return Promise.reject(formatRejectedError(error));
   }
 );
 

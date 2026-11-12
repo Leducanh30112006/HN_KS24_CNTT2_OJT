@@ -9,7 +9,7 @@ import axiosClient from '../api/axiosClient';
 
 export default function LoginPage({ onBackToHome, onLoginSuccess }) {
   const { login } = useAuthStore();
-  const { mergeCartOnLogin } = useCartStore();
+  const { syncCartOnLogin } = useCartStore();
   
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
   
@@ -48,18 +48,18 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
       });
 
       if (res.success && res.data) {
-        login(res.data);
+        const userId = res.data.userId ?? res.data.id ?? 1001;
         const role = res.data.role;
-        const userId = res.data.userId || res.data.id || 1001;
+        login({ ...res.data, userId });
 
-        // Tự động hợp nhất giỏ hàng khách vãng lai từ LocalStorage lên User Cart trên Redis
+        // Tự động đồng bộ / hợp nhất giỏ hàng sau khi xác thực thành công
         try {
-          const mergeResult = await mergeCartOnLogin(userId);
-          if (mergeResult?.warnings?.length > 0) {
-            console.info('Cảnh báo tồn kho khi hợp nhất giỏ hàng:', mergeResult.warnings);
+          const syncResult = await syncCartOnLogin(userId);
+          if (syncResult?.warnings?.length > 0) {
+            console.info('Cảnh báo tồn kho khi đồng bộ giỏ hàng:', syncResult.warnings);
           }
-        } catch (mergeErr) {
-          console.warn('Lỗi khi hợp nhất giỏ hàng:', mergeErr);
+        } catch (syncErr) {
+          console.warn('Lỗi khi đồng bộ giỏ hàng:', syncErr);
         }
 
         setSuccessMsg(`Đăng nhập thành công! Chào mừng ${res.data.fullName || res.data.username}`);
@@ -73,23 +73,37 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
             onLoginSuccess('storefront');
           }
         }, 800);
+      } else {
+        setErrorMsg(res?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
       }
     } catch (err) {
+      if (err?.response && err.response.status >= 400 && err.response.status < 500 && err.response.status !== 404) {
+        setErrorMsg(err.response?.data?.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
+        setLoading(false);
+        return;
+      }
+
       // Fallback demo for standalone frontend presentation when backend services aren't running locally
-      const uLower = loginUsername.toLowerCase();
+      const uLower = loginUsername.trim().toLowerCase();
       let role = 'ROLE_BUYER';
       let fullName = 'Nguyễn Văn Mua Hàng';
+      let demoUserId = 2;
 
       if (uLower.includes('admin')) {
         role = 'ROLE_ADMIN';
         fullName = 'Quản Trị Viên QuickShop';
+        demoUserId = 99;
       } else if (uLower.includes('seller')) {
         role = 'ROLE_SELLER';
         fullName = 'Chủ Gian Hàng TechWorld';
+        demoUserId = 1;
+      } else if (uLower && uLower !== 'buyer') {
+        demoUserId = Array.from(uLower).reduce((acc, ch) => acc * 31 + ch.charCodeAt(0), 7) % 100000 + 100;
+        fullName = loginUsername;
       }
 
       const mockData = {
-        userId: role === 'ROLE_ADMIN' ? 99 : (role === 'ROLE_SELLER' ? 1 : 2),
+        userId: demoUserId,
         username: loginUsername,
         email: `${loginUsername}@quickshop.vn`,
         fullName,
@@ -97,12 +111,11 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
         accessToken: 'mock_jwt_token_for_quickshop_local_demo',
       };
 
-      // Tự động kích hoạt hợp nhất giỏ hàng demo
+      login(mockData);
       try {
-        await mergeCartOnLogin(mockData.userId);
+        await syncCartOnLogin(mockData.userId);
       } catch (e) {}
 
-      login(mockData);
       setSuccessMsg(`Đăng nhập thành công: ${fullName} [${role}]`);
       
       setTimeout(() => {
@@ -169,9 +182,6 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
             <div>
               <div className="text-2xl font-black tracking-tight text-slate-900 flex items-center">
                 Quick<span className="text-orange-600">Shop</span>
-                <span className="ml-2 text-xs font-bold text-slate-500 uppercase tracking-normal">
-                  Đăng Nhập
-                </span>
               </div>
             </div>
           </div>

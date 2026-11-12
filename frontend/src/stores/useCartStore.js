@@ -1,143 +1,656 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import axiosClient from '../api/axiosClient';
+import { useAuthStore, registerOnLogoutListener } from './useAuthStore';
+
+const CART_STORAGE_KEY = 'quickshop_cart';
+const OFFLINE_CART_PREFIX = 'quickshop_offline_cart_';
+const MOCK_JWT_TOKEN = 'mock_jwt_token_for_quickshop_local_demo';
+let lastLoginSyncKey = null;
+let lastLoginSyncAt = 0;
+
+const isNumericId = (val) => val !== null && val !== undefined && /^\d+$/.test(String(val).trim());
+
+const getOfflineCartKey = (userId) => `${OFFLINE_CART_PREFIX}${userId}`;
+
+const readOfflineUserCart = (userId) => {
+  if (!userId || typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(getOfflineCartKey(userId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeOfflineUserCart = (userId, items) => {
+  if (!userId || typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(getOfflineCartKey(userId), JSON.stringify(items || []));
+  } catch (err) {
+    console.warn('Không thể lưu snapshot giỏ hàng cục bộ:', err);
+  }
+};
+
+const clearOfflineUserCart = (userId) => {
+  if (!userId || typeof localStorage === 'undefined') return;
+  try {
+    localStorage.removeItem(getOfflineCartKey(userId));
+  } catch {
+    // Bỏ qua lỗi xóa storage
+  }
+};
+
+const parseVariantAttributes = (variantName, fallbackColor, fallbackSize) => {
+  if (fallbackColor || fallbackSize) {
+    return {
+      color: fallbackColor || '',
+      size: fallbackSize || '',
+    };
+  }
+  if (!variantName || typeof variantName !== 'string') {
+    return { color: '', size: '' };
+  }
+  const parts = variantName.split(/\s*[-/|]\s*/).filter(Boolean);
+  if (parts.length >= 2) {
+    return { color: parts[0], size: parts.slice(1).join(' - ') };
+  }
+  return { color: variantName, size: '' };
+};
+
+const normalizeCartItem = (raw, prevItem = null) => {
+  const attrs = parseVariantAttributes(
+    raw?.variantName,
+    raw?.color ?? prevItem?.color,
+    raw?.size ?? prevItem?.size
+  );
+  const variantLabel =
+    raw?.variantName ??
+    prevItem?.variantName ??
+    ([attrs.color, attrs.size].filter(Boolean).join(' - ') || 'Mặc định');
+
+  return {
+    productId: raw?.productId ?? prevItem?.productId,
+    variantId: raw?.variantId ?? prevItem?.variantId,
+    sku: raw?.sku ?? prevItem?.sku ?? '',
+    productName: raw?.productName ?? prevItem?.productName ?? 'Sản phẩm QuickShop',
+    variantName: variantLabel,
+    color: attrs.color,
+    size: attrs.size,
+    price: Number(raw?.price ?? prevItem?.price ?? 0),
+    mainImage: raw?.imageUrl || raw?.mainImage || prevItem?.mainImage || '',
+    quantity: Number(raw?.quantity ?? prevItem?.quantity ?? 1),
+    shopId: raw?.shopId ?? prevItem?.shopId ?? 'shop-default',
+    shopName: raw?.shopName ?? prevItem?.shopName ?? 'QuickShop Official',
+    availableStock: raw?.availableStock ?? raw?.stock ?? prevItem?.availableStock ?? null,
+    outOfStock: Boolean(raw?.outOfStock ?? false),
+    quantityExceedsStock: Boolean(raw?.quantityExceedsStock ?? false),
+  };
+};
+
+const mapServerCartToItems = (cartData, existingItems = []) => {
+  if (!cartData || !Array.isArray(cartData.shops)) return [];
+  const prevByVariantId = new Map(
+    (existingItems || []).map((item) => [String(item.variantId), item])
+  );
+
+  const flattened = [];
+  for (const shopGroup of cartData.shops) {
+    const shopItems = Array.isArray(shopGroup?.items) ? shopGroup.items : [];
+    for (const srvItem of shopItems) {
+      const prev = prevByVariantId.get(String(srvItem.variantId));
+      flattened.push(
+        normalizeCartItem(
+          {
+            ...srvItem,
+            shopId: srvItem.shopId ?? shopGroup.shopId,
+            shopName: srvItem.shopName ?? shopGroup.shopName,
+          },
+          prev
+        )
+      );
+    }
+  }
+  return flattened;
+};
+
+const extractCartResponse = (res) => {
+  if (!res) return null;
+  if (Array.isArray(res.shops)) return res;
+  if (res.data && Array.isArray(res.data.shops)) return res.data;
+  if (res.data?.data && Array.isArray(res.data.data.shops)) return res.data.data;
+  return res.data || res;
+};
+
+const extractMergeResponse = (res) => {
+  if (!res) return null;
+  if (res.cart) return res;
+  if (res.data?.cart) return res.data;
+  if (res.data?.data?.cart) return res.data.data;
+  return res.data || res;
+};
+
+const mergeLocalItemArrays = (baseItems = [], incomingItems = []) => {
+  const byVariant = new Map();
+  for (const item of baseItems) {
+    byVariant.set(String(item.variantId), normalizeCartItem(item));
+  }
+  for (const incoming of incomingItems) {
+    const key = String(incoming.variantId);
+    const existing = byVariant.get(key);
+    if (existing) {
+      const maxStock = existing.availableStock ?? incoming.availableStock;
+      const summed = existing.quantity + Number(incoming.quantity || 1);
+      const nextQty = maxStock !== null && maxStock > 0 ? Math.min(summed, maxStock) : summed;
+      byVariant.set(key, normalizeCartItem({ ...existing, ...incoming, quantity: nextQty }, existing));
+    } else {
+      byVariant.set(key, normalizeCartItem(incoming));
+    }
+  }
+  return Array.from(byVariant.values());
+};
+
+const getAuthContext = () => {
+  const { user, isAuthenticated, accessToken } = useAuthStore.getState();
+  const userId = user?.userId ?? null;
+  const isMock = !accessToken || accessToken === MOCK_JWT_TOKEN;
+  const canUseServer = Boolean(isAuthenticated && userId && !isMock);
+  return { user, userId, isAuthenticated: Boolean(isAuthenticated), isMock, canUseServer };
+};
+
+const extractServerErrorMessage = (error, fallbackMessage) => {
+  return (
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    (error?.response || typeof error?.status === 'number' ? error?.message : null) ||
+    (typeof error?.response?.data === 'string' ? error.response.data : null) ||
+    fallbackMessage
+  );
+};
 
 export const useCartStore = create(
   persist(
     (set, get) => ({
-      items: [], // Array of { productId, variantId, sku, productName, color, size, price, mainImage, quantity, shopId, shopName }
+      items: [],
+      ownerUserId: null,
+      syncMode: 'guest',
+      isSyncing: false,
+      syncError: null,
 
-      addToCart: (product, variant, quantity = 1) => {
-        const currentItems = get().items;
-        const variantId = variant?.id || product.id;
-        const sku = variant?.sku || `SKU-${product.id}`;
-        const price = variant?.price || product.minPrice || 0;
-        const color = variant?.color || '';
-        const size = variant?.size || '';
-        const shopId = product.shopId || 1;
-        const shopName = product.shopName || 'TechWorld Official Store';
+      clearSyncError: () => set({ syncError: null }),
 
-        const existingIndex = currentItems.findIndex(
-          (item) => item.productId === product.id && item.variantId === variantId
-        );
+      // Lấy toàn bộ giỏ hàng từ order-service khi đã đăng nhập
+      fetchCart: async (explicitUserId = null) => {
+        const auth = getAuthContext();
+        const userId = explicitUserId ?? auth.userId;
+        if (!auth.isAuthenticated || !userId) {
+          return { ok: false, offline: true };
+        }
 
-        if (existingIndex > -1) {
-          const updated = [...currentItems];
-          updated[existingIndex].quantity += quantity;
-          set({ items: updated });
-        } else {
+        if (!auth.canUseServer) {
+          const offlineItems = readOfflineUserCart(userId);
           set({
-            items: [
-              ...currentItems,
-              {
-                productId: product.id,
-                variantId,
-                sku,
-                productName: product.name,
-                color,
-                size,
-                price: Number(price),
-                mainImage: product.mainImage,
-                quantity,
-                shopId,
-                shopName,
-              },
-            ],
+            items: offlineItems,
+            ownerUserId: userId,
+            syncMode: 'offline',
+            isSyncing: false,
+            syncError: null,
           });
+          return { ok: true, offline: true, items: offlineItems };
+        }
+
+        set({ isSyncing: true, syncError: null });
+        try {
+          const res = await axiosClient.get('/api/cart');
+          const cartData = extractCartResponse(res);
+          const mappedItems = mapServerCartToItems(cartData, get().items);
+          clearOfflineUserCart(userId);
+          set({
+            items: mappedItems,
+            ownerUserId: userId,
+            syncMode: 'server',
+            isSyncing: false,
+            syncError: null,
+          });
+          return { ok: true, items: mappedItems };
+        } catch (error) {
+          const fallbackItems =
+            String(get().ownerUserId) === String(userId) && get().items.length > 0
+              ? get().items
+              : readOfflineUserCart(userId);
+          set({
+            items: fallbackItems,
+            ownerUserId: userId,
+            syncMode: 'offline',
+            isSyncing: false,
+            syncError: error?.response?.status === 401 ? null : extractServerErrorMessage(error, null),
+          });
+          return { ok: false, offline: true, items: fallbackItems };
         }
       },
 
-      updateQuantity: (variantId, newQuantity) => {
+      // Đồng bộ giỏ hàng khách sang tài khoản người dùng sau khi đăng nhập
+      mergeCartOnLogin: async (userId) => {
+        const currentState = get();
+        const guestItems =
+          currentState.ownerUserId === null ? currentState.items : [];
+        const auth = getAuthContext();
+        const targetUserId = userId ?? auth.userId;
+
+        if (!targetUserId) return { ok: false };
+
+        const offlineSaved = readOfflineUserCart(targetUserId);
+
+        if (!auth.canUseServer) {
+          const mergedOffline = mergeLocalItemArrays(offlineSaved, guestItems);
+          writeOfflineUserCart(targetUserId, mergedOffline);
+          set({
+            items: mergedOffline,
+            ownerUserId: targetUserId,
+            syncMode: 'offline',
+            isSyncing: false,
+            syncError: null,
+          });
+          return { ok: true, offline: true, items: mergedOffline };
+        }
+
+        const serverEligibleGuestItems = guestItems.filter((item) => isNumericId(item.variantId));
+        if (serverEligibleGuestItems.length === 0) {
+          return get().fetchCart(targetUserId);
+        }
+
+        set({ isSyncing: true, syncError: null });
+        try {
+          const requestId =
+            typeof crypto !== 'undefined' && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+          const res = await axiosClient.post('/api/cart/merge', {
+            requestId,
+            items: serverEligibleGuestItems.map((item) => ({
+              variantId: Number(item.variantId),
+              quantity: item.quantity,
+            })),
+          });
+
+          const mergeData = extractMergeResponse(res);
+          const mergedCart = mergeData?.cart;
+          const mappedItems = mergedCart
+            ? mapServerCartToItems(mergedCart, currentState.items)
+            : [];
+
+          clearOfflineUserCart(targetUserId);
+          set({
+            items: mappedItems,
+            ownerUserId: targetUserId,
+            syncMode: 'server',
+            isSyncing: false,
+            syncError:
+              Array.isArray(mergeData?.warnings) && mergeData.warnings.length > 0
+                ? mergeData.warnings.join(' | ')
+                : null,
+          });
+          return { ok: true, items: mappedItems, warnings: mergeData?.warnings || [] };
+        } catch (error) {
+          const mergedFallback = mergeLocalItemArrays(offlineSaved, guestItems);
+          writeOfflineUserCart(targetUserId, mergedFallback);
+          set({
+            items: mergedFallback,
+            ownerUserId: targetUserId,
+            syncMode: 'offline',
+            isSyncing: false,
+            syncError: extractServerErrorMessage(error, null),
+          });
+          return { ok: false, offline: true, items: mergedFallback };
+        }
+      },
+
+      // Điểm vào chuẩn hóa đồng bộ giỏ hàng ngay sau khi login hoặc khi tải lại app
+      syncCartOnLogin: async (userId, options = {}) => {
+        const auth = getAuthContext();
+        const targetUserId = userId ?? auth.userId;
+        if (!targetUserId || !auth.isAuthenticated) {
+          return { ok: false };
+        }
+
+        const now = Date.now();
+        const syncKey = String(targetUserId);
+        if (options.dedupeRecent && lastLoginSyncKey === syncKey && now - lastLoginSyncAt < 2000) {
+          return { ok: true, skipped: true, items: get().items };
+        }
+
+        const { ownerUserId, items, isSyncing } = get();
+        if (isSyncing) {
+          return { ok: true, skipped: true };
+        }
+
+        lastLoginSyncKey = syncKey;
+        lastLoginSyncAt = now;
+
+        // Chỉ merge nếu các item hiện tại thực sự thuộc phiên khách (ownerUserId === null)
+        if (ownerUserId === null && items.length > 0) {
+          return get().mergeCartOnLogin(targetUserId);
+        }
+
+        // Nếu vừa đổi tài khoản khác mà chưa qua logout, reset tránh rò rỉ dữ liệu
+        if (ownerUserId !== null && String(ownerUserId) !== String(targetUserId)) {
+          set({ items: [], ownerUserId: targetUserId, syncError: null });
+        }
+
+        return get().fetchCart(targetUserId);
+      },
+
+      // Xóa sạch giỏ hàng đang hiển thị khi đăng xuất (giữ an toàn tách biệt từng tài khoản)
+      handleLogoutClear: (prevUserId = null) => {
+        const { items, ownerUserId, syncMode } = get();
+        const resolvedOwner = prevUserId ?? ownerUserId;
+
+        if (resolvedOwner && syncMode !== 'server' && items.length > 0) {
+          writeOfflineUserCart(resolvedOwner, items);
+        }
+
+        set({
+          items: [],
+          ownerUserId: null,
+          syncMode: 'guest',
+          isSyncing: false,
+          syncError: null,
+        });
+
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem(CART_STORAGE_KEY);
+        }
+      },
+
+      // Thêm sản phẩm vào giỏ hàng + đồng bộ API nếu đã đăng nhập
+      addToCart: async (product, variant, quantity = 1) => {
+        const auth = getAuthContext();
+        const prevItems = get().items;
+        const targetVariantId = variant?.variantId || product?.defaultVariantId || product?.id;
+        const existingItem = prevItems.find((item) => String(item.variantId) === String(targetVariantId));
+
+        const maxStock =
+          variant?.stock ??
+          variant?.availableStock ??
+          existingItem?.availableStock ??
+          null;
+
+        if (maxStock !== null && maxStock <= 0) {
+          const msg = 'Sản phẩm hiện đã hết hàng.';
+          set({ syncError: msg });
+          return { ok: false, error: msg };
+        }
+
+        const desiredQty = (existingItem ? existingItem.quantity : 0) + quantity;
+        if (maxStock !== null && desiredQty > maxStock) {
+          const msg = `Chỉ còn ${maxStock} sản phẩm khả dụng trong kho.`;
+          set({ syncError: msg });
+          return { ok: false, error: msg };
+        }
+
+        const newItem = normalizeCartItem({
+          productId: product.id || product.productId,
+          variantId: targetVariantId,
+          sku: variant?.sku || product.sku || '',
+          productName: product.name || product.productName,
+          variantName:
+            variant?.variantName ||
+            ([variant?.color, variant?.size].filter(Boolean).join(' - ') || 'Mặc định'),
+          color: variant?.color || '',
+          size: variant?.size || '',
+          price: variant?.price ?? product.minPrice ?? product.price ?? 0,
+          mainImage: variant?.imageUrl || product.mainImage || product.imageUrl || '',
+          quantity: existingItem ? desiredQty : quantity,
+          shopId: product.shopId || 'shop-default',
+          shopName: product.shopName || 'QuickShop Official',
+          availableStock: maxStock,
+        });
+
+        const nextItems = existingItem
+          ? prevItems.map((item) =>
+              String(item.variantId) === String(targetVariantId) ? newItem : item
+            )
+          : [...prevItems, newItem];
+
+        set({
+          items: nextItems,
+          ownerUserId: auth.isAuthenticated ? auth.userId : null,
+          syncError: null,
+        });
+
+        if (auth.canUseServer && isNumericId(targetVariantId)) {
+          try {
+            const res = await axiosClient.post('/api/cart/items', {
+              variantId: Number(targetVariantId),
+              quantity,
+            });
+            const cartData = extractCartResponse(res);
+            const mapped = mapServerCartToItems(cartData, nextItems);
+            clearOfflineUserCart(auth.userId);
+            set({
+              items: mapped,
+              ownerUserId: auth.userId,
+              syncMode: 'server',
+              syncError: null,
+            });
+            return { ok: true, items: mapped };
+          } catch (error) {
+            const status = error?.response?.status ?? error?.status;
+            if (status && status >= 400 && status < 500) {
+              const msg = extractServerErrorMessage(error, 'Không thể thêm sản phẩm vào giỏ hàng.');
+              set({ items: prevItems, syncError: msg });
+              return { ok: false, error: msg };
+            }
+            writeOfflineUserCart(auth.userId, nextItems);
+            set({ syncMode: 'offline' });
+            return { ok: true, offline: true, items: nextItems };
+          }
+        }
+
+        if (auth.isAuthenticated && auth.userId) {
+          writeOfflineUserCart(auth.userId, nextItems);
+          set({ syncMode: 'offline' });
+        }
+        return { ok: true, items: nextItems };
+      },
+
+      // Cập nhật số lượng + đồng bộ backend
+      updateQuantity: async (variantId, newQuantity) => {
         if (newQuantity <= 0) {
-          get().removeFromCart(variantId);
-          return;
+          return get().removeFromCart(variantId);
         }
-        const updated = get().items.map((item) =>
-          item.variantId === variantId ? { ...item, quantity: newQuantity } : item
+
+        const auth = getAuthContext();
+        const prevItems = get().items;
+        const target = prevItems.find((item) => String(item.variantId) === String(variantId));
+        if (target?.availableStock !== null && target?.availableStock !== undefined && newQuantity > target.availableStock) {
+          const msg = `Số lượng tối đa còn lại trong kho là ${target.availableStock}.`;
+          set({ syncError: msg });
+          return { ok: false, error: msg };
+        }
+
+        const nextItems = prevItems.map((item) =>
+          String(item.variantId) === String(variantId)
+            ? { ...item, quantity: newQuantity, quantityExceedsStock: false }
+            : item
         );
-        set({ items: updated });
+
+        set({ items: nextItems, syncError: null });
+
+        if (auth.canUseServer && isNumericId(variantId)) {
+          try {
+            const res = await axiosClient.put(`/api/cart/items/${Number(variantId)}`, {
+              quantity: newQuantity,
+            });
+            const cartData = extractCartResponse(res);
+            const mapped = mapServerCartToItems(cartData, nextItems);
+            clearOfflineUserCart(auth.userId);
+            set({ items: mapped, ownerUserId: auth.userId, syncMode: 'server', syncError: null });
+            return { ok: true, items: mapped };
+          } catch (error) {
+            const status = error?.response?.status ?? error?.status;
+            if (status && status >= 400 && status < 500) {
+              const msg = extractServerErrorMessage(error, 'Không thể cập nhật số lượng sản phẩm.');
+              set({ items: prevItems, syncError: msg });
+              return { ok: false, error: msg };
+            }
+            writeOfflineUserCart(auth.userId, nextItems);
+            set({ syncMode: 'offline' });
+            return { ok: true, offline: true };
+          }
+        }
+
+        if (auth.isAuthenticated && auth.userId) {
+          writeOfflineUserCart(auth.userId, nextItems);
+          set({ syncMode: 'offline' });
+        }
+        return { ok: true };
       },
 
-      removeFromCart: (variantId) => {
-        set({ items: get().items.filter((item) => item.variantId !== variantId) });
+      // Xóa 1 sản phẩm khỏi giỏ hàng
+      removeFromCart: async (variantId) => {
+        const auth = getAuthContext();
+        const prevItems = get().items;
+        const nextItems = prevItems.filter((item) => String(item.variantId) !== String(variantId));
+
+        set({ items: nextItems, syncError: null });
+
+        if (auth.canUseServer && isNumericId(variantId)) {
+          try {
+            const res = await axiosClient.delete(`/api/cart/items/${Number(variantId)}`);
+            const cartData = extractCartResponse(res);
+            const mapped = mapServerCartToItems(cartData, nextItems);
+            clearOfflineUserCart(auth.userId);
+            set({ items: mapped, ownerUserId: auth.userId, syncMode: 'server', syncError: null });
+            return { ok: true, items: mapped };
+          } catch (error) {
+            const status = error?.response?.status ?? error?.status;
+            if (status && status >= 400 && status < 500) {
+              set({ items: prevItems, syncError: extractServerErrorMessage(error, 'Không thể xóa sản phẩm.') });
+              return { ok: false };
+            }
+            writeOfflineUserCart(auth.userId, nextItems);
+            set({ syncMode: 'offline' });
+            return { ok: true, offline: true };
+          }
+        }
+
+        if (auth.isAuthenticated && auth.userId) {
+          writeOfflineUserCart(auth.userId, nextItems);
+        }
+        return { ok: true };
       },
 
-      removeMultipleFromCart: (variantIds) => {
-        const idSet = new Set(variantIds);
-        set({ items: get().items.filter((item) => !idSet.has(item.variantId)) });
+      // Xóa nhiều sản phẩm đã đặt hoặc được chọn cùng lúc
+      removeMultipleFromCart: async (variantIds) => {
+        const idSet = new Set((variantIds || []).map((id) => String(id)));
+        if (idSet.size === 0) return { ok: true };
+
+        const auth = getAuthContext();
+        const prevItems = get().items;
+        const nextItems = prevItems.filter((item) => !idSet.has(String(item.variantId)));
+
+        set({ items: nextItems, syncError: null });
+
+        const numericIds = Array.from(idSet).filter(isNumericId);
+        if (auth.canUseServer && numericIds.length > 0) {
+          try {
+            const results = await Promise.allSettled(
+              numericIds.map((id) => axiosClient.delete(`/api/cart/items/${Number(id)}`))
+            );
+            const lastSuccess = [...results]
+              .reverse()
+              .find((r) => r.status === 'fulfilled');
+            if (lastSuccess) {
+              const cartData = extractCartResponse(lastSuccess.value);
+              const mapped = mapServerCartToItems(cartData, nextItems);
+              clearOfflineUserCart(auth.userId);
+              set({ items: mapped, ownerUserId: auth.userId, syncMode: 'server', syncError: null });
+              return { ok: true, items: mapped };
+            }
+            writeOfflineUserCart(auth.userId, nextItems);
+            return { ok: false };
+          } catch {
+            writeOfflineUserCart(auth.userId, nextItems);
+            return { ok: false, offline: true };
+          }
+        }
+
+        if (auth.isAuthenticated && auth.userId) {
+          writeOfflineUserCart(auth.userId, nextItems);
+        }
+        return { ok: true };
       },
 
-      clearCart: () => {
-        set({ items: [] });
+      // Xóa toàn bộ giỏ hàng hiện tại của người dùng
+      clearCart: async () => {
+        const auth = getAuthContext();
+        set({ items: [], syncError: null });
+
+        if (auth.canUseServer) {
+          try {
+            await axiosClient.delete('/api/cart');
+            clearOfflineUserCart(auth.userId);
+            set({ syncMode: 'server' });
+            return { ok: true };
+          } catch {
+            clearOfflineUserCart(auth.userId);
+            return { ok: false, offline: true };
+          }
+        }
+
+        if (auth.isAuthenticated && auth.userId) {
+          clearOfflineUserCart(auth.userId);
+        }
+        return { ok: true };
       },
 
       getTotalCount: () => {
-        return get().items.reduce((sum, item) => sum + item.quantity, 0);
+        return get().items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
       },
 
       getTotalAmount: () => {
-        return get().items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        return get().items.reduce(
+          (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
+          0
+        );
       },
 
-      // Gom nhóm sản phẩm theo từng Shop (chuẩn Multi-Vendor Marketplace)
+      getTotalPrice: () => {
+        return get().getTotalAmount();
+      },
+
       getItemsByShop: () => {
         const groups = {};
         for (const item of get().items) {
-          const sId = item.shopId || 1;
-          if (!groups[sId]) {
-            groups[sId] = {
-              shopId: sId,
-              shopName: item.shopName || `Gian hàng #${sId}`,
+          const sid = item.shopId || 'shop-default';
+          if (!groups[sid]) {
+            groups[sid] = {
+              shopId: sid,
+              shopName: item.shopName || 'QuickShop Official',
               items: [],
             };
           }
-          groups[sId].items.push(item);
+          groups[sid].items.push(item);
         }
         return Object.values(groups);
       },
-
-      // Hợp nhất giỏ hàng khách vãng lai từ LocalStorage vào User Cart khi đăng nhập
-      mergeCartOnLogin: async (userId) => {
-        const guestItems = get().items;
-        if (!guestItems || guestItems.length === 0 || !userId) {
-          return { success: true, mergedCount: 0, warnings: [] };
-        }
-
-        try {
-          const payload = {
-            requestId: `req-merge-${userId}-${Date.now()}`,
-            items: guestItems.map((item) => ({
-              variantId: Number(item.variantId),
-              quantity: Number(item.quantity) || 1,
-            })),
-          };
-
-          const res = await axiosClient.post('/api/cart/merge', payload, {
-            headers: {
-              'X-User-Id': userId,
-              'X-Idempotency-Key': payload.requestId,
-            },
-            timeout: 8000,
-          });
-
-          const data = res.data?.data;
-          // Sau khi merge thành công, làm trống giỏ hàng local để chuyển sang đồng bộ User Cart
-          set({ items: [] });
-          return {
-            success: true,
-            mergedCount: data?.mergedItemsCount || 0,
-            warnings: data?.warnings || [],
-            cart: data?.cart,
-          };
-        } catch (err) {
-          console.warn('Không thể hợp nhất giỏ hàng lên máy chủ (hoạt động chế độ offline):', err);
-          return { success: false, error: err };
-        }
-      },
     }),
     {
-      name: 'quickshop_cart',
+      name: CART_STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        items: state.items,
+        ownerUserId: state.ownerUserId,
+        syncMode: state.syncMode,
+      }),
     }
   )
 );
+
+// Tự động dọn sạch giỏ hàng đang hiển thị mỗi khi tài khoản đăng xuất hoặc hết phiên
+registerOnLogoutListener((prevUserId) => {
+  useCartStore.getState().handleLogoutClear(prevUserId);
+});

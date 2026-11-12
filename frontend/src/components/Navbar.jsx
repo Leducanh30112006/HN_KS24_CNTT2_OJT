@@ -67,59 +67,35 @@ export default function Navbar({
           </div>
 
           {/* Phân quyền điều hướng: Kênh Người Bán / Admin chỉ hiển thị khi có thẩm quyền */}
-          <div className="flex items-center space-x-3 text-[11px] font-medium">
-            {isAuthenticated && isSellerOnly && (
-              <button
-                onClick={() => setCurrentView('seller')}
-                className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
-                  currentView === 'seller' ? 'bg-white text-orange-600 font-bold shadow-sm' : 'hover:bg-white/20'
-                }`}
-                title="Truy cập Kênh Quản Lý Người Bán"
-              >
-                <Store className="w-3 h-3" />
-                <span>Kênh Người Bán</span>
-              </button>
-            )}
-
-            {isAuthenticated && isAdmin && (
-              <button
-                onClick={() => setCurrentView('admin')}
-                className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
-                  currentView === 'admin' ? 'bg-white text-orange-600 font-bold shadow-sm' : 'hover:bg-white/20'
-                }`}
-                title="Truy cập Quản Trị Hệ Thống Admin"
-              >
-                <ShieldCheck className="w-3 h-3" />
-                <span>Quản Trị Admin</span>
-              </button>
-            )}
-
-            {!isAuthenticated && (
-              <div className="flex items-center space-x-3 opacity-90">
+          {isAuthenticated && (isSellerOnly || isAdmin) && (
+            <div className="flex items-center space-x-3 text-[11px] font-medium">
+              {isSellerOnly && (
                 <button
-                  onClick={handleGoToLogin}
-                  className="hover:underline flex items-center gap-1 cursor-pointer"
+                  onClick={() => setCurrentView('seller')}
+                  className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
+                    currentView === 'seller' ? 'bg-white text-orange-600 font-bold shadow-sm' : 'hover:bg-white/20'
+                  }`}
+                  title="Truy cập Kênh Quản Lý Người Bán"
                 >
                   <Store className="w-3 h-3" />
-                  Kênh Người Bán
+                  <span>Kênh Người Bán</span>
                 </button>
-                <span className="opacity-40">|</span>
+              )}
+
+              {isAdmin && (
                 <button
-                  onClick={handleGoToLogin}
-                  className="hover:underline cursor-pointer"
+                  onClick={() => setCurrentView('admin')}
+                  className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
+                    currentView === 'admin' ? 'bg-white text-orange-600 font-bold shadow-sm' : 'hover:bg-white/20'
+                  }`}
+                  title="Truy cập Quản Trị Hệ Thống Admin"
                 >
-                  Đăng ký
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>Quản Trị Admin</span>
                 </button>
-                <span className="opacity-40">|</span>
-                <button
-                  onClick={handleGoToLogin}
-                  className="font-bold hover:underline cursor-pointer"
-                >
-                  Đăng nhập
-                </button>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

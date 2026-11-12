@@ -23,11 +23,13 @@ import {
   HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft, CheckCircle2 
 } from 'lucide-react';
 import { useAuthStore } from './stores/useAuthStore';
+import { useCartStore } from './stores/useCartStore';
 import { defaultCategories, defaultProducts } from './data/sampleProducts';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('storefront'); // 'storefront' | 'search' | 'product-detail' | 'login' | 'seller' | 'admin'
   const { user, isAuthenticated } = useAuthStore();
+  const { syncCartOnLogin, handleLogoutClear, ownerUserId } = useCartStore();
 
   const isSeller = isAuthenticated && user && (user.role === 'ROLE_SELLER' || user.role === 'SELLER');
   const isAdmin = isAuthenticated && user && (user.role === 'ROLE_ADMIN' || user.role === 'ADMIN');
@@ -66,6 +68,21 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [vnpayResult, setVnpayResult] = useState(null);
+
+  // Đồng bộ trạng thái giỏ hàng theo phiên đăng nhập / đăng xuất
+  useEffect(() => {
+    if (isAuthenticated && user?.userId) {
+      syncCartOnLogin(user.userId, { dedupeRecent: true });
+    } else {
+      setCheckoutItems([]);
+      if (ownerUserId !== null) {
+        handleLogoutClear(ownerUserId);
+      }
+      setCurrentView((prev) =>
+        prev === 'checkout' || prev === 'seller' || prev === 'admin' ? 'storefront' : prev
+      );
+    }
+  }, [isAuthenticated, user?.userId]);
 
   // Fetch Categories from /api/catalog/categories
   const fetchCategories = async () => {
@@ -389,6 +406,7 @@ export default function App() {
               }
             }}
             onSelectProduct={handleSelectProduct}
+            onRequireAuth={() => setCurrentView('login')}
           />
         )}
 
