@@ -3,10 +3,7 @@ package com.quickshop.shipping.service.impl;
 import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.common.exception.ResourceNotFoundException;
 import com.quickshop.shipping.controller.ShippingController;
-import com.quickshop.shipping.dto.CalculateFeeRequest;
-import com.quickshop.shipping.dto.CalculateFeeResponse;
-import com.quickshop.shipping.dto.CreateShipmentRequest;
-import com.quickshop.shipping.dto.ShipmentStatusUpdateRequest;
+import com.quickshop.shipping.dto.*;
 import com.quickshop.shipping.entity.Shipment;
 import com.quickshop.shipping.entity.ShippingWebhookLog;
 import com.quickshop.shipping.repository.ShipmentRepository;
@@ -19,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -204,5 +203,158 @@ public class ShippingServiceImpl implements ShippingService {
         log.info("Simulated shipment status advancement: {} -> {} for trackingCode {}",
                 currentStatus, nextStatus, trackingCode);
         return shipmentRepository.save(shipment);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ShipmentTrackingResponse getShipmentTracking(String trackingCode) {
+        Shipment shipment = getShipmentByTrackingCode(trackingCode);
+        return buildTrackingResponse(shipment);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ShipmentTrackingResponse getShipmentTrackingBySubOrderId(Long subOrderId) {
+        Shipment shipment = getShipmentBySubOrderId(subOrderId);
+        return buildTrackingResponse(shipment);
+    }
+
+    @Override
+    @Transactional
+    public Shipment simulateCarrierStatus(String trackingCode, String targetStatus) {
+        if (targetStatus == null || targetStatus.isBlank()) {
+            throw new BadRequestException("Trạng thái mô phỏng (targetStatus) không được để trống");
+        }
+        Shipment shipment = getShipmentByTrackingCode(trackingCode);
+        String cleanStatus = targetStatus.trim().toUpperCase();
+        shipment.setShippingStatus(cleanStatus);
+        log.info("Simulated carrier direct status update: {} -> {} for trackingCode {}",
+                shipment.getShippingStatus(), cleanStatus, trackingCode);
+        return shipmentRepository.save(shipment);
+    }
+
+    private ShipmentTrackingResponse buildTrackingResponse(Shipment shipment) {
+        String status = shipment.getShippingStatus();
+        String description;
+        switch (status) {
+            case "READY_TO_PICK":
+                description = "Chờ đơn vị vận chuyển lấy hàng";
+                break;
+            case "PICKED":
+                description = "Đơn vị vận chuyển đã lấy hàng và nhập kho";
+                break;
+            case "DELIVERING":
+                description = "Kiện hàng đang được nhân viên giao hàng (Shipper) phát tới bạn";
+                break;
+            case "DELIVERED":
+                description = "Giao hàng thành công";
+                break;
+            case "DELIVERY_FAILED":
+                description = "Giao hàng không thành công (Hẹn giao lại)";
+                break;
+            case "RETURNED":
+                description = "Kiện hàng đã được hoàn trả lại cho người bán";
+                break;
+            default:
+                description = "Đang xử lý vận chuyển";
+                break;
+        }
+
+        List<TrackingMilestoneDto> timeline = new ArrayList<>();
+        LocalDateTime baseTime = shipment.getCreatedAt() != null ? shipment.getCreatedAt() : LocalDateTime.now().minusHours(4);
+
+        // Milestone 1: READY_TO_PICK
+        boolean m1Completed = true;
+        boolean m1Current = "READY_TO_PICK".equalsIgnoreCase(status);
+        timeline.add(TrackingMilestoneDto.builder()
+                .status("READY_TO_PICK")
+                .title("Đơn hàng đã sẵn sàng giao")
+                .description("Người bán đã đóng gói xong, đang chờ bưu tá " + shipment.getCarrierName() + " đến lấy hàng.")
+                .location(shipment.getFromAddress() != null ? shipment.getFromAddress() : "Kho người bán")
+                .timestamp(baseTime)
+                .completed(m1Completed)
+                .current(m1Current)
+                .build());
+
+        // Milestone 2: PICKED
+        boolean m2Completed = !"READY_TO_PICK".equalsIgnoreCase(status);
+        boolean m2Current = "PICKED".equalsIgnoreCase(status);
+        timeline.add(TrackingMilestoneDto.builder()
+                .status("PICKED")
+                .title("Đã lấy hàng và nhập kho trung chuyển")
+                .description("Bưu tá " + shipment.getCarrierName() + " đã nhận kiện hàng và nhập vào trung tâm khai thác phân loại.")
+                .location("Trung tâm khai thác logistics " + shipment.getCarrierName())
+                .timestamp(baseTime.plusHours(2))
+                .completed(m2Completed)
+                .current(m2Current)
+                .build());
+
+        // Milestone 3: DELIVERING
+        boolean m3Completed = "DELIVERING".equalsIgnoreCase(status) || "DELIVERED".equalsIgnoreCase(status)
+                || "DELIVERY_FAILED".equalsIgnoreCase(status) || "RETURNED".equalsIgnoreCase(status);
+        boolean m3Current = "DELIVERING".equalsIgnoreCase(status);
+        timeline.add(TrackingMilestoneDto.builder()
+                .status("DELIVERING")
+                .title("Đang giao hàng")
+                .description("Nhân viên giao vận đang trên đường giao kiện hàng tới địa chỉ nhận.")
+                .location("Bưu cục phát " + shipment.getCarrierName() + " khu vực người nhận")
+                .timestamp(baseTime.plusHours(8))
+                .completed(m3Completed)
+                .current(m3Current)
+                .build());
+
+        // Milestone 4: DELIVERED or Final status
+        if ("DELIVERY_FAILED".equalsIgnoreCase(status)) {
+            timeline.add(TrackingMilestoneDto.builder()
+                    .status("DELIVERY_FAILED")
+                    .title("Giao hàng không thành công")
+                    .description("Giao hàng không thành công do không liên lạc được với người nhận hoặc thay đổi thời gian nhận.")
+                    .location(shipment.getToAddress())
+                    .timestamp(shipment.getUpdatedAt() != null ? shipment.getUpdatedAt() : LocalDateTime.now())
+                    .completed(true)
+                    .current(true)
+                    .build());
+        } else if ("RETURNED".equalsIgnoreCase(status)) {
+            timeline.add(TrackingMilestoneDto.builder()
+                    .status("RETURNED")
+                    .title("Đã hoàn hàng về cho người bán")
+                    .description("Kiện hàng đã được hoàn trả thành công về kho của người bán.")
+                    .location(shipment.getFromAddress())
+                    .timestamp(shipment.getUpdatedAt() != null ? shipment.getUpdatedAt() : LocalDateTime.now())
+                    .completed(true)
+                    .current(true)
+                    .build());
+        } else {
+            boolean m4Completed = "DELIVERED".equalsIgnoreCase(status);
+            boolean m4Current = "DELIVERED".equalsIgnoreCase(status);
+            timeline.add(TrackingMilestoneDto.builder()
+                    .status("DELIVERED")
+                    .title("Giao hàng thành công")
+                    .description("Kiện hàng đã được giao thành công tới người nhận: " + (shipment.getRecipientName() != null ? shipment.getRecipientName() : "Khách hàng"))
+                    .location(shipment.getToAddress() != null ? shipment.getToAddress() : "Địa chỉ nhận hàng")
+                    .timestamp(m4Completed ? (shipment.getUpdatedAt() != null ? shipment.getUpdatedAt() : baseTime.plusHours(24)) : null)
+                    .completed(m4Completed)
+                    .current(m4Current)
+                    .build());
+        }
+
+        return ShipmentTrackingResponse.builder()
+                .id(shipment.getId())
+                .subOrderId(shipment.getSubOrderId())
+                .trackingCode(shipment.getTrackingCode())
+                .carrierName(shipment.getCarrierName())
+                .shippingFee(shipment.getShippingFee())
+                .shippingStatus(shipment.getShippingStatus())
+                .statusDescription(description)
+                .recipientName(shipment.getRecipientName())
+                .recipientPhone(shipment.getRecipientPhone())
+                .fromAddress(shipment.getFromAddress())
+                .toAddress(shipment.getToAddress())
+                .weightGrams(shipment.getWeightGrams())
+                .estimatedDeliveryDate(shipment.getEstimatedDeliveryDate())
+                .createdAt(shipment.getCreatedAt())
+                .updatedAt(shipment.getUpdatedAt())
+                .timeline(timeline)
+                .build();
     }
 }
