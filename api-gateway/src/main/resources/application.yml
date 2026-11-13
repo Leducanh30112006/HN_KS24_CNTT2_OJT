@@ -142,7 +142,15 @@ spring:
                 allowedRoles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN"
             - StripPrefix=0
 
-        # 8. Shipping Service - Logistics & Tracking (Yêu cầu đăng nhập)
+        # 8a. Shipping Service - Public Webhook, Tracking & Fee Calculator (Webhook GHN/GHTK, Public Tracking & Fee)
+        - id: shipping-public-route
+          uri: ${SHIPPING_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/shipping/webhook, /api/shipping/calculate-fee, /api/shipping/track/**
+          filters:
+            - StripPrefix=0
+
+        # 8b. Shipping Service - Protected Logistics (Yêu cầu đăng nhập)
         - id: shipping-service-route
           uri: ${SHIPPING_SERVICE_URL:http://localhost:8085}
           predicates:

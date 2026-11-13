@@ -2,10 +2,7 @@ package com.quickshop.shipping.service;
 
 import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.shipping.controller.ShippingController;
-import com.quickshop.shipping.dto.CalculateFeeRequest;
-import com.quickshop.shipping.dto.CalculateFeeResponse;
-import com.quickshop.shipping.dto.CreateShipmentRequest;
-import com.quickshop.shipping.dto.ShipmentStatusUpdateRequest;
+import com.quickshop.shipping.dto.*;
 import com.quickshop.shipping.entity.Shipment;
 import com.quickshop.shipping.entity.ShippingWebhookLog;
 import com.quickshop.shipping.repository.ShipmentRepository;
@@ -169,5 +166,34 @@ class ShippingServiceTest {
         Shipment next = shippingService.simulateNextCarrierStep("GHN-ABC12345");
 
         assertEquals("PICKED", next.getShippingStatus());
+    }
+
+    @Test
+    @DisplayName("Tra cứu hành trình chi tiết vận đơn có đầy đủ timeline milestones")
+    void testGetShipmentTracking_WithTimeline() {
+        when(shipmentRepository.findByTrackingCode("GHN-ABC12345")).thenReturn(Optional.of(sampleShipment));
+
+        ShipmentTrackingResponse tracking = shippingService.getShipmentTracking("GHN-ABC12345");
+
+        assertNotNull(tracking);
+        assertEquals("GHN-ABC12345", tracking.getTrackingCode());
+        assertEquals("READY_TO_PICK", tracking.getShippingStatus());
+        assertNotNull(tracking.getTimeline());
+        assertFalse(tracking.getTimeline().isEmpty());
+        assertEquals(4, tracking.getTimeline().size());
+        assertTrue(tracking.getTimeline().get(0).isCompleted());
+        assertTrue(tracking.getTimeline().get(0).isCurrent());
+    }
+
+    @Test
+    @DisplayName("Mô phỏng gán trực tiếp trạng thái đơn vị vận chuyển (DELIVERED)")
+    void testSimulateCarrierStatus_Delivered() {
+        when(shipmentRepository.findByTrackingCode("GHN-ABC12345")).thenReturn(Optional.of(sampleShipment));
+        when(shipmentRepository.save(any(Shipment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Shipment updated = shippingService.simulateCarrierStatus("GHN-ABC12345", "DELIVERED");
+
+        assertEquals("DELIVERED", updated.getShippingStatus());
+        verify(shipmentRepository, times(1)).save(sampleShipment);
     }
 }
