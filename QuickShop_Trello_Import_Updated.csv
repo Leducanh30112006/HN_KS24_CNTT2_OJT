@@ -662,7 +662,7 @@ Xử lý VNPay IPN, xác minh chữ ký, chống xử lý giao dịch trùng và
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - VNPay create flow",2026-11-11,2026-11-11
-Cần làm,"[AI & Identity] Hoàn thiện AI SEO description từ thông số sản phẩm; kiểm tra đầu ra, lọc HTML/Markdown và giới hạn prompt: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[AI & Identity] Hoàn thiện AI SEO description từ thông số sản phẩm; kiểm tra đầu ra, lọc HTML/Markdown và giới hạn prompt: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Năm, 2026-11-12
 **Phân hệ:** AI & Identity
 
@@ -710,7 +710,7 @@ Triển khai double-entry ledger; ghi Nợ/Có cân bằng, commission và escro
 Bổ sung GitHub Actions build/test; cấu hình Docker image, Nginx reverse proxy và secrets mẫu
 
 ### 📦 Đầu ra cần bàn giao:
-- CI pipeline chạy; Nginx config
+- CI pipeline chạy (deploy.yml hỗ trợ SSH Key/Password); Nginx reverse proxy SSL; script khởi tạo VPS tự động (setup-vps.sh); hướng dẫn triển khai DEPLOYMENT_GUIDE.md
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Các service build được",2026-11-13,2026-11-13

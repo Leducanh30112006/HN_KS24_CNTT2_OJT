@@ -2,6 +2,8 @@ package com.quickshop.notification.ai.service;
 
 import com.quickshop.notification.ai.dto.AiChatRequest;
 import com.quickshop.notification.ai.dto.AiChatResponse;
+import com.quickshop.notification.ai.dto.AiSeoGenerateRequest;
+import com.quickshop.notification.ai.dto.AiSeoGenerateResponse;
 import com.quickshop.notification.ai.dto.PromptVerifyDto;
 
 import java.util.Map;
@@ -18,6 +20,15 @@ public interface AiAssistantService {
      * @return Phản hồi tư vấn mua sắm từ AI Assistant
      */
     AiChatResponse chat(AiChatRequest request);
+
+    /**
+     * Sinh tiêu đề và bài mô tả sản phẩm chuẩn SEO từ thông số kỹ thuật,
+     * có kiểm tra đầu ra, lọc HTML/Markdown và giới hạn prompt.
+     *
+     * @param request Thông số sản phẩm và tùy chọn SEO
+     * @return Nội dung SEO đã được kiểm định và làm sạch
+     */
+    AiSeoGenerateResponse generateSeoDescription(AiSeoGenerateRequest request);
 
     /**
      * Kiểm thử và thẩm định độ an toàn của prompt (dành cho QA / Security audit)

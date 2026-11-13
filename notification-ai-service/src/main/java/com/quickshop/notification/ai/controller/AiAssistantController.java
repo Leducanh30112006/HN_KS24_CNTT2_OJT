@@ -1,11 +1,14 @@
 package com.quickshop.notification.ai.controller;
 
 import com.quickshop.common.dto.ApiResponse;
+import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.notification.ai.catalog.AiCatalogSearchRequest;
 import com.quickshop.notification.ai.catalog.AiCatalogSearchResult;
 import com.quickshop.notification.ai.catalog.AiCatalogSearchService;
 import com.quickshop.notification.ai.dto.AiChatRequest;
 import com.quickshop.notification.ai.dto.AiChatResponse;
+import com.quickshop.notification.ai.dto.AiSeoGenerateRequest;
+import com.quickshop.notification.ai.dto.AiSeoGenerateResponse;
 import com.quickshop.notification.ai.dto.PromptVerifyDto;
 import com.quickshop.notification.ai.service.AiAssistantService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +17,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -45,6 +50,16 @@ public class AiAssistantController {
                 request.getMessage() != null ? request.getMessage().length() : 0);
         AiChatResponse response = aiAssistantService.chat(request);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/generate-seo")
+    @Operation(summary = "Sinh tiêu đề và mô tả sản phẩm chuẩn SEO từ thông số kỹ thuật (lọc HTML/Markdown & giới hạn prompt)")
+    public ResponseEntity<ApiResponse<AiSeoGenerateResponse>> generateSeoDescription(
+            @Valid @RequestBody AiSeoGenerateRequest request) {
+        log.info("Incoming AI SEO generation request: productName='{}', category='{}'",
+                request.getProductName(), request.getCategory());
+        AiSeoGenerateResponse response = aiAssistantService.generateSeoDescription(request);
+        return ResponseEntity.ok(ApiResponse.success("Tạo nội dung SEO sản phẩm thành công", response));
     }
 
     @PostMapping("/verify-prompt")
@@ -96,6 +111,24 @@ public class AiAssistantController {
         Map<String, Object> resp = new HashMap<>(aiCatalogSearchService.getCircuitBreakerStatus());
         resp.put("message", "Circuit Breaker đã được reset về trạng thái CLOSED thành công.");
         return ResponseEntity.ok(ApiResponse.success("Reset Circuit Breaker thành công", resp));
+    }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBadRequest(BadRequestException ex) {
+        return ResponseEntity.badRequest().body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationError(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            errors.put(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+        return ResponseEntity.badRequest().body(ApiResponse.<Map<String, String>>builder()
+                .success(false)
+                .message("Dữ liệu đầu vào không hợp lệ")
+                .data(errors)
+                .build());
     }
 }
 

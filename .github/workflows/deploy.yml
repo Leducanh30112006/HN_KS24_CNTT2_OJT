@@ -222,18 +222,34 @@ jobs:
         if: env.VPS_HOST != ''
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
         run: |
           if [ -d "built-jars" ] && [ "$(ls -A built-jars)" ]; then
-            mkdir -p ~/.ssh
-            printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
-            chmod 600 ~/.ssh/deploy_key
-            for svc_dir in built-jars/*/; do
-              [ -d "$svc_dir" ] || continue
-              svc=$(basename "$svc_dir")
-              echo "Uploading JAR for $svc to VPS..."
-              ssh -i ~/.ssh/deploy_key -p "${{ env.VPS_PORT }}" -o StrictHostKeyChecking=no "${{ env.VPS_USERNAME }}@${{ env.VPS_HOST }}" "mkdir -p /opt/quickshop/$svc/build/libs && rm -f /opt/quickshop/$svc/build/libs/*.jar"
-              find "$svc_dir" -type f -name '*.jar' -exec scp -i ~/.ssh/deploy_key -P "${{ env.VPS_PORT }}" -o StrictHostKeyChecking=no {} "${{ env.VPS_USERNAME }}@${{ env.VPS_HOST }}:/opt/quickshop/$svc/build/libs/" \;
-            done
+            if [ -n "$VPS_SSH_KEY" ]; then
+              echo "Using VPS_SSH_KEY for authentication..."
+              mkdir -p ~/.ssh
+              printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+              chmod 600 ~/.ssh/deploy_key
+              for svc_dir in built-jars/*/; do
+                [ -d "$svc_dir" ] || continue
+                svc=$(basename "$svc_dir")
+                echo "Uploading JAR for $svc to VPS via SSH key..."
+                ssh -i ~/.ssh/deploy_key -p "${{ env.VPS_PORT }}" -o StrictHostKeyChecking=no "${{ env.VPS_USERNAME }}@${{ env.VPS_HOST }}" "mkdir -p /opt/quickshop/$svc/build/libs && rm -f /opt/quickshop/$svc/build/libs/*.jar"
+                find "$svc_dir" -type f -name '*.jar' -exec scp -i ~/.ssh/deploy_key -P "${{ env.VPS_PORT }}" -o StrictHostKeyChecking=no {} "${{ env.VPS_USERNAME }}@${{ env.VPS_HOST }}:/opt/quickshop/$svc/build/libs/" \;
+              done
+            elif [ -n "$VPS_PASSWORD" ]; then
+              echo "Using VPS_PASSWORD with sshpass for authentication..."
+              sudo apt-get update -qq && sudo apt-get install -y sshpass
+              for svc_dir in built-jars/*/; do
+                [ -d "$svc_dir" ] || continue
+                svc=$(basename "$svc_dir")
+                echo "Uploading JAR for $svc to VPS via password..."
+                sshpass -p "$VPS_PASSWORD" ssh -p "${{ env.VPS_PORT }}" -o StrictHostKeyChecking=no "${{ env.VPS_USERNAME }}@${{ env.VPS_HOST }}" "mkdir -p /opt/quickshop/$svc/build/libs && rm -f /opt/quickshop/$svc/build/libs/*.jar"
+                find "$svc_dir" -type f -name '*.jar' -exec sshpass -p "$VPS_PASSWORD" scp -P "${{ env.VPS_PORT }}" -o StrictHostKeyChecking=no {} "${{ env.VPS_USERNAME }}@${{ env.VPS_HOST }}:/opt/quickshop/$svc/build/libs/" \;
+              done
+            else
+              echo "Neither VPS_SSH_KEY nor VPS_PASSWORD configured, skipping JAR upload."
+            fi
           else
             echo "No backend JAR artifacts to upload."
           fi
@@ -255,6 +271,7 @@ jobs:
           port: ${{ env.VPS_PORT }}
           username: ${{ env.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           command_timeout: 30m
           timeout: 60s
           envs: IMAGE_TAG,GATEWAY_CHANGED,IDENTITY_CHANGED,CATALOG_CHANGED,ORDER_CHANGED,PAYMENT_CHANGED,SHIPPING_CHANGED,NOTIFICATION_CHANGED,FRONTEND_CHANGED
