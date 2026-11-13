@@ -24,10 +24,10 @@ public class MinioStorageService {
     @Value("${minio.bucket-name:quickshop-products}")
     private String bucketName;
 
-    @Value("${minio.endpoint:http://localhost:9000}")
+    @Value("${minio.endpoint:http://localhost:9010}")
     private String minioEndpoint;
 
-    @Value("${minio.public-url:http://localhost:9000}")
+    @Value("${minio.public-url:http://localhost:9010}")
     private String minioPublicUrl;
 
     @Value("${minio.max-file-size:5242880}")

@@ -31,7 +31,7 @@ Toàn bộ hệ thống QuickShop trên VPS được điều phối qua **Docker
        │
        ├───────────────────────────────┬───────────────────────────────┐
        ▼                               ▼                               ▼
-[React 18 Frontend]           [Spring Cloud Gateway: 8080]    [MinIO Console: 9001]
+[React 18 Frontend]           [Spring Cloud Gateway: 8080]    [MinIO Console: 9011]
 (SPA Web Nginx: Port 80)      (JWT Auth, Rate Limit, CORS)
                                        │
         ┌──────────────┬───────────────┼───────────────┬──────────────┬──────────────┐
@@ -138,7 +138,7 @@ Truy cập các địa chỉ sau trên máy tính của bạn:
 - **Trang chủ QuickShop:** `http://221.121.5.123` hoặc `https://221.121.5.123`
 - **API Gateway Health:** `http://221.121.5.123/api/actuator/health`
 - **RabbitMQ Dashboard:** `http://221.121.5.123:15672` (User: `quickshop` / Pass: `quickshop123`)
-- **MinIO Storage Console:** `http://221.121.5.123:9001` (User: `minioadmin` / Pass: `minioadmin`)
+- **MinIO Storage Console:** `http://221.121.5.123:9011` (User: `minioadmin` / Pass: `minioadmin`)
 - **Prometheus Metrics:** `http://221.121.5.123:9090`
 - **Grafana Dashboard:** `http://221.121.5.123:3000` (User: `admin` / Pass: `quickshop123`)
 - **Zipkin Tracing:** `http://221.121.5.123:9411`

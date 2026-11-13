@@ -38,11 +38,11 @@ spring:
       password: ${REDIS_PASSWORD:}
 
 minio:
-  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9010}
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
   bucket-name: ${MINIO_BUCKET:quickshop-products}
-  public-url: ${MINIO_PUBLIC_URL:http://localhost:9000}
+  public-url: ${MINIO_PUBLIC_URL:http://localhost:9010}
   max-file-size: ${MINIO_MAX_FILE_SIZE:5242880} # 5MB
 
 catalog:

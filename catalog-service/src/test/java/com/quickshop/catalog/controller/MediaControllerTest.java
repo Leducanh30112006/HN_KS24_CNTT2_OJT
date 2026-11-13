@@ -50,7 +50,7 @@ class MediaControllerTest {
         );
 
         FileUploadResponse response = FileUploadResponse.builder()
-                .url("http://localhost:9000/quickshop-products/abc-123.png")
+                .url("http://localhost:9010/quickshop-products/abc-123.png")
                 .streamUrl("/api/catalog/media/abc-123.png")
                 .fileName("abc-123.png")
                 .originalFilename("phone.png")
@@ -64,7 +64,7 @@ class MediaControllerTest {
         mockMvc.perform(multipart("/api/catalog/upload").file(file))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.url").value("http://localhost:9000/quickshop-products/abc-123.png"))
+                .andExpect(jsonPath("$.data.url").value("http://localhost:9010/quickshop-products/abc-123.png"))
                 .andExpect(jsonPath("$.data.fileName").value("abc-123.png"))
                 .andExpect(jsonPath("$.data.originalFilename").value("phone.png"));
     }

@@ -42,8 +42,8 @@ class MinioStorageServiceTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(minioStorageService, "bucketName", "quickshop-products");
-        ReflectionTestUtils.setField(minioStorageService, "minioEndpoint", "http://localhost:9000");
-        ReflectionTestUtils.setField(minioStorageService, "minioPublicUrl", "http://localhost:9000");
+        ReflectionTestUtils.setField(minioStorageService, "minioEndpoint", "http://localhost:9010");
+        ReflectionTestUtils.setField(minioStorageService, "minioPublicUrl", "http://localhost:9010");
         ReflectionTestUtils.setField(minioStorageService, "maxFileSizeBytes", 5242880L); // 5MB
     }
 
@@ -72,7 +72,7 @@ class MinioStorageServiceTest {
             assertThat(response.getSize()).isEqualTo(content.length);
             assertThat(response.getBucket()).isEqualTo("quickshop-products");
             assertThat(response.getFileName()).endsWith(".jpg");
-            assertThat(response.getUrl()).startsWith("http://localhost:9000/quickshop-products/");
+            assertThat(response.getUrl()).startsWith("http://localhost:9010/quickshop-products/");
             assertThat(response.getStreamUrl()).startsWith("/api/catalog/media/");
 
             verify(minioClient).putObject(any(PutObjectArgs.class));
