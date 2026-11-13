@@ -710,7 +710,7 @@ Triển khai double-entry ledger; ghi Nợ/Có cân bằng, commission và escro
 Bổ sung GitHub Actions build/test; cấu hình Docker image, Nginx reverse proxy và secrets mẫu
 
 ### 📦 Đầu ra cần bàn giao:
-- CI pipeline chạy; Nginx config
+- CI pipeline chạy (deploy.yml hỗ trợ SSH Key/Password); Nginx reverse proxy SSL; script khởi tạo VPS tự động (setup-vps.sh); hướng dẫn triển khai DEPLOYMENT_GUIDE.md
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Các service build được",2026-11-13,2026-11-13

@@ -90,6 +90,7 @@ cd frontend && npm install && npm run build
 ---
 
 ## 4. Tài liệu Bàn giao & Báo cáo Đảm bảo Chất lượng
+- [Hướng dẫn Triển khai VPS & CI/CD Pipeline (Deployment Guide)](docs/DEPLOYMENT_GUIDE.md)
 - [Tài liệu Hướng dẫn Sử dụng (User Guide)](docs/USER_GUIDE.md)
 - [Báo cáo Kiểm thử Backend (QA Backend Report)](docs/QA_BACKEND_TEST_REPORT.md)
 - [Báo cáo Kiểm thử Frontend (QA Frontend Report)](docs/QA_FRONTEND_TEST_REPORT.md)
