@@ -1,16 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Trash2, ShoppingBag, Store, ArrowRight, ShieldCheck, Tag, CheckCircle2 } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 
 export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
-  const { items, updateQuantity, removeFromCart, clearCart, getTotalAmount, getItemsByShop } = useCartStore();
+  const { items, updateQuantity, removeFromCart, clearCart, getTotalAmount, getItemsByShop, fetchCart } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
 
   const [voucherCode, setVoucherCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
   const [voucherApplied, setVoucherApplied] = useState('');
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
+
+  // Tự động làm mới giỏ hàng từ Redis backend mỗi khi mở Cart Drawer
+  useEffect(() => {
+    if (isOpen && isAuthenticated && user?.userId) {
+      fetchCart(user.userId);
+    }
+  }, [isOpen, isAuthenticated, user?.userId]);
 
   if (!isOpen) return null;
 
