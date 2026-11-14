@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -28,6 +29,11 @@ public class ShippingServiceImpl implements ShippingService {
 
     private final ShipmentRepository shipmentRepository;
     private final ShippingWebhookLogRepository webhookLogRepository;
+
+    @Override
+    public List<Shipment> getAllShipments() {
+        return shipmentRepository.findAll();
+    }
 
     @Override
     public CalculateFeeResponse calculateFee(CalculateFeeRequest request) {

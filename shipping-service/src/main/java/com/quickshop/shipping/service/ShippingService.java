@@ -7,7 +7,10 @@ import com.quickshop.shipping.dto.CreateShipmentRequest;
 import com.quickshop.shipping.dto.ShipmentStatusUpdateRequest;
 import com.quickshop.shipping.entity.Shipment;
 
+import java.util.List;
+
 public interface ShippingService {
+    List<Shipment> getAllShipments();
     CalculateFeeResponse calculateFee(CalculateFeeRequest request);
     Shipment createShipment(CreateShipmentRequest request);
     Shipment getShipmentByTrackingCode(String trackingCode);

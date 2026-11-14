@@ -102,4 +102,21 @@ class ShippingControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.shippingStatus").value("DELIVERING"));
     }
+
+    @Test
+    @DisplayName("API GET /api/shipping trả về danh sách tất cả vận đơn 200")
+    void testGetAllShipmentsApi() throws Exception {
+        Shipment shipment = Shipment.builder()
+                .id(1L)
+                .trackingCode("GHN-TRACK123")
+                .shippingStatus("DELIVERING")
+                .build();
+
+        when(shippingService.getAllShipments()).thenReturn(java.util.List.of(shipment));
+
+        mockMvc.perform(get("/api/shipping"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].trackingCode").value("GHN-TRACK123"));
+    }
 }
