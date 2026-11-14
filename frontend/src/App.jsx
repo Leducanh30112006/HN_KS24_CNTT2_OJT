@@ -16,6 +16,9 @@ import LoginPage from './components/LoginPage';
 import AuthModal from './components/AuthModal';
 import Pagination from './components/Pagination';
 import ApiErrorBanner from './components/ApiErrorBanner';
+import UserProfilePage from './components/UserProfilePage';
+import OrderHistoryPage from './components/OrderHistoryPage';
+import ShipperPortal from './components/ShipperPortal';
 import catalogApi, { mapPriceRange } from './api/catalogApi';
 import axiosClient from './api/axiosClient';
 import { 
@@ -420,6 +423,48 @@ export default function App() {
             }}
             onSelectProduct={handleSelectProduct}
             onRequireAuth={() => setCurrentView('login')}
+            onViewOrders={() => {
+              setCurrentView('orders');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        )}
+
+        {/* VIEW: USER PROFILE (HỒ SƠ NGƯỜI DÙNG, ĐỔI MẬT KHẨU, SỔ ĐỊA CHỈ) */}
+        {currentView === 'profile' && (
+          <UserProfilePage
+            onBackToHome={() => {
+              setCurrentView('storefront');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onViewOrders={() => {
+              setCurrentView('orders');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        )}
+
+        {/* VIEW: ORDER HISTORY & REAL-TIME SHIPPER TRACKING (THEO DÕI ĐƠN HÀNG & LỊCH SỬ MUA HÀNG) */}
+        {currentView === 'orders' && (
+          <OrderHistoryPage
+            onBackToHome={() => {
+              setCurrentView('storefront');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onBuyAgain={() => {
+              setCurrentView('cart');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        )}
+
+        {/* VIEW: SHIPPER PORTAL (CỔNG QUẢN LÝ VẬN CHUYỂN DÀNH CHO SHIPPER) */}
+        {currentView === 'shipper' && (
+          <ShipperPortal
+            onBackToHome={() => {
+              setCurrentView('storefront');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
           />
         )}
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   ShoppingBag, Search, Bell, ShoppingCart, User, Store, ShieldCheck, 
-  HelpCircle, Smartphone, ChevronDown, LogOut, CheckCircle, Tag
+  HelpCircle, Smartphone, ChevronDown, LogOut, CheckCircle, Tag, Truck, Package
 } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useCartStore } from '../stores/useCartStore';
@@ -66,36 +66,58 @@ export default function Navbar({
             </span>
           </div>
 
-          {/* Phân quyền điều hướng: Kênh Người Bán / Admin chỉ hiển thị khi có thẩm quyền */}
-          {isAuthenticated && (isSellerOnly || isAdmin) && (
-            <div className="flex items-center space-x-3 text-[11px] font-medium">
-              {isSellerOnly && (
-                <button
-                  onClick={() => setCurrentView('seller')}
-                  className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
-                    currentView === 'seller' ? 'bg-white text-orange-600 font-bold shadow-sm' : 'hover:bg-white/20'
-                  }`}
-                  title="Truy cập Kênh Quản Lý Người Bán"
-                >
-                  <Store className="w-3 h-3" />
-                  <span>Kênh Người Bán</span>
-                </button>
-              )}
+          {/* Phân quyền điều hướng & Tiện ích: Shipper, Đơn Mua, Kênh Người Bán, Admin */}
+          <div className="flex items-center space-x-3 text-[11px] font-medium">
+            <button
+              onClick={() => setCurrentView('shipper')}
+              className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
+                currentView === 'shipper' ? 'bg-white text-blue-700 font-bold shadow-sm' : 'hover:bg-white/20'
+              }`}
+              title="Kênh Quản Lý Vận Chuyển Dành Cho Shipper"
+            >
+              <Truck className="w-3 h-3" />
+              <span>Kênh Shipper</span>
+            </button>
 
-              {isAdmin && (
-                <button
-                  onClick={() => setCurrentView('admin')}
-                  className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
-                    currentView === 'admin' ? 'bg-white text-orange-600 font-bold shadow-sm' : 'hover:bg-white/20'
-                  }`}
-                  title="Truy cập Quản Trị Hệ Thống Admin"
-                >
-                  <ShieldCheck className="w-3 h-3" />
-                  <span>Quản Trị Admin</span>
-                </button>
-              )}
-            </div>
-          )}
+            {isAuthenticated && (
+              <button
+                onClick={() => setCurrentView('orders')}
+                className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
+                  currentView === 'orders' ? 'bg-white text-orange-600 font-bold shadow-sm' : 'hover:bg-white/20'
+                }`}
+                title="Tra cứu Lịch sử Đơn Mua Của Bạn"
+              >
+                <Package className="w-3 h-3" />
+                <span>Đơn Mua</span>
+              </button>
+            )}
+
+            {isAuthenticated && isSellerOnly && (
+              <button
+                onClick={() => setCurrentView('seller')}
+                className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
+                  currentView === 'seller' ? 'bg-white text-orange-600 font-bold shadow-sm' : 'hover:bg-white/20'
+                }`}
+                title="Truy cập Kênh Quản Lý Người Bán"
+              >
+                <Store className="w-3 h-3" />
+                <span>Kênh Người Bán</span>
+              </button>
+            )}
+
+            {isAuthenticated && isAdmin && (
+              <button
+                onClick={() => setCurrentView('admin')}
+                className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
+                  currentView === 'admin' ? 'bg-white text-orange-600 font-bold shadow-sm' : 'hover:bg-white/20'
+                }`}
+                title="Truy cập Quản Trị Hệ Thống Admin"
+              >
+                <ShieldCheck className="w-3 h-3" />
+                <span>Quản Trị Admin</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -296,6 +318,51 @@ export default function Navbar({
                 >
                   <ShoppingBag className="w-3.5 h-3.5" />
                   Trang chủ Mua sắm (Catalog)
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCurrentView('profile');
+                    setShowUserMenu(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs font-medium rounded-lg flex items-center gap-2 ${
+                    currentView === 'profile'
+                      ? 'bg-orange-50 text-orange-600 font-bold'
+                      : 'text-slate-700 hover:bg-orange-50 hover:text-orange-600'
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  Hồ sơ của tôi
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCurrentView('orders');
+                    setShowUserMenu(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs font-medium rounded-lg flex items-center gap-2 ${
+                    currentView === 'orders'
+                      ? 'bg-orange-50 text-orange-600 font-bold'
+                      : 'text-slate-700 hover:bg-orange-50 hover:text-orange-600'
+                  }`}
+                >
+                  <Package className="w-3.5 h-3.5" />
+                  Đơn mua / Lịch sử đơn
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCurrentView('shipper');
+                    setShowUserMenu(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs font-medium rounded-lg flex items-center gap-2 ${
+                    currentView === 'shipper'
+                      ? 'bg-blue-50 text-blue-700 font-bold'
+                      : 'text-slate-700 hover:bg-blue-50 hover:text-blue-700'
+                  }`}
+                >
+                  <Truck className="w-3.5 h-3.5" />
+                  Kênh Vận Chuyển (Shipper)
                 </button>
 
                 {/* Chỉ hiển thị Kênh Người Bán nếu là ROLE_SELLER hoặc ROLE_ADMIN */}
