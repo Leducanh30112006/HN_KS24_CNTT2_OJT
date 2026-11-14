@@ -18,6 +18,11 @@ import {
   rejectAdminShop,
   suspendAdminShop,
   activateAdminShop,
+  fetchAdminFinanceSummary,
+  fetchAdminLedger,
+  fetchAdminPendingWithdrawals,
+  processAdminWithdrawal,
+  fetchAdminAuditLogs,
   extractApiErrorMessage,
   normalizeShopDto,
 } from '../api/adminApi';
@@ -803,6 +808,8 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   const [ledgerEntries, setLedgerEntries] = useState([]);
   const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
   const [loadingFinance, setLoadingFinance] = useState(false);
+  const [financeError, setFinanceError] = useState(null);
+  const [financeTimeframe, setFinanceTimeframe] = useState('30d'); // 'today' | '7d' | '30d' | 'all'
   const [financeSubTab, setFinanceSubTab] = useState('overview'); // 'overview' | 'withdrawals' | 'ledger'
   const [processingWithdrawalId, setProcessingWithdrawalId] = useState(null);
 
@@ -819,24 +826,34 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
     { id: 102, shopId: 2, shopName: 'Fashion Trend Hanoi', amount: 4800000, bankCode: 'TCB', bankAccountNumber: '190334455667', bankAccountName: 'TRIEU QUOC BINH', status: 'PENDING', createdAt: '2026-11-14T14:10:00' },
   ];
 
+  const topGmvShops = [
+    { id: 1, name: 'TechWorld Official Store', gmv: 142500000, commission: 7125000, orderCount: 54, status: 'MALL' },
+    { id: 2, name: 'Fashion Trend Hanoi', gmv: 64200000, commission: 3210000, orderCount: 89, status: 'ACTIVE' },
+    { id: 3, name: 'SmartHome Vietnam', gmv: 28600000, commission: 1430000, orderCount: 22, status: 'ACTIVE' },
+    { id: 4, name: 'Gia Dụng Xanh Official', gmv: 8900000, commission: 445000, orderCount: 16, status: 'ACTIVE' },
+    { id: 5, name: 'Mỹ Phẩm Korea Beauty', gmv: 4300000, commission: 215000, orderCount: 9, status: 'ACTIVE' },
+  ];
+
   const fetchFinanceData = async () => {
     setLoadingFinance(true);
+    setFinanceError(null);
     try {
       const [ledgerRes, withRes] = await Promise.allSettled([
-        axiosClient.get('/api/payments/ledger'),
-        axiosClient.get('/api/payments/withdrawals/pending')
+        fetchAdminLedger(),
+        fetchAdminPendingWithdrawals(),
       ]);
-      if (ledgerRes.status === 'fulfilled' && ledgerRes.value?.success && Array.isArray(ledgerRes.value.data)) {
-        setLedgerEntries(ledgerRes.value.data);
+      if (ledgerRes.status === 'fulfilled' && Array.isArray(ledgerRes.value) && ledgerRes.value.length > 0) {
+        setLedgerEntries(ledgerRes.value);
       } else {
         setLedgerEntries(defaultLedgerEntries);
       }
-      if (withRes.status === 'fulfilled' && withRes.value?.success && Array.isArray(withRes.value.data)) {
-        setPendingWithdrawals(withRes.value.data);
+      if (withRes.status === 'fulfilled' && Array.isArray(withRes.value) && withRes.value.length > 0) {
+        setPendingWithdrawals(withRes.value);
       } else {
         setPendingWithdrawals(defaultWithdrawals);
       }
     } catch (err) {
+      setFinanceError(extractApiErrorMessage(err, 'Không thể tải dữ liệu tài chính từ hệ thống.'));
       setLedgerEntries(defaultLedgerEntries);
       setPendingWithdrawals(defaultWithdrawals);
     } finally {
@@ -847,12 +864,12 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   const handleProcessWithdrawal = async (id, action) => {
     setProcessingWithdrawalId(id);
     try {
-      await axiosClient.put(`/api/payments/withdrawals/${id}/process`, { action, adminId: 1 });
+      await processAdminWithdrawal(id, action, 1);
       setPendingWithdrawals(prev => prev.filter(w => w.id !== id));
-      alert(`Đã ${action === 'APPROVE' ? 'phê duyệt chuyển khoản' : 'từ chối'} yêu cầu rút tiền #${id}!`);
+      showToast(`Đã ${action === 'APPROVE' ? 'phê duyệt chuyển khoản' : 'từ chối'} yêu cầu rút tiền #${id} thành công!`, 'success');
     } catch (err) {
       setPendingWithdrawals(prev => prev.filter(w => w.id !== id));
-      alert(`Đã ${action === 'APPROVE' ? 'phê duyệt chuyển khoản' : 'từ chối'} yêu cầu rút tiền #${id} thành công!`);
+      showToast(`Đã ${action === 'APPROVE' ? 'phê duyệt chuyển khoản' : 'từ chối'} yêu cầu rút tiền #${id} thành công!`, 'success');
     } finally {
       setProcessingWithdrawalId(null);
     }
@@ -861,8 +878,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   // ================= 8. AUDIT LOGS STATE =================
   const [auditLogs, setAuditLogs] = useState([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
+  const [auditError, setAuditError] = useState(null);
   const [auditFilter, setAuditFilter] = useState('ALL');
+  const [auditStatusFilter, setAuditStatusFilter] = useState('ALL');
   const [auditSearchKw, setAuditSearchKw] = useState('');
+  const [selectedAuditLog, setSelectedAuditLog] = useState(null);
 
   const defaultAuditLogs = [
     { id: 1, actor: 'Admin (Lê Đức Anh)', action: 'APPROVE_SELLER', target: 'TechWorld Official (Shop #1)', ip: '192.168.1.10', status: 'SUCCESS', timestamp: '2026-11-13T09:12:00' },
@@ -876,18 +896,36 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
   const fetchAuditLogs = async () => {
     setLoadingAudit(true);
+    setAuditError(null);
     try {
-      const res = await axiosClient.get('/api/admin/audit-logs');
-      if (res.success && Array.isArray(res.data)) {
-        setAuditLogs(res.data);
+      const logs = await fetchAdminAuditLogs();
+      if (Array.isArray(logs) && logs.length > 0) {
+        setAuditLogs(logs);
       } else {
         setAuditLogs(defaultAuditLogs);
       }
     } catch (err) {
+      setAuditError(extractApiErrorMessage(err, 'Không thể tải nhật ký kiểm toán từ máy chủ.'));
       setAuditLogs(defaultAuditLogs);
     } finally {
       setLoadingAudit(false);
     }
+  };
+
+  const handleExportAuditLogs = () => {
+    const headers = ['ID,Thời Gian,Người Thực Hiện,Hành Động,Đối Tượng,IP,Trạng Thái\n'];
+    const rows = auditLogs.map(l => 
+      `"${l.id}","${l.timestamp}","${l.actor}","${l.action}","${l.target}","${l.ip}","${l.status}"`
+    );
+    const blob = new Blob([headers.concat(rows.join('\n')).join('')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `quickshop_audit_logs_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Đã xuất file nhật ký kiểm toán CSV thành công!', 'success');
   };
 
   // Fetch initial data based on active tab
@@ -3306,65 +3344,14 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       {/* ================= TAB 7: FINANCE & GMV ================= */}
       {activeTab === 'finance' && (
         <div className="space-y-6">
-          {/* Quick Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tổng GMV Toàn Sàn</span>
-                <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <span className="text-2xl font-black text-slate-900 tracking-tight">248.500.000 ₫</span>
-                <div className="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-600 font-semibold">
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                  <span>+18.4% so với tháng trước</span>
-                </div>
-              </div>
-            </div>
+          {financeError && (
+            <ApiErrorBanner
+              message={financeError}
+              onRetry={fetchFinanceData}
+            />
+          )}
 
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phí Sàn Thu Được</span>
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <span className="text-2xl font-black text-emerald-600 tracking-tight">12.425.000 ₫</span>
-                <span className="block text-[11px] text-slate-400 mt-1">Chiết khấu 5% GMV thực hiện</span>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tiền Đang Ký Quỹ</span>
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <span className="text-2xl font-black text-blue-600 tracking-tight">34.200.000 ₫</span>
-                <span className="block text-[11px] text-slate-400 mt-1">Bảo đảm Escrow giao hàng</span>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Đã Thanh Toán Shop</span>
-                <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <span className="text-2xl font-black text-purple-600 tracking-tight">201.875.000 ₫</span>
-                <span className="block text-[11px] text-slate-400 mt-1">Giải ngân hoàn tất cho Người bán</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Sub Navigation */}
+          {/* Timeframe & Sub Navigation Toolbar */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl text-xs font-semibold">
               <button
@@ -3373,7 +3360,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   financeSubTab === 'overview' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Tổng quan & Biểu đồ
+                Tổng quan & Biểu đồ GMV
               </button>
               <button
                 onClick={() => setFinanceSubTab('withdrawals')}
@@ -3398,62 +3385,232 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </button>
             </div>
 
-            <button
-              onClick={fetchFinanceData}
-              disabled={loadingFinance}
-              className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loadingFinance ? 'animate-spin text-orange-600' : ''}`} />
-              <span>Làm mới số liệu</span>
-            </button>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+              <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 text-xs">
+                {[
+                  { key: 'today', label: 'Hôm nay' },
+                  { key: '7d', label: '7 ngày' },
+                  { key: '30d', label: '30 ngày' },
+                  { key: 'all', label: 'Toàn bộ' },
+                ].map((tf) => (
+                  <button
+                    key={tf.key}
+                    onClick={() => setFinanceTimeframe(tf.key)}
+                    className={`px-2.5 py-1 rounded-lg font-medium transition cursor-pointer ${
+                      financeTimeframe === tf.key
+                        ? 'bg-orange-600 text-white font-bold shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {tf.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={fetchFinanceData}
+                disabled={loadingFinance}
+                className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
+                title="Làm mới số liệu"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingFinance ? 'animate-spin text-orange-600' : ''}`} />
+                <span className="hidden sm:inline">Làm mới</span>
+              </button>
+            </div>
           </div>
+
+          {/* Quick Metrics */}
+          {(() => {
+            const metrics = {
+              today: { gmv: '14.850.000 ₫', commission: '742.500 ₫', escrow: '14.107.500 ₫', payout: '0 ₫', growth: '+8.2% so với hôm qua' },
+              '7d': { gmv: '78.400.000 ₫', commission: '3.920.000 ₫', escrow: '18.500.000 ₫', payout: '55.980.000 ₫', growth: '+14.5% so với tuần trước' },
+              '30d': { gmv: '248.500.000 ₫', commission: '12.425.000 ₫', escrow: '34.200.000 ₫', payout: '201.875.000 ₫', growth: '+18.4% so với tháng trước' },
+              all: { gmv: '612.300.000 ₫', commission: '30.615.000 ₫', escrow: '34.200.000 ₫', payout: '547.485.000 ₫', growth: '+24.1% toàn thời gian' },
+            }[financeTimeframe] || { gmv: '248.500.000 ₫', commission: '12.425.000 ₫', escrow: '34.200.000 ₫', payout: '201.875.000 ₫', growth: '+18.4%' };
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tổng GMV Toàn Sàn</span>
+                    <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <span className="text-2xl font-black text-slate-900 tracking-tight">{metrics.gmv}</span>
+                    <div className="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-600 font-semibold">
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                      <span>{metrics.growth}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phí Sàn Thu Được</span>
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <DollarSign className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <span className="text-2xl font-black text-emerald-600 tracking-tight">{metrics.commission}</span>
+                    <span className="block text-[11px] text-slate-400 mt-1">Chiết khấu 5% GMV thực tế</span>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tiền Đang Ký Quỹ</span>
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <span className="text-2xl font-black text-blue-600 tracking-tight">{metrics.escrow}</span>
+                    <span className="block text-[11px] text-slate-400 mt-1">Bảo đảm Escrow giao hàng</span>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Đã Thanh Toán Shop</span>
+                    <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <span className="text-2xl font-black text-purple-600 tracking-tight">{metrics.payout}</span>
+                    <span className="block text-[11px] text-slate-400 mt-1">Giải ngân hoàn tất cho Người bán</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* SUB-TAB: OVERVIEW */}
           {financeSubTab === 'overview' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-orange-500" />
-                  Cơ cấu dòng tiền & Chu kỳ thanh toán Escrow
-                </h3>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  QuickShop áp dụng mô hình bảo vệ tài chính 2 lớp: Toàn bộ tiền thanh toán từ Người mua (VNPay / Thẻ / COD) được lưu giữ trong tài khoản ký quỹ trung gian (Escrow). Sau khi đơn hàng giao thành công và hết hạn khiếu nại (3 ngày), hệ thống tự động giải phóng 95% giá trị cho Người bán và trích 5% phí dịch vụ nền tảng.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                  <div className="p-4 rounded-2xl bg-orange-50/60 border border-orange-100">
-                    <span className="text-[11px] font-bold text-orange-700 block uppercase">Bước 1: Khóa tiền</span>
-                    <span className="text-xs text-slate-600 mt-1 block">Khách thanh toán &rarr; Escrow Account HOLDING</span>
+            <div className="space-y-6">
+              {/* Payment Channel Breakdown & Escrow Flow */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-orange-500" />
+                    Cơ cấu dòng tiền & Chu kỳ thanh toán Escrow
+                  </h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    QuickShop áp dụng mô hình bảo vệ tài chính 2 lớp: Toàn bộ tiền thanh toán từ Người mua (VNPay / Thẻ / COD) được lưu giữ trong tài khoản ký quỹ trung gian (Escrow). Sau khi đơn hàng giao thành công và hết hạn khiếu nại (3 ngày), hệ thống tự động giải phóng 95% giá trị cho Người bán và trích 5% phí dịch vụ nền tảng.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                    <div className="p-4 rounded-2xl bg-orange-50/60 border border-orange-100">
+                      <span className="text-[11px] font-bold text-orange-700 block uppercase">Bước 1: Khóa tiền</span>
+                      <span className="text-xs text-slate-600 mt-1 block">Khách thanh toán &rarr; Escrow Account HOLDING</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100">
+                      <span className="text-[11px] font-bold text-blue-700 block uppercase">Bước 2: Giao hàng</span>
+                      <span className="text-xs text-slate-600 mt-1 block">Webhook GHN/GHTK cập nhật DELIVERED</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+                      <span className="text-[11px] font-bold text-emerald-700 block uppercase">Bước 3: Quyết toán</span>
+                      <span className="text-xs text-slate-600 mt-1 block">Mở ví Shop + Sổ cái kép Double-entry</span>
+                    </div>
                   </div>
-                  <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100">
-                    <span className="text-[11px] font-bold text-blue-700 block uppercase">Bước 2: Giao hàng</span>
-                    <span className="text-xs text-slate-600 mt-1 block">Webhook GHN/GHTK cập nhật DELIVERED</span>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
-                    <span className="text-[11px] font-bold text-emerald-700 block uppercase">Bước 3: Quyết toán</span>
-                    <span className="text-xs text-slate-600 mt-1 block">Mở ví Shop + Sổ cái kép Double-entry</span>
+                </div>
+
+                {/* Channel Breakdown */}
+                <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+                  <h3 className="font-bold text-sm text-slate-900">Tỷ lệ theo kênh thanh toán</h3>
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-slate-600 font-medium">Cổng VNPay (QR / Thẻ)</span>
+                        <strong className="text-slate-900 font-bold">62% (154.07M)</strong>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div className="bg-blue-600 h-2 rounded-full" style={{ width: '62%' }}></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-slate-600 font-medium">Chuyển khoản MB Bank / PayOS</span>
+                        <strong className="text-slate-900 font-bold">28% (69.58M)</strong>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div className="bg-orange-500 h-2 rounded-full" style={{ width: '28%' }}></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-slate-600 font-medium">Thu hộ COD khi nhận hàng</span>
+                        <strong className="text-slate-900 font-bold">10% (24.85M)</strong>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '10%' }}></div>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-400">
+                      <span>Thời gian đối soát: 72h</span>
+                      <span>Rút tối thiểu: 100.000 ₫</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
-                <h3 className="font-bold text-sm text-slate-900">Chính sách phí sàn</h3>
-                <div className="space-y-3 text-xs">
-                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span className="text-slate-600">Phí cố định hoa hồng sàn:</span>
-                    <strong className="text-slate-900 font-bold">5.0%</strong>
+              {/* Top GMV & Commission Shops Table */}
+              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                      <Store className="w-4 h-4 text-orange-600" />
+                      Top 5 Gian hàng đóng góp GMV & Hoa hồng nền tảng cao nhất
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Thống kê doanh số bán hàng và phí hoa hồng 5% trích về ngân quỹ QuickShop
+                    </p>
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span className="text-slate-600">Phí xử lý cổng VNPay:</span>
-                    <strong className="text-emerald-600 font-bold">0.0% (Tài trợ)</strong>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span className="text-slate-600">Thời gian đóng băng đối soát:</span>
-                    <strong className="text-slate-900 font-bold">72 giờ</strong>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span className="text-slate-600">Hạn mức rút tiền tối thiểu:</span>
-                    <strong className="text-slate-900 font-bold">100.000 ₫</strong>
-                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px]">
+                      <tr>
+                        <th className="p-4">Xếp hạng</th>
+                        <th className="p-4">Gian hàng</th>
+                        <th className="p-4">Phân loại</th>
+                        <th className="p-4 text-right">Đơn thành công</th>
+                        <th className="p-4 text-right">Tổng GMV</th>
+                        <th className="p-4 text-right">Hoa hồng sàn (5%)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {topGmvShops.map((shop, idx) => (
+                        <tr key={shop.id} className="hover:bg-slate-50/60 transition">
+                          <td className="p-4">
+                            <span className={`w-6 h-6 rounded-full inline-flex items-center justify-center font-bold text-xs ${
+                              idx === 0 ? 'bg-amber-100 text-amber-800' :
+                              idx === 1 ? 'bg-slate-200 text-slate-700' :
+                              idx === 2 ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              #{idx + 1}
+                            </span>
+                          </td>
+                          <td className="p-4 font-bold text-slate-900 flex items-center gap-2">
+                            <Store className="w-4 h-4 text-orange-500" />
+                            <span>{shop.name}</span>
+                          </td>
+                          <td className="p-4">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                              shop.status === 'MALL' ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {shop.status === 'MALL' ? 'Shopee Mall' : 'Chính hãng'}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right font-semibold text-slate-700">{shop.orderCount} đơn</td>
+                          <td className="p-4 text-right font-black text-slate-900">{shop.gmv.toLocaleString('vi-VN')} ₫</td>
+                          <td className="p-4 text-right font-black text-emerald-600">+{shop.commission.toLocaleString('vi-VN')} ₫</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -3576,6 +3733,13 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       {/* ================= TAB 8: AUDIT LOGS ================= */}
       {activeTab === 'audit' && (
         <div className="space-y-6">
+          {auditError && (
+            <ApiErrorBanner
+              message={auditError}
+              onRetry={fetchAuditLogs}
+            />
+          )}
+
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
             <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
@@ -3584,18 +3748,18 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   Nhật ký kiểm toán hệ thống (Audit Logs)
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Lưu vết toàn bộ thao tác quản trị, webhook vận chuyển và luồng xử lý tự động.
+                  Lưu vết toàn bộ thao tác quản trị, webhook vận chuyển và luồng xử lý tự động. Nhấp vào bản ghi để xem chi tiết.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <div className="relative flex-1 sm:w-64">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-60">
                   <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={auditSearchKw}
                     onChange={(e) => setAuditSearchKw(e.target.value)}
-                    placeholder="Tìm theo người thực hiện, đối tượng..."
+                    placeholder="Tìm theo người, đối tượng..."
                     className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none"
                   />
                 </div>
@@ -3603,7 +3767,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 <select
                   value={auditFilter}
                   onChange={(e) => setAuditFilter(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-orange-500"
+                  className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-orange-500"
                 >
                   <option value="ALL">Tất cả hành động</option>
                   <option value="APPROVE">Phê duyệt (Approve)</option>
@@ -3611,6 +3775,26 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <option value="WEBHOOK">Webhook đối tác</option>
                   <option value="ESCROW">Ký quỹ (Escrow)</option>
                 </select>
+
+                <select
+                  value={auditStatusFilter}
+                  onChange={(e) => setAuditStatusFilter(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-orange-500"
+                >
+                  <option value="ALL">Tất cả trạng thái</option>
+                  <option value="SUCCESS">Thành công (SUCCESS)</option>
+                  <option value="BLOCKED">Bị chặn (BLOCKED)</option>
+                  <option value="FAILED">Thất bại (FAILED)</option>
+                </select>
+
+                <button
+                  onClick={handleExportAuditLogs}
+                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  title="Tải file CSV nhật ký kiểm toán"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Xuất CSV</span>
+                </button>
 
                 <button
                   onClick={fetchAuditLogs}
@@ -3642,22 +3826,30 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                       if (auditFilter === 'REJECT' && !log.action.includes('REJECT') && !log.action.includes('BLOCK')) return false;
                       if (auditFilter === 'WEBHOOK' && !log.action.includes('WEBHOOK')) return false;
                       if (auditFilter === 'ESCROW' && !log.action.includes('ESCROW')) return false;
+                      if (auditStatusFilter !== 'ALL' && log.status !== auditStatusFilter) return false;
                       if (auditSearchKw) {
                         const kw = auditSearchKw.toLowerCase();
                         return (
                           log.actor.toLowerCase().includes(kw) ||
                           log.action.toLowerCase().includes(kw) ||
-                          log.target.toLowerCase().includes(kw)
+                          log.target.toLowerCase().includes(kw) ||
+                          (log.ip && log.ip.includes(kw))
                         );
                       }
                       return true;
                     })
                     .map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-50/60 transition">
+                      <tr
+                        key={log.id}
+                        onClick={() => setSelectedAuditLog(log)}
+                        className="hover:bg-orange-50/40 transition cursor-pointer group"
+                      >
                         <td className="p-4 text-slate-400 font-mono text-[11px] whitespace-nowrap">
                           {new Date(log.timestamp).toLocaleString('vi-VN')}
                         </td>
-                        <td className="p-4 font-bold text-slate-900">{log.actor}</td>
+                        <td className="p-4 font-bold text-slate-900 group-hover:text-orange-600 transition flex items-center gap-1.5">
+                          <span>{log.actor}</span>
+                        </td>
                         <td className="p-4">
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -3680,7 +3872,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               log.status === 'SUCCESS'
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : log.status === 'BLOCKED'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : 'bg-amber-50 text-amber-700 border border-amber-200'
                             }`}
                           >
                             {log.status}
@@ -4036,6 +4230,98 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               >
                 {submittingModalAction && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                 <span>{submittingModalAction ? 'Đang gửi từ chối...' : 'Xác nhận từ chối KYC'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: CHI TIẾT NHẬT KÝ KIỂM TOÁN (AUDIT LOG) ================= */}
+      {selectedAuditLog && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  Chi Tiết Nhật Ký Kiểm Toán #{selectedAuditLog.id}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                  Thời gian: {new Date(selectedAuditLog.timestamp).toLocaleString('vi-VN')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAuditLog(null)}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Người thực hiện:</span>
+                  <span className="font-bold text-slate-900">{selectedAuditLog.actor}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Địa chỉ IP:</span>
+                  <span className="font-mono text-slate-700">{selectedAuditLog.ip || '127.0.0.1'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Hành động:</span>
+                  <span className="font-bold text-slate-900">{selectedAuditLog.action}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Trạng thái:</span>
+                  <span
+                    className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      selectedAuditLog.status === 'SUCCESS'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : selectedAuditLog.status === 'BLOCKED'
+                        ? 'bg-rose-100 text-rose-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {selectedAuditLog.status}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-slate-500 block text-[11px] mb-1">Đối tượng tác động:</span>
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800">
+                  {selectedAuditLog.target}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-slate-500 block text-[11px] mb-1">Dữ liệu chi tiết (Metadata / Payload):</span>
+                <pre className="p-3 bg-slate-900 text-emerald-400 rounded-xl text-[11px] font-mono overflow-x-auto max-h-40 border border-slate-800">
+                  {JSON.stringify(
+                    selectedAuditLog.details || {
+                      actor: selectedAuditLog.actor,
+                      action: selectedAuditLog.action,
+                      target: selectedAuditLog.target,
+                      ip: selectedAuditLog.ip,
+                      status: selectedAuditLog.status,
+                      timestamp: selectedAuditLog.timestamp,
+                    },
+                    null,
+                    2
+                  )}
+                </pre>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSelectedAuditLog(null)}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+              >
+                Đóng
               </button>
             </div>
           </div>

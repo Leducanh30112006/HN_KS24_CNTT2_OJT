@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import HeroBanner from './components/HeroBanner';
 import FlashSaleSection from './components/FlashSaleSection';
@@ -21,9 +21,9 @@ import OrderHistoryPage from './components/OrderHistoryPage';
 import ShipperPortal from './components/ShipperPortal';
 import catalogApi, { mapPriceRange } from './api/catalogApi';
 import axiosClient from './api/axiosClient';
-import { 
-  Filter, RotateCcw, Star, ChevronRight, ChevronDown, ShieldCheck, 
-  HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft, CheckCircle2 
+import {
+  Filter, RotateCcw, Star, ChevronRight, ChevronDown, ShieldCheck,
+  HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft, CheckCircle2
 } from 'lucide-react';
 import { useAuthStore } from './stores/useAuthStore';
 import { useCartStore } from './stores/useCartStore';
@@ -370,7 +370,7 @@ export default function App() {
 
       {/* 2. Main Content Views */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6">
-        
+
         {/* VIEW 1: PRODUCT DETAIL PAGE (CHUYÊN BIỆT NHƯ SHOPEE VÀ TIKTOK SHOP) */}
         {currentView === 'product-detail' && selectedProduct && (
           <ProductDetailPage
@@ -555,25 +555,22 @@ export default function App() {
                 <span className="text-slate-500 font-medium">Sắp xếp theo:</span>
                 <button
                   onClick={() => setSortBy('newest')}
-                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${
-                    sortBy === 'newest' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
+                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'newest' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
                 >
                   Mới nhất
                 </button>
                 <button
                   onClick={() => setSortBy('priceAsc')}
-                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${
-                    sortBy === 'priceAsc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
+                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'priceAsc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
                 >
                   Giá thấp đến cao
                 </button>
                 <button
                   onClick={() => setSortBy('priceDesc')}
-                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${
-                    sortBy === 'priceDesc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
+                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'priceDesc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
                 >
                   Giá cao đến thấp
                 </button>
@@ -689,11 +686,10 @@ export default function App() {
                   <button
                     key={c.id}
                     onClick={() => setSelectedCategory(c.id === selectedCategory ? null : c.id)}
-                    className={`p-3 rounded-2xl border text-center transition flex flex-col items-center justify-center space-y-1.5 group ${
-                      selectedCategory === c.id
+                    className={`p-3 rounded-2xl border text-center transition flex flex-col items-center justify-center space-y-1.5 group ${selectedCategory === c.id
                         ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm font-bold'
                         : 'border-slate-100 hover:border-orange-300 hover:shadow-md bg-white text-slate-700'
-                    }`}
+                      }`}
                   >
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-orange-100 to-amber-50 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
                       <Smartphone className="w-6 h-6 stroke-[1.8]" />
@@ -733,9 +729,8 @@ export default function App() {
                   <div className="space-y-1">
                     <button
                       onClick={() => setSelectedCategory(null)}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg transition ${
-                        selectedCategory === null ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-slate-50 text-slate-600'
-                      }`}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg transition ${selectedCategory === null ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-slate-50 text-slate-600'
+                        }`}
                     >
                       Tất cả danh mục
                     </button>
@@ -743,11 +738,9 @@ export default function App() {
                       <button
                         key={c.id}
                         onClick={() => setSelectedCategory(c.id)}
-                        className={`w-full text-left py-1.5 rounded-lg transition flex justify-between items-center ${
-                          c.parentId ? 'pl-6 pr-2.5 text-[11px]' : 'px-2.5 font-bold text-slate-800'
-                        } ${
-                          selectedCategory === c.id ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-slate-50 text-slate-600'
-                        }`}
+                        className={`w-full text-left py-1.5 rounded-lg transition flex justify-between items-center ${c.parentId ? 'pl-6 pr-2.5 text-[11px]' : 'px-2.5 font-bold text-slate-800'
+                          } ${selectedCategory === c.id ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-slate-50 text-slate-600'
+                          }`}
                       >
                         <span className="truncate">{c.parentId ? `↳ ${c.name}` : c.name}</span>
                         {c.productCount > 0 && (
@@ -800,9 +793,8 @@ export default function App() {
                       <button
                         key={r.stars}
                         onClick={() => setMinRating(r.stars)}
-                        className={`w-full text-left px-2 py-1 rounded-lg flex items-center space-x-1.5 transition ${
-                          minRating === r.stars ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-slate-50'
-                        }`}
+                        className={`w-full text-left px-2 py-1 rounded-lg flex items-center space-x-1.5 transition ${minRating === r.stars ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-slate-50'
+                          }`}
                       >
                         <div className="flex text-amber-400">
                           {r.stars > 0 ? (
@@ -837,25 +829,22 @@ export default function App() {
                     <span className="text-slate-500 font-medium">Sắp xếp theo:</span>
                     <button
                       onClick={() => setSortBy('newest')}
-                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${
-                        sortBy === 'newest' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                      }`}
+                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'newest' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
                     >
                       Mới nhất
                     </button>
                     <button
                       onClick={() => setSortBy('priceAsc')}
-                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${
-                        sortBy === 'priceAsc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                      }`}
+                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'priceAsc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
                     >
                       Giá thấp đến cao
                     </button>
                     <button
                       onClick={() => setSortBy('priceDesc')}
-                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${
-                        sortBy === 'priceDesc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                      }`}
+                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'priceDesc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
                     >
                       Giá cao đến thấp
                     </button>
@@ -1035,7 +1024,7 @@ export default function App() {
               Sàn Thương mại Điện tử Đa người bán (Multi-Vendor Marketplace) chuẩn Microservices & Cloud-Native.
             </p>
             <div className="text-[11px] text-slate-400">
-              © 2026 QuickShop. Phát triển bởi Nhóm 03 (Lê Đức Anh, Triệu Quốc Bình, Nguyễn Văn Kiên).
+              © 2026 QuickShop. Phát triển bởi Nhóm 06 (Lê Đức Anh, Triệu Quốc Bình, Nguyễn Văn Kiên).
             </div>
           </div>
 

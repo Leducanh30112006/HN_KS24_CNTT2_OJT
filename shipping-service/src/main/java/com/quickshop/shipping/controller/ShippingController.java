@@ -1,10 +1,7 @@
 package com.quickshop.shipping.controller;
 
 import com.quickshop.common.dto.ApiResponse;
-import com.quickshop.shipping.dto.CalculateFeeRequest;
-import com.quickshop.shipping.dto.CalculateFeeResponse;
-import com.quickshop.shipping.dto.CreateShipmentRequest;
-import com.quickshop.shipping.dto.ShipmentStatusUpdateRequest;
+import com.quickshop.shipping.dto.*;
 import com.quickshop.shipping.entity.Shipment;
 import com.quickshop.shipping.service.ShippingService;
 import lombok.Data;
@@ -42,15 +39,15 @@ public class ShippingController {
     }
 
     @GetMapping("/track/{trackingCode}")
-    public ResponseEntity<ApiResponse<Shipment>> trackShipment(@PathVariable String trackingCode) {
-        Shipment shipment = shippingService.getShipmentByTrackingCode(trackingCode);
-        return ResponseEntity.ok(ApiResponse.success("Tra cứu vận đơn thành công", shipment));
+    public ResponseEntity<ApiResponse<ShipmentTrackingResponse>> trackShipment(@PathVariable String trackingCode) {
+        ShipmentTrackingResponse response = shippingService.getShipmentTracking(trackingCode);
+        return ResponseEntity.ok(ApiResponse.success("Tra cứu vận đơn thành công", response));
     }
 
     @GetMapping("/sub-order/{subOrderId}")
-    public ResponseEntity<ApiResponse<Shipment>> getShipmentBySubOrder(@PathVariable Long subOrderId) {
-        Shipment shipment = shippingService.getShipmentBySubOrderId(subOrderId);
-        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin vận đơn thành công", shipment));
+    public ResponseEntity<ApiResponse<ShipmentTrackingResponse>> getShipmentBySubOrder(@PathVariable Long subOrderId) {
+        ShipmentTrackingResponse response = shippingService.getShipmentTrackingBySubOrderId(subOrderId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin vận đơn thành công", response));
     }
 
     @PutMapping("/{id}/status")
@@ -77,6 +74,19 @@ public class ShippingController {
     public ResponseEntity<ApiResponse<Shipment>> simulateNextStep(@PathVariable String trackingCode) {
         Shipment shipment = shippingService.simulateNextCarrierStep(trackingCode);
         return ResponseEntity.ok(ApiResponse.success("Mô phỏng bước vận chuyển thành công", shipment));
+    }
+
+    @PostMapping("/simulate-status/{trackingCode}")
+    public ResponseEntity<ApiResponse<Shipment>> simulateStatus(
+            @PathVariable String trackingCode,
+            @RequestParam(required = false) String status,
+            @RequestBody(required = false) ShipmentStatusUpdateRequest request) {
+        String targetStatus = status;
+        if ((targetStatus == null || targetStatus.isBlank()) && request != null) {
+            targetStatus = request.getStatus();
+        }
+        Shipment shipment = shippingService.simulateCarrierStatus(trackingCode, targetStatus);
+        return ResponseEntity.ok(ApiResponse.success("Mô phỏng trạng thái đơn vị vận chuyển thành công", shipment));
     }
 
     @Data

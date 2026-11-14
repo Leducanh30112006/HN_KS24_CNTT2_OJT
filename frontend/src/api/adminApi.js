@@ -203,3 +203,51 @@ export async function activateAdminShop(shopId) {
   );
   return normalizeShopDto(res.data);
 }
+
+/**
+ * Lấy số liệu tổng quan tài chính sàn (GMV, Commission, Escrow, Payouts)
+ */
+export async function fetchAdminFinanceSummary(timeframe = '30d') {
+  try {
+    const res = await axiosClient.get('/api/admin/finance/summary', { params: { timeframe } });
+    if (res?.success && res?.data) return res.data;
+  } catch (err) {
+    // API endpoint chưa sẵn sàng ở backend mock
+  }
+  return null;
+}
+
+/**
+ * Lấy danh sách sổ cái kế toán kép (Double-entry Ledger)
+ */
+export async function fetchAdminLedger(params = {}) {
+  const res = await axiosClient.get('/api/payments/ledger', { params });
+  return Array.isArray(res?.data) ? res.data : [];
+}
+
+/**
+ * Lấy danh sách yêu cầu rút tiền đang chờ xử lý từ Người bán
+ */
+export async function fetchAdminPendingWithdrawals() {
+  const res = await axiosClient.get('/api/payments/withdrawals/pending');
+  return Array.isArray(res?.data) ? res.data : [];
+}
+
+/**
+ * Admin xử lý yêu cầu rút tiền của Người bán (APPROVE / REJECT)
+ */
+export async function processAdminWithdrawal(withdrawalId, action, adminId = 1) {
+  const res = assertApiSuccess(
+    await axiosClient.put(`/api/payments/withdrawals/${withdrawalId}/process`, { action, adminId }),
+    'Xử lý yêu cầu rút tiền thất bại.'
+  );
+  return res.data;
+}
+
+/**
+ * Lấy danh sách nhật ký kiểm toán hệ thống (Audit Logs)
+ */
+export async function fetchAdminAuditLogs(params = {}) {
+  const res = await axiosClient.get('/api/admin/audit-logs', { params });
+  return Array.isArray(res?.data) ? res.data : [];
+}

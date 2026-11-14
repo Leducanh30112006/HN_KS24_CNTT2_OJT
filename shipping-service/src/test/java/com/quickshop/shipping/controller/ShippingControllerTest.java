@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quickshop.shipping.dto.CalculateFeeRequest;
 import com.quickshop.shipping.dto.CalculateFeeResponse;
 import com.quickshop.shipping.dto.CreateShipmentRequest;
+import com.quickshop.shipping.dto.ShipmentTrackingResponse;
 import com.quickshop.shipping.entity.Shipment;
 import com.quickshop.shipping.service.ShippingService;
 import org.junit.jupiter.api.DisplayName;
@@ -89,18 +90,38 @@ class ShippingControllerTest {
     @Test
     @DisplayName("API GET /api/shipping/track/{trackingCode} trả về 200")
     void testTrackShipmentApi() throws Exception {
-        Shipment shipment = Shipment.builder()
+        ShipmentTrackingResponse response = ShipmentTrackingResponse.builder()
                 .id(1L)
                 .trackingCode("GHN-TRACK123")
                 .shippingStatus("DELIVERING")
+                .statusDescription("Đang giao hàng")
                 .build();
 
-        when(shippingService.getShipmentByTrackingCode("GHN-TRACK123")).thenReturn(shipment);
+        when(shippingService.getShipmentTracking("GHN-TRACK123")).thenReturn(response);
 
         mockMvc.perform(get("/api/shipping/track/GHN-TRACK123"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.shippingStatus").value("DELIVERING"));
+                .andExpect(jsonPath("$.data.shippingStatus").value("DELIVERING"))
+                .andExpect(jsonPath("$.data.statusDescription").value("Đang giao hàng"));
+    }
+
+    @Test
+    @DisplayName("API POST /api/shipping/simulate-status/{trackingCode} trả về 200")
+    void testSimulateStatusApi() throws Exception {
+        Shipment shipment = Shipment.builder()
+                .id(1L)
+                .trackingCode("GHN-TRACK123")
+                .shippingStatus("DELIVERED")
+                .build();
+
+        when(shippingService.simulateCarrierStatus("GHN-TRACK123", "DELIVERED")).thenReturn(shipment);
+
+        mockMvc.perform(post("/api/shipping/simulate-status/GHN-TRACK123")
+                        .param("status", "DELIVERED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.shippingStatus").value("DELIVERED"));
     }
 
     @Test
