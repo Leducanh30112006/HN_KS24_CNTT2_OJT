@@ -33,6 +33,14 @@ import Pagination from './Pagination';
 
 export default function AdminPortal({ categories = [], onCategoriesUpdated, onBackToStorefront }) {
   const { user, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    logout();
+    if (onBackToStorefront) {
+      onBackToStorefront();
+    }
+  };
+
   // Tabs: 'dashboard' | 'moderation' | 'sellers' | 'vouchers' | 'users' | 'categories' | 'notifications' | 'finance' | 'audit' | 'infra'
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -1309,7 +1317,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
             </div>
 
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
               title="Đăng xuất"
             >

@@ -10,6 +10,14 @@ import { useAuthStore } from '../stores/useAuthStore';
 
 export default function SellerPortal({ categories = [], onProductCreated, onBackToStorefront }) {
   const { user, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    logout();
+    if (onBackToStorefront) {
+      onBackToStorefront();
+    }
+  };
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, APPROVED, PENDING, DRAFT, REJECTED
@@ -525,7 +533,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
             </div>
 
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
               title="Đăng xuất"
             >

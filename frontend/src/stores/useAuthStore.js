@@ -45,6 +45,9 @@ export const useAuthStore = create(
         const prevUserId = get().user?.userId ?? null;
         localStorage.removeItem('quickshop_access_token');
         localStorage.removeItem('quickshop_refresh_token');
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem('quickshop_current_view');
+        }
 
         set({
           user: null,
