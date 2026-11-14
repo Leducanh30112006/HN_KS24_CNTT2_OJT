@@ -4,7 +4,10 @@ import com.quickshop.shipping.controller.ShippingController;
 import com.quickshop.shipping.dto.*;
 import com.quickshop.shipping.entity.Shipment;
 
+import java.util.List;
+
 public interface ShippingService {
+    List<Shipment> getAllShipments();
     CalculateFeeResponse calculateFee(CalculateFeeRequest request);
     Shipment createShipment(CreateShipmentRequest request);
     Shipment getShipmentByTrackingCode(String trackingCode);

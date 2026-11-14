@@ -37,7 +37,7 @@ QuickShop được xây dựng theo mô hình kiến trúc Microservices hoàn c
 | **MySQL Database** | MySQL 8.0 | `3306` | `3306` | Lưu trữ dữ liệu phân vùng theo từng microservice qua `init.sql` |
 | **Redis Cache** | Redis 7 Alpine | `6379` | `6379` | Cache sản phẩm, giỏ hàng người dùng, Token Blacklist |
 | **RabbitMQ Broker** | RabbitMQ 3.13 Management | `5672`, `15672`| `5672`, `15672`| Message broker trao đổi sự kiện Saga, DLQ dashboard |
-| **MinIO Storage** | S3-Compatible Object Store | `9000`, `9001` | `9000`, `9001` | Lưu trữ ảnh sản phẩm, banner và hồ sơ KYC |
+| **MinIO Storage** | S3-Compatible Object Store | `9010`, `9011` | `9000`, `9001` | Lưu trữ ảnh sản phẩm, banner và hồ sơ KYC (tránh xung đột cổng 9000) |
 | **Prometheus** | Prometheus TSDB | `9090` | `9090` | Thu thập chỉ số hiệu năng (Metrics) qua Actuator |
 | **Grafana** | Grafana Dashboard | `3000` | `3000` | Trực quan hóa số liệu hệ thống, giám sát tài nguyên |
 | **Zipkin** | OpenZipkin Distributed Tracing| `9411` | `9411` | Phân tích độ trễ và luồng gọi chéo giữa các service |
@@ -73,6 +73,7 @@ Truy cập hệ thống:
 - **Kênh Người Bán:** Chọn "Kênh Người Bán" trên thanh Header (hoặc đăng nhập tài khoản Seller)
 - **Cổng Quản Trị Hệ Thống:** Chọn "Cổng Quản Trị" trên Header (tài khoản Admin)
 - **RabbitMQ Dashboard:** `http://localhost:15672` (User: `quickshop` / Pass: `quickshop123`)
+- **MinIO Storage Console:** `http://localhost:9011` (User: `minioadmin` / Pass: `minioadmin`)
 - **Prometheus Dashboard:** `http://localhost:9090`
 - **Grafana Dashboard:** `http://localhost:3000` (User: `admin` / Pass: `quickshop123`)
 - **Zipkin Tracing:** `http://localhost:9411`

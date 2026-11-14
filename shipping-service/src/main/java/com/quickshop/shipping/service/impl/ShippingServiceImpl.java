@@ -29,6 +29,11 @@ public class ShippingServiceImpl implements ShippingService {
     private final ShippingWebhookLogRepository webhookLogRepository;
 
     @Override
+    public List<Shipment> getAllShipments() {
+        return shipmentRepository.findAll();
+    }
+
+    @Override
     public CalculateFeeResponse calculateFee(CalculateFeeRequest request) {
         String carrier = request.getCarrier() != null ? request.getCarrier().toUpperCase() : "GHN";
         int weight = request.getWeightGrams() != null && request.getWeightGrams() > 0 ? request.getWeightGrams() : 500;

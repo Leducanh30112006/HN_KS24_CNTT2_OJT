@@ -6,8 +6,30 @@ import { useAuthStore, registerOnLogoutListener } from './useAuthStore';
 const CART_STORAGE_KEY = 'quickshop_cart';
 const OFFLINE_CART_PREFIX = 'quickshop_offline_cart_';
 const MOCK_JWT_TOKEN = 'mock_jwt_token_for_quickshop_local_demo';
+const CART_CHANNEL_NAME = 'quickshop_cart_channel';
+
 let lastLoginSyncKey = null;
 let lastLoginSyncAt = 0;
+
+// Kênh BroadcastChannel để đồng bộ tức thời giữa các tab / cửa sổ trình duyệt
+let cartBroadcastChannel = null;
+if (typeof window !== 'undefined' && typeof window.BroadcastChannel === 'function') {
+  try {
+    cartBroadcastChannel = new BroadcastChannel(CART_CHANNEL_NAME);
+  } catch (e) {
+    cartBroadcastChannel = null;
+  }
+}
+
+const broadcastCartChange = (payload) => {
+  if (cartBroadcastChannel) {
+    try {
+      cartBroadcastChannel.postMessage(payload);
+    } catch (e) {
+      // Bỏ qua lỗi gửi broadcast channel
+    }
+  }
+};
 
 const isNumericId = (val) => val !== null && val !== undefined && /^\d+$/.test(String(val).trim());
 
@@ -154,9 +176,9 @@ const mergeLocalItemArrays = (baseItems = [], incomingItems = []) => {
 const getAuthContext = () => {
   const { user, isAuthenticated, accessToken } = useAuthStore.getState();
   const userId = user?.userId ?? null;
-  const isMock = !accessToken || accessToken === MOCK_JWT_TOKEN;
-  const canUseServer = Boolean(isAuthenticated && userId && !isMock);
-  return { user, userId, isAuthenticated: Boolean(isAuthenticated), isMock, canUseServer };
+  // Bất cứ khi nào tài khoản đã đăng nhập có userId hợp lệ, kích hoạt kết nối backend Redis
+  const canUseServer = Boolean(isAuthenticated && userId);
+  return { user, userId, isAuthenticated: Boolean(isAuthenticated), isMock: !accessToken || accessToken === MOCK_JWT_TOKEN, canUseServer };
 };
 
 const extractServerErrorMessage = (error, fallbackMessage) => {
@@ -180,7 +202,7 @@ export const useCartStore = create(
 
       clearSyncError: () => set({ syncError: null }),
 
-      // Lấy toàn bộ giỏ hàng từ order-service khi đã đăng nhập
+      // Lấy toàn bộ giỏ hàng từ order-service khi đã đăng nhập (Redis Cart)
       fetchCart: async (explicitUserId = null) => {
         const auth = getAuthContext();
         const userId = explicitUserId ?? auth.userId;
@@ -188,24 +210,18 @@ export const useCartStore = create(
           return { ok: false, offline: true };
         }
 
-        if (!auth.canUseServer) {
-          const offlineItems = readOfflineUserCart(userId);
-          set({
-            items: offlineItems,
-            ownerUserId: userId,
-            syncMode: 'offline',
-            isSyncing: false,
-            syncError: null,
-          });
-          return { ok: true, offline: true, items: offlineItems };
-        }
-
         set({ isSyncing: true, syncError: null });
+
         try {
-          const res = await axiosClient.get('/api/cart');
+          const res = await axiosClient.get('/api/cart', {
+            params: { userId },
+            headers: { 'X-User-Id': String(userId) },
+          });
           const cartData = extractCartResponse(res);
           const mappedItems = mapServerCartToItems(cartData, get().items);
-          clearOfflineUserCart(userId);
+
+          // Cập nhật snapshot offline để đồng bộ backup
+          writeOfflineUserCart(userId, mappedItems);
           set({
             items: mappedItems,
             ownerUserId: userId,
@@ -213,8 +229,12 @@ export const useCartStore = create(
             isSyncing: false,
             syncError: null,
           });
+
+          // Phát tín hiệu đồng bộ cho các tab / cửa sổ khác
+          broadcastCartChange({ type: 'CART_UPDATED', userId, items: mappedItems });
           return { ok: true, items: mappedItems };
         } catch (error) {
+          // Khi server chưa sẵn sàng hoặc offline, sử dụng giỏ hàng offline lưu riêng theo userId
           const fallbackItems =
             String(get().ownerUserId) === String(userId) && get().items.length > 0
               ? get().items
@@ -242,19 +262,6 @@ export const useCartStore = create(
 
         const offlineSaved = readOfflineUserCart(targetUserId);
 
-        if (!auth.canUseServer) {
-          const mergedOffline = mergeLocalItemArrays(offlineSaved, guestItems);
-          writeOfflineUserCart(targetUserId, mergedOffline);
-          set({
-            items: mergedOffline,
-            ownerUserId: targetUserId,
-            syncMode: 'offline',
-            isSyncing: false,
-            syncError: null,
-          });
-          return { ok: true, offline: true, items: mergedOffline };
-        }
-
         const serverEligibleGuestItems = guestItems.filter((item) => isNumericId(item.variantId));
         if (serverEligibleGuestItems.length === 0) {
           return get().fetchCart(targetUserId);
@@ -267,13 +274,20 @@ export const useCartStore = create(
               ? crypto.randomUUID()
               : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-          const res = await axiosClient.post('/api/cart/merge', {
-            requestId,
-            items: serverEligibleGuestItems.map((item) => ({
-              variantId: Number(item.variantId),
-              quantity: item.quantity,
-            })),
-          });
+          const res = await axiosClient.post(
+            '/api/cart/merge',
+            {
+              requestId,
+              items: serverEligibleGuestItems.map((item) => ({
+                variantId: Number(item.variantId),
+                quantity: item.quantity,
+              })),
+            },
+            {
+              params: { userId: targetUserId },
+              headers: { 'X-User-Id': String(targetUserId) },
+            }
+          );
 
           const mergeData = extractMergeResponse(res);
           const mergedCart = mergeData?.cart;
@@ -281,7 +295,7 @@ export const useCartStore = create(
             ? mapServerCartToItems(mergedCart, currentState.items)
             : [];
 
-          clearOfflineUserCart(targetUserId);
+          writeOfflineUserCart(targetUserId, mappedItems);
           set({
             items: mappedItems,
             ownerUserId: targetUserId,
@@ -292,6 +306,8 @@ export const useCartStore = create(
                 ? mergeData.warnings.join(' | ')
                 : null,
           });
+
+          broadcastCartChange({ type: 'CART_UPDATED', userId: targetUserId, items: mappedItems });
           return { ok: true, items: mappedItems, warnings: mergeData?.warnings || [] };
         } catch (error) {
           const mergedFallback = mergeLocalItemArrays(offlineSaved, guestItems);
@@ -303,6 +319,7 @@ export const useCartStore = create(
             isSyncing: false,
             syncError: extractServerErrorMessage(error, null),
           });
+          broadcastCartChange({ type: 'CART_UPDATED', userId: targetUserId, items: mergedFallback });
           return { ok: false, offline: true, items: mergedFallback };
         }
       },
@@ -317,7 +334,7 @@ export const useCartStore = create(
 
         const now = Date.now();
         const syncKey = String(targetUserId);
-        if (options.dedupeRecent && lastLoginSyncKey === syncKey && now - lastLoginSyncAt < 2000) {
+        if (options.dedupeRecent && lastLoginSyncKey === syncKey && now - lastLoginSyncAt < 1000) {
           return { ok: true, skipped: true, items: get().items };
         }
 
@@ -422,19 +439,27 @@ export const useCartStore = create(
 
         if (auth.canUseServer && isNumericId(targetVariantId)) {
           try {
-            const res = await axiosClient.post('/api/cart/items', {
-              variantId: Number(targetVariantId),
-              quantity,
-            });
+            const res = await axiosClient.post(
+              '/api/cart/items',
+              {
+                variantId: Number(targetVariantId),
+                quantity,
+              },
+              {
+                params: { userId: auth.userId },
+                headers: { 'X-User-Id': String(auth.userId) },
+              }
+            );
             const cartData = extractCartResponse(res);
             const mapped = mapServerCartToItems(cartData, nextItems);
-            clearOfflineUserCart(auth.userId);
+            writeOfflineUserCart(auth.userId, mapped);
             set({
               items: mapped,
               ownerUserId: auth.userId,
               syncMode: 'server',
               syncError: null,
             });
+            broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: mapped });
             return { ok: true, items: mapped };
           } catch (error) {
             const status = error?.response?.status ?? error?.status;
@@ -445,6 +470,7 @@ export const useCartStore = create(
             }
             writeOfflineUserCart(auth.userId, nextItems);
             set({ syncMode: 'offline' });
+            broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
             return { ok: true, offline: true, items: nextItems };
           }
         }
@@ -452,6 +478,7 @@ export const useCartStore = create(
         if (auth.isAuthenticated && auth.userId) {
           writeOfflineUserCart(auth.userId, nextItems);
           set({ syncMode: 'offline' });
+          broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
         }
         return { ok: true, items: nextItems };
       },
@@ -481,13 +508,19 @@ export const useCartStore = create(
 
         if (auth.canUseServer && isNumericId(variantId)) {
           try {
-            const res = await axiosClient.put(`/api/cart/items/${Number(variantId)}`, {
-              quantity: newQuantity,
-            });
+            const res = await axiosClient.put(
+              `/api/cart/items/${Number(variantId)}`,
+              { quantity: newQuantity },
+              {
+                params: { userId: auth.userId },
+                headers: { 'X-User-Id': String(auth.userId) },
+              }
+            );
             const cartData = extractCartResponse(res);
             const mapped = mapServerCartToItems(cartData, nextItems);
-            clearOfflineUserCart(auth.userId);
+            writeOfflineUserCart(auth.userId, mapped);
             set({ items: mapped, ownerUserId: auth.userId, syncMode: 'server', syncError: null });
+            broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: mapped });
             return { ok: true, items: mapped };
           } catch (error) {
             const status = error?.response?.status ?? error?.status;
@@ -498,6 +531,7 @@ export const useCartStore = create(
             }
             writeOfflineUserCart(auth.userId, nextItems);
             set({ syncMode: 'offline' });
+            broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
             return { ok: true, offline: true };
           }
         }
@@ -505,6 +539,7 @@ export const useCartStore = create(
         if (auth.isAuthenticated && auth.userId) {
           writeOfflineUserCart(auth.userId, nextItems);
           set({ syncMode: 'offline' });
+          broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
         }
         return { ok: true };
       },
@@ -519,11 +554,15 @@ export const useCartStore = create(
 
         if (auth.canUseServer && isNumericId(variantId)) {
           try {
-            const res = await axiosClient.delete(`/api/cart/items/${Number(variantId)}`);
+            const res = await axiosClient.delete(`/api/cart/items/${Number(variantId)}`, {
+              params: { userId: auth.userId },
+              headers: { 'X-User-Id': String(auth.userId) },
+            });
             const cartData = extractCartResponse(res);
             const mapped = mapServerCartToItems(cartData, nextItems);
-            clearOfflineUserCart(auth.userId);
+            writeOfflineUserCart(auth.userId, mapped);
             set({ items: mapped, ownerUserId: auth.userId, syncMode: 'server', syncError: null });
+            broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: mapped });
             return { ok: true, items: mapped };
           } catch (error) {
             const status = error?.response?.status ?? error?.status;
@@ -533,12 +572,14 @@ export const useCartStore = create(
             }
             writeOfflineUserCart(auth.userId, nextItems);
             set({ syncMode: 'offline' });
+            broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
             return { ok: true, offline: true };
           }
         }
 
         if (auth.isAuthenticated && auth.userId) {
           writeOfflineUserCart(auth.userId, nextItems);
+          broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
         }
         return { ok: true };
       },
@@ -558,7 +599,12 @@ export const useCartStore = create(
         if (auth.canUseServer && numericIds.length > 0) {
           try {
             const results = await Promise.allSettled(
-              numericIds.map((id) => axiosClient.delete(`/api/cart/items/${Number(id)}`))
+              numericIds.map((id) =>
+                axiosClient.delete(`/api/cart/items/${Number(id)}`, {
+                  params: { userId: auth.userId },
+                  headers: { 'X-User-Id': String(auth.userId) },
+                })
+              )
             );
             const lastSuccess = [...results]
               .reverse()
@@ -566,20 +612,24 @@ export const useCartStore = create(
             if (lastSuccess) {
               const cartData = extractCartResponse(lastSuccess.value);
               const mapped = mapServerCartToItems(cartData, nextItems);
-              clearOfflineUserCart(auth.userId);
+              writeOfflineUserCart(auth.userId, mapped);
               set({ items: mapped, ownerUserId: auth.userId, syncMode: 'server', syncError: null });
+              broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: mapped });
               return { ok: true, items: mapped };
             }
             writeOfflineUserCart(auth.userId, nextItems);
+            broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
             return { ok: false };
           } catch {
             writeOfflineUserCart(auth.userId, nextItems);
+            broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
             return { ok: false, offline: true };
           }
         }
 
         if (auth.isAuthenticated && auth.userId) {
           writeOfflineUserCart(auth.userId, nextItems);
+          broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
         }
         return { ok: true };
       },
@@ -591,18 +641,24 @@ export const useCartStore = create(
 
         if (auth.canUseServer) {
           try {
-            await axiosClient.delete('/api/cart');
+            await axiosClient.delete('/api/cart', {
+              params: { userId: auth.userId },
+              headers: { 'X-User-Id': String(auth.userId) },
+            });
             clearOfflineUserCart(auth.userId);
             set({ syncMode: 'server' });
+            broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: [] });
             return { ok: true };
           } catch {
             clearOfflineUserCart(auth.userId);
+            broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: [] });
             return { ok: false, offline: true };
           }
         }
 
         if (auth.isAuthenticated && auth.userId) {
           clearOfflineUserCart(auth.userId);
+          broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: [] });
         }
         return { ok: true };
       },
@@ -649,6 +705,33 @@ export const useCartStore = create(
     }
   )
 );
+
+// Listener nhận tín hiệu đồng bộ giữa các tab trên cùng trình duyệt
+if (cartBroadcastChannel) {
+  cartBroadcastChannel.onmessage = (event) => {
+    const { type, userId, items } = event.data || {};
+    if (type === 'CART_UPDATED') {
+      const currentAuth = getAuthContext();
+      if (String(currentAuth.userId) === String(userId)) {
+        useCartStore.setState({
+          items: items || [],
+          ownerUserId: userId,
+          syncMode: 'server',
+        });
+      }
+    }
+  };
+}
+
+// Tự động kiểm tra và làm mới giỏ hàng khi người dùng chuyển tab quay lại ứng dụng
+if (typeof window !== 'undefined') {
+  window.addEventListener('focus', () => {
+    const auth = getAuthContext();
+    if (auth.isAuthenticated && auth.userId) {
+      useCartStore.getState().fetchCart(auth.userId);
+    }
+  });
+}
 
 // Tự động dọn sạch giỏ hàng đang hiển thị mỗi khi tài khoản đăng xuất hoặc hết phiên
 registerOnLogoutListener((prevUserId) => {

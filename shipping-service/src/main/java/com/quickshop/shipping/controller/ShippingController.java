@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/shipping")
@@ -17,6 +19,12 @@ import org.springframework.web.bind.annotation.*;
 public class ShippingController {
 
     private final ShippingService shippingService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<Shipment>>> getAllShipments() {
+        List<Shipment> shipments = shippingService.getAllShipments();
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách tất cả vận đơn thành công", shipments));
+    }
 
     @PostMapping("/calculate-fee")
     public ResponseEntity<ApiResponse<CalculateFeeResponse>> calculateFee(@RequestBody CalculateFeeRequest request) {
