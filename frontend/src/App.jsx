@@ -34,9 +34,37 @@ export default function App() {
   const { user, isAuthenticated } = useAuthStore();
   const { syncCartOnLogin, handleLogoutClear, ownerUserId } = useCartStore();
 
-  const isSeller = isAuthenticated && user && (user.role === 'ROLE_SELLER' || user.role === 'SELLER');
+  const isSeller = isAuthenticated && user && (user.role === 'ROLE_SELLER' || user.role === 'SELLER' || user.role?.includes('ADMIN'));
   const isAdmin = isAuthenticated && user && (user.role === 'ROLE_ADMIN' || user.role === 'ADMIN');
+  const isShipper = isAuthenticated && user && (user.role === 'ROLE_SHIPPER' || user.role === 'SHIPPER' || user.role?.includes('ADMIN'));
   const isSellerOnly = isSeller && !isAdmin;
+
+  // Tự động khôi phục view đã chọn hoặc điều hướng theo vai trò khi đăng nhập
+  useEffect(() => {
+    const savedView = sessionStorage.getItem('quickshop_current_view');
+    if (savedView && ['admin', 'seller', 'shipper', 'storefront', 'cart', 'orders', 'profile'].includes(savedView)) {
+      setCurrentView(savedView);
+    } else if (isAuthenticated && user?.role) {
+      const r = String(user.role).toUpperCase();
+      if (r.includes('ADMIN')) {
+        setCurrentView('admin');
+      } else if (r.includes('SELLER')) {
+        setCurrentView('seller');
+      } else if (r.includes('SHIPPER')) {
+        setCurrentView('shipper');
+      }
+    }
+  }, [isAuthenticated, user?.role]);
+
+  const handleNavigateView = (view) => {
+    if (view === 'storefront') {
+      setSelectedProduct(null);
+      setSelectedShop(null);
+    }
+    sessionStorage.setItem('quickshop_current_view', view);
+    setCurrentView(view);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Data states
   const [categories, setCategories] = useState(defaultCategories);
@@ -327,12 +355,130 @@ export default function App() {
   // Hiển thị 1 hàng danh mục (6 danh mục) khi chưa bấm "Xem tất cả ngành hàng"
   const displayedCategories = showAllCategories ? categories : categories.slice(0, 6);
 
-  // Dedicated Full-Page Login View
+  // VIEW RIÊNG BIỆT 1: DEDICATED FULL-PAGE LOGIN VIEW
   if (currentView === 'login') {
     return (
       <LoginPage
-        onBackToHome={() => setCurrentView('storefront')}
-        onLoginSuccess={(targetView) => setCurrentView(targetView || 'storefront')}
+        onBackToHome={() => handleNavigateView('storefront')}
+        onLoginSuccess={(targetView) => handleNavigateView(targetView || 'storefront')}
+      />
+    );
+  }
+
+  // VIEW RIÊNG BIỆT 2: CỔNG QUẢN TRỊ ADMIN (FULL-PAGE STANDALONE ADMIN PORTAL)
+  if (currentView === 'admin') {
+    if (!isAdmin) {
+      return (
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
+          <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 text-center shadow-xl space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-600 mx-auto flex items-center justify-center">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900">Từ chối truy cập (403 Forbidden)</h2>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Bạn cần đăng nhập bằng tài khoản có vai trò Quản Trị Viên (ROLE_ADMIN) để truy cập Cổng Quản Trị Hệ Thống.
+            </p>
+            <div className="pt-2 flex justify-center gap-3">
+              <button
+                onClick={() => handleNavigateView('storefront')}
+                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md transition"
+              >
+                Quay lại Trang Mua Sắm
+              </button>
+              <button
+                onClick={() => handleNavigateView('login')}
+                className="px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold shadow-md transition"
+              >
+                Đăng nhập Admin
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <AdminPortal
+        categories={categories}
+        onCategoriesUpdated={fetchCategories}
+        onBackToStorefront={() => handleNavigateView('storefront')}
+      />
+    );
+  }
+
+  // VIEW RIÊNG BIỆT 3: KÊNH NGƯỜI BÁN (FULL-PAGE STANDALONE SELLER CENTRE)
+  if (currentView === 'seller') {
+    if (!isSeller) {
+      return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
+          <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 text-center shadow-xl space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 mx-auto flex items-center justify-center">
+              <Store className="w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900">Yêu cầu quyền Người Bán</h2>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Bạn cần đăng nhập bằng tài khoản Chủ Gian Hàng (ROLE_SELLER) để quản lý sản phẩm và gian hàng.
+            </p>
+            <div className="pt-2 flex justify-center gap-3">
+              <button
+                onClick={() => handleNavigateView('storefront')}
+                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md transition"
+              >
+                Quay lại Trang Mua Sắm
+              </button>
+              <button
+                onClick={() => handleNavigateView('login')}
+                className="px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold shadow-md transition"
+              >
+                Đăng nhập Người Bán
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <SellerPortal
+        categories={categories}
+        onProductCreated={() => fetchProducts({ page: 0 })}
+        onBackToStorefront={() => handleNavigateView('storefront')}
+      />
+    );
+  }
+
+  // VIEW RIÊNG BIỆT 4: KÊNH GIAO VẬN SHIPPER (FULL-PAGE STANDALONE SHIPPER DISPATCH)
+  if (currentView === 'shipper') {
+    if (!isShipper) {
+      return (
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
+          <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 text-center shadow-xl space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-blue-100 text-blue-600 mx-auto flex items-center justify-center">
+              <Truck className="w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900">Yêu cầu quyền Tài Xế Shipper</h2>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Bạn cần đăng nhập bằng tài khoản Bưu Tá / Giao Vận (ROLE_SHIPPER) để truy cập cổng điều phối giao hàng.
+            </p>
+            <div className="pt-2 flex justify-center gap-3">
+              <button
+                onClick={() => handleNavigateView('storefront')}
+                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md transition"
+              >
+                Quay lại Trang Mua Sắm
+              </button>
+              <button
+                onClick={() => handleNavigateView('login')}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition"
+              >
+                Đăng nhập Shipper
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <ShipperPortal
+        onBackToHome={() => handleNavigateView('storefront')}
       />
     );
   }
@@ -342,30 +488,19 @@ export default function App() {
       {/* 1. Universal Top Navigation */}
       <Navbar
         currentView={currentView}
-        setCurrentView={(view) => {
-          if (view === 'storefront') {
-            setSelectedProduct(null);
-            setSelectedShop(null);
-          }
-          setCurrentView(view);
-        }}
+        setCurrentView={handleNavigateView}
         searchKeyword={searchKeyword}
         setSearchKeyword={setSearchKeyword}
         onSearchSubmit={handleSearchSubmit}
         selectedCategory={selectedCategory}
         setSelectedCategory={(catId) => {
           setSelectedCategory(catId);
-          setSelectedProduct(null);
-          setSelectedShop(null);
-          setCurrentView('storefront');
+          handleNavigateView('storefront');
         }}
         categories={categories}
-        onOpenCart={() => {
-          setCurrentView('cart');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        onOpenAuthModal={() => setCurrentView('login')}
-        onNavigateToLogin={() => setCurrentView('login')}
+        onOpenCart={() => handleNavigateView('cart')}
+        onOpenAuthModal={() => handleNavigateView('login')}
+        onNavigateToLogin={() => handleNavigateView('login')}
       />
 
       {/* 2. Main Content Views */}
@@ -453,16 +588,6 @@ export default function App() {
             }}
             onBuyAgain={() => {
               setCurrentView('cart');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-          />
-        )}
-
-        {/* VIEW: SHIPPER PORTAL (CỔNG QUẢN LÝ VẬN CHUYỂN DÀNH CHO SHIPPER) */}
-        {currentView === 'shipper' && (
-          <ShipperPortal
-            onBackToHome={() => {
-              setCurrentView('storefront');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           />
@@ -925,92 +1050,6 @@ export default function App() {
             </div>
           </div>
         )}
-
-        {/* VIEW 4: SELLER CENTER (KÊNH NGƯỜI BÁN - PHÂN QUYỀN RBAC) */}
-        {currentView === 'seller' && (
-          isSellerOnly ? (
-            <SellerPortal
-              categories={categories}
-              onBackToStorefront={() => {
-                setSelectedProduct(null);
-                setCurrentView('storefront');
-              }}
-              onProductCreated={(newProd) => {
-                setProducts([newProd, ...products]);
-              }}
-            />
-          ) : (
-            <div className="bg-white rounded-3xl p-10 text-center border border-slate-200/90 shadow-sm max-w-lg mx-auto my-12 space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center">
-                <ShieldAlert className="w-8 h-8" />
-              </div>
-              <h2 className="text-lg font-bold text-slate-900">Kênh Người Bán - Yêu cầu xác thực</h2>
-              <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
-                Khu vực quản lý dành riêng cho Người bán (ROLE_SELLER) và Quản trị viên (ROLE_ADMIN). Vui lòng đăng nhập với tài khoản người bán để tiếp tục.
-              </p>
-              <div className="flex justify-center items-center gap-3 pt-2">
-                <button
-                  onClick={() => setCurrentView('login')}
-                  className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs rounded-xl shadow-md transition"
-                >
-                  Đăng nhập Người Bán
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedProduct(null);
-                    setCurrentView('storefront');
-                  }}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition flex items-center gap-1.5"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Quay lại Mua sắm
-                </button>
-              </div>
-            </div>
-          )
-        )}
-
-        {/* VIEW 5: ADMIN PORTAL (CỔNG QUẢN TRỊ - PHÂN QUYỀN RBAC) */}
-        {currentView === 'admin' && (
-          isAdmin ? (
-            <AdminPortal
-              categories={categories}
-              onBackToStorefront={() => {
-                setSelectedProduct(null);
-                setCurrentView('storefront');
-              }}
-              onCategoriesUpdated={fetchCategories}
-            />
-          ) : (
-            <div className="bg-white rounded-3xl p-10 text-center border border-slate-200/90 shadow-sm max-w-lg mx-auto my-12 space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 mx-auto flex items-center justify-center">
-                <Lock className="w-8 h-8" />
-              </div>
-              <h2 className="text-lg font-bold text-slate-900">Cổng Quản Trị - Giới hạn quyền truy cập</h2>
-              <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
-                Trang này yêu cầu thẩm quyền Quản trị viên hệ thống (ROLE_ADMIN). Vui lòng đăng nhập tài khoản có thẩm quyền Quản trị để truy cập.
-              </p>
-              <div className="flex justify-center items-center gap-3 pt-2">
-                <button
-                  onClick={() => setCurrentView('login')}
-                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-md transition"
-                >
-                  Đăng nhập Quản trị viên
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedProduct(null);
-                    setCurrentView('storefront');
-                  }}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition flex items-center gap-1.5"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Quay lại Mua sắm
-                </button>
-              </div>
-            </div>
-          )
-        )}
       </main>
 
       {/* 3. Footer Chuẩn Sàn TMĐT Việt Nam */}
@@ -1071,6 +1110,7 @@ export default function App() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={(targetView) => handleNavigateView(targetView)}
       />
 
       {/* 5. Modal Kết quả Thanh toán VNPay Sandbox */}
