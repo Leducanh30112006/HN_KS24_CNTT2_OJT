@@ -15,6 +15,14 @@ import { useAuthStore } from '../stores/useAuthStore';
 
 export default function ShipperPortal({ onBackToHome }) {
   const { user, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    logout();
+    if (onBackToHome) {
+      onBackToHome();
+    }
+  };
+
   const [shipments, setShipments] = useState([]);
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'READY_TO_PICK' | 'DELIVERING' | 'DELIVERED' | 'DELIVERY_FAILED'
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,7 +175,7 @@ export default function ShipperPortal({ onBackToHome }) {
             </div>
 
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
               title="Đăng xuất"
             >

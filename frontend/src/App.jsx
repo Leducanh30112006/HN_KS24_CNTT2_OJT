@@ -23,7 +23,8 @@ import catalogApi, { mapPriceRange } from './api/catalogApi';
 import axiosClient from './api/axiosClient';
 import {
   Filter, RotateCcw, Star, ChevronRight, ChevronDown, ShieldCheck,
-  HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft, CheckCircle2
+  HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft, CheckCircle2,
+  Store
 } from 'lucide-react';
 import { useAuthStore } from './stores/useAuthStore';
 import { useCartStore } from './stores/useCartStore';
@@ -39,22 +40,34 @@ export default function App() {
   const isShipper = isAuthenticated && user && (user.role === 'ROLE_SHIPPER' || user.role === 'SHIPPER' || user.role?.includes('ADMIN'));
   const isSellerOnly = isSeller && !isAdmin;
 
-  // Tự động khôi phục view đã chọn hoặc điều hướng theo vai trò khi đăng nhập
+  // Đồng bộ phiên đăng nhập/đăng xuất, giỏ hàng và view tương ứng
   useEffect(() => {
-    const savedView = sessionStorage.getItem('quickshop_current_view');
-    if (savedView && ['admin', 'seller', 'shipper', 'storefront', 'cart', 'orders', 'profile'].includes(savedView)) {
-      setCurrentView(savedView);
-    } else if (isAuthenticated && user?.role) {
-      const r = String(user.role).toUpperCase();
-      if (r.includes('ADMIN')) {
-        setCurrentView('admin');
-      } else if (r.includes('SELLER')) {
-        setCurrentView('seller');
-      } else if (r.includes('SHIPPER')) {
-        setCurrentView('shipper');
+    if (isAuthenticated && user?.userId) {
+      syncCartOnLogin(user.userId, { dedupeRecent: true });
+      const savedView = sessionStorage.getItem('quickshop_current_view');
+      if (savedView && ['admin', 'seller', 'shipper', 'storefront', 'cart', 'orders', 'profile'].includes(savedView)) {
+        setCurrentView(savedView);
+      } else if (user?.role) {
+        const r = String(user.role).toUpperCase();
+        if (r.includes('ADMIN')) {
+          setCurrentView('admin');
+        } else if (r.includes('SELLER')) {
+          setCurrentView('seller');
+        } else if (r.includes('SHIPPER')) {
+          setCurrentView('shipper');
+        }
       }
+    } else {
+      setCheckoutItems([]);
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('quickshop_current_view');
+      }
+      if (ownerUserId !== null) {
+        handleLogoutClear(ownerUserId);
+      }
+      setCurrentView('storefront');
     }
-  }, [isAuthenticated, user?.role]);
+  }, [isAuthenticated, user?.userId, user?.role]);
 
   const handleNavigateView = (view) => {
     if (view === 'storefront') {
@@ -100,20 +113,6 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [vnpayResult, setVnpayResult] = useState(null);
 
-  // Đồng bộ trạng thái giỏ hàng theo phiên đăng nhập / đăng xuất
-  useEffect(() => {
-    if (isAuthenticated && user?.userId) {
-      syncCartOnLogin(user.userId, { dedupeRecent: true });
-    } else {
-      setCheckoutItems([]);
-      if (ownerUserId !== null) {
-        handleLogoutClear(ownerUserId);
-      }
-      setCurrentView((prev) =>
-        prev === 'checkout' || prev === 'seller' || prev === 'admin' ? 'storefront' : prev
-      );
-    }
-  }, [isAuthenticated, user?.userId]);
 
   // Fetch Categories from /api/catalog/categories
   const fetchCategories = async () => {
