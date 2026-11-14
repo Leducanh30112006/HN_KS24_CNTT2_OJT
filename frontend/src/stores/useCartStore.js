@@ -230,10 +230,12 @@ export const useCartStore = create(
             syncError: null,
           });
 
+          console.log(`[QuickShop Cart] Đã đồng bộ ${mappedItems.length} sản phẩm từ Redis cho User #${userId}`);
           // Phát tín hiệu đồng bộ cho các tab / cửa sổ khác
           broadcastCartChange({ type: 'CART_UPDATED', userId, items: mappedItems });
           return { ok: true, items: mappedItems };
         } catch (error) {
+          console.warn('[QuickShop Cart] Đồng bộ từ Redis thất bại, dùng giỏ hàng dự phòng:', error);
           // Khi server chưa sẵn sàng hoặc offline, sử dụng giỏ hàng offline lưu riêng theo userId
           const fallbackItems =
             String(get().ownerUserId) === String(userId) && get().items.length > 0
@@ -247,6 +249,8 @@ export const useCartStore = create(
             syncError: error?.response?.status === 401 ? null : extractServerErrorMessage(error, null),
           });
           return { ok: false, offline: true, items: fallbackItems };
+        } finally {
+          set({ isSyncing: false });
         }
       },
 
@@ -385,7 +389,7 @@ export const useCartStore = create(
       addToCart: async (product, variant, quantity = 1) => {
         const auth = getAuthContext();
         const prevItems = get().items;
-        const targetVariantId = variant?.variantId || product?.defaultVariantId || product?.id;
+        const targetVariantId = variant?.variantId ?? variant?.id ?? product?.defaultVariantId ?? product?.id;
         const existingItem = prevItems.find((item) => String(item.variantId) === String(targetVariantId));
 
         const maxStock =

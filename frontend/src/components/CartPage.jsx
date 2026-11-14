@@ -20,8 +20,16 @@ export default function CartPage({
     getItemsByShop,
     syncError,
     clearSyncError,
+    fetchCart,
   } = useCartStore();
-  const { isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+
+  // Tự động làm mới giỏ hàng từ Redis khi truy cập trang giỏ hàng
+  useEffect(() => {
+    if (isAuthenticated && user?.userId) {
+      fetchCart(user.userId);
+    }
+  }, [isAuthenticated, user?.userId]);
 
   // Selected item variantIds for checkout (Mặc định chọn tất cả sản phẩm còn hàng)
   const [selectedVariantIds, setSelectedVariantIds] = useState(() => {

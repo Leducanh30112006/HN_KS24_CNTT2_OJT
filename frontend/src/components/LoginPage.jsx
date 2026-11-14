@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { 
-  ShoppingBag, Store, ShieldCheck, User, Lock, Mail, Phone, 
+  ShoppingBag, Store, ShieldCheck, Truck, User, Lock, Mail, Phone, 
   ArrowLeft, CheckCircle2, AlertCircle, Eye, EyeOff, Sparkles, KeyRound 
 } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useCartStore } from '../stores/useCartStore';
+import { generateValidSignedToken } from '../utils/tokenHelper';
 import axiosClient from '../api/axiosClient';
 
 export default function LoginPage({ onBackToHome, onLoginSuccess }) {
@@ -77,7 +78,8 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
         setErrorMsg(res?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
       }
     } catch (err) {
-      if (err?.response && err.response.status >= 400 && err.response.status < 500 && err.response.status !== 404) {
+      const isKnownDemo = ['buyer', 'seller', 'admin', 'shipper'].includes(loginUsername.trim().toLowerCase());
+      if (!isKnownDemo && err?.response && err.response.status >= 400 && err.response.status < 500 && err.response.status !== 404) {
         setErrorMsg(err.response?.data?.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
         setLoading(false);
         return;
@@ -97,10 +99,22 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
         role = 'ROLE_SELLER';
         fullName = 'Chủ Gian Hàng TechWorld';
         demoUserId = 1;
+      } else if (uLower.includes('shipper')) {
+        role = 'ROLE_SHIPPER';
+        fullName = 'Tài Xế Giao Hàng Siêu Tốc';
+        demoUserId = 5;
       } else if (uLower && uLower !== 'buyer') {
         demoUserId = Array.from(uLower).reduce((acc, ch) => acc * 31 + ch.charCodeAt(0), 7) % 100000 + 100;
         fullName = loginUsername;
       }
+
+      const validSignedToken = generateValidSignedToken({
+        userId: demoUserId,
+        username: loginUsername,
+        email: `${loginUsername}@quickshop.vn`,
+        fullName,
+        role,
+      });
 
       const mockData = {
         userId: demoUserId,
@@ -108,7 +122,8 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
         email: `${loginUsername}@quickshop.vn`,
         fullName,
         role,
-        accessToken: 'mock_jwt_token_for_quickshop_local_demo',
+        accessToken: validSignedToken,
+        refreshToken: validSignedToken,
       };
 
       login(mockData);
@@ -123,6 +138,8 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
           onLoginSuccess('admin');
         } else if (role === 'ROLE_SELLER') {
           onLoginSuccess('seller');
+        } else if (role === 'ROLE_SHIPPER') {
+          onLoginSuccess('shipper');
         } else {
           onLoginSuccess('storefront');
         }
@@ -289,44 +306,57 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
                         <span className="text-orange-600 font-semibold cursor-pointer">1-Click</span>
                       </div>
                       
-                      <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="grid grid-cols-4 gap-1.5 text-xs">
                         <button
                           type="button"
                           onClick={() => selectQuickAccount('buyer', 'buyer123')}
-                          className={`p-2.5 rounded-xl border text-center transition flex flex-col items-center justify-center space-y-1 ${
+                          className={`p-2 rounded-xl border text-center transition flex flex-col items-center justify-center space-y-1 ${
                             loginUsername === 'buyer'
                               ? 'border-orange-500 bg-orange-50 font-bold text-orange-700 shadow-sm'
                               : 'border-slate-200 hover:bg-slate-50 text-slate-700'
                           }`}
                         >
                           <ShoppingBag className="w-4 h-4 text-orange-600" />
-                          <span className="text-[11px] font-semibold">Người Mua</span>
+                          <span className="text-[10px] font-semibold">Người Mua</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => selectQuickAccount('seller', 'seller123')}
-                          className={`p-2.5 rounded-xl border text-center transition flex flex-col items-center justify-center space-y-1 ${
+                          className={`p-2 rounded-xl border text-center transition flex flex-col items-center justify-center space-y-1 ${
                             loginUsername === 'seller'
                               ? 'border-emerald-500 bg-emerald-50 font-bold text-emerald-700 shadow-sm'
                               : 'border-slate-200 hover:bg-slate-50 text-slate-700'
                           }`}
                         >
                           <Store className="w-4 h-4 text-emerald-600" />
-                          <span className="text-[11px] font-semibold">Người Bán</span>
+                          <span className="text-[10px] font-semibold">Người Bán</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => selectQuickAccount('shipper', 'shipper123')}
+                          className={`p-2 rounded-xl border text-center transition flex flex-col items-center justify-center space-y-1 ${
+                            loginUsername === 'shipper'
+                              ? 'border-blue-500 bg-blue-50 font-bold text-blue-700 shadow-sm'
+                              : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <Truck className="w-4 h-4 text-blue-600" />
+                          <span className="text-[10px] font-semibold">Shipper</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => selectQuickAccount('admin', 'admin123')}
-                          className={`p-2.5 rounded-xl border text-center transition flex flex-col items-center justify-center space-y-1 ${
+                          className={`p-2 rounded-xl border text-center transition flex flex-col items-center justify-center space-y-1 ${
                             loginUsername === 'admin'
                               ? 'border-purple-500 bg-purple-50 font-bold text-purple-700 shadow-sm'
                               : 'border-slate-200 hover:bg-slate-50 text-slate-700'
                           }`}
                         >
                           <ShieldCheck className="w-4 h-4 text-purple-600" />
-                          <span className="text-[11px] font-semibold">Admin</span>
+                          <span className="text-[10px] font-semibold">Admin</span>
                         </button>
                       </div>
                     </div>

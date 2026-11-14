@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { X, User, Key, ShieldCheck, Store, ShoppingBag, CheckCircle2 } from 'lucide-react';
+import { X, User, Key, ShieldCheck, Store, ShoppingBag, Truck, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useCartStore } from '../stores/useCartStore';
+import { generateValidSignedToken } from '../utils/tokenHelper';
 import axiosClient from '../api/axiosClient';
 
 export default function AuthModal({ isOpen, onClose }) {
   const { login } = useAuthStore();
   const { syncCartOnLogin } = useCartStore();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('buyer');
+  const [password, setPassword] = useState('buyer123');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -41,7 +42,8 @@ export default function AuthModal({ isOpen, onClose }) {
         setErrorMsg(res?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
       }
     } catch (err) {
-      if (err?.response && err.response.status >= 400 && err.response.status < 500 && err.response.status !== 404) {
+      const isKnownDemo = ['buyer', 'seller', 'admin', 'shipper'].includes(username.trim().toLowerCase());
+      if (!isKnownDemo && err?.response && err.response.status >= 400 && err.response.status < 500 && err.response.status !== 404) {
         setErrorMsg(err.response?.data?.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
         setLoading(false);
         return;
@@ -60,18 +62,31 @@ export default function AuthModal({ isOpen, onClose }) {
         role = 'ROLE_SELLER';
         fullName = 'Chủ Gian Hàng TechWorld';
         demoUserId = 1;
+      } else if (uLower.includes('shipper')) {
+        role = 'ROLE_SHIPPER';
+        fullName = 'Tài Xế Giao Hàng Siêu Tốc';
+        demoUserId = 5;
       } else if (uLower && uLower !== 'buyer') {
         demoUserId = Array.from(uLower).reduce((acc, ch) => acc * 31 + ch.charCodeAt(0), 7) % 100000 + 100;
         fullName = username;
       }
 
-      const mockData = {
+      const validSignedToken = generateValidSignedToken({
         userId: demoUserId,
-        username: username,
+        username,
         email: `${username}@quickshop.vn`,
         fullName,
         role,
-        accessToken: 'mock_jwt_token_for_quickshop_local_demo',
+      });
+
+      const mockData = {
+        userId: demoUserId,
+        username,
+        email: `${username}@quickshop.vn`,
+        fullName,
+        role,
+        accessToken: validSignedToken,
+        refreshToken: validSignedToken,
       };
 
       login(mockData);
@@ -116,38 +131,49 @@ export default function AuthModal({ isOpen, onClose }) {
             <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
               Chọn tài khoản thử nghiệm nhanh:
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-1.5">
               <button
                 type="button"
                 onClick={() => selectAccount('buyer', 'buyer123')}
-                className={`p-2.5 rounded-xl border text-center transition ${
+                className={`p-2 rounded-xl border text-center transition ${
                   username === 'buyer' ? 'border-orange-500 bg-orange-50 font-bold text-orange-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'
                 }`}
               >
                 <ShoppingBag className="w-4 h-4 mx-auto mb-1 text-orange-600" />
-                Người Mua
+                <span className="text-[10px]">Người Mua</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => selectAccount('seller', 'seller123')}
-                className={`p-2.5 rounded-xl border text-center transition ${
-                  username === 'seller' ? 'border-orange-500 bg-orange-50 font-bold text-orange-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                className={`p-2 rounded-xl border text-center transition ${
+                  username === 'seller' ? 'border-emerald-500 bg-emerald-50 font-bold text-emerald-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'
                 }`}
               >
                 <Store className="w-4 h-4 mx-auto mb-1 text-emerald-600" />
-                Người Bán
+                <span className="text-[10px]">Người Bán</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => selectAccount('shipper', 'shipper123')}
+                className={`p-2 rounded-xl border text-center transition ${
+                  username === 'shipper' ? 'border-blue-500 bg-blue-50 font-bold text-blue-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                }`}
+              >
+                <Truck className="w-4 h-4 mx-auto mb-1 text-blue-600" />
+                <span className="text-[10px]">Shipper</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => selectAccount('admin', 'admin123')}
-                className={`p-2.5 rounded-xl border text-center transition ${
-                  username === 'admin' ? 'border-orange-500 bg-orange-50 font-bold text-orange-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                className={`p-2 rounded-xl border text-center transition ${
+                  username === 'admin' ? 'border-purple-500 bg-purple-50 font-bold text-purple-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'
                 }`}
               >
                 <ShieldCheck className="w-4 h-4 mx-auto mb-1 text-purple-600" />
-                Quản Trị Viên
+                <span className="text-[10px]">Admin</span>
               </button>
             </div>
           </div>
