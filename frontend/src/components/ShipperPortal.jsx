@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Truck, Package, CheckCircle2, Clock, XCircle, Phone, 
   MapPin, Search, Filter, AlertTriangle, ArrowLeft, RefreshCw, 
-  DollarSign, ShieldCheck, ChevronRight, Navigation, Bike, Check, Eye
+  DollarSign, ShieldCheck, ChevronRight, Navigation, Bike, Check, Eye,
+  LogOut, ShoppingBag
 } from 'lucide-react';
 import { 
   getStoredShipments, 
@@ -10,8 +11,10 @@ import {
   simulateNextCarrierStepInStore 
 } from '../data/sampleOrders';
 import axiosClient from '../api/axiosClient';
+import { useAuthStore } from '../stores/useAuthStore';
 
 export default function ShipperPortal({ onBackToHome }) {
+  const { user, logout } = useAuthStore();
   const [shipments, setShipments] = useState([]);
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'READY_TO_PICK' | 'DELIVERING' | 'DELIVERED' | 'DELIVERY_FAILED'
   const [searchQuery, setSearchQuery] = useState('');
@@ -121,23 +124,62 @@ export default function ShipperPortal({ onBackToHome }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Navigation Bar */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={onBackToHome}
-            className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-orange-600 transition group"
-          >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span>Quay lại Cửa Hàng</span>
-          </button>
-          <div className="text-xs text-slate-400">
-            Hệ Thống Điều Phối & Giao Nhận Bưu Tá QuickShop Logistics
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
+      {/* 1. Standalone Dedicated Shipper Top Navbar */}
+      <header className="sticky top-0 z-40 bg-slate-900 text-white shadow-md border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md font-bold">
+              <Truck className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-base tracking-tight text-white">QUICKSHOP</span>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                  Logistics Dispatch
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 hidden sm:block">Kênh Giao Vận & Điều Phối Bưu Tá Siêu Tốc</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            {onBackToHome && (
+              <button
+                onClick={onBackToHome}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition"
+              >
+                <ShoppingBag className="w-3.5 h-3.5 text-orange-400" />
+                <span>Xem Sàn Mua Sắm</span>
+              </button>
+            )}
+
+            <div className="h-6 w-px bg-slate-700 hidden sm:block" />
+
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center text-xs border border-blue-500/30">
+                {user?.fullName?.charAt(0) || 'T'}
+              </div>
+              <div className="text-left hidden md:block">
+                <div className="text-xs font-bold text-white truncate max-w-[130px]">{user?.fullName || 'Tài Xế Giao Hàng'}</div>
+                <div className="text-[10px] text-blue-400 font-semibold">{user?.role || 'ROLE_SHIPPER'}</div>
+              </div>
+            </div>
+
+            <button
+              onClick={logout}
+              className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+              title="Đăng xuất"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
+      </header>
 
-        {/* Shipper Portal Header */}
+      {/* Main Content Area */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 space-y-6">
+        {/* Shipper Portal Banner Card */}
         <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-700/15">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4 text-center sm:text-left">
@@ -152,7 +194,7 @@ export default function ShipperPortal({ onBackToHome }) {
                   </span>
                 </div>
                 <p className="text-xs text-blue-100">
-                  Bưu tá: <strong className="text-white">Trần Văn Thành (ID: #SP-892)</strong> • Tuyến: Cầu Giấy - Ba Đình, Hà Nội
+                  Bưu tá: <strong className="text-white">{user?.fullName || 'Trần Văn Thành'} (ID: #SP-892)</strong> • Tuyến: Cầu Giấy - Ba Đình, Hà Nội
                 </p>
                 <div className="text-[11px] text-blue-200">
                   Phương tiện: 29-B1 688.92 (Xe máy giao hàng) • Ca làm việc: Ca ngày (08:00 - 18:00)
@@ -424,7 +466,7 @@ export default function ShipperPortal({ onBackToHome }) {
             ))
           )}
         </div>
-      </div>
+      </main>
 
       {/* MODAL 1: Báo giao hàng thất bại */}
       {failureTarget && (
@@ -528,6 +570,11 @@ export default function ShipperPortal({ onBackToHome }) {
           </div>
         </div>
       )}
+
+      {/* Standalone Shipper Footer */}
+      <footer className="py-4 border-t border-slate-200 bg-white text-center text-xs text-slate-400">
+        QuickShop Logistics • Hệ Thống Điều Phối & Giao Nhận Bưu Tá Toàn Quốc
+      </footer>
     </div>
   );
 }

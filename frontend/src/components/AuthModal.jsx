@@ -5,7 +5,7 @@ import { useCartStore } from '../stores/useCartStore';
 import { generateValidSignedToken } from '../utils/tokenHelper';
 import axiosClient from '../api/axiosClient';
 
-export default function AuthModal({ isOpen, onClose }) {
+export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
   const { login } = useAuthStore();
   const { syncCartOnLogin } = useCartStore();
   const [username, setUsername] = useState('buyer');
@@ -37,7 +37,14 @@ export default function AuthModal({ isOpen, onClose }) {
         setSuccessMsg(`Đăng nhập thành công! Vai trò: ${res.data.fullName} [${res.data.role}]`);
         setTimeout(() => {
           onClose();
-        }, 1200);
+          if (onLoginSuccess) {
+            const r = String(res.data.role).toUpperCase();
+            if (r.includes('ADMIN')) onLoginSuccess('admin');
+            else if (r.includes('SELLER')) onLoginSuccess('seller');
+            else if (r.includes('SHIPPER')) onLoginSuccess('shipper');
+            else onLoginSuccess('storefront');
+          }
+        }, 1000);
       } else {
         setErrorMsg(res?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
       }
@@ -96,6 +103,13 @@ export default function AuthModal({ isOpen, onClose }) {
       setSuccessMsg(`Đăng nhập phiên Demo: ${fullName} [${role}]`);
       setTimeout(() => {
         onClose();
+        if (onLoginSuccess) {
+          const r = String(role).toUpperCase();
+          if (r.includes('ADMIN')) onLoginSuccess('admin');
+          else if (r.includes('SELLER')) onLoginSuccess('seller');
+          else if (r.includes('SHIPPER')) onLoginSuccess('shipper');
+          else onLoginSuccess('storefront');
+        }
       }, 1000);
     } finally {
       setLoading(false);

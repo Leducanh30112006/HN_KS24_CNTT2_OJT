@@ -6,9 +6,11 @@ import {
   Store, Ticket, Lock, Unlock, Eye, Plus, Search, RefreshCw,
   Award, TrendingUp, AlertCircle, ShoppingBag, Phone, MapPin,
   UserCheck, UserX, CreditCard, ExternalLink, X, DollarSign,
-  FileText, ArrowUpRight, Download, CheckCircle, LayoutDashboard
+  FileText, ArrowUpRight, Download, CheckCircle, LayoutDashboard,
+  LogOut
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
+import { useAuthStore } from '../stores/useAuthStore';
 import {
   fetchAdminProducts,
   updateAdminProductStatus,
@@ -30,6 +32,7 @@ import ApiErrorBanner from './ApiErrorBanner';
 import Pagination from './Pagination';
 
 export default function AdminPortal({ categories = [], onCategoriesUpdated, onBackToStorefront }) {
+  const { user, logout } = useAuthStore();
   // Tabs: 'dashboard' | 'moderation' | 'sellers' | 'vouchers' | 'users' | 'categories' | 'notifications' | 'finance' | 'audit' | 'infra'
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -1263,36 +1266,81 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   ];
 
   return (
-    <div className="space-y-6">
-      {/* 1. Header with Role Badge and Tab Navigation */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
-        <div className="flex items-center space-x-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-slate-900 to-slate-800 text-white flex items-center justify-center shadow-lg shadow-slate-900/20">
-            <ShieldCheck className="w-7 h-7 text-emerald-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-slate-900">Cổng Quản Trị Hệ Thống QuickShop Admin</h1>
-              <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full">
-                ROLE_ADMIN
-              </span>
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
+      {/* Standalone Dedicated Admin Top Navigation Bar */}
+      <header className="sticky top-0 z-40 bg-slate-900 text-white shadow-lg border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center shadow-md font-bold">
+              <ShieldCheck className="w-6 h-6 text-slate-950" />
             </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Kiểm duyệt sản phẩm, quản lý người bán KYC, phát hành voucher toàn sàn, quản lý người mua và hạ tầng microservices
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-base tracking-tight text-white">QUICKSHOP</span>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  Admin Backoffice
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 hidden sm:block">Trung Tâm Điều Hành & Quản Trị Hệ Thống Toàn Sàn</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            {onBackToStorefront && (
+              <button
+                onClick={onBackToStorefront}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition"
+              >
+                <ShoppingBag className="w-3.5 h-3.5 text-orange-400" />
+                <span>Xem Sàn Mua Sắm</span>
+              </button>
+            )}
+
+            <div className="h-6 w-px bg-slate-750 hidden sm:block" />
+
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-xs border border-emerald-500/30">
+                {user?.fullName?.charAt(0) || 'A'}
+              </div>
+              <div className="text-left hidden md:block">
+                <div className="text-xs font-bold text-white truncate max-w-[130px]">{user?.fullName || 'Quản Trị Viên'}</div>
+                <div className="text-[10px] text-emerald-400 font-semibold">{user?.role || 'ROLE_ADMIN'}</div>
+              </div>
+            </div>
+
+            <button
+              onClick={logout}
+              className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+              title="Đăng xuất"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
+      </header>
 
-        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-between xl:justify-end">
-          {onBackToStorefront && (
-            <button
-              onClick={onBackToStorefront}
-              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer active:scale-95"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Về Catalog</span>
-            </button>
-          )}
+      {/* Main Content Area */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 space-y-6">
+        {/* 1. Header with Role Badge and Tab Navigation */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+          <div className="flex items-center space-x-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-slate-900 to-slate-800 text-white flex items-center justify-center shadow-lg shadow-slate-900/20">
+              <ShieldCheck className="w-7 h-7 text-emerald-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold text-slate-900">Bảng Điều Khiển Quản Trị Hệ Thống (QuickShop Admin)</h1>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full">
+                  ROLE_ADMIN
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Kiểm duyệt sản phẩm, quản lý người bán KYC, phát hành voucher toàn sàn, quản lý người mua và hạ tầng microservices
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-between xl:justify-end">
 
           {/* Navigation Bar Tabs */}
           <div className="flex flex-wrap gap-1 bg-slate-100 p-1.5 rounded-2xl text-xs font-semibold">
@@ -4344,6 +4392,12 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
           </button>
         </div>
       )}
+      </main>
+
+      {/* Standalone Admin Footer */}
+      <footer className="py-4 border-t border-slate-200 bg-white text-center text-xs text-slate-400">
+        QuickShop Backoffice Admin Console • Hệ sinh thái Microservices phân tán 8 cụm dịch vụ
+      </footer>
     </div>
   );
 }

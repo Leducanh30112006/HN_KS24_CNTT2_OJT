@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { 
   Store, Plus, Upload, Trash2, Edit, Sparkles, CheckCircle2, 
   Clock, XCircle, FileText, Send, ArrowLeft, Filter, Layers, 
-  Image as ImageIcon, Tag, DollarSign, Package, AlertTriangle 
+  Image as ImageIcon, Tag, DollarSign, Package, AlertTriangle,
+  LogOut, ShoppingBag
 } from 'lucide-react';
 import { catalogApi } from '../api/catalogApi';
 import { useAuthStore } from '../stores/useAuthStore';
 
 export default function SellerPortal({ categories = [], onProductCreated, onBackToStorefront }) {
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, APPROVED, PENDING, DRAFT, REJECTED
@@ -481,46 +482,90 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
   const countRejected = products.filter((p) => p.status === 'REJECTED').length;
 
   return (
-    <div className="space-y-6">
-      {/* 1. Header with Back Button & Action */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center space-x-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/20">
-            <Store className="w-7 h-7" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-slate-900">Kênh Quản Lý Người Bán (Seller Center)</h1>
-              <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">
-                TechWorld Official Store
-              </span>
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+      {/* 1. Standalone Dedicated Seller Centre Top Navbar */}
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-500 to-rose-600 text-white flex items-center justify-center shadow-md font-bold">
+              <Store className="w-5 h-5 text-white" />
             </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Quản lý sản phẩm, tồn kho đa biến thể SKU, trạng thái DRAFT / PENDING / APPROVED / REJECTED & MinIO S3
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-base tracking-tight text-slate-900">QUICKSHOP</span>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                  Kênh Người Bán
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 hidden sm:block">TechWorld Official Store • Quản Lý Sản Phẩm & Doanh Thu</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            {onBackToStorefront && (
+              <button
+                onClick={onBackToStorefront}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition"
+              >
+                <ShoppingBag className="w-3.5 h-3.5 text-orange-600" />
+                <span>Xem Sàn Mua Sắm</span>
+              </button>
+            )}
+
+            <div className="h-6 w-px bg-slate-200 hidden sm:block" />
+
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-700 font-bold flex items-center justify-center text-xs">
+                {user?.fullName?.charAt(0) || 'S'}
+              </div>
+              <div className="text-left hidden md:block">
+                <div className="text-xs font-bold text-slate-900 truncate max-w-[130px]">{user?.fullName || 'Chủ Gian Hàng'}</div>
+                <div className="text-[10px] text-emerald-600 font-semibold">{user?.role || 'ROLE_SELLER'}</div>
+              </div>
+            </div>
+
+            <button
+              onClick={logout}
+              className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+              title="Đăng xuất"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
+      </header>
 
-        <div className="flex items-center gap-2">
-          {onBackToStorefront && (
+      {/* Main Content Area */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 space-y-6">
+        {/* Banner with Add Button */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center space-x-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/20">
+              <Store className="w-7 h-7" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold text-slate-900">Bảng Điều Khiển Gian Hàng (Seller Center)</h1>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">
+                  TechWorld Official Store
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Quản lý sản phẩm, tồn kho đa biến thể SKU, trạng thái DRAFT / PENDING / APPROVED / REJECTED & MinIO S3
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
             <button
-              onClick={onBackToStorefront}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs sm:text-sm rounded-xl transition flex items-center gap-1.5"
+              onClick={() => setShowCreateModal(true)}
+              className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-semibold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-orange-500/30 flex items-center gap-2 active:scale-95"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Quay lại mua sắm
+              <Plus className="w-4 h-4 stroke-[3]" />
+              Đăng bán sản phẩm mới
             </button>
-          )}
-
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-semibold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-orange-500/30 flex items-center gap-2 active:scale-95"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            Đăng bán sản phẩm mới
-          </button>
+          </div>
         </div>
-      </div>
 
       {/* 2. Shop Overview Statistics */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -1203,6 +1248,12 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
           </button>
         </div>
       )}
+      </main>
+
+      {/* Standalone Seller Footer */}
+      <footer className="py-4 border-t border-slate-200 bg-white text-center text-xs text-slate-400">
+        QuickShop Seller Centre • Kênh Quản Lý Dành Cho Nhà Bán Hàng Chuyên Nghiệp
+      </footer>
     </div>
   );
 }

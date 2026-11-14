@@ -48,6 +48,7 @@ export default function Navbar({
   const isSeller = user && (user.role === 'ROLE_SELLER' || user.role === 'SELLER');
   const isSellerOnly = isSeller && !user?.role?.includes('ADMIN');
   const isAdmin = user && (user.role === 'ROLE_ADMIN' || user.role === 'ADMIN');
+  const isShipper = user && (user.role === 'ROLE_SHIPPER' || user.role === 'SHIPPER');
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
@@ -66,56 +67,70 @@ export default function Navbar({
             </span>
           </div>
 
-          {/* Phân quyền điều hướng & Tiện ích: Shipper, Đơn Mua, Kênh Người Bán, Admin */}
+          {/* Phân quyền điều hướng & Tiện ích */}
           <div className="flex items-center space-x-3 text-[11px] font-medium">
-            <button
-              onClick={() => setCurrentView('shipper')}
-              className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
-                currentView === 'shipper' ? 'bg-white text-blue-700 font-bold shadow-sm' : 'hover:bg-white/20'
-              }`}
-              title="Kênh Quản Lý Vận Chuyển Dành Cho Shipper"
-            >
-              <Truck className="w-3 h-3" />
-              <span>Kênh Shipper</span>
-            </button>
+            {isAuthenticated ? (
+              <>
+                <button
+                  onClick={() => setCurrentView('orders')}
+                  className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
+                    currentView === 'orders' ? 'bg-white text-orange-600 font-bold shadow-sm' : 'hover:bg-white/20'
+                  }`}
+                  title="Tra cứu Lịch sử Đơn Mua Của Bạn"
+                >
+                  <Package className="w-3 h-3" />
+                  <span>Đơn Mua</span>
+                </button>
 
-            {isAuthenticated && (
-              <button
-                onClick={() => setCurrentView('orders')}
-                className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
-                  currentView === 'orders' ? 'bg-white text-orange-600 font-bold shadow-sm' : 'hover:bg-white/20'
-                }`}
-                title="Tra cứu Lịch sử Đơn Mua Của Bạn"
-              >
-                <Package className="w-3 h-3" />
-                <span>Đơn Mua</span>
-              </button>
-            )}
+                {isShipper && (
+                  <button
+                    onClick={() => setCurrentView('shipper')}
+                    className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500 hover:bg-blue-400 text-white font-bold transition shadow-sm"
+                    title="Mở Cổng Vận Chuyển Shipper Riêng Biệt"
+                  >
+                    <Truck className="w-3 h-3" />
+                    <span>Cổng Shipper →</span>
+                  </button>
+                )}
 
-            {isAuthenticated && isSellerOnly && (
-              <button
-                onClick={() => setCurrentView('seller')}
-                className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
-                  currentView === 'seller' ? 'bg-white text-orange-600 font-bold shadow-sm' : 'hover:bg-white/20'
-                }`}
-                title="Truy cập Kênh Quản Lý Người Bán"
-              >
-                <Store className="w-3 h-3" />
-                <span>Kênh Người Bán</span>
-              </button>
-            )}
+                {isSellerOnly && (
+                  <button
+                    onClick={() => setCurrentView('seller')}
+                    className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition shadow-sm"
+                    title="Mở Kênh Người Bán Riêng Biệt"
+                  >
+                    <Store className="w-3 h-3" />
+                    <span>Kênh Người Bán →</span>
+                  </button>
+                )}
 
-            {isAuthenticated && isAdmin && (
-              <button
-                onClick={() => setCurrentView('admin')}
-                className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full transition ${
-                  currentView === 'admin' ? 'bg-white text-orange-600 font-bold shadow-sm' : 'hover:bg-white/20'
-                }`}
-                title="Truy cập Quản Trị Hệ Thống Admin"
-              >
-                <ShieldCheck className="w-3 h-3" />
-                <span>Quản Trị Admin</span>
-              </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => setCurrentView('admin')}
+                    className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-700 hover:bg-purple-600 text-white font-bold transition shadow-sm"
+                    title="Mở Cổng Quản Trị Admin Riêng Biệt"
+                  >
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>Cổng Admin →</span>
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={handleGoToLogin}
+                  className="hover:text-amber-200 transition"
+                >
+                  Kênh Người Bán
+                </button>
+                <span className="opacity-40">|</span>
+                <button
+                  onClick={handleGoToLogin}
+                  className="hover:text-amber-200 transition"
+                >
+                  Trở thành Shipper
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -298,112 +313,127 @@ export default function Navbar({
               </button>
             )}
 
-            {/* User Dropdown Menu - Phân quyền rõ ràng */}
+            {/* User Dropdown Menu - Phân quyền và Tách biệt Cổng rõ ràng */}
             {showUserMenu && isAuthenticated && (
-              <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 p-2 animate-in fade-in zoom-in-95 duration-150">
-                <div className="p-2 border-b border-slate-100 mb-1">
-                  <div className="font-semibold text-xs text-slate-900">{user?.fullName}</div>
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 p-2 animate-in fade-in zoom-in-95 duration-150">
+                <div className="p-2.5 border-b border-slate-100 mb-1">
+                  <div className="font-bold text-xs text-slate-900">{user?.fullName || user?.username}</div>
                   <div className="text-[11px] text-slate-500 truncate">{user?.email}</div>
-                  <div className="text-[10px] font-bold text-orange-600 mt-0.5 uppercase tracking-wide">
+                  <div className="text-[10px] font-extrabold text-orange-600 mt-1 uppercase tracking-wide">
                     {user?.role}
                   </div>
                 </div>
 
-                <button
-                  onClick={() => {
-                    setCurrentView('storefront');
-                    setShowUserMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-orange-50 hover:text-orange-600 rounded-lg flex items-center gap-2"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  Trang chủ Mua sắm (Catalog)
-                </button>
+                {/* Các chức năng cá nhân của người mua */}
+                <div className="space-y-0.5">
+                  <button
+                    onClick={() => {
+                      setCurrentView('profile');
+                      setShowUserMenu(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs font-medium rounded-xl flex items-center gap-2 transition ${
+                      currentView === 'profile'
+                        ? 'bg-orange-50 text-orange-600 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50 hover:text-orange-600'
+                    }`}
+                  >
+                    <User className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Hồ sơ của tôi</span>
+                  </button>
 
-                <button
-                  onClick={() => {
-                    setCurrentView('profile');
-                    setShowUserMenu(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 text-xs font-medium rounded-lg flex items-center gap-2 ${
-                    currentView === 'profile'
-                      ? 'bg-orange-50 text-orange-600 font-bold'
-                      : 'text-slate-700 hover:bg-orange-50 hover:text-orange-600'
-                  }`}
-                >
-                  <User className="w-3.5 h-3.5" />
-                  Hồ sơ của tôi
-                </button>
+                  <button
+                    onClick={() => {
+                      setCurrentView('orders');
+                      setShowUserMenu(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs font-medium rounded-xl flex items-center gap-2 transition ${
+                      currentView === 'orders'
+                        ? 'bg-orange-50 text-orange-600 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50 hover:text-orange-600'
+                    }`}
+                  >
+                    <Package className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Đơn mua / Lịch sử đơn</span>
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    setCurrentView('orders');
-                    setShowUserMenu(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 text-xs font-medium rounded-lg flex items-center gap-2 ${
-                    currentView === 'orders'
-                      ? 'bg-orange-50 text-orange-600 font-bold'
-                      : 'text-slate-700 hover:bg-orange-50 hover:text-orange-600'
-                  }`}
-                >
-                  <Package className="w-3.5 h-3.5" />
-                  Đơn mua / Lịch sử đơn
-                </button>
+                {/* Cổng chuyên dụng dành riêng cho vai trò công việc (Chỉ hiển thị Cổng tương ứng) */}
+                {isShipper && (
+                  <div className="pt-1.5 mt-1.5 border-t border-slate-100">
+                    <div className="px-2 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Cổng Làm Việc
+                    </div>
+                    <button
+                      onClick={() => {
+                        setCurrentView('shipper');
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl flex items-center justify-between transition"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Truck className="w-4 h-4 text-blue-600" />
+                        <span>Kênh Vận Chuyển</span>
+                      </div>
+                      <ChevronDown className="w-3 h-3 -rotate-90 text-blue-500" />
+                    </button>
+                  </div>
+                )}
 
-                <button
-                  onClick={() => {
-                    setCurrentView('shipper');
-                    setShowUserMenu(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 text-xs font-medium rounded-lg flex items-center gap-2 ${
-                    currentView === 'shipper'
-                      ? 'bg-blue-50 text-blue-700 font-bold'
-                      : 'text-slate-700 hover:bg-blue-50 hover:text-blue-700'
-                  }`}
-                >
-                  <Truck className="w-3.5 h-3.5" />
-                  Kênh Vận Chuyển (Shipper)
-                </button>
-
-                {/* Chỉ hiển thị Kênh Người Bán nếu là ROLE_SELLER hoặc ROLE_ADMIN */}
                 {isSellerOnly && (
-                  <button
-                    onClick={() => {
-                      setCurrentView('seller');
-                      setShowUserMenu(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-orange-50 hover:text-orange-600 rounded-lg flex items-center gap-2"
-                  >
-                    <Store className="w-3.5 h-3.5" />
-                    Kênh Người Bán (Shop)
-                  </button>
+                  <div className="pt-1.5 mt-1.5 border-t border-slate-100">
+                    <div className="px-2 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Cổng Làm Việc
+                    </div>
+                    <button
+                      onClick={() => {
+                        setCurrentView('seller');
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl flex items-center justify-between transition"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Store className="w-4 h-4 text-emerald-600" />
+                        <span>Kênh Người Bán</span>
+                      </div>
+                      <ChevronDown className="w-3 h-3 -rotate-90 text-emerald-500" />
+                    </button>
+                  </div>
                 )}
 
-                {/* Chỉ hiển thị Quản Trị Admin nếu là ROLE_ADMIN */}
                 {isAdmin && (
-                  <button
-                    onClick={() => {
-                      setCurrentView('admin');
-                      setShowUserMenu(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-orange-50 hover:text-orange-600 rounded-lg flex items-center gap-2"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    Quản Trị Admin
-                  </button>
+                  <div className="pt-1.5 mt-1.5 border-t border-slate-100">
+                    <div className="px-2 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Cổng Quản Trị
+                    </div>
+                    <button
+                      onClick={() => {
+                        setCurrentView('admin');
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl flex items-center justify-between transition"
+                    >
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-purple-600" />
+                        <span>Trang Quản Trị Hệ Thống</span>
+                      </div>
+                      <ChevronDown className="w-3 h-3 -rotate-90 text-purple-500" />
+                    </button>
+                  </div>
                 )}
 
-                <button
-                  onClick={() => {
-                    logout();
-                    setCurrentView('storefront');
-                    setShowUserMenu(false);
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 mt-1 border-t border-slate-100"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  Đăng xuất
-                </button>
+                <div className="pt-1.5 mt-1.5 border-t border-slate-100">
+                  <button
+                    onClick={() => {
+                      logout();
+                      setCurrentView('storefront');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl flex items-center gap-2 transition"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Đăng xuất</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>

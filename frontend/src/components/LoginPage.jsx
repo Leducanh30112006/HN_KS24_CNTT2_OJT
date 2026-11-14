@@ -70,6 +70,8 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
             onLoginSuccess('admin');
           } else if (role === 'ROLE_SELLER' || role === 'SELLER') {
             onLoginSuccess('seller');
+          } else if (role === 'ROLE_SHIPPER' || role === 'SHIPPER') {
+            onLoginSuccess('shipper');
           } else {
             onLoginSuccess('storefront');
           }
