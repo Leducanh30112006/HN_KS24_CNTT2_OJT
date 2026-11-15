@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Package, Search, Truck, CheckCircle2, Clock, XCircle, RotateCcw, 
   ChevronRight, Phone, MapPin, Eye, ArrowLeft, AlertCircle, 
-  Sparkles, ExternalLink, RefreshCw, ShoppingCart, ShieldCheck
+  Sparkles, ExternalLink, RefreshCw, ShoppingCart, ShieldCheck,
+  Star, MessageSquare, Image as ImageIcon
 } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useCartStore } from '../stores/useCartStore';
@@ -10,7 +11,10 @@ import {
   getStoredOrders, 
   getStoredShipments, 
   cancelOrderById, 
-  simulateNextCarrierStepInStore 
+  simulateNextCarrierStepInStore,
+  saveStoredOrders,
+  createCustomerReviewInStore,
+  submitCustomerRefundRequest
 } from '../data/sampleOrders';
 import axiosClient from '../api/axiosClient';
 
@@ -32,6 +36,87 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
   // Cancel order modal
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [cancelReason, setCancelReason] = useState('Đổi ý muốn mua sản phẩm khác');
+
+  // Review modal
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewTargetItem, setReviewTargetItem] = useState(null);
+  const [reviewTargetSubOrder, setReviewTargetSubOrder] = useState(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewedItems, setReviewedItems] = useState({});
+
+  // Refund modal
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [refundTargetSubOrder, setRefundTargetSubOrder] = useState(null);
+  const [refundTargetOrder, setRefundTargetOrder] = useState(null);
+  const [refundReason, setRefundReason] = useState('Sản phẩm nhận được bị lỗi kỹ thuật / không đúng mô tả');
+  const [refundProofUrl, setRefundProofUrl] = useState('');
+
+  const handleConfirmReceived = (subOrder, order) => {
+    const all = getStoredOrders();
+    const updated = all.map((o) => {
+      if (String(o.id) === String(order.id) || o.orderCode === order.orderCode) {
+        return {
+          ...o,
+          status: 'COMPLETED',
+          subOrders: (o.subOrders || []).map((s) =>
+            s.id === subOrder.id ? { ...s, status: 'COMPLETED' } : s
+          ),
+        };
+      }
+      return o;
+    });
+    setOrders(updated);
+    saveStoredOrders(updated);
+  };
+
+  const handleOpenReview = (item, subOrder) => {
+    setReviewTargetItem(item);
+    setReviewTargetSubOrder(subOrder);
+    setReviewRating(5);
+    setReviewComment('');
+    setReviewModalOpen(true);
+  };
+
+  const handleSubmitReview = () => {
+    if (!reviewTargetItem) return;
+    createCustomerReviewInStore({
+      shopId: reviewTargetSubOrder?.shopId || 1,
+      productId: reviewTargetItem.productId || 1,
+      productName: reviewTargetItem.productName || 'Sản phẩm chính hãng',
+      customerName: user?.fullName || 'Khách Hàng',
+      rating: reviewRating,
+      comment: reviewComment || 'Sản phẩm rất tốt, giao hàng nhanh chóng, shop đóng gói cẩn thận 5 sao!',
+    });
+    setReviewedItems((prev) => ({ ...prev, [reviewTargetItem.id || reviewTargetItem.productId]: true }));
+    setReviewModalOpen(false);
+  };
+
+  const handleOpenRefund = (subOrder, order) => {
+    setRefundTargetSubOrder(subOrder);
+    setRefundTargetOrder(order);
+    setRefundReason('Sản phẩm nhận được bị lỗi kỹ thuật / không đúng mô tả');
+    setRefundProofUrl('');
+    setRefundModalOpen(true);
+  };
+
+  const handleSubmitRefund = () => {
+    if (!refundTargetSubOrder || !refundTargetOrder) return;
+    submitCustomerRefundRequest({
+      orderId: refundTargetOrder.orderCode || `MO-${refundTargetOrder.id}`,
+      subOrderId: refundTargetSubOrder.id,
+      shopId: refundTargetSubOrder.shopId || 1,
+      shopName: refundTargetSubOrder.shopName || 'TechWorld Official Store',
+      customerName: user?.fullName || refundTargetOrder.recipientName || 'Khách Hàng',
+      customerPhone: refundTargetOrder.recipientPhone || '0988 123 456',
+      productName: refundTargetSubOrder.items?.[0]?.productName || 'Sản phẩm',
+      amount: refundTargetSubOrder.subTotal || refundTargetOrder.finalAmount || 0,
+      reason: refundReason,
+      proofImages: refundProofUrl ? [refundProofUrl] : [],
+    });
+    loadData();
+    setRefundModalOpen(false);
+  };
 
   // Load orders and shipments
   const loadData = async () => {
@@ -359,7 +444,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                           <span>{subOrder.carrierName || 'Giao Hàng Nhanh (GHN)'}</span>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           {subOrder.trackingCode && (
                             <button
                               onClick={() => handleOpenTracking(subOrder, order)}
@@ -367,6 +452,53 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                             >
                               <Truck className="w-3.5 h-3.5" />
                               <span>Theo dõi vận chuyển</span>
+                            </button>
+                          )}
+
+                          {/* Đã nhận được hàng */}
+                          {(subOrder.status === 'DELIVERING' || order.status === 'DELIVERING' || subOrder.status === 'DELIVERED') && subOrder.status !== 'COMPLETED' && (
+                            <button
+                              onClick={() => handleConfirmReceived(subOrder, order)}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                              <span>Đã nhận hàng</span>
+                            </button>
+                          )}
+
+                          {/* Đánh giá sản phẩm */}
+                          {(subOrder.status === 'COMPLETED' || order.status === 'COMPLETED' || subOrder.status === 'DELIVERED') && (
+                            reviewedItems[subOrder.items?.[0]?.id] ? (
+                              <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+                                Đã đánh giá
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleOpenReview(subOrder.items?.[0] || subOrder, subOrder)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-bold transition shadow-sm shadow-amber-500/20"
+                              >
+                                <Star className="w-3.5 h-3.5 fill-white" />
+                                <span>Đánh giá</span>
+                              </button>
+                            )
+                          )}
+
+                          {/* Trả hàng / Hoàn tiền */}
+                          {subOrder.status === 'REFUNDING' ? (
+                            <span className="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-xl text-xs font-semibold">
+                              Đang chờ Shop duyệt hoàn tiền
+                            </span>
+                          ) : subOrder.status === 'REFUNDED' ? (
+                            <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-xl text-xs font-semibold">
+                              Đã hoàn tiền thành công
+                            </span>
+                          ) : subOrder.status !== 'CANCELLED' && (
+                            <button
+                              onClick={() => handleOpenRefund(subOrder, order)}
+                              className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-medium transition"
+                            >
+                              Trả hàng / Hoàn tiền
                             </button>
                           )}
                         </div>
@@ -563,6 +695,189 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                 className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95"
               >
                 Xác nhận hủy đơn
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Đánh giá sản phẩm sau khi nhận hàng */}
+      {reviewModalOpen && reviewTargetItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+                  <Star className="w-5 h-5 fill-amber-500 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">Đánh Giá Sản Phẩm</h3>
+                  <p className="text-[11px] text-slate-400">Chia sẻ trải nghiệm của bạn với cộng đồng QuickShop</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setReviewModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Target Item summary */}
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+              <img
+                src={reviewTargetItem.imageUrl || reviewTargetItem.mainImage || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=100&auto=format&fit=crop&q=80'}
+                alt=""
+                className="w-12 h-12 rounded-xl object-cover border border-slate-200"
+              />
+              <div className="min-w-0 flex-1">
+                <h4 className="text-xs font-bold text-slate-900 line-clamp-1">{reviewTargetItem.productName}</h4>
+                <p className="text-[11px] text-slate-500">{reviewTargetSubOrder?.shopName || 'Shop chính hãng'}</p>
+              </div>
+            </div>
+
+            {/* Star selector */}
+            <div className="text-center space-y-2">
+              <label className="text-xs font-bold text-slate-700">Chất lượng sản phẩm:</label>
+              <div className="flex justify-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setReviewRating(star)}
+                    className="p-1 hover:scale-110 transition"
+                  >
+                    <Star
+                      className={`w-7 h-7 ${
+                        star <= reviewRating
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'fill-slate-100 text-slate-300'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              <span className="inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                {reviewRating === 5
+                  ? 'Tuyệt vời, vượt mong đợi!'
+                  : reviewRating === 4
+                  ? 'Hài lòng, sản phẩm tốt'
+                  : reviewRating === 3
+                  ? 'Bình thường, tạm ổn'
+                  : reviewRating === 2
+                  ? 'Chưa hài lòng'
+                  : 'Rất tệ, thất vọng'}
+              </span>
+            </div>
+
+            {/* Comment input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">Nhận xét chi tiết:</label>
+              <textarea
+                rows={3}
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                placeholder="Hãy chia sẻ cảm nhận về chất lượng hoàn thiện, thời gian giao hàng, thái độ phục vụ của shop..."
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setReviewModalOpen(false)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitReview}
+                className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 flex items-center gap-1.5"
+              >
+                <Star className="w-3.5 h-3.5 fill-white" />
+                <span>Gửi đánh giá</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: Yêu cầu Trả hàng / Hoàn tiền */}
+      {refundModalOpen && refundTargetSubOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+                  <RotateCcw className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">Yêu Cầu Trả Hàng / Hoàn Tiền</h3>
+                  <p className="text-[11px] text-slate-400">Bảo vệ quyền lợi người mua hàng qua Escrow</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRefundModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Gian hàng:</span>
+                <span className="font-bold text-slate-800">{refundTargetSubOrder.shopName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Số tiền hoàn dự kiến:</span>
+                <span className="font-bold text-orange-600">
+                  {formatVND(refundTargetSubOrder.subTotal || refundTargetOrder?.finalAmount || 0)}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">Lý do yêu cầu hoàn tiền:</label>
+              <select
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 outline-none"
+              >
+                <option value="Sản phẩm nhận được bị lỗi kỹ thuật / không đúng mô tả">Sản phẩm nhận được bị lỗi kỹ thuật / không đúng mô tả</option>
+                <option value="Hàng bị vỡ, móp méo hư hại do quá trình vận chuyển">Hàng bị vỡ, móp méo hư hại do quá trình vận chuyển</option>
+                <option value="Người bán gửi sai mẫu mã, sai kích thước hoặc màu sắc">Người bán gửi sai mẫu mã, sai kích thước hoặc màu sắc</option>
+                <option value="Thiếu phụ kiện hoặc quà tặng đi kèm">Thiếu phụ kiện hoặc quà tặng đi kèm</option>
+                <option value="Đã quá hạn giao hàng nhưng chưa nhận được kiện hàng">Đã quá hạn giao hàng nhưng chưa nhận được kiện hàng</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">Link ảnh / bằng chứng lỗi (URL):</label>
+              <input
+                type="text"
+                value={refundProofUrl}
+                onChange={(e) => setRefundProofUrl(e.target.value)}
+                placeholder="https://images.unsplash.com/photo-..."
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 outline-none"
+              />
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRefundModalOpen(false)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitRefund}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95"
+              >
+                Gửi yêu cầu hoàn tiền
               </button>
             </div>
           </div>

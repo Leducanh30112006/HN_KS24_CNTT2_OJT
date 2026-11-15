@@ -7,7 +7,7 @@ import {
   Award, TrendingUp, AlertCircle, ShoppingBag, Phone, MapPin,
   UserCheck, UserX, CreditCard, ExternalLink, X, DollarSign,
   FileText, ArrowUpRight, Download, CheckCircle, LayoutDashboard,
-  LogOut
+  LogOut, Menu
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -43,6 +43,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
   // Tabs: 'dashboard' | 'moderation' | 'sellers' | 'vouchers' | 'users' | 'categories' | 'notifications' | 'finance' | 'audit' | 'infra'
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Toast Notification state
   const [toast, setToast] = useState(null);
@@ -1274,22 +1275,310 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   ];
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
-      {/* Standalone Dedicated Admin Top Navigation Bar */}
-      <header className="sticky top-0 z-40 bg-slate-900 text-white shadow-lg border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-100 flex font-sans">
+      {/* ========================================================== */}
+      {/* 1. PROFESSIONAL SIDEBAR NAVIGATION (THANH BÊN ĐIỀU HƯỚNG) */}
+      {/* ========================================================== */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } shadow-2xl md:shadow-none border-r border-slate-800`}
+      >
+        {/* Sidebar Header / Brand */}
+        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-800 bg-slate-950/60">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center shadow-md font-bold">
-              <ShieldCheck className="w-6 h-6 text-slate-950" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/20 font-bold">
+              <ShieldCheck className="w-5 h-5 text-slate-950" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-black text-base tracking-tight text-white">QUICKSHOP</span>
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  Admin Backoffice
+              <div className="text-sm font-black tracking-tight text-white flex items-center gap-1.5">
+                <span>QUICKSHOP</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  ADMIN
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 hidden sm:block">Trung Tâm Điều Hành & Quản Trị Hệ Thống Toàn Sàn</p>
+              <p className="text-[10px] text-slate-400">Backoffice Central</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Admin Profile Quick Card */}
+        <div className="p-3 mx-3 my-3 bg-slate-800/60 rounded-2xl border border-slate-800/80">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-xs border border-emerald-500/30">
+              {user?.fullName?.charAt(0) || 'A'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-white truncate">{user?.fullName || 'Quản Trị Viên'}</div>
+              <div className="text-[9px] text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Hệ thống trực tuyến (ROLE_ADMIN)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar Nav Items Grouped */}
+        <div className="px-3 py-1 flex-1 space-y-4 overflow-y-auto">
+          {/* Group 1: TỔNG QUAN & HẠ TẦNG */}
+          <div className="space-y-1">
+            <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Tổng Quan & Hạ Tầng
+            </div>
+            <button
+              onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                activeTab === 'dashboard'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20 font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <LayoutDashboard className={`w-4 h-4 ${activeTab === 'dashboard' ? 'text-white' : 'text-orange-400'}`} />
+                <span>Tổng quan Dashboard</span>
+              </div>
+            </button>
+            <button
+              onClick={() => { setActiveTab('infra'); setSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                activeTab === 'infra'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20 font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Server className={`w-4 h-4 ${activeTab === 'infra' ? 'text-white' : 'text-slate-400'}`} />
+                <span>Hạ tầng Microservices</span>
+              </div>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                7/7 Up
+              </span>
+            </button>
+          </div>
+
+          {/* Group 2: VẬN HÀNH & KIỂM DUYỆT */}
+          <div className="space-y-1">
+            <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Vận Hành & Kiểm Duyệt
+            </div>
+            <button
+              onClick={() => { setActiveTab('moderation'); setSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                activeTab === 'moderation'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20 font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Clock className={`w-4 h-4 ${activeTab === 'moderation' ? 'text-white' : 'text-amber-400'}`} />
+                <span>Duyệt sản phẩm</span>
+              </div>
+              {pendingModerationCount > 0 && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  {pendingModerationCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => { setActiveTab('sellers'); setSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                activeTab === 'sellers'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20 font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Store className={`w-4 h-4 ${activeTab === 'sellers' ? 'text-white' : 'text-blue-400'}`} />
+                <span>Người bán & KYC</span>
+              </div>
+              {pendingSellerCount > 0 && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  {pendingSellerCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => { setActiveTab('categories'); setSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                activeTab === 'categories'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20 font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <FolderPlus className={`w-4 h-4 ${activeTab === 'categories' ? 'text-white' : 'text-orange-400'}`} />
+                <span>Danh mục ngành hàng</span>
+              </div>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                {categories.length}
+              </span>
+            </button>
+          </div>
+
+          {/* Group 3: KHÁCH HÀNG & MARKETING */}
+          <div className="space-y-1">
+            <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Khách Hàng & Khuyến Mãi
+            </div>
+            <button
+              onClick={() => { setActiveTab('vouchers'); setSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                activeTab === 'vouchers'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20 font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Ticket className={`w-4 h-4 ${activeTab === 'vouchers' ? 'text-white' : 'text-emerald-400'}`} />
+                <span>Voucher toàn sàn</span>
+              </div>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                {activeVoucherCount}
+              </span>
+            </button>
+            <button
+              onClick={() => { setActiveTab('users'); setSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                activeTab === 'users'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20 font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Users className={`w-4 h-4 ${activeTab === 'users' ? 'text-white' : 'text-purple-400'}`} />
+                <span>Người mua ({users.length})</span>
+              </div>
+            </button>
+            <button
+              onClick={() => { setActiveTab('notifications'); setSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                activeTab === 'notifications'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20 font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Bell className={`w-4 h-4 ${activeTab === 'notifications' ? 'text-white' : 'text-indigo-400'}`} />
+                <span>Thông báo & Mail</span>
+              </div>
+            </button>
+          </div>
+
+          {/* Group 4: TÀI CHÍNH & AUDIT */}
+          <div className="space-y-1">
+            <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Tài Chính & Bảo Mật
+            </div>
+            <button
+              onClick={() => { setActiveTab('finance'); setSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                activeTab === 'finance'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20 font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <DollarSign className={`w-4 h-4 ${activeTab === 'finance' ? 'text-white' : 'text-emerald-400'}`} />
+                <span>GMV & Escrow</span>
+              </div>
+            </button>
+            <button
+              onClick={() => { setActiveTab('audit'); setSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                activeTab === 'audit'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20 font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <FileText className={`w-4 h-4 ${activeTab === 'audit' ? 'text-white' : 'text-blue-400'}`} />
+                <span>Nhật ký Audit</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-3 border-t border-slate-800 space-y-2 bg-slate-950/40">
+          {onBackToStorefront && (
+            <button
+              onClick={onBackToStorefront}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+            >
+              <ShoppingBag className="w-3.5 h-3.5 text-orange-400" />
+              <span>Xem Sàn Mua Sắm</span>
+            </button>
+          )}
+
+          <div className="flex items-center justify-between pt-1 px-1">
+            <div className="flex items-center space-x-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-xs border border-emerald-500/30">
+                {user?.fullName?.charAt(0) || 'A'}
+              </div>
+              <div className="text-left">
+                <div className="text-xs font-bold text-white truncate max-w-[100px]">{user?.fullName || 'Admin'}</div>
+                <div className="text-[9px] text-emerald-400 font-medium">ROLE_ADMIN</div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+              title="Đăng xuất"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Backdrop for mobile */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 md:hidden"
+        />
+      )}
+
+      {/* ========================================================== */}
+      {/* 2. MAIN CONTENT AREA (BÊN PHẢI THANH SIDEBAR) */}
+      {/* ========================================================== */}
+      <div className="flex-1 flex flex-col md:pl-64 min-w-0">
+        {/* Top Navbar */}
+        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6 shadow-xs">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                <span>Quản Trị Hệ Thống QuickShop</span>
+                <span className="hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                  {activeTab === 'dashboard' && 'Tổng quan Dashboard'}
+                  {activeTab === 'moderation' && `Duyệt sản phẩm (${pendingModerationCount})`}
+                  {activeTab === 'sellers' && `Người bán KYC (${pendingSellerCount})`}
+                  {activeTab === 'vouchers' && `Voucher toàn sàn (${activeVoucherCount})`}
+                  {activeTab === 'users' && `Người mua (${users.length})`}
+                  {activeTab === 'categories' && `Danh mục (${categories.length})`}
+                  {activeTab === 'notifications' && 'Thông báo & Mail'}
+                  {activeTab === 'finance' && 'GMV & Ví Escrow'}
+                  {activeTab === 'audit' && 'Nhật ký Audit'}
+                  {activeTab === 'infra' && 'Hạ tầng Microservices'}
+                </span>
+              </h2>
+              <p className="text-[11px] text-slate-500 hidden sm:block">
+                Điều hành 8 cụm Microservices phân tán • Spring Cloud Gateway • RabbitMQ • Redis Cache
+              </p>
             </div>
           </div>
 
@@ -1297,163 +1586,49 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
             {onBackToStorefront && (
               <button
                 onClick={onBackToStorefront}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
               >
-                <ShoppingBag className="w-3.5 h-3.5 text-orange-400" />
-                <span>Xem Sàn Mua Sắm</span>
+                <ShoppingBag className="w-3.5 h-3.5 text-orange-500" />
+                <span>Xem Sàn</span>
               </button>
             )}
+          </div>
+        </header>
 
-            <div className="h-6 w-px bg-slate-750 hidden sm:block" />
-
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-xs border border-emerald-500/30">
-                {user?.fullName?.charAt(0) || 'A'}
-              </div>
-              <div className="text-left hidden md:block">
-                <div className="text-xs font-bold text-white truncate max-w-[130px]">{user?.fullName || 'Quản Trị Viên'}</div>
-                <div className="text-[10px] text-emerald-400 font-semibold">{user?.role || 'ROLE_ADMIN'}</div>
+        {/* Main Content Body */}
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6 flex-1 max-w-7xl w-full mx-auto">
+          {/* Header Banner Card */}
+          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shadow-lg">
+                  <ShieldCheck className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-base sm:text-lg font-bold text-white">
+                      {activeTab === 'dashboard' && 'Bảng Điều Khiển Tổng Quan (Dashboard Overview)'}
+                      {activeTab === 'moderation' && 'Hàng Đợi Kiểm Duyệt Sản Phẩm Sàn'}
+                      {activeTab === 'sellers' && 'Quản Lý Hồ Sơ Gian Hàng & Xác Thực KYC'}
+                      {activeTab === 'vouchers' && 'Phát Hành & Quản Lý Voucher Toàn Sàn'}
+                      {activeTab === 'users' && 'Quản Lý Tài Khoản Người Mua & Khách Hàng'}
+                      {activeTab === 'categories' && 'Quản Lý Cấu Trúc Ngành Hàng & Danh Mục'}
+                      {activeTab === 'notifications' && 'Hệ Thống Thông Báo & Gửi Email Tự Động'}
+                      {activeTab === 'finance' && 'Báo Cáo GMV Toàn Sàn & Ký Quỹ Escrow'}
+                      {activeTab === 'audit' && 'Nhật Ký Hoạt Động & Bảo Mật Audit Trail'}
+                      {activeTab === 'infra' && 'Trạng Thái Hạ Tầng 8 Cụm Microservices'}
+                    </h1>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-full">
+                      ROLE_ADMIN
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    Kiểm duyệt sản phẩm, quản lý người bán KYC, phát hành voucher toàn sàn, ví Escrow và hạ tầng microservices
+                  </p>
+                </div>
               </div>
             </div>
-
-            <button
-              onClick={handleLogout}
-              className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
-              title="Đăng xuất"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
           </div>
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 space-y-6">
-        {/* 1. Header with Role Badge and Tab Navigation */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
-          <div className="flex items-center space-x-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-slate-900 to-slate-800 text-white flex items-center justify-center shadow-lg shadow-slate-900/20">
-              <ShieldCheck className="w-7 h-7 text-emerald-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-slate-900">Bảng Điều Khiển Quản Trị Hệ Thống (QuickShop Admin)</h1>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full">
-                  ROLE_ADMIN
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Kiểm duyệt sản phẩm, quản lý người bán KYC, phát hành voucher toàn sàn, quản lý người mua và hạ tầng microservices
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-between xl:justify-end">
-
-          {/* Navigation Bar Tabs */}
-          <div className="flex flex-wrap gap-1 bg-slate-100 p-1.5 rounded-2xl text-xs font-semibold">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'dashboard' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <LayoutDashboard className="w-3.5 h-3.5 text-orange-500" />
-              <span>Tổng quan Dashboard</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('moderation')}
-              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'moderation' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5 text-amber-500" />
-              <span>Duyệt SP ({pendingModerationCount})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('sellers')}
-              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'sellers' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Store className="w-3.5 h-3.5 text-blue-500" />
-              <span>Người Bán ({pendingSellerCount > 0 ? `${pendingSellerCount} chờ duyệt` : shops.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('vouchers')}
-              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'vouchers' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Ticket className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Voucher Sàn ({activeVoucherCount})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'users' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5 text-purple-500" />
-              <span>Người Mua ({users.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('categories')}
-              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'categories' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <FolderPlus className="w-3.5 h-3.5 text-orange-500" />
-              <span>Danh mục ({categories.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('notifications')}
-              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'notifications' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Bell className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Thông báo & Mail</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('finance')}
-              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'finance' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
-              <span>GMV & Tài chính</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('audit')}
-              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'audit' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5 text-blue-500" />
-              <span>Nhật ký Audit</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('infra')}
-              className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'infra' ? 'bg-white text-orange-600 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Server className="w-3.5 h-3.5 text-slate-500" />
-              <span>Hạ tầng</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Explicit Action / Sync Error Feedback Banners */}
       {actionError && (
@@ -4406,6 +4581,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       <footer className="py-4 border-t border-slate-200 bg-white text-center text-xs text-slate-400">
         QuickShop Backoffice Admin Console • Hệ sinh thái Microservices phân tán 8 cụm dịch vụ
       </footer>
+      </div>
     </div>
   );
 }

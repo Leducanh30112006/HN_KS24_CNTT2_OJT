@@ -794,3 +794,433 @@ export const recordNewOrder = (orderData) => {
 
   return { order: newMasterOrder, shipment: newShipment };
 };
+
+// ==============================================================================
+// SELLER FULFILLMENT, REFUND & FEEDBACK MANAGEMENT HELPERS
+// ==============================================================================
+
+const REFUNDS_STORAGE_KEY = 'quickshop_mock_refunds';
+const REVIEWS_STORAGE_KEY = 'quickshop_mock_reviews';
+const WALLET_STORAGE_KEY = 'quickshop_mock_seller_wallets';
+
+export const initialRefundRequests = [
+  {
+    id: 'REF-20261114-001',
+    orderId: 'MO-20261112-004',
+    subOrderId: 202,
+    shopId: 1,
+    shopName: 'TechWorld Official Store',
+    customerName: 'Nguyễn Văn Kiên',
+    customerPhone: '0912 345 678',
+    productName: 'Laptop QuickBook Ultra 14 inch M3 Pro - 18GB/512GB',
+    amount: 45990000,
+    reason: 'Sản phẩm nhận được bị cấn nhẹ góc trái vỏ máy do đơn vị vận chuyển va đập',
+    proofImages: [
+      'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=600&auto=format&fit=crop&q=80',
+    ],
+    status: 'PENDING_SELLER', // PENDING_SELLER | APPROVED | REJECTED
+    createdAt: '2026-11-13T10:30:00',
+    sellerResponse: null,
+  },
+  {
+    id: 'REF-20261110-002',
+    orderId: 'MO-20261110-003',
+    subOrderId: 204,
+    shopId: 1,
+    shopName: 'TechWorld Official Store',
+    customerName: 'Hoàng Minh Tuấn',
+    customerPhone: '0903 888 999',
+    productName: 'Đồng Hồ Thông Minh QuickWatch Ultra 2 Định Vị GPS Độc Lập',
+    amount: 12490000,
+    reason: 'Khách muốn đổi màu sắc khác (muốn đổi từ màu Cam sang Đen Titan)',
+    proofImages: [],
+    status: 'APPROVED',
+    createdAt: '2026-11-11T14:20:00',
+    sellerResponse: 'Shop đã duyệt hoàn tiền và hỗ trợ khách đặt lại phân loại màu Đen',
+  },
+];
+
+export const initialShopReviews = [
+  {
+    id: 501,
+    shopId: 1,
+    productId: 1,
+    productName: 'Điện thoại thông minh QuickPhone Pro Max 256GB - Bản Quốc Tế',
+    customerName: 'Lê Đức Anh',
+    customerAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+    rating: 5,
+    comment: 'Máy nguyên seal cực đẹp, giao hàng siêu nhanh chỉ trong 2 tiếng tại Hà Nội. Màn hình 120Hz mượt mà đỉnh cao!',
+    images: ['https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&auto=format&fit=crop&q=80'],
+    createdAt: '2026-11-13T16:20:00',
+    sellerReply: 'TechWorld chân thành cảm ơn bạn Lê Đức Anh đã tin tưởng mua sắm! Chúc bạn có trải nghiệm tuyệt vời cùng QuickPhone Pro Max ạ.',
+    repliedAt: '2026-11-13T18:00:00',
+  },
+  {
+    id: 502,
+    shopId: 1,
+    productId: 3,
+    productName: 'Tai nghe Bluetooth True Wireless QuickPods Pro 2 Chống Ồn Chủ Động ANC',
+    customerName: 'Trần Thị Mai',
+    customerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
+    rating: 5,
+    comment: 'Chống ồn ANC cực tốt, đeo vừa vặn êm tai. Đóng gói cẩn thận 3 lớp bọt khí rất chuyên nghiệp.',
+    images: [],
+    createdAt: '2026-11-12T11:15:00',
+    sellerReply: 'Cảm ơn bạn Mai đã ủng hộ gian hàng chính hãng. Nếu cần hỗ trợ bảo hành bạn liên hệ hotline 24/7 của shop nhé!',
+    repliedAt: '2026-11-12T13:40:00',
+  },
+  {
+    id: 503,
+    shopId: 1,
+    productId: 2,
+    productName: 'Laptop QuickBook Ultra 14 inch M3 Pro - 18GB/512GB Bạc Ánh Kim',
+    customerName: 'Vũ Quốc Khánh',
+    customerAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
+    rating: 4,
+    comment: 'Hiệu năng mạnh mẽ render 4K vèo vèo. Trừ 1 sao vì hộp bưu tá vận chuyển hơi móp góc bên ngoài dù máy bên trong an toàn.',
+    images: [],
+    createdAt: '2026-11-11T09:30:00',
+    sellerReply: null,
+    repliedAt: null,
+  },
+];
+
+export const getStoredRefunds = () => {
+  if (typeof localStorage === 'undefined') return initialRefundRequests;
+  try {
+    const raw = localStorage.getItem(REFUNDS_STORAGE_KEY);
+    if (!raw) {
+      localStorage.setItem(REFUNDS_STORAGE_KEY, JSON.stringify(initialRefundRequests));
+      return initialRefundRequests;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : initialRefundRequests;
+  } catch {
+    return initialRefundRequests;
+  }
+};
+
+export const saveStoredRefunds = (refunds) => {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(REFUNDS_STORAGE_KEY, JSON.stringify(refunds));
+  } catch (err) {
+    console.warn('Lỗi lưu mock refunds:', err);
+  }
+};
+
+export const getStoredReviews = () => {
+  if (typeof localStorage === 'undefined') return initialShopReviews;
+  try {
+    const raw = localStorage.getItem(REVIEWS_STORAGE_KEY);
+    if (!raw) {
+      localStorage.setItem(REVIEWS_STORAGE_KEY, JSON.stringify(initialShopReviews));
+      return initialShopReviews;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : initialShopReviews;
+  } catch {
+    return initialShopReviews;
+  }
+};
+
+export const saveStoredReviews = (reviews) => {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(REVIEWS_STORAGE_KEY, JSON.stringify(reviews));
+  } catch (err) {
+    console.warn('Lỗi lưu mock reviews:', err);
+  }
+};
+
+// Lấy danh sách sub-orders thuộc về Shop (cho Kênh Người Bán)
+export const getShopOrders = (shopId = 1) => {
+  const allOrders = getStoredOrders();
+  const shopSubOrders = [];
+
+  allOrders.forEach((order) => {
+    (order.subOrders || []).forEach((sub) => {
+      if (!shopId || String(sub.shopId) === String(shopId) || sub.shopId === 1) {
+        shopSubOrders.push({
+          ...sub,
+          masterOrderId: order.id,
+          orderCode: order.orderCode || `MO-${order.id}`,
+          createdAt: order.createdAt,
+          paymentMethod: order.paymentMethod,
+          paymentStatus: order.paymentStatus,
+          recipientName: order.recipientName,
+          recipientPhone: order.recipientPhone,
+          deliveryAddress: order.deliveryAddress,
+          note: order.note || '',
+        });
+      }
+    });
+  });
+
+  return shopSubOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+};
+
+// Cập nhật tiến trình đóng hàng / giao bưu tá của Người bán
+export const updateSubOrderFulfillmentStatus = (subOrderId, newStatus, extra = {}) => {
+  const orders = getStoredOrders();
+  const shipments = getStoredShipments();
+
+  let targetTrackingCode = extra.trackingCode || null;
+
+  const updatedOrders = orders.map((o) => {
+    let subOrderUpdated = false;
+    const nextSubOrders = (o.subOrders || []).map((sub) => {
+      if (String(sub.id) === String(subOrderId)) {
+        subOrderUpdated = true;
+        if (!targetTrackingCode && !sub.trackingCode) {
+          targetTrackingCode = `GHN-VNM-${Math.floor(100000 + Math.random() * 900000)}`;
+        } else if (sub.trackingCode) {
+          targetTrackingCode = sub.trackingCode;
+        }
+
+        return {
+          ...sub,
+          status: newStatus,
+          trackingCode: targetTrackingCode,
+          packedAt: newStatus === 'PACKING' ? new Date().toISOString() : sub.packedAt,
+          shippedAt: newStatus === 'SHIPPING' ? new Date().toISOString() : sub.shippedAt,
+          ...extra,
+        };
+      }
+      return sub;
+    });
+
+    if (subOrderUpdated) {
+      return {
+        ...o,
+        status: newStatus === 'PACKING' ? 'PROCESSING' : newStatus === 'SHIPPING' ? 'DELIVERING' : o.status,
+        subOrders: nextSubOrders,
+      };
+    }
+    return o;
+  });
+
+  saveStoredOrders(updatedOrders);
+
+  // Nếu người bán chuyển sang PACKING hoặc SHIPPING -> đồng bộ hoặc tạo vận đơn cho Shipper
+  if (targetTrackingCode) {
+    const existingShipmentIdx = shipments.findIndex((s) => String(s.subOrderId) === String(subOrderId) || s.trackingCode === targetTrackingCode);
+    const nowStr = new Date().toLocaleString('vi-VN');
+
+    if (existingShipmentIdx >= 0) {
+      const existing = shipments[existingShipmentIdx];
+      let shippingStatus = existing.shippingStatus;
+      if (newStatus === 'PACKING') shippingStatus = 'READY_TO_PICK';
+      if (newStatus === 'SHIPPING') shippingStatus = 'PICKED';
+
+      const updatedTimeline = [...(existing.timeline || [])];
+      updatedTimeline.push({
+        step: updatedTimeline.length + 1,
+        title: newStatus === 'PACKING' ? 'Người bán đã đóng gói xong kiện hàng' : 'Đã bàn giao cho bưu tá',
+        description: newStatus === 'PACKING' ? 'Kiện hàng đã in phiếu và dán tem niêm phong sẵn sàng lấy' : 'Đã bàn giao tại kho người bán',
+        location: 'Kho Người Bán',
+        time: nowStr,
+        completed: true,
+        current: true,
+      });
+
+      shipments[existingShipmentIdx] = {
+        ...existing,
+        shippingStatus,
+        timeline: updatedTimeline,
+      };
+      saveStoredShipments(shipments);
+    }
+  }
+
+  return getShopOrders();
+};
+
+// Người bán xử lý yêu cầu hoàn tiền
+export const handleSellerRefundDecision = (refundId, decision, responseNote = '') => {
+  const refunds = getStoredRefunds();
+  const updatedRefunds = refunds.map((r) => {
+    if (r.id === refundId) {
+      return {
+        ...r,
+        status: decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+        sellerResponse: responseNote,
+        resolvedAt: new Date().toISOString(),
+      };
+    }
+    return r;
+  });
+  saveStoredRefunds(updatedRefunds);
+
+  // Nếu duyệt hoàn tiền, cập nhật SubOrder và MasterOrder tương ứng
+  if (decision === 'APPROVE') {
+    const targetRefund = refunds.find((r) => r.id === refundId);
+    if (targetRefund) {
+      const orders = getStoredOrders();
+      const updatedOrders = orders.map((o) => {
+        if (o.orderCode === targetRefund.orderId || String(o.id) === String(targetRefund.orderId)) {
+          return {
+            ...o,
+            status: 'REFUNDED',
+            paymentStatus: 'REFUNDED',
+            subOrders: (o.subOrders || []).map((sub) =>
+              sub.id === targetRefund.subOrderId ? { ...sub, status: 'REFUNDED' } : sub
+            ),
+          };
+        }
+        return o;
+      });
+      saveStoredOrders(updatedOrders);
+    }
+  }
+
+  return updatedRefunds;
+};
+
+// Người bán gửi phản hồi cho đánh giá của khách hàng
+export const replyToShopReviewInStore = (reviewId, replyText) => {
+  const reviews = getStoredReviews();
+  const updated = reviews.map((r) => {
+    if (r.id === reviewId) {
+      return {
+        ...r,
+        sellerReply: replyText,
+        repliedAt: new Date().toISOString(),
+      };
+    }
+    return r;
+  });
+  saveStoredReviews(updated);
+  return updated;
+};
+
+// Khách hàng tạo đánh giá mới
+export const createCustomerReviewInStore = (reviewData) => {
+  const reviews = getStoredReviews();
+  const newReview = {
+    id: Date.now(),
+    shopId: reviewData.shopId || 1,
+    productId: reviewData.productId,
+    productName: reviewData.productName || 'Sản phẩm chính hãng',
+    customerName: reviewData.customerName || 'Khách Hàng',
+    customerAvatar: reviewData.customerAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+    rating: reviewData.rating || 5,
+    comment: reviewData.comment || '',
+    images: reviewData.images || [],
+    createdAt: new Date().toISOString(),
+    sellerReply: null,
+    repliedAt: null,
+  };
+  const updated = [newReview, ...reviews];
+  saveStoredReviews(updated);
+  return newReview;
+};
+
+// Khách hàng gửi yêu cầu Trả hàng / Hoàn tiền
+export const submitCustomerRefundRequest = (requestData) => {
+  const refunds = getStoredRefunds();
+  const newRefund = {
+    id: `REF-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(100 + Math.random() * 900)}`,
+    orderId: requestData.orderId,
+    subOrderId: requestData.subOrderId,
+    shopId: requestData.shopId || 1,
+    shopName: requestData.shopName || 'TechWorld Official Store',
+    customerName: requestData.customerName || 'Khách Hàng',
+    customerPhone: requestData.customerPhone || '0988 123 456',
+    productName: requestData.productName || 'Sản phẩm hoàn trả',
+    amount: requestData.amount || 0,
+    reason: requestData.reason || 'Khách yêu cầu hoàn tiền',
+    proofImages: requestData.proofImages || [],
+    status: 'PENDING_SELLER',
+    createdAt: new Date().toISOString(),
+    sellerResponse: null,
+  };
+  const updated = [newRefund, ...refunds];
+  saveStoredRefunds(updated);
+
+  // Cập nhật trạng thái sub-order thành REFUNDING
+  const orders = getStoredOrders();
+  const updatedOrders = orders.map((o) => {
+    if (o.orderCode === requestData.orderId || String(o.id) === String(requestData.orderId)) {
+      return {
+        ...o,
+        subOrders: (o.subOrders || []).map((sub) =>
+          sub.id === requestData.subOrderId ? { ...sub, status: 'REFUNDING' } : sub
+        ),
+      };
+    }
+    return o;
+  });
+  saveStoredOrders(updatedOrders);
+
+  return newRefund;
+};
+
+// Quản lý Ví Người Bán & Rút tiền
+export const getSellerWalletData = (shopId = 1) => {
+  const defaultWallet = {
+    availableBalance: 125450000,
+    escrowBalance: 32600000,
+    totalRevenue: 489200000,
+    commissionPaid: 24460000, // 5%
+    withdrawals: [
+      {
+        id: 'WD-001',
+        amount: 25000000,
+        bankName: 'MB Bank - Ngân hàng Quân Đội',
+        accountNumber: '098812345678',
+        accountHolder: 'LE DUC ANH',
+        status: 'COMPLETED',
+        createdAt: '2026-11-10T15:30:00',
+        processedAt: '2026-11-11T09:15:00',
+      },
+      {
+        id: 'WD-002',
+        amount: 50000000,
+        bankName: 'Vietcombank - CN Thăng Long',
+        accountNumber: '1023456789',
+        accountHolder: 'LE DUC ANH',
+        status: 'PENDING',
+        createdAt: '2026-11-14T11:00:00',
+        processedAt: null,
+      },
+    ],
+  };
+
+  if (typeof localStorage === 'undefined') return defaultWallet;
+  try {
+    const raw = localStorage.getItem(`${WALLET_STORAGE_KEY}_${shopId}`);
+    if (!raw) {
+      localStorage.setItem(`${WALLET_STORAGE_KEY}_${shopId}`, JSON.stringify(defaultWallet));
+      return defaultWallet;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return defaultWallet;
+  }
+};
+
+export const createSellerWithdrawal = (shopId = 1, withdrawalData) => {
+  const current = getSellerWalletData(shopId);
+  const newWithdrawal = {
+    id: `WD-${Math.floor(100 + Math.random() * 900)}`,
+    amount: withdrawalData.amount,
+    bankName: withdrawalData.bankName,
+    accountNumber: withdrawalData.accountNumber,
+    accountHolder: withdrawalData.accountHolder.toUpperCase(),
+    status: 'PENDING',
+    createdAt: new Date().toISOString(),
+    processedAt: null,
+  };
+
+  const updatedWallet = {
+    ...current,
+    availableBalance: Math.max(0, current.availableBalance - withdrawalData.amount),
+    withdrawals: [newWithdrawal, ...current.withdrawals],
+  };
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(`${WALLET_STORAGE_KEY}_${shopId}`, JSON.stringify(updatedWallet));
+  }
+  return updatedWallet;
+};
