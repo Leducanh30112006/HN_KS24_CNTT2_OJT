@@ -30,6 +30,17 @@ import { useAuthStore } from './stores/useAuthStore';
 import { useCartStore } from './stores/useCartStore';
 import { defaultCategories, defaultProducts } from './data/sampleProducts';
 
+// Hàm xáo trộn mảng ngẫu nhiên (Fisher-Yates shuffle) để mỗi lần load trang chính sản phẩm đều mới mẻ và khác biệt
+function shuffleArray(arr) {
+  if (!Array.isArray(arr)) return [];
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 export default function App() {
   const [currentView, setCurrentView] = useState('storefront'); // 'storefront' | 'search' | 'product-detail' | 'login' | 'seller' | 'admin'
   const { user, isAuthenticated } = useAuthStore();
@@ -83,7 +94,7 @@ export default function App() {
 
   // Data states
   const [categories, setCategories] = useState(defaultCategories);
-  const [products, setProducts] = useState(defaultProducts.slice(0, 12));
+  const [products, setProducts] = useState(() => shuffleArray(defaultProducts).slice(0, 12));
   const [loadingProducts, setLoadingProducts] = useState(false);
 
   // Pagination states
@@ -134,15 +145,18 @@ export default function App() {
 
   // Fetch Products from /api/catalog/products with full filtering & pagination
   const fetchProducts = async (overrideParams = {}) => {
+    // Đảm bảo overrideParams luôn là object an toàn, tránh lỗi khi truyền null hoặc tham số rời rạc
+    const safeParams = (overrideParams && typeof overrideParams === 'object') ? overrideParams : {};
     setLoadingProducts(true);
 
-    const catId = overrideParams.catId !== undefined ? overrideParams.catId : selectedCategory;
-    const kw = overrideParams.kw !== undefined ? overrideParams.kw : searchKeyword;
-    const sort = overrideParams.sort !== undefined ? overrideParams.sort : sortBy;
-    const range = overrideParams.range !== undefined ? overrideParams.range : priceRange;
-    const rating = overrideParams.rating !== undefined ? overrideParams.rating : minRating;
-    const page = overrideParams.page !== undefined ? overrideParams.page : currentPage;
-    const size = overrideParams.size !== undefined ? overrideParams.size : pageSize;
+    const catId = safeParams.catId !== undefined ? safeParams.catId : selectedCategory;
+    const kw = safeParams.kw !== undefined ? safeParams.kw : searchKeyword;
+    const sort = safeParams.sort !== undefined ? safeParams.sort : sortBy;
+    const range = safeParams.range !== undefined ? safeParams.range : priceRange;
+    const rating = safeParams.rating !== undefined ? safeParams.rating : minRating;
+    const page = safeParams.page !== undefined ? safeParams.page : currentPage;
+    const size = safeParams.size !== undefined ? safeParams.size : pageSize;
+    const shouldShuffle = safeParams.shuffle !== undefined ? safeParams.shuffle : false;
 
     const { minPrice: mappedMinPrice, maxPrice: mappedMaxPrice } = mapPriceRange(range);
 
@@ -176,46 +190,67 @@ export default function App() {
             : serverItem;
         });
 
-        // Kết hợp với các sản phẩm mẫu để hiển thị đầy đủ phong phú sản phẩm trên sàn
-        let finalProducts = enrichedItems;
-        if (!catId && !kw && range === 'all' && rating === 0 && page === 0) {
-          const serverIds = new Set(enrichedItems.map((p) => String(p.id)));
-          const additionalSamples = defaultProducts.filter((p) => !serverIds.has(String(p.id)));
-          finalProducts = [...enrichedItems, ...additionalSamples];
+        // Kết hợp server items và defaultProducts thành một kho sản phẩm 50+ mẫu đa dạng
+        const serverIds = new Set(enrichedItems.map((p) => String(p.id)));
+        const additionalSamples = defaultProducts.filter((p) => !serverIds.has(String(p.id)));
+        let fullCatalog = [...enrichedItems, ...additionalSamples];
+
+        // Lọc theo Danh Mục (nếu có)
+        if (catId) {
+          const childIds = categories.filter((c) => c.parentId === catId).map((c) => c.id);
+          const allowedCatIds = [catId, ...childIds];
+          fullCatalog = fullCatalog.filter((p) => allowedCatIds.includes(p.categoryId));
         }
 
-        // Nếu database trả về 0 kết quả cho bộ lọc hiện tại, tìm kiếm bổ sung trong defaultProducts
-        if (finalProducts.length === 0) {
-          let fallbackFiltered = [...defaultProducts];
-          if (catId) {
-            const childIds = categories.filter((c) => c.parentId === catId).map((c) => c.id);
-            const allowedCatIds = [catId, ...childIds];
-            fallbackFiltered = fallbackFiltered.filter((p) => allowedCatIds.includes(p.categoryId));
-          }
-          if (kw && kw.trim()) {
-            const lkw = kw.toLowerCase().trim();
-            fallbackFiltered = fallbackFiltered.filter(
-              (p) =>
-                p.name.toLowerCase().includes(lkw) ||
-                (p.description && p.description.toLowerCase().includes(lkw))
-            );
-          }
-          if (mappedMinPrice !== null) {
-            fallbackFiltered = fallbackFiltered.filter((p) => (p.minPrice || 0) >= mappedMinPrice);
-          }
-          if (mappedMaxPrice !== null) {
-            fallbackFiltered = fallbackFiltered.filter((p) => (p.minPrice || 0) <= mappedMaxPrice);
-          }
-          if (rating > 0) {
-            fallbackFiltered = fallbackFiltered.filter((p) => (p.averageRating || 5.0) >= rating);
-          }
-          finalProducts = fallbackFiltered;
+        // Lọc theo Từ Khóa Tìm Kiếm (nếu có)
+        if (kw && kw.trim()) {
+          const lkw = kw.toLowerCase().trim();
+          fullCatalog = fullCatalog.filter(
+            (p) =>
+              p.name.toLowerCase().includes(lkw) ||
+              (p.description && p.description.toLowerCase().includes(lkw)) ||
+              (p.brand && p.brand.toLowerCase().includes(lkw))
+          );
         }
 
-        setProducts(finalProducts);
-        setTotalElements(finalProducts.length);
-        setTotalPages(Math.max(1, Math.ceil(finalProducts.length / size)));
-        setCurrentPage(pageData.page ?? page);
+        // Lọc theo Khoảng Giá (nếu có)
+        if (mappedMinPrice !== null) {
+          fullCatalog = fullCatalog.filter((p) => (p.minPrice || 0) >= mappedMinPrice);
+        }
+        if (mappedMaxPrice !== null) {
+          fullCatalog = fullCatalog.filter((p) => (p.minPrice || 0) <= mappedMaxPrice);
+        }
+
+        // Lọc theo Đánh Giá Sao (nếu có)
+        if (rating > 0) {
+          fullCatalog = fullCatalog.filter((p) => (p.averageRating || 5.0) >= rating);
+        }
+
+        // Sắp xếp sản phẩm:
+        if (sort === 'priceAsc') {
+          fullCatalog.sort((a, b) => (a.minPrice || 0) - (b.minPrice || 0));
+        } else if (sort === 'priceDesc') {
+          fullCatalog.sort((a, b) => (b.minPrice || 0) - (a.minPrice || 0));
+        } else {
+          // Khi sort === 'newest' hoặc mặc định:
+          // Xáo trộn ngẫu nhiên để mỗi lần duyệt/tải trang chính các sản phẩm xuất hiện mới mẻ và khác nhau
+          if (shouldShuffle || (!catId && !kw && range === 'all' && rating === 0)) {
+            fullCatalog = shuffleArray(fullCatalog);
+          } else {
+            fullCatalog.sort((a, b) => (b.id || 0) - (a.id || 0));
+          }
+        }
+
+        const total = fullCatalog.length;
+        const computedTotalPages = Math.max(1, Math.ceil(total / size));
+        const validPage = Math.min(page, computedTotalPages - 1);
+        const start = Math.max(0, validPage * size);
+        const pagedItems = fullCatalog.slice(start, start + size);
+
+        setProducts(pagedItems);
+        setTotalElements(total);
+        setTotalPages(computedTotalPages);
+        setCurrentPage(validPage);
         setIsUsingFallback(false);
         setApiError(null);
       } else {
@@ -228,42 +263,47 @@ export default function App() {
       setIsUsingFallback(true);
 
       // Lọc dữ liệu mẫu dự phòng phía client
-      let filtered = [...defaultProducts];
+      let fallbackCatalog = [...defaultProducts];
       if (catId) {
         const childIds = categories.filter((c) => c.parentId === catId).map((c) => c.id);
         const allowedCatIds = [catId, ...childIds];
-        filtered = filtered.filter((p) => allowedCatIds.includes(p.categoryId));
+        fallbackCatalog = fallbackCatalog.filter((p) => allowedCatIds.includes(p.categoryId));
       }
       if (kw && kw.trim()) {
         const lkw = kw.toLowerCase().trim();
-        filtered = filtered.filter(
+        fallbackCatalog = fallbackCatalog.filter(
           (p) =>
             p.name.toLowerCase().includes(lkw) ||
-            (p.description && p.description.toLowerCase().includes(lkw))
+            (p.description && p.description.toLowerCase().includes(lkw)) ||
+            (p.brand && p.brand.toLowerCase().includes(lkw))
         );
       }
       if (mappedMinPrice !== null) {
-        filtered = filtered.filter((p) => (p.minPrice || 0) >= mappedMinPrice);
+        fallbackCatalog = fallbackCatalog.filter((p) => (p.minPrice || 0) >= mappedMinPrice);
       }
       if (mappedMaxPrice !== null) {
-        filtered = filtered.filter((p) => (p.minPrice || 0) <= mappedMaxPrice);
+        fallbackCatalog = fallbackCatalog.filter((p) => (p.minPrice || 0) <= mappedMaxPrice);
       }
       if (rating > 0) {
-        filtered = filtered.filter((p) => (p.averageRating || 5.0) >= rating);
+        fallbackCatalog = fallbackCatalog.filter((p) => (p.averageRating || 5.0) >= rating);
       }
       if (sort === 'priceAsc') {
-        filtered.sort((a, b) => (a.minPrice || 0) - (b.minPrice || 0));
+        fallbackCatalog.sort((a, b) => (a.minPrice || 0) - (b.minPrice || 0));
       } else if (sort === 'priceDesc') {
-        filtered.sort((a, b) => (b.minPrice || 0) - (a.minPrice || 0));
-      } else if (sort === 'newest') {
-        filtered.sort((a, b) => (b.id || 0) - (a.id || 0));
+        fallbackCatalog.sort((a, b) => (b.minPrice || 0) - (a.minPrice || 0));
+      } else {
+        if (shouldShuffle || (!catId && !kw && range === 'all' && rating === 0)) {
+          fallbackCatalog = shuffleArray(fallbackCatalog);
+        } else {
+          fallbackCatalog.sort((a, b) => (b.id || 0) - (a.id || 0));
+        }
       }
 
-      const total = filtered.length;
+      const total = fallbackCatalog.length;
       const computedTotalPages = Math.max(1, Math.ceil(total / size));
       const validPage = Math.min(page, computedTotalPages - 1);
       const start = Math.max(0, validPage * size);
-      const pagedItems = filtered.slice(start, start + size);
+      const pagedItems = fallbackCatalog.slice(start, start + size);
 
       setProducts(pagedItems);
       setTotalElements(total);
@@ -351,6 +391,29 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleBackToStorefront = (options = {}) => {
+    const shuffle = options?.shuffle !== undefined ? options.shuffle : true;
+    setSelectedProduct(null);
+    setSelectedShop(null);
+    setSelectedCategory(null);
+    setSearchKeyword('');
+    setSortBy('newest');
+    setPriceRange('all');
+    setMinRating(0);
+    setCurrentPage(0);
+    handleNavigateView('storefront');
+    fetchProducts({
+      catId: null,
+      kw: '',
+      sort: 'newest',
+      range: 'all',
+      rating: 0,
+      page: 0,
+      shuffle,
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleResetFilters = () => {
     setSelectedCategory(null);
     setSearchKeyword('');
@@ -365,6 +428,7 @@ export default function App() {
       range: 'all',
       rating: 0,
       page: 0,
+      shuffle: true,
     });
   };
 
@@ -548,6 +612,7 @@ export default function App() {
         onOpenCart={() => handleNavigateView('cart')}
         onOpenAuthModal={() => handleNavigateView('login')}
         onNavigateToLogin={() => handleNavigateView('login')}
+        onGoToStorefront={() => handleBackToStorefront({ shuffle: true })}
       />
 
       {/* 2. Main Content Views */}
@@ -673,12 +738,7 @@ export default function App() {
             <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => {
-                    setSearchKeyword('');
-                    setSelectedCategory(null);
-                    setCurrentView('storefront');
-                    fetchProducts(null, '', 'newest');
-                  }}
+                  onClick={() => handleBackToStorefront({ shuffle: true })}
                   className="p-2 sm:px-3.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-700 transition flex items-center gap-2 text-xs font-semibold shadow-sm active:scale-95"
                   title="Quay lại Trang chủ"
                 >
@@ -749,12 +809,7 @@ export default function App() {
               </div>
 
               <button
-                onClick={() => {
-                  setSearchKeyword('');
-                  setSelectedCategory(null);
-                  setCurrentView('storefront');
-                  fetchProducts(null, '', 'newest');
-                }}
+                onClick={() => handleBackToStorefront({ shuffle: true })}
                 className="text-xs text-orange-600 hover:underline flex items-center gap-1 font-semibold"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -780,12 +835,7 @@ export default function App() {
                   </p>
                 </div>
                 <button
-                  onClick={() => {
-                    setSearchKeyword('');
-                    setSelectedCategory(null);
-                    setCurrentView('storefront');
-                    fetchProducts(null, '', 'newest');
-                  }}
+                  onClick={() => handleBackToStorefront({ shuffle: true })}
                   className="px-5 py-2.5 bg-orange-600 text-white rounded-xl text-xs font-semibold hover:bg-orange-700 shadow-md shadow-orange-500/20 transition inline-flex items-center gap-1.5"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -936,6 +986,18 @@ export default function App() {
                       }`}
                     >
                       Giá cao đến thấp
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setCurrentPage(0);
+                        fetchProducts({ page: 0, shuffle: true });
+                      }}
+                      className="px-3 py-1.5 rounded-xl font-bold transition bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-xs flex items-center gap-1.5 active:scale-95"
+                      title="Làm mới và khám phá các sản phẩm gợi ý ngẫu nhiên khác nhau"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Đổi gợi ý mới</span>
                     </button>
                   </div>
 
