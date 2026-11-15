@@ -153,6 +153,13 @@ export const catalogApi = {
   },
 
   /**
+   * Alias tương thích cho getMySellerProducts
+   */
+  async getMyProducts(params = {}) {
+    return this.getMySellerProducts(params);
+  },
+
+  /**
    * Seller tạo sản phẩm mới (mặc định DRAFT hoặc PENDING, kiểm tra phân quyền)
    * @param {Object} productData
    * @returns {Promise<any>}

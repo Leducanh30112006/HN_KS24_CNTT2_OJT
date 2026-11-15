@@ -161,21 +161,62 @@ export default function App() {
         const pageData = res.data;
         const items = Array.isArray(pageData.content) ? pageData.content : [];
 
-        // Nếu database chưa có dữ liệu và không áp dụng bộ lọc nào ở trang 0
-        if (items.length === 0 && !catId && !kw && range === 'all' && rating === 0 && page === 0) {
-          setProducts(defaultProducts.slice(0, size));
-          setTotalElements(defaultProducts.length);
-          setTotalPages(Math.max(1, Math.ceil(defaultProducts.length / size)));
-          setCurrentPage(0);
-          setIsUsingFallback(true);
-        } else {
-          setProducts(items);
-          setTotalElements(pageData.totalElements ?? items.length);
-          setTotalPages(pageData.totalPages ?? 1);
-          setCurrentPage(pageData.page ?? page);
-          setIsUsingFallback(false);
-          setApiError(null);
+        // Bổ sung các trường highlights, specifications, descriptionImages từ defaultProducts vào items nếu thiếu
+        const enrichedItems = items.map((serverItem) => {
+          const match = defaultProducts.find((p) => String(p.id) === String(serverItem.id));
+          return match
+            ? {
+                ...match,
+                ...serverItem,
+                highlights: serverItem.highlights || match.highlights || [],
+                specifications: serverItem.specifications || match.specifications || [],
+                descriptionImages: serverItem.descriptionImages || match.descriptionImages || [],
+              }
+            : serverItem;
+        });
+
+        // Kết hợp với các sản phẩm mẫu để hiển thị đầy đủ phong phú sản phẩm trên sàn
+        let finalProducts = enrichedItems;
+        if (!catId && !kw && range === 'all' && rating === 0 && page === 0) {
+          const serverIds = new Set(enrichedItems.map((p) => String(p.id)));
+          const additionalSamples = defaultProducts.filter((p) => !serverIds.has(String(p.id)));
+          finalProducts = [...enrichedItems, ...additionalSamples];
         }
+
+        // Nếu database trả về 0 kết quả cho bộ lọc hiện tại, tìm kiếm bổ sung trong defaultProducts
+        if (finalProducts.length === 0) {
+          let fallbackFiltered = [...defaultProducts];
+          if (catId) {
+            const childIds = categories.filter((c) => c.parentId === catId).map((c) => c.id);
+            const allowedCatIds = [catId, ...childIds];
+            fallbackFiltered = fallbackFiltered.filter((p) => allowedCatIds.includes(p.categoryId));
+          }
+          if (kw && kw.trim()) {
+            const lkw = kw.toLowerCase().trim();
+            fallbackFiltered = fallbackFiltered.filter(
+              (p) =>
+                p.name.toLowerCase().includes(lkw) ||
+                (p.description && p.description.toLowerCase().includes(lkw))
+            );
+          }
+          if (mappedMinPrice !== null) {
+            fallbackFiltered = fallbackFiltered.filter((p) => (p.minPrice || 0) >= mappedMinPrice);
+          }
+          if (mappedMaxPrice !== null) {
+            fallbackFiltered = fallbackFiltered.filter((p) => (p.minPrice || 0) <= mappedMaxPrice);
+          }
+          if (rating > 0) {
+            fallbackFiltered = fallbackFiltered.filter((p) => (p.averageRating || 5.0) >= rating);
+          }
+          finalProducts = fallbackFiltered;
+        }
+
+        setProducts(finalProducts);
+        setTotalElements(finalProducts.length);
+        setTotalPages(Math.max(1, Math.ceil(finalProducts.length / size)));
+        setCurrentPage(pageData.page ?? page);
+        setIsUsingFallback(false);
+        setApiError(null);
       } else {
         throw new Error(res?.message || 'Không nhận được dữ liệu hợp lệ từ Catalog API.');
       }
