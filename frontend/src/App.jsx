@@ -24,7 +24,7 @@ import axiosClient from './api/axiosClient';
 import {
   Filter, RotateCcw, Star, ChevronRight, ChevronDown, ShieldCheck,
   HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft, CheckCircle2,
-  Store
+  Store, SlidersHorizontal, X
 } from 'lucide-react';
 import { useAuthStore } from './stores/useAuthStore';
 import { useCartStore } from './stores/useCartStore';
@@ -106,6 +106,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'priceAsc' | 'priceDesc'
   const [priceRange, setPriceRange] = useState('all'); // 'all', 'under1m', '1m-5m', '5m-20m', 'above20m'
   const [minRating, setMinRating] = useState(0);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Modal / Selected Product & Shop states
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -393,6 +394,10 @@ export default function App() {
 
   // filteredProducts luôn tương đương products vì server hoặc fallback đã phân trang & lọc
   const filteredProducts = products;
+  const activeFilterCount =
+    (selectedCategory ? 1 : 0) +
+    (priceRange !== 'all' ? 1 : 0) +
+    (minRating > 0 ? 1 : 0);
 
   // Hiển thị 1 hàng danh mục (6 danh mục) khi chưa bấm "Xem tất cả ngành hàng"
   const displayedCategories = showAllCategories ? categories : categories.slice(0, 6);
@@ -869,155 +874,83 @@ export default function App() {
               </div>
             </div>
 
-            {/* Main Product Catalog Layout with Filter Sidebar */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-              {/* Left Column: Filter Sidebar */}
-              <aside className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-sm space-y-5 text-xs hidden lg:block sticky top-24">
-                <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-                  <div className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
-                    <Filter className="w-4 h-4 text-orange-600" />
-                    Bộ lọc tìm kiếm
-                  </div>
-                  <button
-                    onClick={handleResetFilters}
-                    className="text-slate-400 hover:text-orange-600 flex items-center gap-1 transition text-[11px]"
-                    title="Xóa tất cả bộ lọc"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    Xóa lọc
-                  </button>
-                </div>
+            {/* Main Product Catalog Section with Top Filter Bar */}
+            <div className="space-y-4" id="catalog-product-grid">
+              {/* Thông báo lỗi kết nối nếu có */}
+              <ApiErrorBanner
+                error={apiError}
+                isRetrying={isRetrying}
+                fallbackActive={isUsingFallback}
+                onRetry={handleRetryApi}
+                onDismiss={() => setApiError(null)}
+              />
 
-                {/* Filter 1: By Category */}
-                <div className="space-y-2">
-                  <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
-                    Theo Danh Mục
-                  </div>
-                  <div className="space-y-1">
+              {/* Sort & Filter Toolbar */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-3 sm:px-5 shadow-sm space-y-3">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 text-xs">
+                  {/* Left: Nút Bộ lọc & Các nút sắp xếp */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Nút Bộ lọc nổi bật trên cùng */}
                     <button
-                      onClick={() => setSelectedCategory(null)}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg transition ${selectedCategory === null ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-slate-50 text-slate-600'
-                        }`}
+                      onClick={() => setIsFilterOpen(!isFilterOpen)}
+                      className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition shadow-sm ${
+                        isFilterOpen || activeFilterCount > 0
+                          ? 'bg-orange-600 text-white shadow-orange-200 hover:bg-orange-700'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                      title="Mở bảng bộ lọc sản phẩm"
                     >
-                      Tất cả danh mục
+                      <SlidersHorizontal className="w-4 h-4" />
+                      <span>Bộ lọc tìm kiếm</span>
+                      {activeFilterCount > 0 && (
+                        <span className="w-5 h-5 rounded-full bg-white text-orange-600 text-[11px] font-black flex items-center justify-center shadow-xs">
+                          {activeFilterCount}
+                        </span>
+                      )}
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isFilterOpen ? 'rotate-180' : ''}`} />
                     </button>
-                    {categories.map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => setSelectedCategory(c.id)}
-                        className={`w-full text-left py-1.5 rounded-lg transition flex justify-between items-center ${c.parentId ? 'pl-6 pr-2.5 text-[11px]' : 'px-2.5 font-bold text-slate-800'
-                          } ${selectedCategory === c.id ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-slate-50 text-slate-600'
-                          }`}
-                      >
-                        <span className="truncate">{c.parentId ? `↳ ${c.name}` : c.name}</span>
-                        {c.productCount > 0 && (
-                          <span className="text-[10px] text-slate-400">({c.productCount})</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
-                {/* Filter 2: By Price Range */}
-                <div className="space-y-2 pt-2 border-t border-slate-100">
-                  <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
-                    Khoảng Giá (VND)
-                  </div>
-                  <div className="space-y-1 text-slate-600">
-                    {[
-                      { id: 'all', label: 'Tất cả mức giá' },
-                      { id: 'under1m', label: 'Dưới 1.000.000đ' },
-                      { id: '1m-5m', label: '1.000.000đ - 5.000.000đ' },
-                      { id: '5m-20m', label: '5.000.000đ - 20.000.000đ' },
-                      { id: 'above20m', label: 'Trên 20.000.000đ' },
-                    ].map((pr) => (
-                      <label key={pr.id} className="flex items-center space-x-2 cursor-pointer p-1 hover:text-orange-600">
-                        <input
-                          type="radio"
-                          name="priceRange"
-                          checked={priceRange === pr.id}
-                          onChange={() => setPriceRange(pr.id)}
-                          className="text-orange-600 focus:ring-orange-500"
-                        />
-                        <span>{pr.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+                    <div className="h-5 w-px bg-slate-200 hidden sm:block mx-1"></div>
 
-                {/* Filter 3: By Rating */}
-                <div className="space-y-2 pt-2 border-t border-slate-100">
-                  <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
-                    Đánh Giá Sao
-                  </div>
-                  <div className="space-y-1 text-slate-600">
-                    {[
-                      { stars: 5, label: 'Từ 5 sao (Tuyệt đối)' },
-                      { stars: 4, label: 'Từ 4 sao trở lên' },
-                      { stars: 3, label: 'Từ 3 sao trở lên' },
-                      { stars: 0, label: 'Tất cả đánh giá' },
-                    ].map((r) => (
-                      <button
-                        key={r.stars}
-                        onClick={() => setMinRating(r.stars)}
-                        className={`w-full text-left px-2 py-1 rounded-lg flex items-center space-x-1.5 transition ${minRating === r.stars ? 'bg-orange-50 text-orange-600 font-bold' : 'hover:bg-slate-50'
-                          }`}
-                      >
-                        <div className="flex text-amber-400">
-                          {r.stars > 0 ? (
-                            Array.from({ length: r.stars }).map((_, i) => (
-                              <Star key={i} className="w-3 h-3 fill-amber-400" />
-                            ))
-                          ) : (
-                            <span className="text-[11px] text-slate-500">Tất cả</span>
-                          )}
-                        </div>
-                        <span className="text-[11px] text-slate-600">{r.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </aside>
-
-              {/* Right Column: Sort Tool Bar & Product Grid */}
-              <div className="lg:col-span-3 space-y-4" id="catalog-product-grid">
-                {/* Thông báo lỗi kết nối nếu có */}
-                <ApiErrorBanner
-                  error={apiError}
-                  isRetrying={isRetrying}
-                  fallbackActive={isUsingFallback}
-                  onRetry={handleRetryApi}
-                  onDismiss={() => setApiError(null)}
-                />
-
-                {/* Sort Bar */}
-                <div className="bg-white rounded-2xl border border-slate-200/90 p-3 sm:px-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm text-xs">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-slate-500 font-medium">Sắp xếp theo:</span>
+                    <span className="text-slate-500 font-medium hidden sm:inline">Sắp xếp:</span>
                     <button
                       onClick={() => setSortBy('newest')}
-                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'newest' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
+                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${
+                        sortBy === 'newest' ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                      }`}
                     >
                       Mới nhất
                     </button>
                     <button
                       onClick={() => setSortBy('priceAsc')}
-                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'priceAsc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
+                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${
+                        sortBy === 'priceAsc' ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                      }`}
                     >
                       Giá thấp đến cao
                     </button>
                     <button
                       onClick={() => setSortBy('priceDesc')}
-                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'priceDesc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
+                      className={`px-3 py-1.5 rounded-xl font-semibold transition ${
+                        sortBy === 'priceDesc' ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                      }`}
                     >
                       Giá cao đến thấp
                     </button>
                   </div>
 
-                  <div className="text-slate-500 font-medium text-[11px] flex items-center gap-2">
+                  {/* Right: Số lượng sản phẩm & Nút xóa lọc nhanh */}
+                  <div className="flex items-center gap-3 text-slate-500 font-medium text-[11px] self-end md:self-auto">
+                    {activeFilterCount > 0 && (
+                      <button
+                        onClick={handleResetFilters}
+                        className="text-orange-600 hover:text-orange-700 font-semibold flex items-center gap-1 transition"
+                        title="Xóa tất cả bộ lọc đang chọn"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        Xóa lọc
+                      </button>
+                    )}
                     <span>
                       Tìm thấy <strong className="text-slate-800 font-bold">{totalElements}</strong> sản phẩm
                     </span>
@@ -1029,66 +962,281 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Product Grid */}
-                {loadingProducts ? (
-                  <div className="space-y-4">
-                    <div className="py-6 text-center space-y-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
-                      <div className="w-7 h-7 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                      <div className="text-xs text-slate-500 font-medium">Đang tải sản phẩm từ Catalog Service & Redis Cache...</div>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                      {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5 animate-pulse">
-                          <div className="aspect-square bg-slate-100 rounded-xl" />
-                          <div className="h-3 bg-slate-100 rounded w-1/3" />
-                          <div className="h-4 bg-slate-100 rounded w-full" />
-                          <div className="h-4 bg-slate-100 rounded w-1/2" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : filteredProducts.length === 0 ? (
-                  <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-3 shadow-sm">
-                    <div className="w-16 h-16 rounded-full bg-orange-50 text-orange-400 mx-auto flex items-center justify-center">
-                      <Filter className="w-8 h-8" />
-                    </div>
-                    <h3 className="font-bold text-sm text-slate-800">Không tìm thấy sản phẩm phù hợp</h3>
-                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                      Vui lòng thử điều chỉnh lại bộ lọc giá, từ khóa tìm kiếm hoặc chọn danh mục khác.
-                    </p>
-                    <button
-                      onClick={handleResetFilters}
-                      className="px-4 py-2 bg-orange-600 text-white rounded-xl text-xs font-semibold hover:bg-orange-700 transition"
-                    >
-                      Xem tất cả sản phẩm
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                      {filteredProducts.map((p) => (
-                        <ProductCard
-                          key={p.id}
-                          product={p}
-                          onSelect={handleSelectProduct}
-                          onSelectShop={handleSelectShop}
-                          onRequireAuth={() => setCurrentView('login')}
-                        />
-                      ))}
-                    </div>
-
-                    {/* Phân trang cho Storefront Catalog */}
-                    <Pagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      totalElements={totalElements}
-                      pageSize={pageSize}
-                      onPageChange={handlePageChange}
-                      onPageSizeChange={handlePageSizeChange}
-                    />
+                {/* Hàng nhãn tiêu chí lọc đang hoạt động */}
+                {activeFilterCount > 0 && (
+                  <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-slate-400 text-[11px]">Đang lọc:</span>
+                    {selectedCategory && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 border border-orange-200/80 font-medium text-[11px]">
+                        Danh mục: {categories.find((c) => c.id === selectedCategory)?.name || selectedCategory}
+                        <button
+                          onClick={() => setSelectedCategory(null)}
+                          className="hover:text-red-500 transition"
+                          title="Bỏ lọc danh mục này"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+                    {priceRange !== 'all' && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 border border-orange-200/80 font-medium text-[11px]">
+                        Giá:{' '}
+                        {priceRange === 'under1m'
+                          ? 'Dưới 1 triệu'
+                          : priceRange === '1m-5m'
+                          ? '1 - 5 triệu'
+                          : priceRange === '5m-20m'
+                          ? '5 - 20 triệu'
+                          : 'Trên 20 triệu'}
+                        <button
+                          onClick={() => setPriceRange('all')}
+                          className="hover:text-red-500 transition"
+                          title="Bỏ lọc khoảng giá này"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+                    {minRating > 0 && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 border border-orange-200/80 font-medium text-[11px]">
+                        Đánh giá: Từ {minRating} sao
+                        <button
+                          onClick={() => setMinRating(0)}
+                          className="hover:text-red-500 transition"
+                          title="Bỏ lọc số sao này"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
+
+              {/* Bảng Bộ Lọc Mở Rộng Khi Bấm Nút "Bộ lọc tìm kiếm" */}
+              {isFilterOpen && (
+                <div className="bg-white rounded-3xl border border-orange-200/80 p-5 sm:p-6 shadow-md transition-all space-y-5 animate-in fade-in duration-200">
+                  <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                    <div className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                      <Filter className="w-4 h-4 text-orange-600" />
+                      Tùy chọn bộ lọc chi tiết
+                      {activeFilterCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-[11px] font-bold">
+                          Đã chọn {activeFilterCount} tiêu chí
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={handleResetFilters}
+                        className="text-slate-500 hover:text-orange-600 flex items-center gap-1 transition text-xs font-medium"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Xóa tất cả
+                      </button>
+                      <button
+                        onClick={() => setIsFilterOpen(false)}
+                        className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition"
+                        title="Đóng bảng lọc"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+                    {/* Cột 1: Theo Danh Mục */}
+                    <div className="space-y-2.5">
+                      <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                        <Store className="w-3.5 h-3.5 text-orange-500" />
+                        Theo Danh Mục
+                      </div>
+                      <div className="max-h-56 overflow-y-auto space-y-1 pr-1.5 scrollbar-thin">
+                        <button
+                          onClick={() => setSelectedCategory(null)}
+                          className={`w-full text-left px-3 py-2 rounded-xl transition flex justify-between items-center ${
+                            selectedCategory === null
+                              ? 'bg-orange-600 text-white font-bold shadow-xs'
+                              : 'hover:bg-slate-100 text-slate-700 bg-slate-50/70'
+                          }`}
+                        >
+                          <span>Tất cả danh mục</span>
+                          {selectedCategory === null && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        </button>
+                        {categories.map((c) => (
+                          <button
+                            key={c.id}
+                            onClick={() => setSelectedCategory(c.id)}
+                            className={`w-full text-left py-1.5 px-3 rounded-xl transition flex justify-between items-center ${
+                              c.parentId ? 'pl-6 text-[11px]' : 'font-semibold'
+                            } ${
+                              selectedCategory === c.id
+                                ? 'bg-orange-600 text-white font-bold shadow-xs'
+                                : 'hover:bg-slate-100 text-slate-700 bg-slate-50/70'
+                            }`}
+                          >
+                            <span className="truncate">{c.parentId ? `↳ ${c.name}` : c.name}</span>
+                            {selectedCategory === c.id ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                            ) : c.productCount > 0 ? (
+                              <span className="text-[10px] text-slate-400">({c.productCount})</span>
+                            ) : null}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Cột 2: Khoảng Giá */}
+                    <div className="space-y-2.5">
+                      <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+                        Khoảng Giá (VND)
+                      </div>
+                      <div className="space-y-1.5">
+                        {[
+                          { id: 'all', label: 'Tất cả mức giá' },
+                          { id: 'under1m', label: 'Dưới 1.000.000đ' },
+                          { id: '1m-5m', label: '1.000.000đ - 5.000.000đ' },
+                          { id: '5m-20m', label: '5.000.000đ - 20.000.000đ' },
+                          { id: 'above20m', label: 'Trên 20.000.000đ' },
+                        ].map((pr) => {
+                          const isSelected = priceRange === pr.id;
+                          return (
+                            <button
+                              key={pr.id}
+                              onClick={() => setPriceRange(pr.id)}
+                              className={`w-full text-left px-3 py-2 rounded-xl transition flex justify-between items-center ${
+                                isSelected
+                                  ? 'bg-orange-600 text-white font-bold shadow-xs'
+                                  : 'hover:bg-slate-100 text-slate-700 bg-slate-50/70'
+                              }`}
+                            >
+                              <span>{pr.label}</span>
+                              {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Cột 3: Đánh Giá Sao */}
+                    <div className="space-y-2.5">
+                      <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                        <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                        Đánh Giá Sao
+                      </div>
+                      <div className="space-y-1.5">
+                        {[
+                          { stars: 0, label: 'Tất cả đánh giá' },
+                          { stars: 5, label: 'Từ 5 sao (Tuyệt đối)' },
+                          { stars: 4, label: 'Từ 4 sao trở lên' },
+                          { stars: 3, label: 'Từ 3 sao trở lên' },
+                        ].map((r) => {
+                          const isSelected = minRating === r.stars;
+                          return (
+                            <button
+                              key={r.stars}
+                              onClick={() => setMinRating(r.stars)}
+                              className={`w-full text-left px-3 py-2 rounded-xl transition flex justify-between items-center ${
+                                isSelected
+                                  ? 'bg-orange-600 text-white font-bold shadow-xs'
+                                  : 'hover:bg-slate-100 text-slate-700 bg-slate-50/70'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                {r.stars > 0 && (
+                                  <div className="flex">
+                                    {Array.from({ length: r.stars }).map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`w-3.5 h-3.5 ${
+                                          isSelected ? 'fill-white text-white' : 'fill-amber-400 text-amber-400'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                                <span>{r.label}</span>
+                              </div>
+                              {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Thanh nút đóng / hoàn tất */}
+                  <div className="pt-3 border-t border-slate-100 flex justify-end gap-3">
+                    <button
+                      onClick={() => setIsFilterOpen(false)}
+                      className="px-5 py-2 bg-orange-600 text-white font-bold rounded-xl text-xs hover:bg-orange-700 transition shadow-sm"
+                    >
+                      Áp dụng & Thu gọn bộ lọc
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Product Grid - Rộng full width 4 cột trên desktop */}
+              {loadingProducts ? (
+                <div className="space-y-4">
+                  <div className="py-6 text-center space-y-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                    <div className="w-7 h-7 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <div className="text-xs text-slate-500 font-medium">Đang tải sản phẩm từ Catalog Service & Redis Cache...</div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5 animate-pulse">
+                        <div className="aspect-square bg-slate-100 rounded-xl" />
+                        <div className="h-3 bg-slate-100 rounded w-1/3" />
+                        <div className="h-4 bg-slate-100 rounded w-full" />
+                        <div className="h-4 bg-slate-100 rounded w-1/2" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-3 shadow-sm">
+                  <div className="w-16 h-16 rounded-full bg-orange-50 text-orange-400 mx-auto flex items-center justify-center">
+                    <Filter className="w-8 h-8" />
+                  </div>
+                  <h3 className="font-bold text-sm text-slate-800">Không tìm thấy sản phẩm phù hợp</h3>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Vui lòng thử điều chỉnh lại bộ lọc giá, từ khóa tìm kiếm hoặc chọn danh mục khác.
+                  </p>
+                  <button
+                    onClick={handleResetFilters}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-xl text-xs font-semibold hover:bg-orange-700 transition"
+                  >
+                    Xem tất cả sản phẩm
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4">
+                    {filteredProducts.map((p) => (
+                      <ProductCard
+                        key={p.id}
+                        product={p}
+                        onSelect={handleSelectProduct}
+                        onSelectShop={handleSelectShop}
+                        onRequireAuth={() => setCurrentView('login')}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Phân trang cho Storefront Catalog */}
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalElements={totalElements}
+                    pageSize={pageSize}
+                    onPageChange={handlePageChange}
+                    onPageSizeChange={handlePageSizeChange}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
