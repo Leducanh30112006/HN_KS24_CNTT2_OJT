@@ -176,9 +176,13 @@ const mergeLocalItemArrays = (baseItems = [], incomingItems = []) => {
 const getAuthContext = () => {
   const { user, isAuthenticated, accessToken } = useAuthStore.getState();
   const userId = user?.userId ?? null;
-  // Bất cứ khi nào tài khoản đã đăng nhập có userId hợp lệ, kích hoạt kết nối backend Redis
-  const canUseServer = Boolean(isAuthenticated && userId);
-  return { user, userId, isAuthenticated: Boolean(isAuthenticated), isMock: !accessToken || accessToken === MOCK_JWT_TOKEN, canUseServer };
+  const role = user?.role ? String(user.role).toUpperCase() : '';
+  const isShipper = role.includes('SHIPPER');
+  // Shippers are delivery personnel and do not participate in buyer cart shopping flow
+  const isEligibleForCart = !isShipper;
+  // Bất cứ khi nào tài khoản đã đăng nhập có userId hợp lệ và không phải Shipper, kích hoạt kết nối backend Redis
+  const canUseServer = Boolean(isAuthenticated && userId && isEligibleForCart);
+  return { user, userId, role, isShipper, isEligibleForCart, isAuthenticated: Boolean(isAuthenticated), isMock: !accessToken || accessToken === MOCK_JWT_TOKEN, canUseServer };
 };
 
 const extractServerErrorMessage = (error, fallbackMessage) => {
@@ -206,7 +210,7 @@ export const useCartStore = create(
       fetchCart: async (explicitUserId = null) => {
         const auth = getAuthContext();
         const userId = explicitUserId ?? auth.userId;
-        if (!auth.isAuthenticated || !userId) {
+        if (!auth.isAuthenticated || !userId || auth.isShipper) {
           return { ok: false, offline: true };
         }
 
@@ -230,12 +234,10 @@ export const useCartStore = create(
             syncError: null,
           });
 
-          console.log(`[QuickShop Cart] Đã đồng bộ ${mappedItems.length} sản phẩm từ Redis cho User #${userId}`);
           // Phát tín hiệu đồng bộ cho các tab / cửa sổ khác
           broadcastCartChange({ type: 'CART_UPDATED', userId, items: mappedItems });
           return { ok: true, items: mappedItems };
         } catch (error) {
-          console.warn('[QuickShop Cart] Đồng bộ từ Redis thất bại, dùng giỏ hàng dự phòng:', error);
           // Khi server chưa sẵn sàng hoặc offline, sử dụng giỏ hàng offline lưu riêng theo userId
           const fallbackItems =
             String(get().ownerUserId) === String(userId) && get().items.length > 0
@@ -332,13 +334,14 @@ export const useCartStore = create(
       syncCartOnLogin: async (userId, options = {}) => {
         const auth = getAuthContext();
         const targetUserId = userId ?? auth.userId;
-        if (!targetUserId || !auth.isAuthenticated) {
-          return { ok: false };
+        if (!targetUserId || !auth.isAuthenticated || auth.isShipper) {
+          return { ok: false, skipped: true };
         }
 
         const now = Date.now();
         const syncKey = String(targetUserId);
-        if (options.dedupeRecent && lastLoginSyncKey === syncKey && now - lastLoginSyncAt < 1000) {
+        // Luôn chống gọi đồng bộ dồn dập cho cùng 1 tài khoản trong vòng 3 giây
+        if (lastLoginSyncKey === syncKey && now - lastLoginSyncAt < 3000) {
           return { ok: true, skipped: true, items: get().items };
         }
 
@@ -727,11 +730,14 @@ if (cartBroadcastChannel) {
   };
 }
 
-// Tự động kiểm tra và làm mới giỏ hàng khi người dùng chuyển tab quay lại ứng dụng
+// Tự động kiểm tra và làm mới giỏ hàng khi người dùng chuyển tab quay lại ứng dụng (chống gọi dồn dập)
+let lastFocusFetchAt = 0;
 if (typeof window !== 'undefined') {
   window.addEventListener('focus', () => {
     const auth = getAuthContext();
-    if (auth.isAuthenticated && auth.userId) {
+    const now = Date.now();
+    if (auth.isAuthenticated && auth.userId && !auth.isShipper && now - lastFocusFetchAt > 60000) {
+      lastFocusFetchAt = now;
       useCartStore.getState().fetchCart(auth.userId);
     }
   });

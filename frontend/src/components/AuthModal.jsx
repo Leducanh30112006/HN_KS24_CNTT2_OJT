@@ -98,7 +98,9 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
 
       login(mockData);
       try {
-        await syncCartOnLogin(mockData.userId);
+        if (role !== 'ROLE_SHIPPER') {
+          await syncCartOnLogin(mockData.userId, { dedupeRecent: true });
+        }
       } catch {}
       setSuccessMsg(`Đăng nhập phiên Demo: ${fullName} [${role}]`);
       setTimeout(() => {

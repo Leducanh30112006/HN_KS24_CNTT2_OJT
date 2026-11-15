@@ -43,7 +43,9 @@ export default function App() {
   // Đồng bộ phiên đăng nhập/đăng xuất, giỏ hàng và view tương ứng
   useEffect(() => {
     if (isAuthenticated && user?.userId) {
-      syncCartOnLogin(user.userId, { dedupeRecent: true });
+      if (!isShipper) {
+        syncCartOnLogin(user.userId, { dedupeRecent: true });
+      }
       const savedView = sessionStorage.getItem('quickshop_current_view');
       if (savedView && ['admin', 'seller', 'shipper', 'storefront', 'cart', 'orders', 'profile'].includes(savedView)) {
         setCurrentView(savedView);
