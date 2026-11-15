@@ -55,7 +55,7 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
 
         // Tự động đồng bộ / hợp nhất giỏ hàng sau khi xác thực thành công
         try {
-          const syncResult = await syncCartOnLogin(userId);
+          const syncResult = await syncCartOnLogin(userId, { dedupeRecent: true });
           if (syncResult?.warnings?.length > 0) {
             console.info('Cảnh báo tồn kho khi đồng bộ giỏ hàng:', syncResult.warnings);
           }
@@ -130,7 +130,9 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
 
       login(mockData);
       try {
-        await syncCartOnLogin(mockData.userId);
+        if (role !== 'ROLE_SHIPPER') {
+          await syncCartOnLogin(mockData.userId, { dedupeRecent: true });
+        }
       } catch (e) {}
 
       setSuccessMsg(`Đăng nhập thành công: ${fullName} [${role}]`);
