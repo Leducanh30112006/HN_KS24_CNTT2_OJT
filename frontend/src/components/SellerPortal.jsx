@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { catalogApi } from '../api/catalogApi';
 import { useAuthStore } from '../stores/useAuthStore';
+import { defaultProducts } from '../data/sampleProducts';
 import {
   getShopOrders,
   updateSubOrderFulfillmentStatus,
@@ -94,96 +95,51 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiSuccessMsg, setAiSuccessMsg] = useState('');
 
-  // Default seed mock products for offline/standalone demo
-  const defaultSellerProducts = [
-    {
-      id: 1,
-      shopId: 1,
-      name: 'Điện thoại thông minh QuickPhone Pro Max 256GB - Bản Quốc Tế',
-      categoryName: 'Điện thoại & Phụ kiện',
-      categoryId: 1,
-      brand: 'Apple',
-      description: 'Flagship hàng đầu với chip xử lý AI 3nm mạnh mẽ, màn hình Super Retina XDR OLED 120Hz siêu mượt mà, cụm 3 camera 48MP zoom quang học 5x và thời lượng pin trâu lên đến 29 giờ liên tục.',
-      highlights: [
-        'Chip A18 Pro 3nm tích hợp NPU 16 nhân tối ưu các tác vụ AI',
-        'Màn hình Super Retina XDR 6.9 inch 120Hz ProMotion',
-        'Cụm camera 48MP zoom quang 5x chuyên nghiệp',
-      ],
-      specifications: [
-        { label: 'Thương hiệu', value: 'Apple' },
-        { label: 'Xuất xứ', value: 'Chính hãng VN/A' },
-        { label: 'Bảo hành', value: '12 tháng chính hãng' },
-      ],
-      descriptionImages: [
-        'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=1000&auto=format&fit=crop&q=80',
-      ],
-      mainImage: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&auto=format&fit=crop&q=80',
-      status: 'APPROVED',
-      rejectionReason: null,
-      minPrice: 29990000,
-      variants: [
-        { sku: 'QP-PRO-TITAN-256', color: 'Titan Tự Nhiên', size: '256GB', price: 29990000, stock: 45 },
-        { sku: 'QP-PRO-BLACK-512', color: 'Đen Không Gian', size: '512GB', price: 34990000, stock: 25 },
-      ],
-    },
-    {
-      id: 2,
-      shopId: 1,
-      name: 'Laptop QuickBook Ultra 14 inch M3 Pro - 18GB/512GB Bạc Ánh Kim',
-      categoryName: 'Laptop & Máy tính',
-      categoryId: 2,
-      brand: 'Apple',
-      description: 'Chiếc máy trạm di động mỏng nhẹ đẳng cấp nhất: màn hình Liquid Retina XDR 1000 nits, chip 11-core CPU, 14-core GPU xử lý đồ họa mượt mà, pin dùng cả ngày không cần sạc.',
-      highlights: [
-        'Chip Apple M3 Pro 11-core CPU, 14-core GPU siêu mạnh',
-        'Màn hình Liquid Retina XDR 14.2 inch 120Hz',
-        'RAM 18GB Unified Memory băng thông cực lớn',
-      ],
-      specifications: [
-        { label: 'Thương hiệu', value: 'Apple' },
-        { label: 'CPU', value: 'Apple M3 Pro' },
-        { label: 'RAM', value: '18GB Unified Memory' },
-      ],
-      descriptionImages: [
-        'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=1000&auto=format&fit=crop&q=80',
-      ],
-      mainImage: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600&auto=format&fit=crop&q=80',
-      status: 'APPROVED',
-      rejectionReason: null,
-      minPrice: 45990000,
-      variants: [
-        { sku: 'QB-ULTRA-SPACEBLACK-18-512', color: 'Đen Không Gian', size: '18GB / 512GB', price: 45990000, stock: 20 },
-      ],
-    },
-    {
-      id: 3,
-      shopId: 1,
-      name: 'Đồng Hồ Thông Minh QuickWatch Ultra 2 Định Vị GPS Độc Lập',
-      categoryName: 'Điện thoại & Phụ kiện',
-      categoryId: 1,
-      brand: 'Apple',
-      description: 'Vỏ titan chuẩn quân đội, đo nồng độ oxy trong máu SpO2, hỗ trợ eSIM nghe gọi độc lập.',
-      mainImage: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80',
-      status: 'PENDING',
-      rejectionReason: null,
-      minPrice: 12490000,
-      variants: [
-        { sku: 'QW-ULTRA-ORANGE', color: 'Cam Thể Thao', size: '49mm', price: 12490000, stock: 35 },
-      ],
-    },
-  ];
+  // Danh sách sản phẩm mẫu đầy đủ chi tiết cho gian hàng (Shop ID #1)
+  const defaultSellerProducts = defaultProducts.filter(
+    (p) => Number(p.shopId) === Number(user?.shopId || 1) || !p.shopId
+  );
 
   // Fetch products
   const fetchMyProducts = async () => {
     setLoading(true);
     try {
-      const res = await catalogApi.getMyProducts();
-      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
-        setProducts(res.data);
+      const res = await catalogApi.getMySellerProducts({ shopId: user?.shopId || 1 });
+      const serverItems = Array.isArray(res?.data)
+        ? res.data
+        : (Array.isArray(res?.data?.content) ? res.data.content : []);
+
+      if (serverItems.length > 0) {
+        // Bổ sung thêm highlights, specifications và descriptionImages nếu backend trả về thiếu
+        const enriched = serverItems.map((item) => {
+          const match = defaultProducts.find((p) => String(p.id) === String(item.id));
+          return match
+            ? {
+                ...match,
+                ...item,
+                highlights: item.highlights || match.highlights || [],
+                specifications: item.specifications || match.specifications || [],
+                descriptionImages: item.descriptionImages || match.descriptionImages || [],
+              }
+            : item;
+        });
+
+        // Kết hợp với các sản phẩm mẫu của shop để người bán luôn có danh mục đa dạng
+        const serverIds = new Set(enriched.map((p) => String(p.id)));
+        const additional = defaultSellerProducts.filter((p) => !serverIds.has(String(p.id)));
+        const finalSellerList = [...enriched, ...additional];
+
+        setProducts(finalSellerList);
+        localStorage.setItem('quickshop_seller_products', JSON.stringify(finalSellerList));
       } else {
         const local = localStorage.getItem('quickshop_seller_products');
         if (local) {
-          setProducts(JSON.parse(local));
+          try {
+            const parsed = JSON.parse(local);
+            setProducts(Array.isArray(parsed) && parsed.length > 0 ? parsed : defaultSellerProducts);
+          } catch {
+            setProducts(defaultSellerProducts);
+          }
         } else {
           setProducts(defaultSellerProducts);
           localStorage.setItem('quickshop_seller_products', JSON.stringify(defaultSellerProducts));
@@ -192,7 +148,12 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
     } catch {
       const local = localStorage.getItem('quickshop_seller_products');
       if (local) {
-        setProducts(JSON.parse(local));
+        try {
+          const parsed = JSON.parse(local);
+          setProducts(Array.isArray(parsed) && parsed.length > 0 ? parsed : defaultSellerProducts);
+        } catch {
+          setProducts(defaultSellerProducts);
+        }
       } else {
         setProducts(defaultSellerProducts);
       }
@@ -789,7 +750,28 @@ Thiết kế tinh tế sang trọng với từng đường nét được gia cô
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {filteredProducts.map((p) => (
+                      {loading ? (
+                        <tr>
+                          <td colSpan="6" className="py-12 text-center text-slate-400">
+                            <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                            <span>Đang nạp danh sách sản phẩm từ gian hàng...</span>
+                          </td>
+                        </tr>
+                      ) : filteredProducts.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" className="py-12 text-center text-slate-400">
+                            <Package className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                            <p className="font-semibold text-slate-600">Không có sản phẩm nào trong trạng thái này</p>
+                            <button
+                              onClick={() => setStatusFilter('ALL')}
+                              className="mt-2 text-xs font-bold text-orange-600 hover:underline"
+                            >
+                              Xem tất cả sản phẩm
+                            </button>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredProducts.map((p) => (
                         <tr key={p.id} className="hover:bg-slate-50/50 transition">
                           <td className="py-3.5 px-4">
                             <div className="flex items-center space-x-3 max-w-sm">
@@ -858,7 +840,7 @@ Thiết kế tinh tế sang trọng với từng đường nét được gia cô
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      )))}
                     </tbody>
                   </table>
                 </div>

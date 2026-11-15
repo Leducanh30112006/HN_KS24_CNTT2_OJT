@@ -9,6 +9,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import catalogApi from '../api/catalogApi';
 import ProductCard from './ProductCard';
 import ApiErrorBanner from './ApiErrorBanner';
+import { defaultProducts } from '../data/sampleProducts';
 
 export default function ProductDetailPage({ 
   product: initialProduct, 
@@ -117,7 +118,16 @@ export default function ProductDetailPage({
           if (res && (res.data || res.success)) {
             const data = res.data || res;
             if (data && data.id) {
-              setLiveProduct(data);
+              const sampleMatch = defaultProducts.find((p) => String(p.id) === String(data.id));
+              setLiveProduct({
+                ...sampleMatch,
+                ...initialProduct,
+                ...data,
+                highlights: data.highlights || initialProduct.highlights || sampleMatch?.highlights || [],
+                specifications: data.specifications || initialProduct.specifications || sampleMatch?.specifications || [],
+                descriptionImages: data.descriptionImages || initialProduct.descriptionImages || sampleMatch?.descriptionImages || [],
+                variants: (data.variants && data.variants.length > 0) ? data.variants : (initialProduct.variants || sampleMatch?.variants || []),
+              });
             }
           }
         })
