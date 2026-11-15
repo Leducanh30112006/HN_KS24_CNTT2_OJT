@@ -744,53 +744,128 @@ export default function ProductDetailPage({
 
       {/* 4. Product Specifications & Detailed Description */}
       <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-8 shadow-sm space-y-6">
+        {/* Điểm nhấn tính năng nổi bật (Highlights) */}
+        {product.highlights && product.highlights.length > 0 && (
+          <div className="bg-gradient-to-r from-orange-50/80 to-amber-50/50 border border-orange-200/70 rounded-2xl p-5">
+            <h4 className="text-xs font-bold text-orange-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-orange-600 fill-orange-500" />
+              Đặc điểm tính năng nổi bật
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {product.highlights.map((h, idx) => (
+                <div key={idx} className="flex items-start gap-2 text-xs text-slate-800">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5 stroke-[2.5]" />
+                  <span>{h}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-orange-600" />
-            Chi tiết thông số sản phẩm
+            Chi tiết thông số kỹ thuật sản phẩm
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div className="flex p-2.5 bg-slate-50 rounded-xl">
-              <span className="w-36 text-slate-400 font-medium">Danh mục:</span>
-              <span className="text-slate-800 font-semibold">{product.categoryName || 'Điện tử & Phụ kiện'}</span>
-            </div>
-            <div className="flex p-2.5 bg-slate-50 rounded-xl">
-              <span className="w-36 text-slate-400 font-medium">Thương hiệu:</span>
-              <span className="text-slate-800 font-semibold">Chính Hãng Phân Phối</span>
-            </div>
-            <div className="flex p-2.5 bg-slate-50 rounded-xl">
-              <span className="w-36 text-slate-400 font-medium">Chính sách bảo hành:</span>
-              <span className="text-slate-800 font-semibold">12 tháng toàn quốc</span>
-            </div>
-            <div className="flex p-2.5 bg-slate-50 rounded-xl">
-              <span className="w-36 text-slate-400 font-medium">Địa chỉ gửi hàng:</span>
-              <span className="text-slate-800 font-semibold">Kho Tổng Hoài Đức, Hà Nội</span>
-            </div>
-            <div className="flex p-2.5 bg-slate-50 rounded-xl">
-              <span className="w-36 text-slate-400 font-medium">Mã quản lý kho:</span>
-              <span className="text-slate-800 font-mono font-semibold">{selectedVariant?.sku || 'SKU-MASTER'}</span>
-            </div>
-            <div className="flex p-2.5 bg-slate-50 rounded-xl">
-              <span className="w-36 text-slate-400 font-medium">Số lượng tồn kho:</span>
-              <span className="text-emerald-600 font-semibold">{currentStock} cái sẵn sàng giao</span>
-            </div>
+            {product.specifications && Array.isArray(product.specifications) && product.specifications.length > 0 ? (
+              product.specifications.map((spec, sIdx) => (
+                <div key={sIdx} className="flex p-2.5 bg-slate-50/80 hover:bg-slate-100/70 rounded-xl transition">
+                  <span className="w-40 text-slate-400 font-medium">{spec.label || spec.name}:</span>
+                  <span className="text-slate-800 font-semibold flex-1">{spec.value}</span>
+                </div>
+              ))
+            ) : (
+              <>
+                <div className="flex p-2.5 bg-slate-50 rounded-xl">
+                  <span className="w-36 text-slate-400 font-medium">Danh mục:</span>
+                  <span className="text-slate-800 font-semibold">{product.categoryName || 'Điện tử & Phụ kiện'}</span>
+                </div>
+                <div className="flex p-2.5 bg-slate-50 rounded-xl">
+                  <span className="w-36 text-slate-400 font-medium">Thương hiệu:</span>
+                  <span className="text-slate-800 font-semibold">{product.brand || 'Chính Hãng Phân Phối'}</span>
+                </div>
+                <div className="flex p-2.5 bg-slate-50 rounded-xl">
+                  <span className="w-36 text-slate-400 font-medium">Chính sách bảo hành:</span>
+                  <span className="text-slate-800 font-semibold">12 tháng toàn quốc</span>
+                </div>
+                <div className="flex p-2.5 bg-slate-50 rounded-xl">
+                  <span className="w-36 text-slate-400 font-medium">Địa chỉ gửi hàng:</span>
+                  <span className="text-slate-800 font-semibold">Kho Tổng QuickShop Mall, Hà Nội</span>
+                </div>
+                <div className="flex p-2.5 bg-slate-50 rounded-xl">
+                  <span className="w-36 text-slate-400 font-medium">Mã quản lý kho:</span>
+                  <span className="text-slate-800 font-mono font-semibold">{selectedVariant?.sku || 'SKU-MASTER'}</span>
+                </div>
+                <div className="flex p-2.5 bg-slate-50 rounded-xl">
+                  <span className="w-36 text-slate-400 font-medium">Số lượng tồn kho:</span>
+                  <span className="text-emerald-600 font-semibold">{currentStock} cái sẵn sàng giao</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Detailed Long Description */}
+        {/* Detailed Long Description with Rich Inline Images */}
         <div className="pt-2">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
             Mô tả chi tiết sản phẩm
           </h3>
-          <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line space-y-3">
-            <p>{product.description || 'Sản phẩm chính hãng với tiêu chuẩn chất lượng cao nhất tại QuickShop Mall. Đầy đủ hóa đơn, tem chứng nhận và bảo hành chính hãng từ nhà sản xuất.'}</p>
-            <p className="font-semibold text-slate-800">Cam kết chất lượng từ QuickShop:</p>
-            <ul className="list-disc pl-5 space-y-1 text-slate-600">
-              <li>100% sản phẩm có nguồn gốc xuất xứ rõ ràng.</li>
-              <li>Kiểm định đóng gói nghiêm ngặt trước khi bàn giao cho đơn vị vận chuyển.</li>
-              <li>Hỗ trợ đổi trả trong 7 ngày nếu sản phẩm lỗi kỹ thuật hoặc hư hại do vận chuyển.</li>
-            </ul>
+          <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 sm:p-6 text-xs sm:text-sm text-slate-700 leading-relaxed space-y-4">
+            <div className="whitespace-pre-line leading-relaxed">
+              {product.description || 'Sản phẩm chính hãng với tiêu chuẩn chất lượng cao nhất tại QuickShop Mall. Đầy đủ hóa đơn, tem chứng nhận và bảo hành chính hãng từ nhà sản xuất.'}
+            </div>
+
+            {/* Khối hình ảnh minh họa chi tiết chèn trong mô tả (Rich Visual Showcase) */}
+            {product.descriptionImages && product.descriptionImages.length > 0 && (
+              <div className="pt-3 space-y-4">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Store className="w-3.5 h-3.5 text-orange-600" />
+                  Hình ảnh thực tế & Chi tiết cấu tạo sản phẩm
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {product.descriptionImages.map((imgUrl, iIdx) => (
+                    <div key={iIdx} className="group relative rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+                      <img
+                        src={typeof imgUrl === 'string' ? imgUrl : imgUrl.url}
+                        alt={`Ảnh chi tiết ${iIdx + 1}`}
+                        className="w-full h-64 sm:h-72 object-cover group-hover:scale-105 transition duration-300"
+                        loading="lazy"
+                      />
+                      {(typeof imgUrl === 'object' && imgUrl.caption) && (
+                        <div className="p-2.5 bg-white/95 text-[11px] text-slate-600 text-center font-medium border-t border-slate-100">
+                          {imgUrl.caption}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Cam kết bán hàng */}
+            <div className="mt-4 p-4 rounded-xl bg-orange-50/50 border border-orange-100 space-y-2">
+              <p className="font-bold text-slate-900 text-xs uppercase tracking-wider">Cam kết chất lượng từ QuickShop & Gian Hàng:</p>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-700">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  100% sản phẩm có nguồn gốc xuất xứ rõ ràng.
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  Kiểm định đóng gói nghiêm ngặt trước khi bàn giao bưu tá.
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  Hỗ trợ đổi trả trong 7 ngày nếu lỗi kỹ thuật.
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  Bảo hành chính hãng 12 tháng tại các TTBH trên toàn quốc.
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
