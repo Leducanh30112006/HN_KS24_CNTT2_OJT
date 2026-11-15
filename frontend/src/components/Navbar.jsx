@@ -19,6 +19,7 @@ export default function Navbar({
   onOpenCart,
   onOpenAuthModal,
   onNavigateToLogin,
+  onGoToStorefront,
 }) {
   const { user, isAuthenticated, logout } = useAuthStore();
   const totalCartCount = useCartStore((state) => state.getTotalCount());
@@ -141,9 +142,13 @@ export default function Navbar({
         {/* Brand Logo - Bấm vào quay về trang Catalog Storefront */}
         <div 
           onClick={() => {
-            if (setSearchKeyword) setSearchKeyword('');
-            if (setSelectedCategory) setSelectedCategory(null);
-            setCurrentView('storefront');
+            if (onGoToStorefront) {
+              onGoToStorefront();
+            } else {
+              if (setSearchKeyword) setSearchKeyword('');
+              if (setSelectedCategory) setSelectedCategory(null);
+              setCurrentView('storefront');
+            }
           }} 
           className="flex items-center gap-2.5 cursor-pointer group select-none flex-shrink-0"
         >
