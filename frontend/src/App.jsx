@@ -14,6 +14,8 @@ import AiChatWidget from './components/AiChatWidget';
 import SellerPortal from './components/SellerPortal';
 import AdminPortal from './components/AdminPortal';
 import LoginPage from './components/LoginPage';
+import RegisterSellerPage from './components/RegisterSellerPage';
+import RegisterShipperPage from './components/RegisterShipperPage';
 import AuthModal from './components/AuthModal';
 import Pagination from './components/Pagination';
 import ApiErrorBanner from './components/ApiErrorBanner';
@@ -800,6 +802,8 @@ export default function App() {
     return (
       <LoginPage
         onBackToHome={() => handleNavigateView('storefront')}
+        onNavigateToRegisterSeller={() => handleNavigateView('register-seller')}
+        onNavigateToRegisterShipper={() => handleNavigateView('register-shipper')}
         onLoginSuccess={(targetView) => {
           const savedRedirect = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('quickshop_auth_redirect') : null;
           if (savedRedirect && ['admin', 'seller', 'shipper', 'storefront', 'cart', 'orders', 'profile', 'checkout', 'product-detail'].includes(savedRedirect)) {
@@ -809,6 +813,28 @@ export default function App() {
             handleNavigateView(targetView || 'storefront', { replace: true });
           }
         }}
+      />
+    );
+  }
+
+  // VIEW RIÊNG BIỆT 1B: DEDICATED FULL-PAGE SELLER PARTNER REGISTRATION
+  if (currentView === 'register-seller') {
+    return (
+      <RegisterSellerPage
+        onBackToHome={() => handleNavigateView('storefront')}
+        onNavigateToLogin={() => handleNavigateView('login')}
+        onRegisterSuccess={(targetView) => handleNavigateView(targetView || 'seller', { replace: true })}
+      />
+    );
+  }
+
+  // VIEW RIÊNG BIỆT 1C: DEDICATED FULL-PAGE SHIPPER PARTNER REGISTRATION
+  if (currentView === 'register-shipper') {
+    return (
+      <RegisterShipperPage
+        onBackToHome={() => handleNavigateView('storefront')}
+        onNavigateToLogin={() => handleNavigateView('login')}
+        onRegisterSuccess={(targetView) => handleNavigateView(targetView || 'shipper', { replace: true })}
       />
     );
   }
@@ -1744,6 +1770,14 @@ export default function App() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onLoginSuccess={(targetView) => handleAuthSuccess(targetView)}
+        onNavigateToRegisterSeller={() => {
+          setIsAuthModalOpen(false);
+          handleNavigateView('register-seller');
+        }}
+        onNavigateToRegisterShipper={() => {
+          setIsAuthModalOpen(false);
+          handleNavigateView('register-shipper');
+        }}
       />
 
       {/* 5. Modal Kết quả Thanh toán VNPay Sandbox */}

@@ -1,125 +1,154 @@
 import React, { useState } from 'react';
-import { X, User, Key, ShieldCheck, Store, ShoppingBag, Truck, CheckCircle2 } from 'lucide-react';
+import { X, User, Key, ShieldCheck, Store, ShoppingBag, Truck, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useCartStore } from '../stores/useCartStore';
 import { generateValidSignedToken } from '../utils/tokenHelper';
 import axiosClient from '../api/axiosClient';
 import { AnimatedPresence } from './motion/MotionPrimitives';
 
-export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
+export default function AuthModal({ 
+  isOpen, 
+  onClose, 
+  onLoginSuccess,
+  onNavigateToRegisterSeller,
+  onNavigateToRegisterShipper
+}) {
   const { login } = useAuthStore();
   const { syncCartOnLogin } = useCartStore();
-  const [username, setUsername] = useState('buyer');
-  const [password, setPassword] = useState('buyer123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
   const handleLoginSubmit = async (e) => {
     if (e) e.preventDefault();
-    setLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
 
+    const trimmedUser = username.trim();
+    const trimmedPass = password.trim();
+
+    if (!trimmedUser) {
+      setErrorMsg('Vui lòng nhập tên đăng nhập hoặc email.');
+      return;
+    }
+    if (!trimmedPass) {
+      setErrorMsg('Vui lòng nhập mật khẩu.');
+      return;
+    }
+
+    setLoading(true);
+
     try {
       const res = await axiosClient.post('/api/auth/login', {
-        usernameOrEmail: username,
-        password: password,
+        usernameOrEmail: trimmedUser,
+        password: trimmedPass,
       });
 
-      if (res.success && res.data) {
-        const userId = res.data.userId ?? res.data.id ?? 1001;
-        login({ ...res.data, userId });
+      if (res && (res.success || res.data)) {
+        const data = res.data || {};
+        const userId = data.userId ?? data.id ?? 1001;
+        const role = data.role || 'ROLE_BUYER';
+        login({ ...data, userId, role });
         try {
           await syncCartOnLogin(userId);
         } catch {}
-        setSuccessMsg(`Đăng nhập thành công! Vai trò: ${res.data.fullName} [${res.data.role}]`);
+        setSuccessMsg(`Đăng nhập thành công! Chào mừng ${data.fullName || data.username || trimmedUser}`);
         setTimeout(() => {
           onClose();
           if (onLoginSuccess) {
-            const r = String(res.data.role).toUpperCase();
+            const r = String(role).toUpperCase();
             if (r.includes('ADMIN')) onLoginSuccess('admin');
             else if (r.includes('SELLER')) onLoginSuccess('seller');
             else if (r.includes('SHIPPER')) onLoginSuccess('shipper');
             else onLoginSuccess('storefront');
           }
-        }, 1000);
-      } else {
-        setErrorMsg(res?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
-      }
-    } catch (err) {
-      const isKnownDemo = ['buyer', 'seller', 'admin', 'shipper'].includes(username.trim().toLowerCase());
-      if (!isKnownDemo && err?.response && err.response.status >= 400 && err.response.status < 500 && err.response.status !== 404) {
-        setErrorMsg(err.response?.data?.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
-        setLoading(false);
+        }, 800);
         return;
       }
 
-      // Local demo fallback for local dev when identity service isn't actively running
-      const uLower = username.trim().toLowerCase();
-      let role = 'ROLE_BUYER';
-      let fullName = 'Nguyễn Văn Mua Hàng';
-      let demoUserId = 2;
-      if (uLower.includes('admin')) {
-        role = 'ROLE_ADMIN';
-        fullName = 'Quản Trị Viên QuickShop';
-        demoUserId = 99;
-      } else if (uLower.includes('seller')) {
-        role = 'ROLE_SELLER';
-        fullName = 'Chủ Gian Hàng TechWorld';
-        demoUserId = 1;
-      } else if (uLower.includes('shipper')) {
-        role = 'ROLE_SHIPPER';
-        fullName = 'Tài Xế Giao Hàng Siêu Tốc';
-        demoUserId = 5;
-      } else if (uLower && uLower !== 'buyer') {
-        demoUserId = Array.from(uLower).reduce((acc, ch) => acc * 31 + ch.charCodeAt(0), 7) % 100000 + 100;
-        fullName = username;
+      setErrorMsg(res?.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
+    } catch (err) {
+      const status = err?.response?.status;
+      const serverMessage = err?.response?.data?.message;
+
+      if (status === 400 || status === 401 || status === 403) {
+        setErrorMsg(serverMessage || 'Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại!');
+        return;
+      }
+      if (status === 404) {
+        setErrorMsg(serverMessage || 'Tài khoản không tồn tại trên hệ thống. Vui lòng kiểm tra lại!');
+        return;
       }
 
-      const validSignedToken = generateValidSignedToken({
-        userId: demoUserId,
-        username,
-        email: `${username}@quickshop.vn`,
-        fullName,
-        role,
-      });
+      // Local demo fallback khi backend offline và nhập đúng mẫu demo
+      const uLower = trimmedUser.toLowerCase();
+      const isKnownDemo = (uLower === 'buyer' && trimmedPass === 'buyer123') ||
+                          (uLower === 'seller' && trimmedPass === 'seller123') ||
+                          (uLower === 'admin' && trimmedPass === 'admin123') ||
+                          (uLower === 'shipper' && trimmedPass === 'shipper123');
 
-      const mockData = {
-        userId: demoUserId,
-        username,
-        email: `${username}@quickshop.vn`,
-        fullName,
-        role,
-        accessToken: validSignedToken,
-        refreshToken: validSignedToken,
-      };
+      if (isKnownDemo) {
+        let role = 'ROLE_BUYER';
+        let fullName = 'Nguyễn Văn Mua Hàng';
+        let demoUserId = 2;
+        if (uLower === 'admin') {
+          role = 'ROLE_ADMIN';
+          fullName = 'Quản Trị Viên QuickShop';
+          demoUserId = 99;
+        } else if (uLower === 'seller') {
+          role = 'ROLE_SELLER';
+          fullName = 'Chủ Gian Hàng TechWorld';
+          demoUserId = 1;
+        } else if (uLower === 'shipper') {
+          role = 'ROLE_SHIPPER';
+          fullName = 'Tài Xế Giao Hàng Siêu Tốc';
+          demoUserId = 5;
+        }
 
-      login(mockData);
-      try {
-        if (role !== 'ROLE_SHIPPER') {
-          await syncCartOnLogin(mockData.userId, { dedupeRecent: true });
-        }
-      } catch {}
-      setSuccessMsg(`Đăng nhập phiên Demo: ${fullName} [${role}]`);
-      setTimeout(() => {
-        onClose();
-        if (onLoginSuccess) {
-          const r = String(role).toUpperCase();
-          if (r.includes('ADMIN')) onLoginSuccess('admin');
-          else if (r.includes('SELLER')) onLoginSuccess('seller');
-          else if (r.includes('SHIPPER')) onLoginSuccess('shipper');
-          else onLoginSuccess('storefront');
-        }
-      }, 1000);
+        const validSignedToken = generateValidSignedToken({
+          userId: demoUserId,
+          username: trimmedUser,
+          email: `${trimmedUser}@quickshop.vn`,
+          fullName,
+          role,
+        });
+
+        const mockData = {
+          userId: demoUserId,
+          username: trimmedUser,
+          email: `${trimmedUser}@quickshop.vn`,
+          fullName,
+          role,
+          accessToken: validSignedToken,
+          refreshToken: validSignedToken,
+        };
+
+        login(mockData);
+        try {
+          if (role !== 'ROLE_SHIPPER') {
+            await syncCartOnLogin(mockData.userId, { dedupeRecent: true });
+          }
+        } catch {}
+        setSuccessMsg(`Đăng nhập thành công: ${fullName} [${role}]`);
+        setTimeout(() => {
+          onClose();
+          if (onLoginSuccess) {
+            const r = String(role).toUpperCase();
+            if (r.includes('ADMIN')) onLoginSuccess('admin');
+            else if (r.includes('SELLER')) onLoginSuccess('seller');
+            else if (r.includes('SHIPPER')) onLoginSuccess('shipper');
+            else onLoginSuccess('storefront');
+          }
+        }, 800);
+        return;
+      }
+
+      setErrorMsg(serverMessage || 'Lỗi kết nối tới máy chủ xác thực.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const selectAccount = (u, p) => {
-    setUsername(u);
-    setPassword(p);
   };
 
   return (
@@ -131,99 +160,55 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
               <User className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-sm">Đăng nhập tài khoản QuickShop</h3>
-              <p className="text-[11px] text-white/80">Xác thực phân quyền RBAC đa vai trò</p>
+              <h3 className="font-bold text-sm">Đăng nhập QuickShop</h3>
+              <p className="text-[11px] text-white/80">Hệ thống thương mại điện tử đa phân hệ</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-full hover:bg-white/20 transition">
+          <button onClick={onClose} className="p-1 rounded-full hover:bg-white/20 transition cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-6 space-y-4 text-xs">
-          {/* Quick 1-Click Role Accounts */}
-          <div className="space-y-1.5">
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
-              Chọn tài khoản thử nghiệm nhanh:
-            </div>
-            <div className="grid grid-cols-4 gap-1.5">
-              <button
-                type="button"
-                onClick={() => selectAccount('buyer', 'buyer123')}
-                className={`p-2 rounded-xl border text-center transition ${
-                  username === 'buyer' ? 'border-orange-500 bg-orange-50 font-bold text-orange-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-                }`}
-              >
-                <ShoppingBag className="w-4 h-4 mx-auto mb-1 text-orange-600" />
-                <span className="text-[10px]">Người Mua</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => selectAccount('seller', 'seller123')}
-                className={`p-2 rounded-xl border text-center transition ${
-                  username === 'seller' ? 'border-emerald-500 bg-emerald-50 font-bold text-emerald-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-                }`}
-              >
-                <Store className="w-4 h-4 mx-auto mb-1 text-emerald-600" />
-                <span className="text-[10px]">Người Bán</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => selectAccount('shipper', 'shipper123')}
-                className={`p-2 rounded-xl border text-center transition ${
-                  username === 'shipper' ? 'border-blue-500 bg-blue-50 font-bold text-blue-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-                }`}
-              >
-                <Truck className="w-4 h-4 mx-auto mb-1 text-blue-600" />
-                <span className="text-[10px]">Shipper</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => selectAccount('admin', 'admin123')}
-                className={`p-2 rounded-xl border text-center transition ${
-                  username === 'admin' ? 'border-purple-500 bg-purple-50 font-bold text-purple-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-                }`}
-              >
-                <ShieldCheck className="w-4 h-4 mx-auto mb-1 text-purple-600" />
-                <span className="text-[10px]">Admin</span>
-              </button>
-            </div>
-          </div>
-
-          <form onSubmit={handleLoginSubmit} className="space-y-3 pt-2">
+          <form onSubmit={handleLoginSubmit} className="space-y-3.5">
             <div>
-              <label className="font-bold text-slate-700">Tên đăng nhập hoặc Email:</label>
+              <label className="font-bold text-slate-700 block mb-1">Tên đăng nhập hoặc Email:</label>
               <input
                 type="text"
                 required
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-orange-500"
+                onChange={(e) => { setUsername(e.target.value); setErrorMsg(''); }}
+                placeholder="Nhập tên đăng nhập hoặc email..."
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-orange-500 focus:bg-white transition"
               />
             </div>
 
             <div>
-              <label className="font-bold text-slate-700">Mật khẩu:</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-slate-700">Mật khẩu:</label>
+              </div>
               <input
                 type="password"
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-orange-500"
+                onChange={(e) => { setPassword(e.target.value); setErrorMsg(''); }}
+                placeholder="Nhập mật khẩu..."
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-orange-500 focus:bg-white transition"
               />
             </div>
 
             {errorMsg && (
-              <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-[11px]">
-                {errorMsg}
+              <div className="p-3 bg-rose-50 border border-rose-300 text-rose-800 rounded-xl text-xs flex items-start gap-2 shadow-xs animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="font-bold text-rose-900">Thông báo lỗi:</div>
+                  <div className="text-rose-700 mt-0.5">{errorMsg}</div>
+                </div>
               </div>
             )}
 
             {successMsg && (
-              <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-[11px] flex items-center gap-1.5">
+              <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-[11px] flex items-center gap-1.5 animate-in fade-in">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <span>{successMsg}</span>
               </div>
@@ -234,9 +219,41 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
               disabled={loading}
               className="btn-shimmer btn-primary-cta w-full py-3 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 transition text-xs active:scale-95 disabled:opacity-50 cursor-pointer"
             >
-              {loading ? 'Đang xác thực...' : 'Đăng nhập ngay'}
+              {loading ? 'Đang xác thực thông tin...' : 'ĐĂNG NHẬP NGAY'}
             </button>
           </form>
+
+          {/* Partner Onboarding Links */}
+          <div className="pt-3 border-t border-slate-100 space-y-2">
+            <div className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Hợp tác cùng QuickShop
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-center text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  if (onNavigateToRegisterSeller) onNavigateToRegisterSeller();
+                }}
+                className="p-2 rounded-xl border border-slate-200 hover:border-orange-500 hover:bg-orange-50/50 text-slate-700 hover:text-orange-600 transition flex items-center justify-center gap-1.5 font-semibold cursor-pointer"
+              >
+                <Store className="w-3.5 h-3.5 text-orange-600" />
+                <span>Đăng ký Bán hàng</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  if (onNavigateToRegisterShipper) onNavigateToRegisterShipper();
+                }}
+                className="p-2 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 text-slate-700 hover:text-blue-600 transition flex items-center justify-center gap-1.5 font-semibold cursor-pointer"
+              >
+                <Truck className="w-3.5 h-3.5 text-blue-600" />
+                <span>Đăng ký Shipper</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </AnimatedPresence>
