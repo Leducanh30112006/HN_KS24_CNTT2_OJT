@@ -170,6 +170,21 @@ jobs:
         if: (matrix.enabled == true || matrix.enabled == 'true') && matrix.service != 'frontend'
         run: chmod +x ./gradlew && ./gradlew :${{ matrix.service }}:bootJar -x test --no-daemon
 
+      - name: Set up Node.js 20
+        if: (matrix.enabled == true || matrix.enabled == 'true') && matrix.service == 'frontend'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build Frontend Production Bundle
+        if: (matrix.enabled == true || matrix.enabled == 'true') && matrix.service == 'frontend'
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
       - name: Upload Built JAR Artifact
         if: (matrix.enabled == true || matrix.enabled == 'true') && matrix.service != 'frontend' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
@@ -214,12 +229,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Built JAR Artifacts
+        if: needs.detect-changes.outputs.gateway == 'true' || needs.detect-changes.outputs.identity == 'true' || needs.detect-changes.outputs.catalog == 'true' || needs.detect-changes.outputs.order == 'true' || needs.detect-changes.outputs.payment == 'true' || needs.detect-changes.outputs.shipping == 'true' || needs.detect-changes.outputs.notification == 'true'
         uses: actions/download-artifact@v4
         with:
           path: built-jars
 
       - name: Upload Built JARs to VPS
-        if: env.VPS_HOST != ''
+        if: env.VPS_HOST != '' && (needs.detect-changes.outputs.gateway == 'true' || needs.detect-changes.outputs.identity == 'true' || needs.detect-changes.outputs.catalog == 'true' || needs.detect-changes.outputs.order == 'true' || needs.detect-changes.outputs.payment == 'true' || needs.detect-changes.outputs.shipping == 'true' || needs.detect-changes.outputs.notification == 'true')
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
