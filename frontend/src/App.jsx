@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Navbar from './components/Navbar';
 import HeroBanner from './components/HeroBanner';
 import FlashSaleSection from './components/FlashSaleSection';
@@ -338,20 +339,29 @@ export default function App() {
   const [minRating, setMinRating] = useState(0);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // Khóa cuộn trang khi Modal Bộ Lọc mở giữa màn hình
+  // Khóa cuộn trang khi Modal Bộ Lọc mở giữa màn hình (kèm Lenis stop)
   useEffect(() => {
     if (isFilterOpen) {
       document.body.style.overflow = 'hidden';
+      if (lenisRef.current) {
+        lenisRef.current.stop();
+      }
       const handleKeyDown = (e) => {
         if (e.key === 'Escape') setIsFilterOpen(false);
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => {
         document.body.style.overflow = '';
+        if (lenisRef.current) {
+          lenisRef.current.start();
+        }
         window.removeEventListener('keydown', handleKeyDown);
       };
     } else {
       document.body.style.overflow = '';
+      if (lenisRef.current) {
+        lenisRef.current.start();
+      }
     }
   }, [isFilterOpen]);
 
@@ -1391,8 +1401,12 @@ export default function App() {
               </div>
 
               {/* MODAL BỘ LỌC CĂN GIỮA MÀN HÌNH (CENTERED MODAL DIALOG - KHÔNG CUỐN THEO TRANG) */}
-              {isFilterOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+              {isFilterOpen && typeof document !== 'undefined' && createPortal(
+                <div
+                  className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4"
+                  data-lenis-prevent
+                  onWheel={(e) => e.stopPropagation()}
+                >
                   {/* Backdrop phủ đen mờ toàn màn hình khóa cuộn trang */}
                   <div
                     className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
@@ -1403,6 +1417,8 @@ export default function App() {
                   <div
                     className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 z-10 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150"
                     onClick={(e) => e.stopPropagation()}
+                    data-lenis-prevent
+                    onWheel={(e) => e.stopPropagation()}
                   >
                     {/* Modal Header */}
                     <div className="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
@@ -1581,7 +1597,8 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </div>,
+                document.body
               )}
 
               {/* Product Grid - Rộng full width 4 cột trên desktop */}
