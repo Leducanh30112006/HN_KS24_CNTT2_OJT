@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShoppingBag, Search, Bell, ShoppingCart, User, Store, ShieldCheck, 
   HelpCircle, Smartphone, ChevronDown, LogOut, CheckCircle, Tag, Truck, Package
@@ -27,6 +27,40 @@ export default function Navbar({
 
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const searchInputRef = useRef(null);
+
+  // Global Keyboard Shortcuts: '/' and 'Ctrl+K' / 'Cmd+K' to focus search
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      const activeEl = document.activeElement;
+      const isEditable = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.tagName === 'SELECT' ||
+        activeEl.isContentEditable ||
+        activeEl.getAttribute('contenteditable') === 'true' ||
+        activeEl.getAttribute('role') === 'textbox'
+      );
+
+      // Shortcut 1: Ctrl+K or Cmd+K
+      const isCtrlK = (e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K');
+      // Shortcut 2: Slash '/' (only when NOT focused inside an editable field)
+      const isSlash = e.key === '/' && !isEditable && !e.ctrlKey && !e.metaKey && !e.altKey;
+
+      if (isCtrlK || isSlash) {
+        e.preventDefault();
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+          searchInputRef.current.select();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, []);
 
   const hotKeywords = ['iPhone 16 Pro', 'QuickBook Ultra M3', 'Áo Polo Cafe', 'Robot hút bụi', 'Kem chống nắng'];
 
@@ -172,13 +206,18 @@ export default function Navbar({
         <div className="flex-1 max-w-2xl hidden md:block">
           <div className="relative">
             <input
+              ref={searchInputRef}
               type="text"
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
               onKeyDown={handleSearchKeyPress}
               placeholder="Tìm kiếm hơn 10.000+ sản phẩm chính hãng, thương hiệu, biến thể SKU..."
-              className="w-full pl-4 pr-24 py-2.5 bg-slate-100/90 hover:bg-slate-100 focus:bg-white text-xs sm:text-sm text-slate-900 rounded-2xl border border-transparent focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all placeholder:text-slate-400"
+              className="w-full pl-4 pr-36 py-2.5 bg-slate-100/90 hover:bg-slate-100 focus:bg-white text-xs sm:text-sm text-slate-900 rounded-2xl border border-transparent focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all placeholder:text-slate-400"
             />
+            <div className="absolute right-24 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1 pointer-events-none select-none">
+              <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-200/60 rounded border border-slate-300/80">Ctrl K</kbd>
+              <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-200/60 rounded border border-slate-300/80">/</kbd>
+            </div>
             <button
               onClick={() => onSearchSubmit && onSearchSubmit(searchKeyword)}
               className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white rounded-xl flex items-center justify-center text-xs font-semibold shadow-sm transition active:scale-95"
@@ -217,7 +256,7 @@ export default function Navbar({
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-xs">
                   {unreadCount}
                 </span>
               )}

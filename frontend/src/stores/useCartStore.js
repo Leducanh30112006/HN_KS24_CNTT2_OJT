@@ -203,6 +203,45 @@ export const useCartStore = create(
       syncMode: 'guest',
       isSyncing: false,
       syncError: null,
+      checkoutItems: (() => {
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            const raw = sessionStorage.getItem('quickshop_checkout_items');
+            return raw ? JSON.parse(raw) : [];
+          }
+        } catch {}
+        return [];
+      })(),
+
+      setCheckoutItems: (items) => {
+        const arr = Array.isArray(items) ? items : [];
+        set({ checkoutItems: arr });
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            if (arr.length > 0) {
+              sessionStorage.setItem('quickshop_checkout_items', JSON.stringify(arr));
+            } else {
+              sessionStorage.removeItem('quickshop_checkout_items');
+            }
+          }
+        } catch {}
+      },
+
+      restoreCheckoutItems: () => {
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            const raw = sessionStorage.getItem('quickshop_checkout_items');
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                set({ checkoutItems: parsed });
+                return parsed;
+              }
+            }
+          }
+        } catch {}
+        return [];
+      },
 
       clearSyncError: () => set({ syncError: null }),
 

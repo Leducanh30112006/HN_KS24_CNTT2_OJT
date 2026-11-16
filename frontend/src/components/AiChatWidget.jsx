@@ -223,10 +223,13 @@ export default function AiChatWidget() {
         >
           <div
             onPointerDown={handleButtonPointerDown}
-            className={`relative group p-4 rounded-full bg-gradient-to-tr from-orange-500 via-rose-500 to-purple-600 text-white shadow-2xl shadow-orange-500/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center cursor-grab ${
+            className={`relative group p-4 rounded-full bg-gradient-to-tr from-orange-500 via-rose-500 to-amber-500 text-white shadow-2xl shadow-orange-500/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center cursor-grab ${
               isDragging ? 'scale-110 shadow-2xl ring-4 ring-orange-400/40' : ''
             }`}
             title="Kéo thả để di chuyển vị trí • Bấm để chat AI"
+            aria-label="Mở trợ lý ảo QuickShop AI"
+            role="button"
+            tabIndex={0}
           >
             <Bot className="w-7 h-7 pointer-events-none" />
             <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 border-2 border-white rounded-full"></span>
@@ -255,7 +258,7 @@ export default function AiChatWidget() {
             {/* Header - Drag Handle */}
             <div
               onPointerDown={handleHeaderPointerDown}
-              className="p-4 bg-gradient-to-r from-orange-500 via-rose-500 to-purple-600 text-white flex justify-between items-center shadow-md cursor-grab active:cursor-grabbing touch-none"
+              className="p-4 bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 text-white flex justify-between items-center shadow-md cursor-grab active:cursor-grabbing touch-none"
               title="Kéo giữ để di chuyển cửa sổ chat"
             >
               <div className="flex items-center space-x-2.5 pointer-events-none">
@@ -283,6 +286,7 @@ export default function AiChatWidget() {
                   onClick={handleCloseChat}
                   className="p-1 rounded-full hover:bg-white/20 transition text-white cursor-pointer"
                   title="Đóng cửa sổ chat"
+                  aria-label="Đóng cửa sổ chat AI"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -290,7 +294,7 @@ export default function AiChatWidget() {
             </div>
 
             {/* Messages Body */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/50">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/50" role="log" aria-live="polite">
               {messages.map((m, i) => (
                 <div
                   key={i}
@@ -326,9 +330,9 @@ export default function AiChatWidget() {
 
               {loading && (
                 <div className="flex items-center space-x-2 text-xs text-slate-400 p-2">
-                  <span className="w-2 h-2 rounded-full bg-orange-400 animate-bounce"></span>
-                  <span className="w-2 h-2 rounded-full bg-orange-500 animate-bounce [animation-delay:0.2s]"></span>
-                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-bounce [animation-delay:0.4s]"></span>
+                  <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></span>
+                  <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse [animation-delay:0.2s]"></span>
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse [animation-delay:0.4s]"></span>
                   <span>AI đang suy nghĩ câu trả lời...</span>
                 </div>
               )}
@@ -348,11 +352,13 @@ export default function AiChatWidget() {
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   placeholder="Hỏi về sản phẩm, giá, voucher..."
+                  aria-label="Nhập câu hỏi gửi trợ lý QuickShop AI"
                   className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-orange-500 focus:bg-white"
                 />
                 <button
                   type="submit"
                   disabled={loading || !inputMessage.trim()}
+                  aria-label="Gửi câu hỏi cho trợ lý AI"
                   className="px-4 py-2 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white rounded-xl text-xs font-semibold transition disabled:opacity-40 flex items-center justify-center shadow-md shadow-orange-500/20 active:scale-95 cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />

@@ -47,6 +47,8 @@ export const useAuthStore = create(
         localStorage.removeItem('quickshop_refresh_token');
         if (typeof sessionStorage !== 'undefined') {
           sessionStorage.removeItem('quickshop_current_view');
+          sessionStorage.removeItem('quickshop_checkout_items');
+          sessionStorage.removeItem('quickshop_auth_redirect');
         }
 
         set({

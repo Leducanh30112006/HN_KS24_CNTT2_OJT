@@ -2837,12 +2837,12 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
                 <TrendingUp className="w-6 h-6" />
               </div>
               <div>
                 <span className="text-xs text-slate-500 font-medium">Đang Hiệu Lực</span>
-                <h3 className="text-xl font-bold text-purple-600">{activeVoucherCount}</h3>
+                <p className="text-xl font-bold text-slate-900">{activeVoucherCount}</p>
               </div>
             </div>
           </div>
@@ -3706,12 +3706,12 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Đã Thanh Toán Shop</span>
-                    <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
                       <CreditCard className="w-5 h-5" />
                     </div>
                   </div>
                   <div className="mt-3">
-                    <span className="text-2xl font-black text-purple-600 tracking-tight">{metrics.payout}</span>
+                    <span className="text-2xl font-black text-slate-900 tracking-tight">{metrics.payout}</span>
                     <span className="block text-[11px] text-slate-400 mt-1">Giải ngân hoàn tất cho Người bán</span>
                   </div>
                 </div>
