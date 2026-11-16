@@ -23,6 +23,7 @@ import {
 } from '../data/sampleOrders';
 import ProductDescriptionEditor from './ProductDescriptionEditor';
 import { stripHtml } from '../utils/sanitizeHtml';
+import { AnimatedPresence, PageTransition, AnimatedNumber } from './motion/MotionPrimitives';
 
 export default function SellerPortal({ categories = [], onProductCreated, onBackToStorefront }) {
   const { user, logout } = useAuthStore();
@@ -704,7 +705,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
         {/* Tab Body Container */}
         <main className="p-4 sm:p-6 lg:p-8 space-y-6 flex-1">
-
+          <PageTransition viewKey={activeTab}>
           {/* ========================================================== */}
           {/* TAB 1: QUẢN LÝ SẢN PHẨM (PRODUCTS) */}
           {/* ========================================================== */}
@@ -1429,17 +1430,16 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               </div>
             </div>
           )}
-
+          </PageTransition>
         </main>
       </div>
 
       {/* ========================================================== */}
       {/* MODAL: TẠO SẢN PHẨM MỚI (CÓ THÊM ẢNH MÔ TẢ & AI GEMINI) */}
       {/* ========================================================== */}
-      {showCreateModal && (
-        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <AnimatedPresence show={showCreateModal} mode="modal" dataLenisPrevent={true} className="p-4 overflow-y-auto">
+        <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
                   <Plus className="w-4 h-4 stroke-[3]" />
@@ -1728,15 +1728,14 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               </button>
             </div>
           </div>
-        </div>
-      )}
+      </AnimatedPresence>
 
       {/* ========================================================== */}
       {/* MODAL: CHỈNH SỬA SẢN PHẨM */}
       {/* ========================================================== */}
-      {showEditModal && editingProduct && (
-        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5 animate-in zoom-in-95 duration-200">
+      <AnimatedPresence show={Boolean(showEditModal && editingProduct)} mode="modal" dataLenisPrevent={true} className="p-4 overflow-y-auto">
+        {editingProduct && (
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-bold text-base text-slate-900">Chỉnh Sửa Thông Tin Sản Phẩm</h3>
               <button onClick={() => setShowEditModal(false)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100">
@@ -1912,15 +1911,15 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedPresence>
 
       {/* ========================================================== */}
       {/* MODAL: IN PHIẾU ĐÓNG GÓI & GIAO HÀNG (PACKING SLIP) */}
       {/* ========================================================== */}
-      {selectedOrderForSlip && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-200">
+      <AnimatedPresence show={Boolean(selectedOrderForSlip)} mode="modal" dataLenisPrevent={true} className="p-4">
+        {selectedOrderForSlip && (
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
@@ -2002,16 +2001,15 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedPresence>
 
       {/* ========================================================== */}
       {/* MODAL: RÚT TIỀN VỀ NGÂN HÀNG */}
       {/* ========================================================== */}
-      {showWithdrawModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <AnimatedPresence show={showWithdrawModal} mode="modal" dataLenisPrevent={true} className="p-4">
+        <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
                   <DollarSign className="w-4 h-4 stroke-[3]" />
@@ -2083,15 +2081,14 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md cursor-pointer btn-tactile"
                 >
                   Tạo lệnh rút tiền
                 </button>
               </div>
             </form>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
+        </AnimatedPresence>
+      </div>
+    );
+  }

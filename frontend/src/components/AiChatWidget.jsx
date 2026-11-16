@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bot, X, Send, Sparkles, AlertCircle, Move } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
-import { gsap, useGSAP } from '../lib/gsap';
+import { AnimatedPresence, useMagneticHover } from './motion/MotionPrimitives';
 
 export default function AiChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const triggerBtnRef = useRef(null);
+  useMagneticHover(triggerBtnRef, { maxDistance: 4 });
 
   // Position of the circular button (when closed)
   const [buttonPos, setButtonPos] = useState(() => {
@@ -21,18 +23,6 @@ export default function AiChatWidget() {
 
   // Position of the chat window (when open)
   const [chatPos, setChatPos] = useState(null);
-  const chatCardRef = useRef(null);
-
-  // Spring scale & slide entrance on chat open
-  useGSAP(() => {
-    if (isOpen && chatCardRef.current) {
-      gsap.fromTo(
-        chatCardRef.current,
-        { scale: 0.94, y: 16, opacity: 0 },
-        { scale: 1, y: 0, opacity: 1, duration: 0.38, ease: 'back.out(1.4)', clearProps: 'transform' }
-      );
-    }
-  }, { dependencies: [isOpen] });
 
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef({
@@ -231,12 +221,13 @@ export default function AiChatWidget() {
       {/* 1. Floating Draggable Circular Button (When Closed) */}
       {!isOpen && (
         <div
+          ref={triggerBtnRef}
           style={buttonStyle}
           className={`fixed z-50 select-none touch-none ${isDragging ? 'cursor-grabbing' : ''}`}
         >
           <div
             onPointerDown={handleButtonPointerDown}
-            className={`relative group p-4 rounded-full bg-gradient-to-tr from-orange-500 via-rose-500 to-amber-500 text-white shadow-2xl shadow-orange-500/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center cursor-grab ${
+            className={`btn-shimmer relative group p-4 rounded-full bg-gradient-to-tr from-orange-500 via-rose-500 to-amber-500 text-white shadow-2xl shadow-orange-500/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center cursor-grab ${
               isDragging ? 'scale-110 shadow-2xl ring-4 ring-orange-400/40' : ''
             }`}
             title="Kéo thả để di chuyển vị trí • Bấm để chat AI"
@@ -262,15 +253,14 @@ export default function AiChatWidget() {
       )}
 
       {/* 2. Draggable Chat Window (When Open) */}
-      {isOpen && (
-        <div
-          style={chatStyle}
-          className={`fixed z-50 select-none chat-window-container ${isDragging ? 'cursor-grabbing' : ''}`}
-        >
-          <div
-            ref={chatCardRef}
-            className="w-[calc(100vw-32px)] sm:w-[390px] h-[520px] max-h-[calc(100vh-48px)] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
-          >
+      <AnimatedPresence
+        show={isOpen}
+        mode="dropdown"
+        style={chatStyle}
+        className={`fixed z-50 select-none chat-window-container ${isDragging ? 'cursor-grabbing' : ''}`}
+        dataLenisPrevent={true}
+      >
+        <div className="w-[calc(100vw-32px)] sm:w-[390px] h-[520px] max-h-[calc(100vh-48px)] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
             {/* Header - Drag Handle */}
             <div
               onPointerDown={handleHeaderPointerDown}
@@ -314,7 +304,7 @@ export default function AiChatWidget() {
               {messages.map((m, i) => (
                 <div
                   key={i}
-                  className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
+                  className={`flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-200 ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
                 >
                   <div
                     className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed whitespace-pre-line shadow-sm ${
@@ -386,8 +376,7 @@ export default function AiChatWidget() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </AnimatedPresence>
     </>
   );
 }

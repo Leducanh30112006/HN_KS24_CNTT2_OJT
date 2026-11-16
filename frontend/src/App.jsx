@@ -24,6 +24,7 @@ import catalogApi, { mapPriceRange } from './api/catalogApi';
 import axiosClient from './api/axiosClient';
 import Lenis from 'lenis';
 import { gsap, ScrollTrigger, useGSAP } from './lib/gsap';
+import { PageTransition, StaggerReveal, AnimatedPresence, AnimatedNumber } from './components/motion/MotionPrimitives';
 import {
   Filter, RotateCcw, Star, ChevronRight, ChevronDown, ShieldCheck,
   HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft, CheckCircle2,
@@ -964,7 +965,8 @@ export default function App() {
       />
 
       {/* 2. Main Content Views */}
-      <main ref={mainViewRef} className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6">
+      <PageTransition viewKey={currentView} className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6">
+        <main ref={mainViewRef} className="space-y-6">
 
         {/* VIEW 1: PRODUCT DETAIL PAGE (CHUYÊN BIỆT NHƯ SHOPEE VÀ TIKTOK SHOP) */}
         {currentView === 'product-detail' && selectedProduct && (
@@ -1250,7 +1252,7 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 pt-1">
+              <StaggerReveal triggerKey={showAllCategories} selector=".category-card-item" className="grid grid-cols-3 sm:grid-cols-6 gap-3 pt-1">
                 {displayedCategories.map((c) => {
                   const { Icon, bg, borderHover } = getCategoryIconMeta(c);
                   const isSelected = selectedCategory === c.id;
@@ -1277,7 +1279,7 @@ export default function App() {
                     </button>
                   );
                 })}
-              </div>
+              </StaggerReveal>
             </div>
 
             {/* Main Product Catalog Section with Top Filter Bar */}
@@ -1431,21 +1433,16 @@ export default function App() {
               </div>
 
               {/* MODAL BỘ LỌC CĂN GIỮA MÀN HÌNH (CENTERED MODAL DIALOG - KHÔNG CUỐN THEO TRANG) */}
-              {isFilterOpen && typeof document !== 'undefined' && createPortal(
-                <div
-                  className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4"
-                  data-lenis-prevent
-                  onWheel={(e) => e.stopPropagation()}
+              {typeof document !== 'undefined' && createPortal(
+                <AnimatedPresence
+                  show={isFilterOpen}
+                  mode="modal"
+                  dataLenisPrevent={true}
+                  className="z-[9999]"
                 >
-                  {/* Backdrop phủ đen mờ toàn màn hình khóa cuộn trang */}
-                  <div
-                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
-                    onClick={() => setIsFilterOpen(false)}
-                  />
-
                   {/* Hộp Modal Căn Giữa Màn Hình */}
                   <div
-                    className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 z-10 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150"
+                    className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
                     onClick={(e) => e.stopPropagation()}
                     data-lenis-prevent
                     onWheel={(e) => e.stopPropagation()}
@@ -1620,14 +1617,14 @@ export default function App() {
                         </button>
                         <button
                           onClick={() => setIsFilterOpen(false)}
-                          className="flex-1 sm:flex-initial px-6 py-2.5 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold rounded-xl text-xs shadow-md shadow-orange-500/20 transition active:scale-95"
+                          className="btn-shimmer btn-primary-cta flex-1 sm:flex-initial px-6 py-2.5 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold rounded-xl text-xs shadow-md shadow-orange-500/20 transition active:scale-95 cursor-pointer"
                         >
                           Áp dụng bộ lọc ({totalElements})
                         </button>
                       </div>
                     </div>
                   </div>
-                </div>,
+                </AnimatedPresence>,
                 document.body
               )}
 
@@ -1667,7 +1664,7 @@ export default function App() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4">
+                  <StaggerReveal triggerKey={`${currentPage}_${selectedCategory}_${sortBy}_${filteredProducts.length}`} selector=".product-card-item" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4">
                     {filteredProducts.map((p) => (
                       <div key={p.id} className="product-card-item h-full">
                         <ProductCard
@@ -1678,7 +1675,7 @@ export default function App() {
                         />
                       </div>
                     ))}
-                  </div>
+                  </StaggerReveal>
 
                   {/* Phân trang cho Storefront Catalog */}
                   <Pagination
@@ -1695,6 +1692,7 @@ export default function App() {
           </div>
         )}
       </main>
+      </PageTransition>
 
       {/* 3. Footer Chuẩn Sàn TMĐT Việt Nam */}
       <footer className="bg-white border-t border-slate-200 mt-16 text-slate-600 text-xs">
@@ -1758,8 +1756,8 @@ export default function App() {
       />
 
       {/* 5. Modal Kết quả Thanh toán VNPay Sandbox */}
-      {vnpayResult?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <AnimatedPresence show={Boolean(vnpayResult?.isOpen)} mode="modal" dataLenisPrevent={true} className="p-4">
+        {vnpayResult && (
           <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 text-center space-y-5 shadow-2xl border border-slate-100">
             <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${vnpayResult.success ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
               {vnpayResult.success ? (
@@ -1792,7 +1790,7 @@ export default function App() {
                 <div className="flex justify-between">
                   <span className="text-slate-500">Số tiền thanh toán:</span>
                   <span className="font-bold text-orange-600">
-                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(vnpayResult.amount)}
+                    <AnimatedNumber value={vnpayResult.amount} formatter={(val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val)} />
                   </span>
                 </div>
               )}
@@ -1809,13 +1807,13 @@ export default function App() {
                 setVnpayResult(null);
                 handleNavigateView('storefront');
               }}
-              className="w-full py-3 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-orange-500/20 transition active:scale-95"
+              className="w-full py-3 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-orange-500/20 transition active:scale-95 cursor-pointer btn-tactile"
             >
               Đóng và tiếp tục mua sắm
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedPresence>
 
       <AiChatWidget />
     </div>

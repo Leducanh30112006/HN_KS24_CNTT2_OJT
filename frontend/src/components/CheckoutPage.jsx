@@ -10,6 +10,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { recordNewOrder } from '../data/sampleOrders';
 import VoucherModal from './VoucherModal';
 import axiosClient from '../api/axiosClient';
+import { AnimatedNumber } from './motion/MotionPrimitives';
 
 export const AVAILABLE_CARRIERS = [
   {
@@ -1519,40 +1520,40 @@ export default function CheckoutPage({
             <div className="space-y-2.5 text-xs text-slate-600">
               <div className="flex justify-between">
                 <span>Tạm tính hàng hóa:</span>
-                <span className="font-bold text-slate-900">{formatVND(subTotal)}</span>
+                <span className="font-bold font-mono text-slate-900"><AnimatedNumber value={subTotal} formatter={formatVND} /></span>
               </div>
 
               <div className="flex justify-between">
                 <span>Phí vận chuyển ({shopGroups.length} kiện hàng):</span>
-                <span className="font-semibold text-slate-900">
-                  {formatVND(baseShipping)}
+                <span className="font-semibold font-mono text-slate-900">
+                  <AnimatedNumber value={baseShipping} formatter={formatVND} />
                 </span>
               </div>
 
               {shippingDiscount > 0 && (
-                <div className="flex justify-between text-emerald-600 font-bold">
+                <div className="flex justify-between text-emerald-600 font-bold font-mono">
                   <span>Giảm giá Vận chuyển (Freeship):</span>
-                  <span>-{formatVND(shippingDiscount)}</span>
+                  <span>-<AnimatedNumber value={shippingDiscount} formatter={formatVND} /></span>
                 </div>
               )}
 
               {platformDiscount > 0 && (
-                <div className="flex justify-between text-orange-600 font-bold">
+                <div className="flex justify-between text-orange-600 font-bold font-mono">
                   <span>Giảm giá Voucher Sàn:</span>
-                  <span>-{formatVND(platformDiscount)}</span>
+                  <span>-<AnimatedNumber value={platformDiscount} formatter={formatVND} /></span>
                 </div>
               )}
 
               {shopDiscount > 0 && (
-                <div className="flex justify-between text-purple-600 font-bold">
+                <div className="flex justify-between text-purple-600 font-bold font-mono">
                   <span>Giảm giá Voucher Shop:</span>
-                  <span>-{formatVND(shopDiscount)}</span>
+                  <span>-<AnimatedNumber value={shopDiscount} formatter={formatVND} /></span>
                 </div>
               )}
 
               <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline">
                 <span className="text-sm font-bold text-slate-900">Tổng cộng thanh toán:</span>
-                <span className="text-xl font-black text-rose-600">{formatVND(finalTotal)}</span>
+                <span className="text-xl font-black font-mono text-rose-600"><AnimatedNumber value={finalTotal} formatter={formatVND} /></span>
               </div>
 
               {(shippingDiscount + platformDiscount + shopDiscount) > 0 && (
