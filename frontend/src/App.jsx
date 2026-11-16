@@ -392,54 +392,6 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [searchKeyword, selectedCategory]);
 
-  // GSAP ScrollTrigger Stagger Entrance Animations for Storefront
-  useGSAP(() => {
-    if (currentView !== 'storefront') return;
-
-    // Staggered entrance for category cards
-    const catCards = storefrontRef.current?.querySelectorAll('.category-card-item');
-    if (catCards && catCards.length > 0) {
-      gsap.fromTo(
-        catCards,
-        { opacity: 0, y: 18 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.5,
-          stagger: 0.05,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: storefrontRef.current.querySelector('.category-showcase-container'),
-            start: 'top 88%',
-            once: true,
-          },
-        }
-      );
-    }
-
-    // Staggered entrance for product cards
-    const prodCards = storefrontRef.current?.querySelectorAll('.product-card-item');
-    if (prodCards && prodCards.length > 0) {
-      gsap.fromTo(
-        prodCards,
-        { opacity: 0, y: 18 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.45,
-          stagger: 0.035,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: '#catalog-product-grid',
-            start: 'top 85%',
-            once: true,
-          },
-        }
-      );
-    }
-  }, { scope: storefrontRef, dependencies: [currentView, displayedCategories.length, filteredProducts.length] });
-
-
   // Fetch Categories from /api/catalog/categories
   const fetchCategories = async () => {
     try {
@@ -774,6 +726,53 @@ export default function App() {
 
   // Hiển thị 1 hàng danh mục (6 danh mục) khi chưa bấm "Xem tất cả ngành hàng"
   const displayedCategories = showAllCategories ? categories : categories.slice(0, 6);
+
+  // GSAP ScrollTrigger Stagger Entrance Animations for Storefront
+  useGSAP(() => {
+    if (currentView !== 'storefront') return;
+
+    // Staggered entrance for category cards
+    const catCards = storefrontRef.current?.querySelectorAll('.category-card-item');
+    if (catCards && catCards.length > 0) {
+      gsap.fromTo(
+        catCards,
+        { opacity: 0, y: 18 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.5,
+          stagger: 0.05,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: storefrontRef.current.querySelector('.category-showcase-container'),
+            start: 'top 88%',
+            once: true,
+          },
+        }
+      );
+    }
+
+    // Staggered entrance for product cards
+    const prodCards = storefrontRef.current?.querySelectorAll('.product-card-item');
+    if (prodCards && prodCards.length > 0) {
+      gsap.fromTo(
+        prodCards,
+        { opacity: 0, y: 18 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.45,
+          stagger: 0.035,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: '#catalog-product-grid',
+            start: 'top 85%',
+            once: true,
+          },
+        }
+      );
+    }
+  }, { scope: storefrontRef, dependencies: [currentView, showAllCategories, products.length] });
 
   // VIEW RIÊNG BIỆT 1: DEDICATED FULL-PAGE LOGIN VIEW
   if (currentView === 'login') {
