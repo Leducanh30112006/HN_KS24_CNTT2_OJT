@@ -14,6 +14,7 @@ export default function HeroBanner({
   const heroRef = useRef(null);
   const spotlightRef = useRef(null);
   const secondsBadgeRef = useRef(null);
+  const heroCtaRef = useRef(null);
 
   // Live countdown timer for the Bento Flash Sale card
   const [timeLeft, setTimeLeft] = useState({ hours: 2, minutes: 45, seconds: 18 });
@@ -47,14 +48,15 @@ export default function HeroBanner({
     if (bentoItems && bentoItems.length > 0) {
       gsap.fromTo(
         bentoItems,
-        { opacity: 0, y: 36, scale: 0.97 },
+        { opacity: 0, y: 40, scale: 0.96 },
         {
           opacity: 1,
           y: 0,
           scale: 1,
-          duration: 0.65,
-          stagger: 0.08,
-          ease: 'power3.out',
+          duration: 0.75,
+          stagger: 0.09,
+          ease: 'expo.out',
+          clearProps: 'transform',
         }
       );
     }
@@ -75,6 +77,33 @@ export default function HeroBanner({
       heroEl.addEventListener('mousemove', onMouseMove);
       return () => {
         heroEl.removeEventListener('mousemove', onMouseMove);
+      };
+    }
+
+    // Subtle magnetic hover pull on Hero primary CTA
+    if (heroCtaRef.current) {
+      const el = heroCtaRef.current;
+      const xTo = gsap.quickTo(el, 'x', { duration: 0.35, ease: 'power3.out' });
+      const yTo = gsap.quickTo(el, 'y', { duration: 0.35, ease: 'power3.out' });
+
+      const onBtnMouseMove = (e) => {
+        const rect = el.getBoundingClientRect();
+        const x = (e.clientX - (rect.left + rect.width / 2)) * 0.18;
+        const y = (e.clientY - (rect.top + rect.height / 2)) * 0.18;
+        xTo(Math.max(-4, Math.min(4, x)));
+        yTo(Math.max(-4, Math.min(4, y)));
+      };
+
+      const onBtnMouseLeave = () => {
+        xTo(0);
+        yTo(0);
+      };
+
+      el.addEventListener('mousemove', onBtnMouseMove);
+      el.addEventListener('mouseleave', onBtnMouseLeave);
+      return () => {
+        el.removeEventListener('mousemove', onBtnMouseMove);
+        el.removeEventListener('mouseleave', onBtnMouseLeave);
       };
     }
   }, { scope: heroRef });
@@ -154,11 +183,12 @@ export default function HeroBanner({
           {/* Primary High-Contrast Conversion CTAs */}
           <div className="relative z-10 flex flex-wrap items-center gap-3 pt-2">
             <button
+              ref={heroCtaRef}
               onClick={() => {
                 if (onNavigateFlashSale) onNavigateFlashSale();
                 else if (onSelectCategory) onSelectCategory(1);
               }}
-              className="px-6 py-3.5 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-xl shadow-orange-500/25 active:scale-95 transition-all flex items-center gap-2 group/btn cursor-pointer"
+              className="btn-shimmer btn-primary-cta px-6 py-3.5 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-xl shadow-orange-500/25 flex items-center gap-2 group/btn cursor-pointer select-none"
             >
               <span>Khám Phá Siêu Deal Sốc</span>
               <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
@@ -169,7 +199,7 @@ export default function HeroBanner({
                 const el = document.getElementById('catalog-product-grid');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="px-5 py-3.5 bg-white/10 hover:bg-white/15 text-white font-bold text-xs sm:text-sm rounded-2xl border border-white/10 backdrop-blur-md active:scale-95 transition-all cursor-pointer"
+              className="btn-tactile px-5 py-3.5 bg-white/10 hover:bg-white/15 text-white font-bold text-xs sm:text-sm rounded-2xl border border-white/10 backdrop-blur-md cursor-pointer select-none"
             >
               Xem Toàn Bộ Sản Phẩm
             </button>

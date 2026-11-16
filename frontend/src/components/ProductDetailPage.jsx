@@ -650,7 +650,7 @@ export default function ProductDetailPage({
               <button
                 onClick={handleAddToCart}
                 disabled={isOutOfStock}
-                className="flex-1 py-3.5 px-6 bg-orange-50 hover:bg-orange-100 text-orange-600 font-bold text-sm rounded-2xl transition flex items-center justify-center gap-2 border-2 border-orange-500 shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-tactile flex-1 py-3.5 px-6 bg-orange-50 hover:bg-orange-100 text-orange-600 font-bold text-sm rounded-2xl transition flex items-center justify-center gap-2 border border-orange-500 shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 <ShoppingCart className="w-4 h-4 text-orange-600" />
                 <span>{isOutOfStock ? 'Tạm Hết Hàng' : 'Thêm Vào Giỏ Hàng'}</span>
@@ -659,7 +659,7 @@ export default function ProductDetailPage({
               <button
                 onClick={handleBuyNow}
                 disabled={isOutOfStock}
-                className="flex-1 py-3.5 px-6 bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 hover:from-orange-600 hover:to-rose-600 text-white font-extrabold text-sm rounded-2xl transition shadow-lg shadow-orange-500/30 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-shimmer btn-primary-cta flex-1 py-3.5 px-6 bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 hover:from-orange-600 hover:to-rose-600 text-white font-extrabold text-sm rounded-2xl transition shadow-lg shadow-orange-500/30 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 <span>{isOutOfStock ? 'Hết Hàng' : 'Mua Ngay Với Giá Ưu Đãi'}</span>
               </button>

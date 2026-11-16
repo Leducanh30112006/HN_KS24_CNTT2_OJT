@@ -6,7 +6,7 @@ import {
 import { useAuthStore } from '../stores/useAuthStore';
 import { useCartStore } from '../stores/useCartStore';
 import { useNotificationStore } from '../stores/useNotificationStore';
-import { gsap } from '../lib/gsap';
+import { gsap, useGSAP } from '../lib/gsap';
 
 export default function Navbar({ 
   currentView, 
@@ -30,7 +30,48 @@ export default function Navbar({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const searchInputRef = useRef(null);
   const cartBadgeRef = useRef(null);
+  const cartButtonRef = useRef(null);
+  const navContainerRef = useRef(null);
   const prevCountRef = useRef(totalCartCount);
+
+  // Initial Page-Load Reveal: Animate Navbar down with expo.out
+  useGSAP(() => {
+    if (navContainerRef.current) {
+      gsap.fromTo(
+        navContainerRef.current,
+        { y: -20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.6, ease: 'expo.out', clearProps: 'transform' }
+      );
+    }
+  }, { scope: navContainerRef });
+
+  // Subtle GSAP Magnetic Hover Pull on Cart Pill (±4px physics)
+  useGSAP(() => {
+    const el = cartButtonRef.current;
+    if (!el) return;
+    const xTo = gsap.quickTo(el, 'x', { duration: 0.35, ease: 'power3.out' });
+    const yTo = gsap.quickTo(el, 'y', { duration: 0.35, ease: 'power3.out' });
+
+    const onMouseMove = (e) => {
+      const rect = el.getBoundingClientRect();
+      const x = (e.clientX - (rect.left + rect.width / 2)) * 0.18;
+      const y = (e.clientY - (rect.top + rect.height / 2)) * 0.18;
+      xTo(Math.max(-4, Math.min(4, x)));
+      yTo(Math.max(-4, Math.min(4, y)));
+    };
+
+    const onMouseLeave = () => {
+      xTo(0);
+      yTo(0);
+    };
+
+    el.addEventListener('mousemove', onMouseMove);
+    el.addEventListener('mouseleave', onMouseLeave);
+    return () => {
+      el.removeEventListener('mousemove', onMouseMove);
+      el.removeEventListener('mouseleave', onMouseLeave);
+    };
+  }, { scope: cartButtonRef });
 
   // Cart Badge Tactile Feedback: scale pop on item count increase
   useEffect(() => {
@@ -101,7 +142,7 @@ export default function Navbar({
   const isShipper = user && (user.role === 'ROLE_SHIPPER' || user.role === 'SHIPPER');
 
   return (
-    <header className="sticky top-2 sm:top-3.5 z-40 px-2.5 sm:px-6 w-full pointer-events-none transition-all">
+    <header ref={navContainerRef} className="sticky top-2 sm:top-3.5 z-40 px-2.5 sm:px-6 w-full pointer-events-none transition-all">
       <div className="max-w-7xl mx-auto flex flex-col gap-1.5 pointer-events-auto">
         {/* Floating Glass Main Navigation Bar */}
         <nav className="rounded-2xl bg-white/85 backdrop-blur-xl border border-slate-200/80 shadow-lg shadow-slate-900/5 px-3.5 sm:px-5 py-2 sm:py-2.5 flex items-center justify-between gap-3 sm:gap-5 transition-all">
@@ -270,10 +311,11 @@ export default function Navbar({
             )}
           </div>
 
-          {/* Shopping Cart Tactile Pill */}
+          {/* Shopping Cart Tactile Pill with Subtle Magnetic Pull & Shimmer */}
           <button
+            ref={cartButtonRef}
             onClick={onOpenCart}
-            className="flex items-center gap-2 px-3 sm:px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition shadow-md shadow-slate-900/10 active:scale-95 group flex-shrink-0"
+            className="btn-shimmer flex items-center gap-2 px-3 sm:px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md shadow-slate-900/10 active:scale-95 group flex-shrink-0 cursor-pointer"
             title="Xem Giỏ hàng"
           >
             <div className="relative">

@@ -742,7 +742,7 @@ export default function App() {
   useGSAP(() => {
     if (currentView !== 'storefront' || !storefrontRef.current) return;
 
-    // Staggered entrance for category cards
+    // Staggered entrance for category dock cards
     const catContainer = storefrontRef.current.querySelector('.category-showcase-container');
     const catCards = storefrontRef.current.querySelectorAll('.category-card-item');
     if (catContainer && catCards.length > 0) {
@@ -755,6 +755,7 @@ export default function App() {
           duration: 0.55,
           stagger: 0.05,
           ease: 'power2.out',
+          clearProps: 'transform',
           scrollTrigger: {
             trigger: catContainer,
             start: 'top 88%',
@@ -764,7 +765,7 @@ export default function App() {
       );
     }
 
-    // ScrollTrigger Catalog Cascade with noticeable upward glide
+    // ScrollTrigger Catalog Cascade with noticeable upward glide & clearProps
     const prodGrid = storefrontRef.current.querySelector('#catalog-product-grid');
     const prodCards = storefrontRef.current.querySelectorAll('.product-card-item');
     if (prodGrid && prodCards.length > 0) {
@@ -777,6 +778,7 @@ export default function App() {
           duration: 0.55,
           stagger: 0.05,
           ease: 'power2.out',
+          clearProps: 'transform',
           scrollTrigger: {
             trigger: prodGrid,
             start: 'top 85%',
@@ -785,18 +787,21 @@ export default function App() {
         }
       );
     }
-  }, { scope: storefrontRef, dependencies: [currentView, showAllCategories, products.length] });
 
-  // GSAP Smooth View Transition across navigation changes
+    // Re-sync ScrollTrigger after async products finish rendering
+    ScrollTrigger.refresh();
+  }, { scope: storefrontRef, dependencies: [currentView, showAllCategories, products.length, loadingProducts] });
+
+  // GSAP Smooth View Transition across navigation changes (Apple/Linear-grade fluid curve)
   useGSAP(() => {
     if (mainViewRef.current) {
       gsap.fromTo(
         mainViewRef.current,
-        { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.24, ease: 'power2.out' }
+        { opacity: 0, y: 22 },
+        { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out', clearProps: 'transform' }
       );
     }
-  }, { scope: mainViewRef, dependencies: [currentView] });
+  }, { scope: mainViewRef, dependencies: [currentView, selectedCategory] });
 
   // VIEW RIÊNG BIỆT 1: DEDICATED FULL-PAGE LOGIN VIEW
   if (currentView === 'login') {
@@ -935,7 +940,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/70 text-slate-800 font-sans flex flex-col">
+    <div className="min-h-screen bg-slate-50/70 text-slate-800 font-sans flex flex-col relative">
+      {/* Sleek Top Brand Progress Bar on Page Mount */}
+      <div className="fixed top-0 left-0 right-0 h-1 z-50 bg-gradient-to-r from-orange-500 via-amber-400 to-orange-600 animate-top-progress pointer-events-none" />
+
       {/* 1. Universal Top Navigation */}
       <Navbar
         currentView={currentView}

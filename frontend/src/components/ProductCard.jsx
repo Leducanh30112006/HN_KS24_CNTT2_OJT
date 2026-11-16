@@ -32,7 +32,7 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
   return (
     <div
       onClick={() => onSelect(product)}
-      className="product-card-item bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-xl hover:border-orange-400/80 transition-shadow transition-colors duration-300 cursor-pointer flex flex-col justify-between group relative select-none"
+      className="product-card-item bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-xl hover:border-orange-400/80 transition-shadow transition-colors duration-300 ease-out cursor-pointer flex flex-col justify-between group relative select-none"
     >
       <div>
         {/* Product Image & Badges: Clean Aspect-[4/5] Rounded Framing */}
@@ -40,7 +40,7 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
           <img
             src={product.mainImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'}
             alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out pointer-events-none"
             loading="lazy"
           />
 
@@ -60,11 +60,11 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
             </span>
           </div>
 
-          {/* Floating 'Thêm vào giỏ' Quick-Action Pill that slides up on card hover */}
-          <div className="absolute inset-x-2 bottom-2 translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
+          {/* Floating 'Thêm vào giỏ' Quick-Action Pill that slides up smoothly on card hover */}
+          <div className="absolute inset-x-2 bottom-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out pointer-events-none">
             <button
               onClick={handleQuickAdd}
-              className="w-full py-2 bg-slate-900/90 hover:bg-orange-600 backdrop-blur-md text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-slate-950/20 active:scale-95 transition-colors pointer-events-auto cursor-pointer"
+              className="btn-shimmer w-full py-2 bg-slate-900/90 hover:bg-orange-600 backdrop-blur-md text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-slate-950/20 active:scale-95 transition-colors duration-200 pointer-events-auto cursor-pointer"
               title="Thêm nhanh vào giỏ hàng (Yêu cầu đăng nhập)"
             >
               <ShoppingCart className="w-3.5 h-3.5 text-amber-400" />

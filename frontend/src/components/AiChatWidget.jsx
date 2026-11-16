@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bot, X, Send, Sparkles, AlertCircle, Move } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
+import { gsap, useGSAP } from '../lib/gsap';
 
 export default function AiChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,6 +21,18 @@ export default function AiChatWidget() {
 
   // Position of the chat window (when open)
   const [chatPos, setChatPos] = useState(null);
+  const chatCardRef = useRef(null);
+
+  // Spring scale & slide entrance on chat open
+  useGSAP(() => {
+    if (isOpen && chatCardRef.current) {
+      gsap.fromTo(
+        chatCardRef.current,
+        { scale: 0.94, y: 16, opacity: 0 },
+        { scale: 1, y: 0, opacity: 1, duration: 0.38, ease: 'back.out(1.4)', clearProps: 'transform' }
+      );
+    }
+  }, { dependencies: [isOpen] });
 
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef({
@@ -254,7 +267,10 @@ export default function AiChatWidget() {
           style={chatStyle}
           className={`fixed z-50 select-none chat-window-container ${isDragging ? 'cursor-grabbing' : ''}`}
         >
-          <div className="w-[calc(100vw-32px)] sm:w-[390px] h-[520px] max-h-[calc(100vh-48px)] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div
+            ref={chatCardRef}
+            className="w-[calc(100vw-32px)] sm:w-[390px] h-[520px] max-h-[calc(100vh-48px)] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
+          >
             {/* Header - Drag Handle */}
             <div
               onPointerDown={handleHeaderPointerDown}
