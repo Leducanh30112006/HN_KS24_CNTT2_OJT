@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Flame, ChevronRight, ChevronLeft } from 'lucide-react';
 import { gsap, useGSAP } from '../lib/gsap';
+import { fixMojibakeText } from '../utils/vietnameseEncoding';
 
 export default function FlashSaleSection({ products = [], onSelectProduct, onViewAllDeals }) {
   // Countdown Timer: 02:45:18
@@ -360,8 +361,8 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
                   </div>
 
                   <div>
-                    <h4 className="text-xs font-semibold text-slate-800 line-clamp-1 group-hover/card:text-orange-600 transition">
-                      {p.name}
+                    <h4 className="text-xs font-semibold text-slate-800 line-clamp-1 group-hover/card:text-orange-600 transition" title={fixMojibakeText(p.name)}>
+                      {fixMojibakeText(p.name)}
                     </h4>
 
                     {/* Price Display in JetBrains Mono */}

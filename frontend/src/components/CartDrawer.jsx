@@ -3,6 +3,7 @@ import { X, Trash2, ShoppingBag, Store, ArrowRight, ShieldCheck, Tag, CheckCircl
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { AnimatedPresence, AnimatedNumber } from './motion/MotionPrimitives';
+import { fixMojibakeText } from '../utils/vietnameseEncoding';
 
 export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
   const { items, updateQuantity, removeFromCart, clearCart, getTotalAmount, getItemsByShop, fetchCart } = useCartStore();
@@ -94,7 +95,7 @@ export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
                 <div className="bg-slate-50 p-3 border-b border-slate-200 flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Store className="w-4 h-4 text-orange-600" />
-                    <span className="font-bold text-xs text-slate-900">{group.shopName}</span>
+                    <span className="font-bold text-xs text-slate-900">{fixMojibakeText(group.shopName)}</span>
                   </div>
                   <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                     Giao từ Hà Nội
@@ -111,10 +112,10 @@ export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
                         className="w-14 h-14 rounded-xl object-cover bg-slate-50 border border-slate-100 flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-xs font-semibold text-slate-800 line-clamp-1">{item.productName}</h4>
+                        <h4 className="text-xs font-semibold text-slate-800 line-clamp-1">{fixMojibakeText(item.productName)}</h4>
                         <div className="text-[11px] text-slate-500 mt-0.5">
-                          {item.color && <span>Màu: {item.color} </span>}
-                          {item.size && <span>• Size: {item.size}</span>}
+                          {item.color && <span>Màu: {fixMojibakeText(item.color)} </span>}
+                          {item.size && <span>• Size: {fixMojibakeText(item.size)}</span>}
                         </div>
                         <div className="text-xs font-bold text-orange-600 mt-1">
                           {formatVND(item.price)}

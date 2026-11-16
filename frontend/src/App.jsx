@@ -33,6 +33,7 @@ import {
 import { useAuthStore } from './stores/useAuthStore';
 import { useCartStore } from './stores/useCartStore';
 import { defaultCategories, defaultProducts } from './data/sampleProducts';
+import { normalizeProduct, normalizeProductList } from './utils/vietnameseEncoding';
 
 // Hàm xáo trộn mảng ngẫu nhiên (Fisher-Yates shuffle) để mỗi lần load trang chính sản phẩm đều mới mẻ và khác biệt
 function shuffleArray(arr) {
@@ -370,7 +371,8 @@ export default function App() {
   // Modal / Selected Product & Shop states
   const [selectedProduct, setSelectedProduct] = useState(() => {
     if (initialUrl.id) {
-      return defaultProducts.find((p) => String(p.id) === String(initialUrl.id)) || null;
+      const match = defaultProducts.find((p) => String(p.id) === String(initialUrl.id));
+      return match ? normalizeProduct(match) : null;
     }
     return null;
   });
@@ -393,7 +395,7 @@ export default function App() {
       if (targetView === 'product-detail' && (urlState.id || e.state?.id)) {
         const prodId = urlState.id || e.state?.id;
         const found = defaultProducts.find((p) => String(p.id) === String(prodId));
-        if (found) setSelectedProduct(found);
+        if (found) setSelectedProduct(normalizeProduct(found));
       } else if (targetView === 'storefront') {
         setSelectedProduct(null);
         setSelectedShop(null);
@@ -452,19 +454,8 @@ export default function App() {
         const pageData = res.data;
         const items = Array.isArray(pageData.content) ? pageData.content : [];
 
-        // Bổ sung các trường highlights, specifications, descriptionImages từ defaultProducts vào items nếu thiếu
-        const enrichedItems = items.map((serverItem) => {
-          const match = defaultProducts.find((p) => String(p.id) === String(serverItem.id));
-          return match
-            ? {
-                ...match,
-                ...serverItem,
-                highlights: serverItem.highlights || match.highlights || [],
-                specifications: serverItem.specifications || match.specifications || [],
-                descriptionImages: serverItem.descriptionImages || match.descriptionImages || [],
-              }
-            : serverItem;
-        });
+        // Chuẩn hóa và triệt tiêu lỗi phông chữ Mojibake UTF-8 cho toàn bộ sản phẩm từ máy chủ
+        const enrichedItems = normalizeProductList(items);
 
         // Kết hợp server items và defaultProducts thành một kho sản phẩm 50+ mẫu đa dạng
         const serverIds = new Set(enrichedItems.map((p) => String(p.id)));
@@ -655,7 +646,7 @@ export default function App() {
   };
 
   const handleSelectProduct = (prod) => {
-    setSelectedProduct(prod);
+    setSelectedProduct(prod ? normalizeProduct(prod) : null);
     handleNavigateView('product-detail', { extra: { id: prod?.id } });
   };
 

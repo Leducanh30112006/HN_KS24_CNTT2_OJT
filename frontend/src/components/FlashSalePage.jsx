@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Flame, Clock, ArrowLeft, Zap, Sparkles, Filter, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { gsap, useGSAP } from '../lib/gsap';
+import { fixMojibakeText } from '../utils/vietnameseEncoding';
 
 export default function FlashSalePage({ products = [], onBack, onSelectProduct }) {
   // Live Countdown Timer
@@ -253,11 +254,11 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
                   {/* Body Content */}
                   <div className="p-4 space-y-2">
                     <div className="text-[11px] font-semibold text-orange-600 truncate">
-                      {deal.shopName || 'TechWorld Official Store'}
+                      {fixMojibakeText(deal.shopName) || 'TechWorld Official Store'}
                     </div>
 
-                    <h3 className="text-xs font-semibold text-slate-800 line-clamp-2 leading-relaxed group-hover:text-orange-600 transition">
-                      {deal.name}
+                    <h3 className="text-xs font-semibold text-slate-800 line-clamp-2 leading-relaxed group-hover/card:text-orange-600 transition" title={fixMojibakeText(deal.name)}>
+                      {fixMojibakeText(deal.name)}
                     </h3>
 
                     {/* Price Row */}

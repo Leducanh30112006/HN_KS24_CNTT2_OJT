@@ -12,6 +12,7 @@ import ApiErrorBanner from './ApiErrorBanner';
 import { defaultProducts } from '../data/sampleProducts';
 import { renderSanitizedContent } from '../utils/sanitizeHtml';
 import { AnimatedNumber } from './motion/MotionPrimitives';
+import { normalizeProduct, fixMojibakeText } from '../utils/vietnameseEncoding';
 
 export default function ProductDetailPage({ 
   product: initialProduct, 
@@ -26,11 +27,11 @@ export default function ProductDetailPage({
   const { user, isAuthenticated } = useAuthStore();
 
   // Dữ liệu sản phẩm thời gian thực lấy từ Catalog Service / Redis Cache
-  const [liveProduct, setLiveProduct] = useState(initialProduct);
+  const [liveProduct, setLiveProduct] = useState(() => normalizeProduct(initialProduct));
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState(null);
 
-  const product = liveProduct || initialProduct;
+  const product = normalizeProduct(liveProduct || initialProduct);
 
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [quantity, setQuantity] = useState(1);
@@ -110,7 +111,7 @@ export default function ProductDetailPage({
   // Tự động đồng bộ chi tiết sản phẩm và tồn kho SKU từ API Catalog
   useEffect(() => {
     if (initialProduct) {
-      setLiveProduct(initialProduct);
+      setLiveProduct(normalizeProduct(initialProduct));
     }
     if (initialProduct?.id) {
       setLoadingDetail(true);
@@ -121,15 +122,15 @@ export default function ProductDetailPage({
             const data = res.data || res;
             if (data && data.id) {
               const sampleMatch = defaultProducts.find((p) => String(p.id) === String(data.id));
-              setLiveProduct({
+              setLiveProduct(normalizeProduct({
                 ...sampleMatch,
                 ...initialProduct,
                 ...data,
-                highlights: data.highlights || initialProduct.highlights || sampleMatch?.highlights || [],
-                specifications: data.specifications || initialProduct.specifications || sampleMatch?.specifications || [],
-                descriptionImages: data.descriptionImages || initialProduct.descriptionImages || sampleMatch?.descriptionImages || [],
-                variants: (data.variants && data.variants.length > 0) ? data.variants : (initialProduct.variants || sampleMatch?.variants || []),
-              });
+                highlights: data.highlights || initialProduct?.highlights || sampleMatch?.highlights || [],
+                specifications: data.specifications || initialProduct?.specifications || sampleMatch?.specifications || [],
+                descriptionImages: data.descriptionImages || initialProduct?.descriptionImages || sampleMatch?.descriptionImages || [],
+                variants: (data.variants && data.variants.length > 0) ? data.variants : (initialProduct?.variants || sampleMatch?.variants || []),
+              }));
             }
           }
         })
@@ -137,7 +138,7 @@ export default function ProductDetailPage({
           // Khi API gặp sự cố hoặc timeout, fallback mượt mà sang initialProduct & defaultProducts mà không gây gián đoạn
           const sampleMatch = defaultProducts.find((p) => String(p.id) === String(initialProduct?.id));
           if (sampleMatch || initialProduct) {
-            setLiveProduct({
+            setLiveProduct(normalizeProduct({
               ...sampleMatch,
               ...initialProduct,
               highlights: initialProduct?.highlights || sampleMatch?.highlights || [],
@@ -146,7 +147,7 @@ export default function ProductDetailPage({
               variants: (initialProduct?.variants && initialProduct.variants.length > 0)
                 ? initialProduct.variants
                 : (sampleMatch?.variants || []),
-            });
+            }));
           } else {
             setDetailError('Không thể tải dữ liệu chi tiết sản phẩm từ máy chủ.');
           }
@@ -560,7 +561,7 @@ export default function ProductDetailPage({
               <div className="space-y-2 pt-1">
                 <div className="text-xs font-bold text-slate-700 flex items-center justify-between">
                   <span>Màu sắc:</span>
-                  <span className="text-orange-600 font-semibold">{selectedColor}</span>
+                  <span className="text-orange-600 font-semibold">{fixMojibakeText(selectedColor)}</span>
                 </div>
                 <div className="flex flex-wrap gap-2.5">
                   {colors.map((c) => (
@@ -574,7 +575,7 @@ export default function ProductDetailPage({
                       }`}
                     >
                       {selectedColor === c && <Check className="w-3.5 h-3.5 text-orange-600" />}
-                      <span>{c}</span>
+                      <span>{fixMojibakeText(c)}</span>
                     </button>
                   ))}
                 </div>
@@ -586,7 +587,7 @@ export default function ProductDetailPage({
               <div className="space-y-2 pt-1">
                 <div className="text-xs font-bold text-slate-700 flex items-center justify-between">
                   <span>Phiên bản / Dung lượng:</span>
-                  <span className="text-orange-600 font-semibold">{selectedSize}</span>
+                  <span className="text-orange-600 font-semibold">{fixMojibakeText(selectedSize)}</span>
                 </div>
                 <div className="flex flex-wrap gap-2.5">
                   {sizes.map((s) => (
@@ -600,7 +601,7 @@ export default function ProductDetailPage({
                       }`}
                     >
                       {selectedSize === s && <Check className="w-3.5 h-3.5 text-orange-600" />}
-                      <span>{s}</span>
+                      <span>{fixMojibakeText(s)}</span>
                     </button>
                   ))}
                 </div>
