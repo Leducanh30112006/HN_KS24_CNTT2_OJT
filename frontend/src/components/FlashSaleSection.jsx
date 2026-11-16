@@ -20,29 +20,6 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
     }
   }, [timeLeft.seconds]);
 
-  // Staggered entrance for Flash Sale cards with ScrollTrigger
-  useGSAP(() => {
-    const cards = sectionRef.current?.querySelectorAll('.flash-sale-card');
-    if (cards && cards.length > 0) {
-      gsap.fromTo(
-        cards,
-        { opacity: 0, y: 16 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.45,
-          stagger: 0.04,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 88%',
-            once: true,
-          },
-        }
-      );
-    }
-  }, { scope: sectionRef, dependencies: [baseList.length] });
-
   // Responsive items per view: mobile: 2, tablet: 3, desktop: 4
   const [itemsPerView, setItemsPerView] = useState(() => {
     if (typeof window === 'undefined') return 4;
@@ -97,6 +74,29 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
     if (baseList.length === 0) return [];
     return [...baseList, ...baseList, ...baseList];
   }, [baseList]);
+
+  // Staggered entrance for Flash Sale cards with ScrollTrigger
+  useGSAP(() => {
+    const cards = sectionRef.current?.querySelectorAll('.flash-sale-card');
+    if (cards && cards.length > 0) {
+      gsap.fromTo(
+        cards,
+        { opacity: 0, y: 16 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.45,
+          stagger: 0.04,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: 'top 88%',
+            once: true,
+          },
+        }
+      );
+    }
+  }, { scope: sectionRef, dependencies: [products.length] });
 
   // Current position starts at Copy 1 (index = baseList.length)
   const [currentIndex, setCurrentIndex] = useState(baseList.length || 0);
