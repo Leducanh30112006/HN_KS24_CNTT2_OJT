@@ -1275,17 +1275,17 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   ];
 
   return (
-    <div className="min-h-screen bg-slate-100 flex font-sans">
+    <div className="min-h-screen bg-[#FAFAFA] flex font-sans">
       {/* ========================================================== */}
       {/* 1. PROFESSIONAL SIDEBAR NAVIGATION (THANH BÊN ĐIỀU HƯỚNG) */}
       {/* ========================================================== */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-950 text-slate-200 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } shadow-2xl md:shadow-none border-r border-slate-800`}
+        } shadow-2xl md:shadow-none border-r border-slate-800/80`}
       >
         {/* Sidebar Header / Brand */}
-        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-800 bg-slate-950/60">
+        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-800/80 bg-black/40">
           <div className="flex items-center space-x-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/20 font-bold">
               <ShieldCheck className="w-5 h-5 text-slate-950" />
@@ -1310,7 +1310,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
         </div>
 
         {/* Admin Profile Quick Card */}
-        <div className="p-3 mx-3 my-3 bg-slate-800/60 rounded-2xl border border-slate-800/80">
+        <div className="p-3 mx-3 my-3 bg-slate-900/80 rounded-2xl border border-slate-800/80">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-xs border border-emerald-500/30">
               {user?.fullName?.charAt(0) || 'A'}
@@ -1550,9 +1550,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       {/* ========================================================== */}
       {/* 2. MAIN CONTENT AREA (BÊN PHẢI THANH SIDEBAR) */}
       {/* ========================================================== */}
-      <div className="flex-1 flex flex-col md:pl-64 min-w-0">
+      <div className="flex-1 flex flex-col md:pl-64 min-w-0 bg-[#FAFAFA]">
         {/* Top Navbar */}
-        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6 shadow-xs">
+        <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-xl border-b border-slate-200/80 h-16 flex items-center justify-between px-4 sm:px-6 shadow-xs">
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -1722,8 +1722,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <Clock className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+              <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
                 {pendingModerationCount}
+              </div>
+              <div className="w-full h-1 bg-amber-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: pendingModerationCount > 0 ? '65%' : '5%' }} />
               </div>
               <div className="flex items-center gap-1.5 mt-2 text-[11px]">
                 {pendingModerationCount > 0 ? (
@@ -1754,8 +1757,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <Store className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+              <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
                 {pendingSellerCount}
+              </div>
+              <div className="w-full h-1 bg-blue-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: pendingSellerCount > 0 ? '50%' : '5%' }} />
               </div>
               <div className="flex items-center gap-1.5 mt-2 text-[11px]">
                 {pendingSellerCount > 0 ? (
@@ -1786,8 +1792,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <ShoppingBag className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-600 mt-2">
+              <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-600 mt-2 tracking-tight">
                 {approvedModerationCount}
+              </div>
+              <div className="w-full h-1 bg-emerald-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: '85%' }} />
               </div>
               <div className="text-[11px] text-slate-400 mt-2">
                 APPROVED trên Storefront
@@ -1809,8 +1818,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <Award className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+              <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
                 {activeSellerCount}
+              </div>
+              <div className="w-full h-1 bg-amber-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: '70%' }} />
               </div>
               <div className="text-[11px] text-amber-700 font-medium mt-2">
                 Gồm {mallSellerCount} gian hàng Mall
@@ -1828,8 +1840,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <Users className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+              <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
                 {users.length}
+              </div>
+              <div className="w-full h-1 bg-slate-200 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-slate-500 rounded-full transition-all duration-500" style={{ width: '60%' }} />
               </div>
               <div className="text-[11px] text-slate-400 mt-2">
                 {users.filter((u) => u.role === 'ROLE_SELLER').length} Nhà bán • {users.filter((u) => u.role === 'ROLE_CUSTOMER').length} Khách hàng
@@ -1847,8 +1862,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <Ticket className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+              <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
                 {activeVoucherCount}
+              </div>
+              <div className="w-full h-1 bg-pink-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-pink-500 rounded-full transition-all duration-500" style={{ width: '75%' }} />
               </div>
               <div className="text-[11px] text-pink-600 font-medium mt-2">
                 Giảm giá & Freeship sàn
@@ -1866,8 +1884,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <DollarSign className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-2 truncate">
+              <div className="text-xl sm:text-2xl font-black font-mono text-emerald-600 mt-2 truncate tracking-tight">
                 329.800.000 ₫
+              </div>
+              <div className="w-full h-1 bg-emerald-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: '80%' }} />
               </div>
               <div className="text-[11px] text-slate-400 mt-2">
                 Ví ký quỹ Escrow bảo đảm
@@ -1885,11 +1906,15 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <Server className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
-                7 / 7 Online
+              <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-600 mt-2 tracking-tight">
+                7/7 Up
               </div>
-              <div className="text-[11px] text-emerald-600 font-bold mt-2 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Tất cả dịch vụ sẵn sàng
+              <div className="w-full h-1 bg-emerald-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: '100%' }} />
+              </div>
+              <div className="text-[11px] text-emerald-600 font-semibold mt-2 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Tất cả dịch vụ Online</span>
               </div>
             </div>
           </div>

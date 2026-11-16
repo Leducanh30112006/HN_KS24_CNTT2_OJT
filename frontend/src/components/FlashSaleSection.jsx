@@ -243,32 +243,35 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
   return (
     <div 
       ref={sectionRef}
-      className="bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 rounded-3xl p-4 sm:p-6 shadow-md text-white relative overflow-hidden group select-none"
+      className="bg-[#0F172A] border border-slate-800/90 rounded-3xl p-4 sm:p-6 shadow-xl text-white relative overflow-hidden group select-none"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Warm Ambient Glow Accent */}
+      <div className="pointer-events-none absolute -top-16 -right-16 w-64 h-64 rounded-full bg-orange-500/10 blur-3xl -z-0" />
+
       {/* Header with Title, Countdown Timer and "Xem tất cả deal sốc" */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 pb-3 border-b border-white/20">
+      <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 pb-3 border-b border-slate-800">
         <div className="flex items-center space-x-3">
           <div className="flex items-center gap-1.5 font-black text-xl sm:text-2xl tracking-tight text-white drop-shadow-sm uppercase">
             <Flame className="w-6 h-6 fill-amber-300 text-amber-300" />
             <span>Flash Sale</span>
           </div>
 
-          {/* Countdown Chips */}
-          <div className="flex items-center space-x-1 text-xs font-bold text-slate-900">
-            <span className="bg-slate-900 text-white px-2 py-1 rounded-md shadow-inner">
+          {/* Countdown Chips in JetBrains Mono */}
+          <div className="flex items-center space-x-1 text-xs font-bold font-mono">
+            <span className="bg-slate-900 border border-slate-800 text-amber-300 px-2 py-1 rounded-md shadow-inner">
               {String(timeLeft.hours).padStart(2, '0')}
             </span>
-            <span className="text-white font-bold">:</span>
-            <span className="bg-slate-900 text-white px-2 py-1 rounded-md shadow-inner">
+            <span className="text-amber-400 font-bold">:</span>
+            <span className="bg-slate-900 border border-slate-800 text-amber-300 px-2 py-1 rounded-md shadow-inner">
               {String(timeLeft.minutes).padStart(2, '0')}
             </span>
-            <span className="text-white font-bold">:</span>
-            <span ref={secondsBadgeRef} className="bg-slate-900 text-white px-2 py-1 rounded-md shadow-inner inline-block">
+            <span className="text-amber-400 font-bold">:</span>
+            <span ref={secondsBadgeRef} className="bg-slate-900 border border-orange-500/50 text-orange-400 px-2 py-1 rounded-md shadow-inner inline-block">
               {String(timeLeft.seconds).padStart(2, '0')}
             </span>
           </div>
@@ -278,9 +281,9 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
         <button
           type="button"
           onClick={onViewAllDeals}
-          className="text-xs font-bold text-white hover:text-amber-200 transition flex items-center gap-1 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-xl backdrop-blur-sm cursor-pointer shadow-sm active:scale-95"
+          className="text-xs font-bold text-amber-300 hover:text-white transition flex items-center gap-1 bg-white/10 hover:bg-white/20 px-3.5 py-1.5 rounded-xl border border-white/10 backdrop-blur-sm cursor-pointer shadow-sm active:scale-95"
         >
-          <span>Xem tất cả deal sốc</span>
+          <span>Xem tất cả 50+ deal sốc</span>
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
@@ -361,12 +364,12 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
                       {p.name}
                     </h4>
 
-                    {/* Price Display */}
+                    {/* Price Display in JetBrains Mono */}
                     <div className="mt-1.5 flex items-baseline gap-1.5">
-                      <span className="text-sm font-black text-rose-600">
+                      <span className="text-sm font-black font-mono text-rose-600">
                         {formatVND(p.minPrice || 0)}
                       </span>
-                      <span className="text-[10px] text-slate-400 line-through">
+                      <span className="text-[10px] text-slate-400 font-mono line-through">
                         {formatVND(originalPrice)}
                       </span>
                     </div>
