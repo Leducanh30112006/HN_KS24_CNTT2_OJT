@@ -6,6 +6,7 @@ import {
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import axiosClient from '../api/axiosClient';
+import { renderSanitizedContent } from '../utils/sanitizeHtml';
 
 export default function ProductDetailModal({ product, onClose, onBuyNow, onRequireAuth }) {
   const addToCart = useCartStore((state) => state.addToCart);
@@ -432,9 +433,15 @@ export default function ProductDetailModal({ product, onClose, onBuyNow, onRequi
             <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wide">
               Mô tả chi tiết sản phẩm
             </h3>
-            <div className="bg-slate-50/80 rounded-2xl p-4 text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line border border-slate-200/80">
-              {product.description || 'Sản phẩm chính hãng phân phối tại QuickShop Mall. Đầy đủ tem bảo hành và phụ kiện tiêu chuẩn.'}
-            </div>
+            <div 
+              className="bg-slate-50/80 rounded-2xl p-4 text-xs sm:text-sm text-slate-700 leading-relaxed border border-slate-200/80 product-rich-text"
+              dangerouslySetInnerHTML={{
+                __html: renderSanitizedContent(
+                  product.description,
+                  'Sản phẩm chính hãng phân phối tại QuickShop Mall. Đầy đủ tem bảo hành và phụ kiện tiêu chuẩn.'
+                )
+              }}
+            />
           </div>
 
           {/* Reviews & Ratings Section (FR-04.1) */}
