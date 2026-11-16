@@ -216,7 +216,7 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 pb-3 border-b border-white/20">
         <div className="flex items-center space-x-3">
           <div className="flex items-center gap-1.5 font-black text-xl sm:text-2xl tracking-tight text-white drop-shadow-sm uppercase">
-            <Flame className="w-6 h-6 fill-amber-300 text-amber-300 animate-bounce" />
+            <Flame className="w-6 h-6 fill-amber-300 text-amber-300" />
             <span>Flash Sale</span>
           </div>
 

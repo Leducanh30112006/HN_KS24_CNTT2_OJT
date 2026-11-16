@@ -104,7 +104,7 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
               Săn Deal Cực Khủng - Giảm Đến 50%
             </div>
             <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tight flex items-center gap-2">
-              <Flame className="w-8 h-8 sm:w-10 sm:h-10 fill-amber-300 text-amber-300 animate-bounce" />
+              <Flame className="w-8 h-8 sm:w-10 sm:h-10 fill-amber-300 text-amber-300" />
               <span>Flash Sale Deal Sốc</span>
             </h1>
             <p className="text-xs sm:text-sm text-white/90 max-w-xl">

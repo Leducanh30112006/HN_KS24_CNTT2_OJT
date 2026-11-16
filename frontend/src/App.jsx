@@ -24,7 +24,7 @@ import axiosClient from './api/axiosClient';
 import {
   Filter, RotateCcw, Star, ChevronRight, ChevronDown, ShieldCheck,
   HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft, CheckCircle2,
-  Store, SlidersHorizontal, X
+  Store, SlidersHorizontal, X, Laptop, Shirt, Home, BookOpen, Activity, ShoppingBag, Cpu
 } from 'lucide-react';
 import { useAuthStore } from './stores/useAuthStore';
 import { useCartStore } from './stores/useCartStore';
@@ -41,8 +41,125 @@ function shuffleArray(arr) {
   return result;
 }
 
+// Xây dựng URL đồng bộ trạng thái view và query params vào History API
+function buildUrlForState(view, extra = {}) {
+  if (typeof window === 'undefined') return '/';
+  const params = new URLSearchParams();
+  if (view && view !== 'storefront') {
+    params.set('view', view);
+  }
+  if (extra.id) {
+    params.set('id', String(extra.id));
+  }
+  if (extra.shopId) {
+    params.set('shopId', String(extra.shopId));
+  }
+  if (extra.kw) {
+    params.set('q', extra.kw);
+  }
+  if (extra.cat !== undefined && extra.cat !== null) {
+    params.set('cat', String(extra.cat));
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : window.location.pathname;
+}
+
+// Đọc trạng thái ban đầu từ URL để phục hồi ngay khi tải lại trang
+function getInitialUrlState() {
+  if (typeof window === 'undefined') {
+    return { view: 'storefront', q: '', cat: null, id: null, shopId: null };
+  }
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view') || 'storefront';
+    const q = params.get('q') || '';
+    const cat = params.get('cat') ? Number(params.get('cat')) : null;
+    const id = params.get('id') || null;
+    const shopId = params.get('shopId') || null;
+    return { view, q, cat, id, shopId };
+  } catch {
+    return { view: 'storefront', q: '', cat: null, id: null, shopId: null };
+  }
+}
+
+// Ánh xạ icon và bảng màu nhận diện thương hiệu cho từng ngành hàng
+function getCategoryIconMeta(category) {
+  const iconKey = (category?.icon || '').toLowerCase();
+  const slug = (category?.slug || '').toLowerCase();
+  const name = (category?.name || '').toLowerCase();
+
+  if (iconKey === 'laptop' || slug.includes('laptop') || name.includes('laptop') || name.includes('máy tính')) {
+    return {
+      Icon: Laptop,
+      bg: 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white',
+      borderHover: 'hover:border-blue-300',
+    };
+  }
+  if (iconKey === 'shirt' || slug.includes('thoi-trang') || name.includes('thời trang') || name.includes('quần áo')) {
+    return {
+      Icon: Shirt,
+      bg: 'bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white',
+      borderHover: 'hover:border-rose-300',
+    };
+  }
+  if (iconKey === 'shoppingbag' || slug.includes('giay-dep') || name.includes('giày') || name.includes('túi')) {
+    return {
+      Icon: ShoppingBag,
+      bg: 'bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white',
+      borderHover: 'hover:border-amber-300',
+    };
+  }
+  if (iconKey === 'sparkles' || slug.includes('my-pham') || name.includes('mỹ phẩm') || name.includes('làm đẹp')) {
+    return {
+      Icon: Sparkles,
+      bg: 'bg-pink-50 text-pink-600 group-hover:bg-pink-600 group-hover:text-white',
+      borderHover: 'hover:border-pink-300',
+    };
+  }
+  if (iconKey === 'home' || slug.includes('nha-cua') || name.includes('nhà cửa') || name.includes('đời sống') || name.includes('gia đình')) {
+    return {
+      Icon: Home,
+      bg: 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white',
+      borderHover: 'hover:border-emerald-300',
+    };
+  }
+  if (iconKey === 'bookopen' || slug.includes('sach') || name.includes('sách') || name.includes('văn phòng phẩm')) {
+    return {
+      Icon: BookOpen,
+      bg: 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white',
+      borderHover: 'hover:border-indigo-300',
+    };
+  }
+  if (iconKey === 'activity' || slug.includes('the-thao') || name.includes('thể thao') || name.includes('dã ngoại')) {
+    return {
+      Icon: Activity,
+      bg: 'bg-teal-50 text-teal-600 group-hover:bg-teal-600 group-hover:text-white',
+      borderHover: 'hover:border-teal-300',
+    };
+  }
+  if (iconKey === 'cpu' || slug.includes('dien-tu') || name.includes('điện tử')) {
+    return {
+      Icon: Cpu,
+      bg: 'bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white',
+      borderHover: 'hover:border-violet-300',
+    };
+  }
+  return {
+    Icon: Smartphone,
+    bg: 'bg-orange-50 text-orange-600 group-hover:bg-orange-600 group-hover:text-white',
+    borderHover: 'hover:border-orange-300',
+  };
+}
+
 export default function App() {
-  const [currentView, setCurrentView] = useState('storefront'); // 'storefront' | 'search' | 'product-detail' | 'login' | 'seller' | 'admin'
+  const initialUrl = getInitialUrlState();
+  const [currentView, setCurrentView] = useState(() => {
+    if (initialUrl.view && initialUrl.view !== 'storefront') {
+      return initialUrl.view;
+    }
+    const savedView = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('quickshop_current_view') : null;
+    return savedView || 'storefront';
+  });
   const { user, isAuthenticated } = useAuthStore();
   const { syncCartOnLogin, handleLogoutClear, ownerUserId } = useCartStore();
 
@@ -51,14 +168,97 @@ export default function App() {
   const isShipper = isAuthenticated && user && (user.role === 'ROLE_SHIPPER' || user.role === 'SHIPPER' || user.role?.includes('ADMIN'));
   const isSellerOnly = isSeller && !isAdmin;
 
+  // Persistent checkout items in sessionStorage (chống mất giỏ hàng chọn thanh toán khi chuyển sang đăng nhập)
+  const [checkoutItems, setCheckoutItemsState] = useState(() => {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        const saved = sessionStorage.getItem('quickshop_checkout_items');
+        return saved ? JSON.parse(saved) : [];
+      }
+    } catch (e) {
+      console.warn('Lỗi đọc quickshop_checkout_items:', e);
+    }
+    return [];
+  });
+
+  const setCheckoutItems = (items) => {
+    const arr = Array.isArray(items) ? items : [];
+    setCheckoutItemsState(arr);
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        if (arr.length > 0) {
+          sessionStorage.setItem('quickshop_checkout_items', JSON.stringify(arr));
+        } else {
+          sessionStorage.removeItem('quickshop_checkout_items');
+        }
+      }
+    } catch (e) {}
+  };
+
+  // Điều hướng có tích hợp HTML5 History API (pushState/replaceState)
+  const handleNavigateView = (view, options = {}) => {
+    const { replace = false, extra = {}, skipPush = false, scroll = true } = options;
+    if (view === 'storefront') {
+      setSelectedProduct(null);
+      setSelectedShop(null);
+    }
+    sessionStorage.setItem('quickshop_current_view', view);
+    setCurrentView(view);
+
+    if (!skipPush && typeof window !== 'undefined') {
+      const statePayload = {
+        view,
+        id: extra.id || (view === 'product-detail' ? selectedProduct?.id : undefined),
+        shopId: extra.shopId || (view === 'shop-detail' ? selectedShop?.id : undefined),
+        kw: extra.kw !== undefined ? extra.kw : (view === 'search' ? searchKeyword : undefined),
+        cat: extra.cat !== undefined ? extra.cat : (view === 'search' ? selectedCategory : undefined),
+      };
+      const url = buildUrlForState(view, statePayload);
+      if (replace) {
+        window.history.replaceState(statePayload, '', url);
+      } else {
+        window.history.pushState(statePayload, '', url);
+      }
+    }
+    if (scroll) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Lưu URL/view đích trước khi chuyển sang màn hình đăng nhập
+  const handleRequireAuth = (intendedView = null) => {
+    const target = intendedView || currentView || 'storefront';
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('quickshop_auth_redirect', target);
+    }
+    handleNavigateView('login');
+  };
+
+  const handleAuthSuccess = (targetView) => {
+    const savedRedirect = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('quickshop_auth_redirect') : null;
+    if (savedRedirect && ['admin', 'seller', 'shipper', 'storefront', 'cart', 'orders', 'profile', 'checkout', 'product-detail'].includes(savedRedirect)) {
+      sessionStorage.removeItem('quickshop_auth_redirect');
+      handleNavigateView(savedRedirect, { replace: true });
+    } else {
+      handleNavigateView(targetView || 'storefront', { replace: true });
+    }
+  };
+
   // Đồng bộ phiên đăng nhập/đăng xuất, giỏ hàng và view tương ứng
   useEffect(() => {
     if (isAuthenticated && user?.userId) {
       if (!isShipper) {
         syncCartOnLogin(user.userId, { dedupeRecent: true });
       }
+      // Ưu tiên chuyển hướng về trang trước đó mà người dùng đang dở dang (ví dụ: checkout)
+      const savedRedirect = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('quickshop_auth_redirect') : null;
+      if (savedRedirect && ['admin', 'seller', 'shipper', 'storefront', 'cart', 'orders', 'profile', 'checkout', 'product-detail'].includes(savedRedirect)) {
+        sessionStorage.removeItem('quickshop_auth_redirect');
+        handleNavigateView(savedRedirect, { replace: true });
+        return;
+      }
       const savedView = sessionStorage.getItem('quickshop_current_view');
-      if (savedView && ['admin', 'seller', 'shipper', 'storefront', 'cart', 'orders', 'profile'].includes(savedView)) {
+      if (savedView && ['admin', 'seller', 'shipper', 'storefront', 'cart', 'orders', 'profile', 'checkout'].includes(savedView)) {
         setCurrentView(savedView);
       } else if (user?.role) {
         const r = String(user.role).toUpperCase();
@@ -71,26 +271,11 @@ export default function App() {
         }
       }
     } else {
-      setCheckoutItems([]);
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.removeItem('quickshop_current_view');
-      }
       if (ownerUserId !== null) {
         handleLogoutClear(ownerUserId);
       }
-      setCurrentView('storefront');
     }
   }, [isAuthenticated, user?.userId, user?.role]);
-
-  const handleNavigateView = (view) => {
-    if (view === 'storefront') {
-      setSelectedProduct(null);
-      setSelectedShop(null);
-    }
-    sessionStorage.setItem('quickshop_current_view', view);
-    setCurrentView(view);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
   // Data states
   const [categories, setCategories] = useState(defaultCategories);
@@ -111,9 +296,9 @@ export default function App() {
   // Category showcase display toggle (1 row vs all)
   const [showAllCategories, setShowAllCategories] = useState(false);
 
-  // Filter states
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [searchKeyword, setSearchKeyword] = useState('');
+  // Filter states (khởi tạo từ URL nếu có để hỗ trợ refresh / bookmark / share)
+  const [selectedCategory, setSelectedCategory] = useState(() => initialUrl.cat || null);
+  const [searchKeyword, setSearchKeyword] = useState(() => initialUrl.q || '');
   const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'priceAsc' | 'priceDesc'
   const [priceRange, setPriceRange] = useState('all'); // 'all', 'under1m', '1m-5m', '5m-20m', 'above20m'
   const [minRating, setMinRating] = useState(0);
@@ -137,12 +322,41 @@ export default function App() {
   }, [isFilterOpen]);
 
   // Modal / Selected Product & Shop states
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(() => {
+    if (initialUrl.id) {
+      return defaultProducts.find((p) => String(p.id) === String(initialUrl.id)) || null;
+    }
+    return null;
+  });
   const [selectedShop, setSelectedShop] = useState(null);
-  const [checkoutItems, setCheckoutItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [vnpayResult, setVnpayResult] = useState(null);
+
+  // Lắng nghe nút Back / Forward của trình duyệt qua HTML5 PopState
+  useEffect(() => {
+    const handlePopState = (e) => {
+      const urlState = getInitialUrlState();
+      const targetView = e.state?.view || urlState.view || 'storefront';
+      setCurrentView(targetView);
+      sessionStorage.setItem('quickshop_current_view', targetView);
+
+      if (urlState.q !== searchKeyword) setSearchKeyword(urlState.q);
+      if (urlState.cat !== selectedCategory) setSelectedCategory(urlState.cat);
+
+      if (targetView === 'product-detail' && (urlState.id || e.state?.id)) {
+        const prodId = urlState.id || e.state?.id;
+        const found = defaultProducts.find((p) => String(p.id) === String(prodId));
+        if (found) setSelectedProduct(found);
+      } else if (targetView === 'storefront') {
+        setSelectedProduct(null);
+        setSelectedShop(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [searchKeyword, selectedCategory]);
 
 
   // Fetch Categories from /api/catalog/categories
@@ -391,21 +605,18 @@ export default function App() {
     setSearchKeyword(kw);
     setCurrentPage(0);
     fetchProducts({ kw, page: 0 });
-    // Chuyển sang trang kết quả tìm kiếm chuyên biệt
-    setCurrentView('search');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Chuyển sang trang kết quả tìm kiếm chuyên biệt với query params trong URL
+    handleNavigateView('search', { extra: { kw, cat: selectedCategory } });
   };
 
   const handleSelectProduct = (prod) => {
     setSelectedProduct(prod);
-    setCurrentView('product-detail');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    handleNavigateView('product-detail', { extra: { id: prod?.id } });
   };
 
   const handleSelectShop = (shop) => {
     setSelectedShop(shop);
-    setCurrentView('shop-detail');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    handleNavigateView('shop-detail', { extra: { shopId: shop?.id || shop?.shopId } });
   };
 
   const handleBackToStorefront = (options = {}) => {
@@ -428,7 +639,6 @@ export default function App() {
       page: 0,
       shuffle,
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleResetFilters = () => {
@@ -438,6 +648,7 @@ export default function App() {
     setPriceRange('all');
     setMinRating(0);
     setCurrentPage(0);
+    handleNavigateView('storefront');
     fetchProducts({
       catId: null,
       kw: '',
@@ -488,7 +699,15 @@ export default function App() {
     return (
       <LoginPage
         onBackToHome={() => handleNavigateView('storefront')}
-        onLoginSuccess={(targetView) => handleNavigateView(targetView || 'storefront')}
+        onLoginSuccess={(targetView) => {
+          const savedRedirect = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('quickshop_auth_redirect') : null;
+          if (savedRedirect && ['admin', 'seller', 'shipper', 'storefront', 'cart', 'orders', 'profile', 'checkout', 'product-detail'].includes(savedRedirect)) {
+            sessionStorage.removeItem('quickshop_auth_redirect');
+            handleNavigateView(savedRedirect, { replace: true });
+          } else {
+            handleNavigateView(targetView || 'storefront', { replace: true });
+          }
+        }}
       />
     );
   }
@@ -642,7 +861,7 @@ export default function App() {
             allProducts={products}
             onBack={() => {
               setSelectedProduct(null);
-              setCurrentView('storefront');
+              handleNavigateView('storefront');
             }}
             onSelectRelatedProduct={handleSelectProduct}
             onSelectShop={handleSelectShop}
@@ -650,10 +869,9 @@ export default function App() {
               if (buyItem) {
                 setCheckoutItems([buyItem]);
               }
-              setCurrentView('checkout');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              handleNavigateView('checkout');
             }}
-            onRequireAuth={() => setCurrentView('login')}
+            onRequireAuth={() => handleRequireAuth('product-detail')}
           />
         )}
 
@@ -662,18 +880,17 @@ export default function App() {
           <CartPage
             onProceedToCheckout={(selected) => {
               setCheckoutItems(selected);
-              setCurrentView('checkout');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              handleNavigateView('checkout');
             }}
             onBack={() => {
               if (selectedProduct) {
-                setCurrentView('product-detail');
+                handleNavigateView('product-detail');
               } else {
-                setCurrentView('storefront');
+                handleNavigateView('storefront');
               }
             }}
             onSelectProduct={handleSelectProduct}
-            onRequireAuth={() => setCurrentView('login')}
+            onRequireAuth={() => handleRequireAuth('cart')}
           />
         )}
 
@@ -682,14 +899,12 @@ export default function App() {
           <CheckoutPage
             checkoutItems={checkoutItems}
             onBack={() => {
-              setCurrentView('cart');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              handleNavigateView('cart');
             }}
             onSelectProduct={handleSelectProduct}
-            onRequireAuth={() => setCurrentView('login')}
+            onRequireAuth={() => handleRequireAuth('checkout')}
             onViewOrders={() => {
-              setCurrentView('orders');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              handleNavigateView('orders');
             }}
           />
         )}
@@ -698,12 +913,10 @@ export default function App() {
         {currentView === 'profile' && (
           <UserProfilePage
             onBackToHome={() => {
-              setCurrentView('storefront');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              handleNavigateView('storefront');
             }}
             onViewOrders={() => {
-              setCurrentView('orders');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              handleNavigateView('orders');
             }}
           />
         )}
@@ -712,12 +925,10 @@ export default function App() {
         {currentView === 'orders' && (
           <OrderHistoryPage
             onBackToHome={() => {
-              setCurrentView('storefront');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              handleNavigateView('storefront');
             }}
             onBuyAgain={() => {
-              setCurrentView('cart');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              handleNavigateView('cart');
             }}
           />
         )}
@@ -726,7 +937,7 @@ export default function App() {
         {currentView === 'flash-sale' && (
           <FlashSalePage
             products={products}
-            onBack={() => setCurrentView('storefront')}
+            onBack={() => handleNavigateView('storefront')}
             onSelectProduct={handleSelectProduct}
           />
         )}
@@ -738,13 +949,13 @@ export default function App() {
             allProducts={products}
             onBack={() => {
               if (selectedProduct) {
-                setCurrentView('product-detail');
+                handleNavigateView('product-detail');
               } else {
-                setCurrentView('storefront');
+                handleNavigateView('storefront');
               }
             }}
             onSelectProduct={handleSelectProduct}
-            onRequireAuth={() => setCurrentView('login')}
+            onRequireAuth={() => handleRequireAuth('shop-detail')}
           />
         )}
 
@@ -766,7 +977,7 @@ export default function App() {
                 <div>
                   <h2 className="text-base sm:text-xl font-black text-slate-900 flex items-center gap-2">
                     <span>Kết quả tìm kiếm cho:</span>
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-rose-600 italic">
+                    <span className="text-orange-600 font-bold italic">
                       "{searchKeyword || 'Tất cả sản phẩm'}"
                     </span>
                   </h2>
@@ -868,7 +1079,7 @@ export default function App() {
                       product={p}
                       onSelect={handleSelectProduct}
                       onSelectShop={handleSelectShop}
-                      onRequireAuth={() => setCurrentView('login')}
+                      onRequireAuth={() => handleRequireAuth('search')}
                     />
                   ))}
                 </div>
@@ -898,8 +1109,7 @@ export default function App() {
               products={products}
               onSelectProduct={handleSelectProduct}
               onViewAllDeals={() => {
-                setCurrentView('flash-sale');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                handleNavigateView('flash-sale');
               }}
             />
 
@@ -921,23 +1131,32 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 pt-1">
-                {displayedCategories.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedCategory(c.id === selectedCategory ? null : c.id)}
-                    className={`p-3 rounded-2xl border text-center transition flex flex-col items-center justify-center space-y-1.5 group ${selectedCategory === c.id
-                        ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm font-bold'
-                        : 'border-slate-100 hover:border-orange-300 hover:shadow-md bg-white text-slate-700'
+                {displayedCategories.map((c) => {
+                  const { Icon, bg, borderHover } = getCategoryIconMeta(c);
+                  const isSelected = selectedCategory === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedCategory(isSelected ? null : c.id)}
+                      className={`p-3 sm:p-3.5 rounded-2xl border text-center transition-all duration-200 flex flex-col items-center justify-center space-y-2 group cursor-pointer ${
+                        isSelected
+                          ? 'border-orange-500 bg-orange-50/90 text-orange-700 shadow-sm font-bold ring-2 ring-orange-400/20'
+                          : `border-slate-100/90 ${borderHover} hover:shadow-lg hover:-translate-y-0.5 bg-white text-slate-700`
                       }`}
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-orange-100 to-amber-50 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-                      <Smartphone className="w-6 h-6 stroke-[1.8]" />
-                    </div>
-                    <span className="text-xs font-semibold line-clamp-1 group-hover:text-orange-600 transition">
-                      {c.name}
-                    </span>
-                  </button>
-                ))}
+                    >
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm ${
+                        isSelected ? 'bg-orange-600 text-white shadow-orange-300' : bg
+                      }`}>
+                        <Icon className="w-6 h-6 stroke-[1.8] transition-transform duration-200 group-hover:scale-110" />
+                      </div>
+                      <span className={`text-xs font-semibold line-clamp-1 transition-colors ${
+                        isSelected ? 'text-orange-700' : 'group-hover:text-orange-600'
+                      }`}>
+                        {c.name}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -1009,7 +1228,7 @@ export default function App() {
                         setCurrentPage(0);
                         fetchProducts({ page: 0, shuffle: true });
                       }}
-                      className="px-3 py-1.5 rounded-xl font-bold transition bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-xs flex items-center gap-1.5 active:scale-95"
+                      className="px-3 py-1.5 rounded-xl font-semibold transition bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200/80 flex items-center gap-1.5 cursor-pointer active:scale-95"
                       title="Làm mới và khám phá các sản phẩm gợi ý ngẫu nhiên khác nhau"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
@@ -1328,7 +1547,7 @@ export default function App() {
                         product={p}
                         onSelect={handleSelectProduct}
                         onSelectShop={handleSelectShop}
-                        onRequireAuth={() => setCurrentView('login')}
+                        onRequireAuth={() => handleRequireAuth('storefront')}
                       />
                     ))}
                   </div>
@@ -1401,13 +1620,13 @@ export default function App() {
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
-        onRequireAuth={() => setCurrentView('login')}
+        onRequireAuth={() => handleRequireAuth('cart')}
       />
 
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
-        onLoginSuccess={(targetView) => handleNavigateView(targetView)}
+        onLoginSuccess={(targetView) => handleAuthSuccess(targetView)}
       />
 
       {/* 5. Modal Kết quả Thanh toán VNPay Sandbox */}
@@ -1460,7 +1679,7 @@ export default function App() {
             <button
               onClick={() => {
                 setVnpayResult(null);
-                setCurrentView('storefront');
+                handleNavigateView('storefront');
               }}
               className="w-full py-3 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-orange-500/20 transition active:scale-95"
             >
