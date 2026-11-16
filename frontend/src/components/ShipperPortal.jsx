@@ -194,7 +194,7 @@ export default function ShipperPortal({ onBackToHome }) {
         </div>
 
         {/* Sidebar Nav Items */}
-        <div className="px-3 py-2 flex-1 space-y-1 overflow-y-auto">
+        <div data-lenis-prevent className="px-3 py-2 flex-1 space-y-1 overflow-y-auto">
           <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Quản Lý Vận Chuyển
           </div>

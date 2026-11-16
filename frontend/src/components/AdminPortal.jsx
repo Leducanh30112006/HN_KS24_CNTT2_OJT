@@ -1326,7 +1326,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
         </div>
 
         {/* Sidebar Nav Items Grouped */}
-        <div className="px-3 py-1 flex-1 space-y-4 overflow-y-auto">
+        <div data-lenis-prevent className="px-3 py-1 flex-1 space-y-4 overflow-y-auto">
           {/* Group 1: TỔNG QUAN & HẠ TẦNG */}
           <div className="space-y-1">
             <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -1598,7 +1598,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
         {/* Main Content Body */}
         <main className="p-4 sm:p-6 lg:p-8 space-y-6 flex-1 max-w-7xl w-full mx-auto">
           {/* Header Banner Card */}
-          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-stone-900 border border-slate-800/80 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shadow-lg">
@@ -1668,7 +1668,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       {activeTab === 'dashboard' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Welcome & System Status Banner */}
-          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-stone-900 border border-slate-800/80 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
             <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-orange-500/10 to-transparent pointer-events-none"></div>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
               <div className="space-y-1.5">
@@ -1801,18 +1801,18 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 setSellerFilter('ACTIVE');
                 setSellerPage(0);
               }}
-              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-purple-400 hover:shadow-md transition cursor-pointer group"
+              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-amber-400 hover:shadow-md transition cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Gian hàng hoạt động</span>
-                <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center group-hover:scale-110 transition">
                   <Award className="w-5 h-5" />
                 </div>
               </div>
               <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
                 {activeSellerCount}
               </div>
-              <div className="text-[11px] text-purple-600 font-medium mt-2">
+              <div className="text-[11px] text-amber-700 font-medium mt-2">
                 Gồm {mallSellerCount} gian hàng Mall
               </div>
             </div>
@@ -1820,11 +1820,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
             {/* 5. Tài khoản người dùng */}
             <div 
               onClick={() => setActiveTab('users')}
-              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-indigo-400 hover:shadow-md transition cursor-pointer group"
+              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-slate-400 hover:shadow-md transition cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Tài khoản người dùng</span>
-                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition">
+                <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:scale-110 transition">
                   <Users className="w-5 h-5" />
                 </div>
               </div>

@@ -445,7 +445,7 @@ Thiết kế tinh tế sang trọng với từng đường nét được gia cô
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+        <nav data-lenis-prevent className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
           <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
             Quản trị Bán hàng
           </div>
@@ -1385,7 +1385,7 @@ Thiết kế tinh tế sang trọng với từng đường nét được gia cô
       {/* MODAL: TẠO SẢN PHẨM MỚI (CÓ THÊM ẢNH MÔ TẢ & AI GEMINI) */}
       {/* ========================================================== */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
@@ -1631,7 +1631,7 @@ Thiết kế tinh tế sang trọng với từng đường nét được gia cô
       {/* MODAL: CHỈNH SỬA SẢN PHẨM */}
       {/* ========================================================== */}
       {showEditModal && editingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+        <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-bold text-base text-slate-900">Chỉnh Sửa Thông Tin Sản Phẩm</h3>

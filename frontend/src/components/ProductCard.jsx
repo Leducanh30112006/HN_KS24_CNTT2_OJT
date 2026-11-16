@@ -32,7 +32,7 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
   return (
     <div
       onClick={() => onSelect(product)}
-      className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-xl hover:border-orange-400 transition-all duration-200 cursor-pointer flex flex-col justify-between group"
+      className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-lg hover:border-orange-400/80 transition-shadow transition-colors duration-200 cursor-pointer flex flex-col justify-between group"
     >
       <div>
         {/* Product Image & Badges */}
@@ -63,7 +63,7 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
           {/* Quick Add Button overlay */}
           <button
             onClick={handleQuickAdd}
-            className="absolute bottom-2 right-2 w-9 h-9 rounded-xl bg-orange-600 hover:bg-orange-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-lg shadow-orange-600/30 active:scale-90"
+            className="absolute bottom-2 right-2 w-9 h-9 rounded-xl bg-orange-600 hover:bg-orange-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md shadow-orange-600/20 active:scale-95"
             title="Thêm nhanh vào giỏ hàng (Yêu cầu đăng nhập)"
           >
             <ShoppingCart className="w-4 h-4" />
