@@ -5,6 +5,7 @@ import { gsap, useGSAP } from '../lib/gsap';
 export default function HeroBanner({ onSelectCategory }) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const heroRef = useRef(null);
+  const spotlightRef = useRef(null);
 
   const slides = [
     {
@@ -42,6 +43,24 @@ export default function HeroBanner({ onSelectCategory }) {
         { opacity: 1, y: 0, duration: 0.55, stagger: 0.08, ease: 'power2.out' }
       );
     }
+
+    if (heroRef.current && spotlightRef.current) {
+      const xTo = gsap.quickTo(spotlightRef.current, 'x', { duration: 0.45, ease: 'power3' });
+      const yTo = gsap.quickTo(spotlightRef.current, 'y', { duration: 0.45, ease: 'power3' });
+
+      const onMouseMove = (e) => {
+        const rect = heroRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        xTo(e.clientX - rect.left - 144);
+        yTo(e.clientY - rect.top - 144);
+      };
+
+      const heroEl = heroRef.current;
+      heroEl.addEventListener('mousemove', onMouseMove);
+      return () => {
+        heroEl.removeEventListener('mousemove', onMouseMove);
+      };
+    }
   }, { scope: heroRef });
 
   useEffect(() => {
@@ -52,7 +71,13 @@ export default function HeroBanner({ onSelectCategory }) {
   }, [slides.length]);
 
   return (
-    <div ref={heroRef} className="space-y-4">
+    <div ref={heroRef} className="space-y-4 relative">
+      {/* Warm ambient spotlight follower */}
+      <div
+        ref={spotlightRef}
+        className="pointer-events-none absolute -top-10 -left-10 w-72 h-72 rounded-full bg-gradient-to-tr from-orange-400/10 via-amber-300/10 to-transparent blur-3xl -z-10"
+        style={{ willChange: 'transform' }}
+      />
       {/* 1. Main Hero Carousel & Sub Banners */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* Main Banner Slide (Col span 2) */}
@@ -100,13 +125,13 @@ export default function HeroBanner({ onSelectCategory }) {
           {/* Navigation Arrows */}
           <button
             onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
-            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition backdrop-blur-sm"
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 active:scale-90 text-white flex items-center justify-center transition backdrop-blur-sm"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition backdrop-blur-sm"
+            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 active:scale-90 text-white flex items-center justify-center transition backdrop-blur-sm"
           >
             <ChevronRight className="w-5 h-5" />
           </button>

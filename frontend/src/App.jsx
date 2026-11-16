@@ -143,8 +143,8 @@ function getCategoryIconMeta(category) {
   if (iconKey === 'cpu' || slug.includes('dien-tu') || name.includes('điện tử')) {
     return {
       Icon: Cpu,
-      bg: 'bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white',
-      borderHover: 'hover:border-violet-300',
+      bg: 'bg-cyan-50 text-cyan-700 group-hover:bg-cyan-600 group-hover:text-white',
+      borderHover: 'hover:border-cyan-300',
     };
   }
   return {
@@ -172,6 +172,7 @@ export default function App() {
   const isSellerOnly = isSeller && !isAdmin;
   const lenisRef = useRef(null);
   const storefrontRef = useRef(null);
+  const mainViewRef = useRef(null);
 
   // Khởi tạo Lenis Smooth Scroll đồng bộ cùng GSAP ScrollTrigger và ticker
   useEffect(() => {
@@ -739,11 +740,12 @@ export default function App() {
 
   // GSAP ScrollTrigger Stagger Entrance Animations for Storefront
   useGSAP(() => {
-    if (currentView !== 'storefront') return;
+    if (currentView !== 'storefront' || !storefrontRef.current) return;
 
     // Staggered entrance for category cards
-    const catCards = storefrontRef.current?.querySelectorAll('.category-card-item');
-    if (catCards && catCards.length > 0) {
+    const catContainer = storefrontRef.current.querySelector('.category-showcase-container');
+    const catCards = storefrontRef.current.querySelectorAll('.category-card-item');
+    if (catContainer && catCards.length > 0) {
       gsap.fromTo(
         catCards,
         { opacity: 0, y: 18 },
@@ -754,7 +756,7 @@ export default function App() {
           stagger: 0.05,
           ease: 'power2.out',
           scrollTrigger: {
-            trigger: storefrontRef.current.querySelector('.category-showcase-container'),
+            trigger: catContainer,
             start: 'top 88%',
             once: true,
           },
@@ -763,8 +765,9 @@ export default function App() {
     }
 
     // Staggered entrance for product cards
-    const prodCards = storefrontRef.current?.querySelectorAll('.product-card-item');
-    if (prodCards && prodCards.length > 0) {
+    const prodGrid = storefrontRef.current.querySelector('#catalog-product-grid');
+    const prodCards = storefrontRef.current.querySelectorAll('.product-card-item');
+    if (prodGrid && prodCards.length > 0) {
       gsap.fromTo(
         prodCards,
         { opacity: 0, y: 18 },
@@ -775,7 +778,7 @@ export default function App() {
           stagger: 0.035,
           ease: 'power2.out',
           scrollTrigger: {
-            trigger: '#catalog-product-grid',
+            trigger: prodGrid,
             start: 'top 85%',
             once: true,
           },
@@ -783,6 +786,17 @@ export default function App() {
       );
     }
   }, { scope: storefrontRef, dependencies: [currentView, showAllCategories, products.length] });
+
+  // GSAP Smooth View Transition across navigation changes
+  useGSAP(() => {
+    if (mainViewRef.current) {
+      gsap.fromTo(
+        mainViewRef.current,
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.24, ease: 'power2.out' }
+      );
+    }
+  }, { scope: mainViewRef, dependencies: [currentView] });
 
   // VIEW RIÊNG BIỆT 1: DEDICATED FULL-PAGE LOGIN VIEW
   if (currentView === 'login') {
@@ -921,7 +935,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5FA] text-slate-800 font-sans flex flex-col">
+    <div className="min-h-screen bg-slate-50/70 text-slate-800 font-sans flex flex-col">
       {/* 1. Universal Top Navigation */}
       <Navbar
         currentView={currentView}
@@ -942,7 +956,7 @@ export default function App() {
       />
 
       {/* 2. Main Content Views */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6">
+      <main ref={mainViewRef} className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6">
 
         {/* VIEW 1: PRODUCT DETAIL PAGE (CHUYÊN BIỆT NHƯ SHOPEE VÀ TIKTOK SHOP) */}
         {currentView === 'product-detail' && selectedProduct && (

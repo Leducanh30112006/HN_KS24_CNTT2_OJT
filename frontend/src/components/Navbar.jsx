@@ -101,7 +101,7 @@ export default function Navbar({
   const isShipper = user && (user.role === 'ROLE_SHIPPER' || user.role === 'SHIPPER');
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
       {/* 1. Top Utility Header */}
       <div className="bg-gradient-to-r from-orange-600 via-rose-600 to-amber-600 text-white text-xs py-1.5 px-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
@@ -157,7 +157,7 @@ export default function Navbar({
                 {isAdmin && (
                   <button
                     onClick={() => setCurrentView('admin')}
-                    className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-700 hover:bg-purple-600 text-white font-bold transition shadow-sm"
+                    className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold transition shadow-sm"
                     title="Mở Cổng Quản Trị Admin Riêng Biệt"
                   >
                     <ShieldCheck className="w-3 h-3" />
@@ -472,13 +472,13 @@ export default function Navbar({
                         setCurrentView('admin');
                         setShowUserMenu(false);
                       }}
-                      className="w-full text-left px-3 py-2 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl flex items-center justify-between transition"
+                      className="w-full text-left px-3 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-between transition"
                     >
                       <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-purple-600" />
+                        <ShieldCheck className="w-4 h-4 text-slate-700" />
                         <span>Trang Quản Trị Hệ Thống</span>
                       </div>
-                      <ChevronDown className="w-3 h-3 -rotate-90 text-purple-500" />
+                      <ChevronDown className="w-3 h-3 -rotate-90 text-slate-500" />
                     </button>
                   </div>
                 )}

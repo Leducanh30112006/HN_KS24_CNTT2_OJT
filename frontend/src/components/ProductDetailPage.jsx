@@ -398,9 +398,10 @@ export default function ProductDetailPage({
               onMouseLeave={handleMouseLeave}
             >
               <img
+                key={activeImageIndex}
                 src={productImages[activeImageIndex] || product.mainImage}
                 alt={product.name}
-                className="w-full h-full object-cover transition-transform duration-150 ease-out pointer-events-none"
+                className="w-full h-full object-cover transition-transform duration-150 ease-out pointer-events-none animate-in fade-in duration-200"
                 style={{
                   transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
                   transform: isZoomed ? 'scale(1.75)' : 'scale(1)',
