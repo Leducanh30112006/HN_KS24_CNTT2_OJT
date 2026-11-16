@@ -10,6 +10,7 @@ import catalogApi from '../api/catalogApi';
 import ProductCard from './ProductCard';
 import ApiErrorBanner from './ApiErrorBanner';
 import { defaultProducts } from '../data/sampleProducts';
+import { renderSanitizedContent } from '../utils/sanitizeHtml';
 
 export default function ProductDetailPage({ 
   product: initialProduct, 
@@ -836,9 +837,15 @@ export default function ProductDetailPage({
             Mô tả chi tiết sản phẩm
           </h3>
           <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 sm:p-6 text-xs sm:text-sm text-slate-700 leading-relaxed space-y-4">
-            <div className="whitespace-pre-line leading-relaxed">
-              {product.description || 'Sản phẩm chính hãng với tiêu chuẩn chất lượng cao nhất tại QuickShop Mall. Đầy đủ hóa đơn, tem chứng nhận và bảo hành chính hãng từ nhà sản xuất.'}
-            </div>
+            <div 
+              className="product-rich-text leading-relaxed"
+              dangerouslySetInnerHTML={{
+                __html: renderSanitizedContent(
+                  product.description,
+                  'Sản phẩm chính hãng với tiêu chuẩn chất lượng cao nhất tại QuickShop Mall. Đầy đủ hóa đơn, tem chứng nhận và bảo hành chính hãng từ nhà sản xuất.'
+                )
+              }}
+            />
 
             {/* Khối hình ảnh minh họa chi tiết chèn trong mô tả (Rich Visual Showcase) */}
             {product.descriptionImages && product.descriptionImages.length > 0 && (

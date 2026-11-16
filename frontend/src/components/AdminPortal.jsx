@@ -28,6 +28,7 @@ import {
   extractApiErrorMessage,
   normalizeShopDto,
 } from '../api/adminApi';
+import { stripHtml } from '../utils/sanitizeHtml';
 import ApiErrorBanner from './ApiErrorBanner';
 import Pagination from './Pagination';
 
@@ -2290,7 +2291,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                             )}
                           </div>
                           <h3 className="font-bold text-sm text-slate-900 mt-1">{p.name}</h3>
-                          <p className="text-xs text-slate-500 line-clamp-1 mt-0.5 max-w-xl">{p.description}</p>
+                          <p className="text-xs text-slate-500 line-clamp-1 mt-0.5 max-w-xl">{stripHtml(p.description)}</p>
                           <div className="mt-2 flex items-center gap-4 text-xs">
                             <span className="font-bold text-rose-600 text-sm">{formatVND(p.minPrice)}</span>
                             <span className="text-slate-400">
