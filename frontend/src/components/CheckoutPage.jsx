@@ -11,6 +11,36 @@ import { recordNewOrder } from '../data/sampleOrders';
 import VoucherModal from './VoucherModal';
 import axiosClient from '../api/axiosClient';
 
+export const AVAILABLE_CARRIERS = [
+  {
+    id: 'ghn',
+    name: 'Giao Hàng Nhanh (GHN)',
+    shortName: 'GHN Express',
+    fee: 22000,
+    estimate: 'Nhận hàng sau 1 - 2 ngày',
+    tag: 'Khuyên dùng',
+    tagClass: 'text-orange-700 bg-orange-100 border-orange-200',
+  },
+  {
+    id: 'ghtk',
+    name: 'Giao Hàng Tiết Kiệm (GHTK)',
+    shortName: 'GHTK Tiết Kiệm',
+    fee: 18000,
+    estimate: 'Nhận hàng sau 2 - 3 ngày',
+    tag: 'Tiết kiệm',
+    tagClass: 'text-emerald-700 bg-emerald-100 border-emerald-200',
+  },
+  {
+    id: 'express',
+    name: 'Hỏa Tốc 2H (Nội thành)',
+    shortName: 'Hỏa Tốc 2H',
+    fee: 35000,
+    estimate: 'Nhận ngay trong 2 giờ',
+    tag: 'Siêu tốc',
+    tagClass: 'text-rose-700 bg-rose-100 border-rose-200',
+  },
+];
+
 export default function CheckoutPage({ 
   checkoutItems = [],
   onBack, 
@@ -18,15 +48,28 @@ export default function CheckoutPage({
   onRequireAuth,
   onViewOrders
 }) {
-  const { items, removeMultipleFromCart } = useCartStore();
+  const { items, removeMultipleFromCart, updateQuantity, removeFromCart } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
 
   const displayItems = (checkoutItems && checkoutItems.length > 0) ? checkoutItems : items;
 
-  // Shipping & Payment Options
-  const [shippingMethod, setShippingMethod] = useState('standard'); // 'standard' | 'express' | 'economy'
+  // Delivery Carrier per shop package & Payment Options
+  const [shopCarriers, setShopCarriers] = useState({});
+  const [shippingMethod, setShippingMethod] = useState('standard'); // Backward compatible state
   const [paymentMethod, setPaymentMethod] = useState('cod'); // 'cod' | 'vnpay' | 'credit' | 'momo'
   const [orderNote, setOrderNote] = useState('');
+
+  const getCarrierForShop = (shopId) => {
+    const carrierId = shopCarriers[shopId] || 'ghn';
+    return AVAILABLE_CARRIERS.find((c) => c.id === carrierId) || AVAILABLE_CARRIERS[0];
+  };
+
+  const handleSelectShopCarrier = (shopId, carrierId) => {
+    setShopCarriers((prev) => ({
+      ...prev,
+      [shopId]: carrierId,
+    }));
+  };
 
   // Shipping Address State
   const [isEditingAddress, setIsEditingAddress] = useState(false);
@@ -249,15 +292,14 @@ export default function CheckoutPage({
     return displayItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }, [displayItems]);
 
-  // Base shipping fee calculation
-  let baseShipping = 0;
-  if (shippingMethod === 'standard') {
-    baseShipping = subTotal > 99000 ? 0 : 25000;
-  } else if (shippingMethod === 'express') {
-    baseShipping = 35000;
-  } else if (shippingMethod === 'economy') {
-    baseShipping = 0;
-  }
+  // Base shipping fee calculation itemized per shop package
+  const baseShipping = useMemo(() => {
+    if (displayItems.length === 0) return 0;
+    return shopGroups.reduce((acc, group) => {
+      const carrier = getCarrierForShop(group.shopId);
+      return acc + carrier.fee;
+    }, 0);
+  }, [shopGroups, shopCarriers, displayItems.length]);
 
   // Calculate distinct discount types
   const shippingDiscount = appliedShippingVoucher?.discount || 0;
@@ -498,7 +540,11 @@ export default function CheckoutPage({
           <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/80 text-left text-xs space-y-2.5">
             <div className="flex justify-between pb-2 border-b border-slate-200 font-bold text-slate-700 uppercase tracking-wide">
               <span>Thông tin nhận hàng</span>
-              <span className="text-emerald-700 font-semibold">{shippingMethod === 'express' ? 'Hỏa Tốc 2H' : 'Tiêu Chuẩn 1-2 Ngày'}</span>
+              <span className="text-emerald-700 font-semibold">
+                {shopGroups.length > 1
+                  ? `${shopGroups.length} Kiện hàng (${shopGroups.map((g) => getCarrierForShop(g.shopId).shortName).join(', ')})`
+                  : (shopGroups[0] ? getCarrierForShop(shopGroups[0].shopId).name : 'Giao Hàng Nhanh (GHN)')}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Người nhận:</span>
@@ -523,7 +569,7 @@ export default function CheckoutPage({
                 <span className="font-bold text-emerald-700">Đã đặt hàng</span>
               </div>
               <div className="space-y-1">
-                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto font-bold shadow-sm animate-bounce">
+                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto font-bold shadow-sm">
                   <Check className="w-4 h-4" />
                 </div>
                 <span className="font-black text-emerald-700">Đã thanh toán</span>
@@ -931,7 +977,7 @@ export default function CheckoutPage({
         <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
           <span className="text-slate-400 cursor-pointer hover:text-orange-600" onClick={onBack}>Giỏ hàng</span>
           <ChevronRight className="w-3.5 h-3.5" />
-          <span className="text-orange-600 font-bold">Thanh toán đơn hàng</span>
+          <h1 className="text-orange-600 font-bold inline text-xs">Thanh toán đơn hàng</h1>
           <span className="bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full text-[11px] ml-1">
             {displayItems.reduce((s, i) => s + i.quantity, 0)} sản phẩm đã chọn
           </span>
@@ -949,7 +995,7 @@ export default function CheckoutPage({
             <div className="flex justify-between items-center pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wide">
                 <MapPin className="w-4 h-4 text-orange-600" />
-                <span>Địa Chỉ Nhận Hàng</span>
+                <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">Địa Chỉ Nhận Hàng</h2>
               </div>
               <button
                 onClick={() => setIsEditingAddress(!isEditingAddress)}
@@ -1015,7 +1061,7 @@ export default function CheckoutPage({
           <div className="space-y-4">
             <div className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2 px-1">
               <ShoppingBag className="w-4 h-4 text-orange-600" />
-              <span>Sản Phẩm Trong Đơn Hàng</span>
+              <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">Sản Phẩm Trong Đơn Hàng</h2>
             </div>
 
             {shopGroups.map((group) => (
@@ -1024,7 +1070,7 @@ export default function CheckoutPage({
                 <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Store className="w-4 h-4 text-orange-600" />
-                    <span className="font-bold text-xs sm:text-sm text-slate-900">{group.shopName}</span>
+                    <h3 className="font-bold text-xs sm:text-sm text-slate-900">{group.shopName}</h3>
                     <span className="bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
                       Mall
                     </span>
@@ -1110,69 +1156,121 @@ export default function CheckoutPage({
                     </div>
                   ))}
                 </div>
+
+                {/* ITEMIZE CARRIER SELECTION PER SHOP PACKAGE */}
+                {(() => {
+                  const shopCarrier = getCarrierForShop(group.shopId);
+                  const shopItemTotal = group.items.reduce((sum, itm) => sum + itm.price * itm.quantity, 0);
+                  return (
+                    <div className="bg-slate-50/70 p-4 border-t border-slate-100 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Truck className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                          <div className="text-xs">
+                            <span className="font-bold text-slate-800">Đơn vị vận chuyển kiện hàng:</span>
+                            <span className="font-semibold text-slate-600 ml-1.5">{shopCarrier.name}</span>
+                          </div>
+                        </div>
+                        <div className="text-xs font-black text-orange-600">
+                          Cước kiện: {formatVND(shopCarrier.fee)}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        {AVAILABLE_CARRIERS.map((c) => {
+                          const isSelected = shopCarrier.id === c.id;
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => handleSelectShopCarrier(group.shopId, c.id)}
+                              className={`p-2.5 rounded-xl border text-left transition relative flex flex-col justify-between ${
+                                isSelected
+                                  ? 'border-orange-500 bg-orange-50/60 ring-2 ring-orange-500/20 shadow-xs'
+                                  : 'border-slate-200 hover:border-slate-300 bg-white'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-1 mb-1">
+                                <span className="font-bold text-xs text-slate-900">{c.shortName}</span>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${c.tagClass}`}>
+                                  {c.tag}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 leading-tight mb-1.5">
+                                {c.estimate}
+                              </div>
+                              <div className="flex items-center justify-between text-xs font-extrabold">
+                                <span className={isSelected ? 'text-orange-600 font-black' : 'text-slate-700'}>
+                                  {formatVND(c.fee)}
+                                </span>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-orange-600 stroke-[3]" />}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/50">
+                        <span>Tổng kiện hàng ({group.items.length} SP + Cước VC):</span>
+                        <span className="font-bold text-slate-800">{formatVND(shopItemTotal + shopCarrier.fee)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>
 
-          {/* Section C: Shipping Method Selection */}
+          {/* Section C: Itemized Delivery Overview */}
           <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wide pb-2 border-b border-slate-100">
-              <Truck className="w-4 h-4 text-orange-600" />
-              <span>Phương Thức Vận Chuyển</span>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wide">
+                <Truck className="w-4 h-4 text-orange-600" />
+                <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">Tổng Hợp Giao Hàng & Đơn Vị Vận Chuyển</h2>
+              </div>
+              <span className="text-[11px] font-bold text-orange-700 bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200/60">
+                {shopGroups.length} kiện hàng từ {shopGroups.length} gian hàng
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Option 1: Standard */}
-              <div
-                onClick={() => setShippingMethod('standard')}
-                className={`p-3.5 rounded-2xl border transition cursor-pointer flex flex-col justify-between space-y-2 ${
-                  shippingMethod === 'standard'
-                    ? 'border-orange-500 bg-orange-50/50 ring-2 ring-orange-500/20'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-slate-800">Giao Nhanh Tiêu Chuẩn</span>
-                  {shippingMethod === 'standard' && <Check className="w-4 h-4 text-orange-600" />}
-                </div>
-                <div className="text-[11px] text-slate-500">Nhận hàng sau 1 - 2 ngày làm việc</div>
-                <div className="text-xs font-black text-emerald-600">
-                  {subTotal > 99000 ? 'Miễn phí (Freeship)' : '25.000₫'}
-                </div>
-              </div>
+            <div className="space-y-2.5">
+              {shopGroups.map((group, idx) => {
+                const c = getCarrierForShop(group.shopId);
+                return (
+                  <div key={group.shopId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-200/70 text-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-700 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                        #{idx + 1}
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-900 flex items-center gap-2">
+                          <span>{group.shopName}</span>
+                          <span className="text-[10px] text-slate-400 font-normal">({group.items.length} sản phẩm)</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                          <span className="font-medium text-slate-700">{c.name}</span>
+                          <span>•</span>
+                          <span>{c.estimate}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right flex sm:flex-col items-center sm:items-end justify-between sm:justify-center">
+                      <span className="text-[10px] text-slate-400 sm:block hidden">Cước kiện hàng:</span>
+                      <span className="font-black text-orange-600">{formatVND(c.fee)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
 
-              {/* Option 2: Express */}
-              <div
-                onClick={() => setShippingMethod('express')}
-                className={`p-3.5 rounded-2xl border transition cursor-pointer flex flex-col justify-between space-y-2 ${
-                  shippingMethod === 'express'
-                    ? 'border-orange-500 bg-orange-50/50 ring-2 ring-orange-500/20'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-slate-800">Giao Hỏa Tốc 2H</span>
-                  {shippingMethod === 'express' && <Check className="w-4 h-4 text-orange-600" />}
-                </div>
-                <div className="text-[11px] text-slate-500">Nhận ngay trong 2 giờ nội thành</div>
-                <div className="text-xs font-black text-orange-600">35.000₫</div>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-[11px] text-slate-500 border-t border-slate-100">
+              <div className="flex items-center gap-1.5 text-emerald-600 font-semibold">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Đồng kiểm khi nhận hàng trên toàn bộ các kiện</span>
               </div>
-
-              {/* Option 3: Economy */}
-              <div
-                onClick={() => setShippingMethod('economy')}
-                className={`p-3.5 rounded-2xl border transition cursor-pointer flex flex-col justify-between space-y-2 ${
-                  shippingMethod === 'economy'
-                    ? 'border-orange-500 bg-orange-50/50 ring-2 ring-orange-500/20'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-slate-800">Giao Tiết Kiệm</span>
-                  {shippingMethod === 'economy' && <Check className="w-4 h-4 text-orange-600" />}
-                </div>
-                <div className="text-[11px] text-slate-500">Nhận hàng sau 3 - 4 ngày</div>
-                <div className="text-xs font-black text-emerald-600">Miễn phí 0₫</div>
+              <div className="flex items-center gap-1.5 text-blue-600 font-semibold">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Bảo hiểm 100% giá trị hàng hóa</span>
               </div>
             </div>
           </div>
@@ -1181,7 +1279,7 @@ export default function CheckoutPage({
           <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-4">
             <div className="flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wide pb-2 border-b border-slate-100">
               <CreditCard className="w-4 h-4 text-orange-600" />
-              <span>Phương Thức Thanh Toán</span>
+              <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">Phương Thức Thanh Toán</h2>
             </div>
 
             <div className="space-y-2.5">
@@ -1296,7 +1394,7 @@ export default function CheckoutPage({
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2 text-xs font-black text-slate-900 uppercase tracking-wide">
                 <Ticket className="w-4 h-4 text-orange-600" />
-                <span>Mã Giảm Giá & Voucher</span>
+                <h2 className="text-xs font-black text-slate-900 uppercase tracking-wide">Mã Giảm Giá & Voucher</h2>
               </div>
               <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
                 Chuẩn Shopee
@@ -1344,21 +1442,21 @@ export default function CheckoutPage({
             {/* Shopee-style Clickable Voucher Row 2: Voucher Của Shop */}
             <div
               onClick={() => setIsVoucherModalOpen(true)}
-              className="p-3 bg-gradient-to-r from-purple-50/70 to-indigo-50/40 hover:from-purple-100/60 hover:to-indigo-100/40 border border-purple-200 rounded-2xl cursor-pointer transition flex items-center justify-between gap-2 shadow-sm group"
+              className="p-3 bg-gradient-to-r from-amber-50/80 to-orange-50/50 hover:from-amber-100/70 hover:to-orange-100/60 border border-amber-200/80 rounded-2xl cursor-pointer transition flex items-center justify-between gap-2 shadow-sm group"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center flex-shrink-0">
+                <div className="w-7 h-7 rounded-xl bg-amber-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
                   <Store className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs font-black text-slate-900 flex items-center gap-1.5 flex-wrap">
                     <span>Voucher Của Shop:</span>
                     {shopDiscount > 0 ? (
-                      <span className="bg-purple-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded shadow-sm">
+                      <span className="bg-amber-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded shadow-sm">
                         -{formatVND(shopDiscount)}
                       </span>
                     ) : (
-                      <span className="text-[11px] text-purple-600 font-semibold">Chưa chọn</span>
+                      <span className="text-[11px] text-amber-700 font-semibold">Chưa chọn</span>
                     )}
                   </div>
                   <div className="text-[10px] text-slate-500 truncate mt-0.5">
@@ -1369,7 +1467,7 @@ export default function CheckoutPage({
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 text-xs font-bold text-purple-600 group-hover:translate-x-0.5 transition flex-shrink-0">
+              <div className="flex items-center gap-1 text-xs font-bold text-amber-700 group-hover:translate-x-0.5 transition flex-shrink-0">
                 <span className="text-[11px]">{shopDiscount > 0 ? 'Đổi mã' : 'Chọn mã'}</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </div>
@@ -1414,9 +1512,9 @@ export default function CheckoutPage({
 
           {/* Checkout Breakdown Box */}
           <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-4">
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide pb-2 border-b border-slate-100">
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide pb-2 border-b border-slate-100">
               Chi Tiết Thanh Toán
-            </h3>
+            </h2>
 
             <div className="space-y-2.5 text-xs text-slate-600">
               <div className="flex justify-between">
@@ -1425,13 +1523,9 @@ export default function CheckoutPage({
               </div>
 
               <div className="flex justify-between">
-                <span>Phí vận chuyển:</span>
+                <span>Phí vận chuyển ({shopGroups.length} kiện hàng):</span>
                 <span className="font-semibold text-slate-900">
-                  {actualShippingFee === 0 ? (
-                    <span className="text-emerald-600 font-bold">Miễn phí (Freeship)</span>
-                  ) : (
-                    formatVND(actualShippingFee)
-                  )}
+                  {formatVND(baseShipping)}
                 </span>
               </div>
 

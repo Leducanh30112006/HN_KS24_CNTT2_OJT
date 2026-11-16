@@ -1451,7 +1451,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               </button>
             </div>
 
-            <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+            <div data-lenis-prevent className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
               <div>
                 <label className="text-xs font-bold text-slate-700">Tên sản phẩm (*):</label>
                 <input
@@ -1744,7 +1744,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               </button>
             </div>
 
-            <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1 text-xs">
+            <div data-lenis-prevent className="space-y-4 max-h-[75vh] overflow-y-auto pr-1 text-xs">
               <div>
                 <label className="font-bold text-slate-700">Tên sản phẩm:</label>
                 <input

@@ -77,7 +77,7 @@ export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
         </div>
 
         {/* Drawer Body: Cart Items by Shop */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div data-lenis-prevent className="flex-1 overflow-y-auto p-4 space-y-4">
           {items.length === 0 ? (
             <div className="py-20 text-center space-y-3">
               <div className="w-16 h-16 rounded-full bg-orange-50 text-orange-400 mx-auto flex items-center justify-center">

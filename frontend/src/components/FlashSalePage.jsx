@@ -1,11 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Flame, Clock, ArrowLeft, Zap, Sparkles, Filter, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { gsap, useGSAP } from '../lib/gsap';
 
 export default function FlashSalePage({ products = [], onBack, onSelectProduct }) {
   // Live Countdown Timer
   const [timeLeft, setTimeLeft] = useState({ hours: 2, minutes: 45, seconds: 18 });
   const [selectedSlot, setSelectedSlot] = useState(0);
   const [selectedCategoryTab, setSelectedCategoryTab] = useState('all');
+  const pageRef = useRef(null);
+  const secondsBadgeRef = useRef(null);
+
+  // Subtle scale/fade tick on seconds change
+  useEffect(() => {
+    if (secondsBadgeRef.current) {
+      gsap.fromTo(
+        secondsBadgeRef.current,
+        { scale: 1.15, opacity: 0.8 },
+        { scale: 1, opacity: 1, duration: 0.28, ease: 'power2.out' }
+      );
+    }
+  }, [timeLeft.seconds]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -72,8 +86,20 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
     return true;
   });
 
+  // Staggered entrance for Flash Sale cards
+  useGSAP(() => {
+    const cards = pageRef.current?.querySelectorAll('.flash-sale-grid-card');
+    if (cards && cards.length > 0) {
+      gsap.fromTo(
+        cards,
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.45, stagger: 0.04, ease: 'power2.out' }
+      );
+    }
+  }, { scope: pageRef, dependencies: [products.length, selectedCategoryTab] });
+
   return (
-    <div className="space-y-6 pb-12 animate-in fade-in duration-300">
+    <div ref={pageRef} className="space-y-6 pb-12 animate-in fade-in duration-300">
       {/* 1. Header Navigation & Back Button */}
       <div className="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <button
@@ -104,7 +130,7 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
               Săn Deal Cực Khủng - Giảm Đến 50%
             </div>
             <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tight flex items-center gap-2">
-              <Flame className="w-8 h-8 sm:w-10 sm:h-10 fill-amber-300 text-amber-300 animate-bounce" />
+              <Flame className="w-8 h-8 sm:w-10 sm:h-10 fill-amber-300 text-amber-300" />
               <span>Flash Sale Deal Sốc</span>
             </h1>
             <p className="text-xs sm:text-sm text-white/90 max-w-xl">
@@ -127,7 +153,7 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
                 {String(timeLeft.minutes).padStart(2, '0')}
               </div>
               <span className="font-black text-2xl text-amber-300">:</span>
-              <div className="bg-slate-950 text-white font-mono font-black text-xl sm:text-2xl w-12 h-12 rounded-xl flex items-center justify-center shadow-inner animate-pulse">
+              <div ref={secondsBadgeRef} className="bg-slate-950 text-white font-mono font-black text-xl sm:text-2xl w-12 h-12 rounded-xl flex items-center justify-center shadow-inner">
                 {String(timeLeft.seconds).padStart(2, '0')}
               </div>
             </div>
@@ -201,7 +227,7 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
               <div
                 key={deal.id}
                 onClick={() => onSelectProduct && onSelectProduct(deal)}
-                className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-xl hover:border-orange-400 transition-all duration-300 cursor-pointer flex flex-col justify-between group hover:-translate-y-1"
+                className="flash-sale-grid-card bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-xl hover:border-orange-400 transition-shadow duration-300 cursor-pointer flex flex-col justify-between group"
               >
                 <div>
                   {/* Thumbnail & Badges */}

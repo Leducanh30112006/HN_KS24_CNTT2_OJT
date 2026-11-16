@@ -1,10 +1,24 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Flame, ChevronRight, ChevronLeft } from 'lucide-react';
+import { gsap, useGSAP } from '../lib/gsap';
 
 export default function FlashSaleSection({ products = [], onSelectProduct, onViewAllDeals }) {
   // Countdown Timer: 02:45:18
   const [timeLeft, setTimeLeft] = useState({ hours: 2, minutes: 45, seconds: 18 });
   const [isPaused, setIsPaused] = useState(false);
+  const sectionRef = useRef(null);
+  const secondsBadgeRef = useRef(null);
+
+  // Micro scale-fade tick on countdown seconds update
+  useEffect(() => {
+    if (secondsBadgeRef.current) {
+      gsap.fromTo(
+        secondsBadgeRef.current,
+        { scale: 1.15, opacity: 0.8 },
+        { scale: 1, opacity: 1, duration: 0.28, ease: 'power2.out' }
+      );
+    }
+  }, [timeLeft.seconds]);
 
   // Responsive items per view: mobile: 2, tablet: 3, desktop: 4
   const [itemsPerView, setItemsPerView] = useState(() => {
@@ -60,6 +74,29 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
     if (baseList.length === 0) return [];
     return [...baseList, ...baseList, ...baseList];
   }, [baseList]);
+
+  // Staggered entrance for Flash Sale cards with ScrollTrigger
+  useGSAP(() => {
+    const cards = sectionRef.current?.querySelectorAll('.flash-sale-card');
+    if (cards && cards.length > 0) {
+      gsap.fromTo(
+        cards,
+        { opacity: 0, y: 16 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.45,
+          stagger: 0.04,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: 'top 88%',
+            once: true,
+          },
+        }
+      );
+    }
+  }, { scope: sectionRef, dependencies: [products.length] });
 
   // Current position starts at Copy 1 (index = baseList.length)
   const [currentIndex, setCurrentIndex] = useState(baseList.length || 0);
@@ -205,6 +242,7 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
 
   return (
     <div 
+      ref={sectionRef}
       className="bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 rounded-3xl p-4 sm:p-6 shadow-md text-white relative overflow-hidden group select-none"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
@@ -216,7 +254,7 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 pb-3 border-b border-white/20">
         <div className="flex items-center space-x-3">
           <div className="flex items-center gap-1.5 font-black text-xl sm:text-2xl tracking-tight text-white drop-shadow-sm uppercase">
-            <Flame className="w-6 h-6 fill-amber-300 text-amber-300 animate-bounce" />
+            <Flame className="w-6 h-6 fill-amber-300 text-amber-300" />
             <span>Flash Sale</span>
           </div>
 
@@ -230,7 +268,7 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
               {String(timeLeft.minutes).padStart(2, '0')}
             </span>
             <span className="text-white font-bold">:</span>
-            <span className="bg-slate-900 text-white px-2 py-1 rounded-md shadow-inner">
+            <span ref={secondsBadgeRef} className="bg-slate-900 text-white px-2 py-1 rounded-md shadow-inner inline-block">
               {String(timeLeft.seconds).padStart(2, '0')}
             </span>
           </div>
@@ -296,7 +334,7 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
               >
                 <div
                   onClick={() => onSelectProduct && onSelectProduct(p)}
-                  className="bg-white rounded-2xl p-3 text-slate-900 shadow-sm hover:shadow-xl transition-all cursor-pointer group/card flex flex-col justify-between h-full hover:-translate-y-1"
+                  className="flash-sale-card bg-white rounded-2xl p-3 text-slate-900 shadow-sm hover:shadow-xl transition-shadow cursor-pointer group/card flex flex-col justify-between h-full"
                 >
                   <div className="relative aspect-square overflow-hidden rounded-xl mb-2 bg-slate-100">
                     <img

@@ -228,7 +228,7 @@ export default function LoginPage({ onBackToHome, onLoginSuccess }) {
             </div>
             
             <h1 className="text-4xl font-extrabold text-slate-900 leading-tight">
-              Trải nghiệm mua sắm <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-rose-600">thông minh & an toàn</span> cùng QuickShop
+              Trải nghiệm mua sắm <span className="text-orange-600 font-extrabold">thông minh & an toàn</span> cùng QuickShop
             </h1>
 
             <p className="text-sm text-slate-500 leading-relaxed">
