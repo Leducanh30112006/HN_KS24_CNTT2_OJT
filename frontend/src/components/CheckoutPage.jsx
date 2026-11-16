@@ -1578,7 +1578,7 @@ export default function CheckoutPage({
             <button
               onClick={handlePlaceOrder}
               disabled={isSubmitting}
-              className={`w-full py-4 text-white font-black text-sm rounded-2xl transition shadow-xl active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 ${
+              className={`btn-shimmer btn-primary-cta cursor-pointer w-full py-4 text-white font-black text-sm rounded-2xl transition shadow-xl active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 ${
                 (paymentMethod === 'payos' || paymentMethod === 'vnpay')
                   ? 'bg-gradient-to-r from-blue-600 via-sky-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-blue-500/25'
                   : 'bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 hover:from-orange-600 hover:to-rose-600 shadow-orange-500/30'

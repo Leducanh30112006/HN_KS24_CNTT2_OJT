@@ -31,6 +31,32 @@ import {
 import ApiErrorBanner from './ApiErrorBanner';
 import Pagination from './Pagination';
 
+function AnimatedNumber({ value = 0, suffix = '' }) {
+  const [displayValue, setDisplayValue] = useState(0);
+  const target = Number(value) || 0;
+
+  useEffect(() => {
+    let startTimestamp = null;
+    const duration = 650;
+    const startVal = 0;
+
+    let frameId;
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(Math.round(startVal + (target - startVal) * ease));
+      if (progress < 1) {
+        frameId = requestAnimationFrame(step);
+      }
+    };
+    frameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frameId);
+  }, [target]);
+
+  return <span>{displayValue.toLocaleString('vi-VN')}{suffix}</span>;
+}
+
 export default function AdminPortal({ categories = [], onCategoriesUpdated, onBackToStorefront }) {
   const { user, logout } = useAuthStore();
 
@@ -1723,7 +1749,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 </div>
               </div>
               <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
-                {pendingModerationCount}
+                <AnimatedNumber value={pendingModerationCount} />
               </div>
               <div className="w-full h-1 bg-amber-100 rounded-full mt-2 overflow-hidden">
                 <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: pendingModerationCount > 0 ? '65%' : '5%' }} />
@@ -1758,7 +1784,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 </div>
               </div>
               <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
-                {pendingSellerCount}
+                <AnimatedNumber value={pendingSellerCount} />
               </div>
               <div className="w-full h-1 bg-blue-100 rounded-full mt-2 overflow-hidden">
                 <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: pendingSellerCount > 0 ? '50%' : '5%' }} />
@@ -1793,7 +1819,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 </div>
               </div>
               <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-600 mt-2 tracking-tight">
-                {approvedModerationCount}
+                <AnimatedNumber value={approvedModerationCount} />
               </div>
               <div className="w-full h-1 bg-emerald-100 rounded-full mt-2 overflow-hidden">
                 <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: '85%' }} />
@@ -1819,7 +1845,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 </div>
               </div>
               <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
-                {activeSellerCount}
+                <AnimatedNumber value={activeSellerCount} />
               </div>
               <div className="w-full h-1 bg-amber-100 rounded-full mt-2 overflow-hidden">
                 <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: '70%' }} />
@@ -1841,7 +1867,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 </div>
               </div>
               <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
-                {users.length}
+                <AnimatedNumber value={users.length} />
               </div>
               <div className="w-full h-1 bg-slate-200 rounded-full mt-2 overflow-hidden">
                 <div className="h-full bg-slate-500 rounded-full transition-all duration-500" style={{ width: '60%' }} />
@@ -1863,7 +1889,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 </div>
               </div>
               <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
-                {activeVoucherCount}
+                <AnimatedNumber value={activeVoucherCount} />
               </div>
               <div className="w-full h-1 bg-pink-100 rounded-full mt-2 overflow-hidden">
                 <div className="h-full bg-pink-500 rounded-full transition-all duration-500" style={{ width: '75%' }} />
