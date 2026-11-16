@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useCartStore } from '../stores/useCartStore';
+import { fixMojibakeText } from '../utils/vietnameseEncoding';
 import { 
   getStoredOrders, 
   getStoredShipments, 
@@ -418,9 +419,9 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                               className="w-16 h-16 rounded-xl object-cover border border-slate-200 flex-shrink-0"
                             />
                             <div className="flex-1 min-w-0">
-                              <h4 className="text-xs font-semibold text-slate-900 line-clamp-1">{item.productName}</h4>
+                              <h4 className="text-xs font-semibold text-slate-900 line-clamp-1">{fixMojibakeText(item.productName)}</h4>
                               <div className="text-[11px] text-slate-500 pt-0.5">
-                                Phân loại: {item.variantName || `${item.color} - ${item.size}`}
+                                Phân loại: {fixMojibakeText(item.variantName) || fixMojibakeText(`${item.color} - ${item.size}`)}
                               </div>
                               <div className="text-[11px] text-slate-400">Số lượng: x{item.quantity}</div>
                             </div>

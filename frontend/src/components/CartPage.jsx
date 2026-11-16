@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import { fixMojibakeText } from '../utils/vietnameseEncoding';
 
 export default function CartPage({ 
   onProceedToCheckout, 
@@ -254,7 +255,7 @@ export default function CartPage({
                     className="w-4 h-4 accent-orange-600 rounded cursor-pointer"
                   />
                   <Store className="w-4 h-4 text-orange-600" />
-                  <span className="font-bold text-xs sm:text-sm text-slate-900">{group.shopName}</span>
+                  <span className="font-bold text-xs sm:text-sm text-slate-900">{fixMojibakeText(group.shopName)}</span>
                   <span className="bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
                     Mall
                   </span>
@@ -266,7 +267,7 @@ export default function CartPage({
                   </span>
                   <button 
                     onClick={() => {
-                      setChatNotice(`Đã mở kênh hỗ trợ trực tuyến tới gian hàng ${group.shopName}.`);
+                      setChatNotice(`Đã mở kênh hỗ trợ trực tuyến tới gian hàng ${fixMojibakeText(group.shopName)}.`);
                       setTimeout(() => setChatNotice(''), 3500);
                     }}
                     className="text-orange-600 hover:text-orange-700 font-bold flex items-center gap-1 transition"
@@ -305,21 +306,21 @@ export default function CartPage({
                         />
                         <div className="space-y-1 min-w-0 flex-1">
                           <h4 
-                            onClick={() => onSelectProduct && onSelectProduct({ id: item.productId, name: item.productName })}
+                            onClick={() => onSelectProduct && onSelectProduct({ id: item.productId, name: fixMojibakeText(item.productName) })}
                             className="text-xs sm:text-sm font-bold text-slate-800 line-clamp-2 hover:text-orange-600 transition cursor-pointer"
-                            title={item.productName}
+                            title={fixMojibakeText(item.productName)}
                           >
-                            {item.productName}
+                            {fixMojibakeText(item.productName)}
                           </h4>
                           <div className="text-[11px] text-slate-500 flex flex-wrap gap-2">
                             {item.color && (
                               <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium text-slate-700">
-                                Phân loại: {item.color}
+                                Phân loại: {fixMojibakeText(item.color)}
                               </span>
                             )}
                             {item.size && (
                               <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium text-slate-700">
-                                {item.size}
+                                {fixMojibakeText(item.size)}
                               </span>
                             )}
                             {item.outOfStock && (

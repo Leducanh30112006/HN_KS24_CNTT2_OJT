@@ -5,6 +5,7 @@ import {
   ShoppingBag, ChevronRight, ThumbsUp, Heart
 } from 'lucide-react';
 import ProductCard from './ProductCard';
+import { fixMojibakeText } from '../utils/vietnameseEncoding';
 
 export default function ShopDetailPage({ 
   shop, 
@@ -89,7 +90,7 @@ export default function ShopDetailPage({
 
   const shopInfo = {
     id: shop?.id || matchedProfile.id || 1,
-    name: shop?.name || shop?.shopName || matchedProfile.name,
+    name: fixMojibakeText(shop?.name || shop?.shopName) || matchedProfile.name,
     avatar: shop?.avatar || matchedProfile.avatar,
     coverImage: shop?.coverImage || matchedProfile.coverImage,
     rating: shop?.rating || matchedProfile.rating,

@@ -2,6 +2,7 @@ import React from 'react';
 import { Star, ShoppingCart, MapPin, CheckCircle2 } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import { fixMojibakeText } from '../utils/vietnameseEncoding';
 
 export default function ProductCard({ product, onSelect, onRequireAuth, onSelectShop }) {
   const addToCart = useCartStore((state) => state.addToCart);
@@ -77,29 +78,29 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
         <div className="px-3.5 pt-1 pb-3 space-y-1.5">
           <div className="flex items-center justify-between text-[11px] gap-1">
             <span className="text-orange-600 font-semibold truncate text-[11px]">
-              {product.categoryName || 'Sản phẩm chính hãng'}
+              {fixMojibakeText(product.categoryName) || 'Sản phẩm chính hãng'}
             </span>
             {product.shopName && (
               <span
                 onClick={(e) => {
                   e.stopPropagation();
                   if (onSelectShop) {
-                    onSelectShop({ id: product.shopId || 1, name: product.shopName });
+                    onSelectShop({ id: product.shopId || 1, name: fixMojibakeText(product.shopName) });
                   }
                 }}
                 className="text-[10px] text-slate-400 hover:text-orange-600 hover:underline truncate max-w-[85px] cursor-pointer"
-                title={`Xem gian hàng: ${product.shopName}`}
+                title={`Xem gian hàng: ${fixMojibakeText(product.shopName)}`}
               >
-                {product.shopName}
+                {fixMojibakeText(product.shopName)}
               </span>
             )}
           </div>
 
           <h3 
             className="text-xs sm:text-sm font-semibold text-slate-800 line-clamp-2 leading-relaxed group-hover:text-orange-600 transition-colors" 
-            title={product.name}
+            title={fixMojibakeText(product.name)}
           >
-            {product.name}
+            {fixMojibakeText(product.name)}
           </h3>
 
           {/* Bold JetBrains Mono Price Section */}

@@ -11,6 +11,7 @@ import { recordNewOrder } from '../data/sampleOrders';
 import VoucherModal from './VoucherModal';
 import axiosClient from '../api/axiosClient';
 import { AnimatedNumber } from './motion/MotionPrimitives';
+import { fixMojibakeText } from '../utils/vietnameseEncoding';
 
 export const AVAILABLE_CARRIERS = [
   {
@@ -1071,7 +1072,7 @@ export default function CheckoutPage({
                 <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Store className="w-4 h-4 text-orange-600" />
-                    <h3 className="font-bold text-xs sm:text-sm text-slate-900">{group.shopName}</h3>
+                    <h3 className="font-bold text-xs sm:text-sm text-slate-900">{fixMojibakeText(group.shopName)}</h3>
                     <span className="bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
                       Mall
                     </span>
@@ -1094,20 +1095,20 @@ export default function CheckoutPage({
                         />
                         <div className="space-y-1 min-w-0">
                           <h4 
-                            onClick={() => onSelectProduct && onSelectProduct({ id: item.productId, name: item.productName })}
+                            onClick={() => onSelectProduct && onSelectProduct({ id: item.productId, name: fixMojibakeText(item.productName) })}
                             className="text-xs sm:text-sm font-bold text-slate-800 line-clamp-2 hover:text-orange-600 transition cursor-pointer"
                           >
-                            {item.productName}
+                            {fixMojibakeText(item.productName)}
                           </h4>
                           <div className="text-[11px] text-slate-500 flex flex-wrap gap-2">
                             {item.color && (
                               <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium text-slate-700">
-                                Màu: {item.color}
+                                Màu: {fixMojibakeText(item.color)}
                               </span>
                             )}
                             {item.size && (
                               <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium text-slate-700">
-                                Size: {item.size}
+                                Size: {fixMojibakeText(item.size)}
                               </span>
                             )}
                           </div>

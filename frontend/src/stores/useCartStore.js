@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import axiosClient from '../api/axiosClient';
 import { useAuthStore, registerOnLogoutListener } from './useAuthStore';
+import { fixMojibakeText } from '../utils/vietnameseEncoding';
 
 const CART_STORAGE_KEY = 'quickshop_cart';
 const OFFLINE_CART_PREFIX = 'quickshop_offline_cart_';
@@ -96,15 +97,15 @@ const normalizeCartItem = (raw, prevItem = null) => {
     productId: raw?.productId ?? prevItem?.productId,
     variantId: raw?.variantId ?? prevItem?.variantId,
     sku: raw?.sku ?? prevItem?.sku ?? '',
-    productName: raw?.productName ?? prevItem?.productName ?? 'Sản phẩm QuickShop',
-    variantName: variantLabel,
-    color: attrs.color,
-    size: attrs.size,
+    productName: fixMojibakeText(raw?.productName ?? prevItem?.productName ?? 'Sản phẩm QuickShop'),
+    variantName: fixMojibakeText(variantLabel),
+    color: fixMojibakeText(attrs.color),
+    size: fixMojibakeText(attrs.size),
     price: Number(raw?.price ?? prevItem?.price ?? 0),
     mainImage: raw?.imageUrl || raw?.mainImage || prevItem?.mainImage || '',
     quantity: Number(raw?.quantity ?? prevItem?.quantity ?? 1),
     shopId: raw?.shopId ?? prevItem?.shopId ?? 'shop-default',
-    shopName: raw?.shopName ?? prevItem?.shopName ?? 'QuickShop Official',
+    shopName: fixMojibakeText(raw?.shopName ?? prevItem?.shopName ?? 'QuickShop Official'),
     availableStock: raw?.availableStock ?? raw?.stock ?? prevItem?.availableStock ?? null,
     outOfStock: Boolean(raw?.outOfStock ?? false),
     quantityExceedsStock: Boolean(raw?.quantityExceedsStock ?? false),
