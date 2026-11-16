@@ -3,4 +3,5 @@
 .idea
 **/node_modules
 **/dist
+!frontend/dist/**
 !*/build/libs/*.jar
