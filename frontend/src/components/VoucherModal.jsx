@@ -222,7 +222,7 @@ export default function VoucherModal({
   const totalPotentialSavings = (selectedShipping?.discount || 0) + (selectedPlatform?.discount || 0) + totalShopDiscount;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+    <div data-lenis-prevent className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* 1. Modal Header */}
@@ -333,7 +333,7 @@ export default function VoucherModal({
         </div>
 
         {/* 4. Voucher List Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6 bg-slate-50/60">
+        <div data-lenis-prevent className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6 bg-slate-50/60">
           
           {/* Section 1: Shipping Vouchers */}
           {(activeTab === 'all' || activeTab === 'shipping') && (

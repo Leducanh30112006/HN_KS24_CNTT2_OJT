@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
 import HeroBanner from './components/HeroBanner';
 import FlashSaleSection from './components/FlashSaleSection';
@@ -21,6 +21,8 @@ import OrderHistoryPage from './components/OrderHistoryPage';
 import ShipperPortal from './components/ShipperPortal';
 import catalogApi, { mapPriceRange } from './api/catalogApi';
 import axiosClient from './api/axiosClient';
+import Lenis from 'lenis';
+import { gsap, ScrollTrigger, useGSAP } from './lib/gsap';
 import {
   Filter, RotateCcw, Star, ChevronRight, ChevronDown, ShieldCheck,
   HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft, CheckCircle2,
@@ -167,6 +169,34 @@ export default function App() {
   const isAdmin = isAuthenticated && user && (user.role === 'ROLE_ADMIN' || user.role === 'ADMIN');
   const isShipper = isAuthenticated && user && (user.role === 'ROLE_SHIPPER' || user.role === 'SHIPPER' || user.role?.includes('ADMIN'));
   const isSellerOnly = isSeller && !isAdmin;
+  const lenisRef = useRef(null);
+  const storefrontRef = useRef(null);
+
+  // Khởi tạo Lenis Smooth Scroll đồng bộ cùng GSAP ScrollTrigger và ticker
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.1,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+      touchMultiplier: 1.5,
+    });
+    lenisRef.current = lenis;
+
+    lenis.on('scroll', ScrollTrigger.update);
+
+    const updateTicker = (time) => {
+      lenis.raf(time * 1000);
+    };
+
+    gsap.ticker.add(updateTicker);
+    gsap.ticker.lagSmoothing(0);
+
+    return () => {
+      gsap.ticker.remove(updateTicker);
+      lenis.destroy();
+      lenisRef.current = null;
+    };
+  }, []);
 
   // Persistent checkout items in sessionStorage (chống mất giỏ hàng chọn thanh toán khi chuyển sang đăng nhập)
   const [checkoutItems, setCheckoutItemsState] = useState(() => {
@@ -221,7 +251,11 @@ export default function App() {
       }
     }
     if (scroll) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (lenisRef.current) {
+        lenisRef.current.scrollTo(0, { immediate: false });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   };
 
@@ -357,6 +391,53 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [searchKeyword, selectedCategory]);
+
+  // GSAP ScrollTrigger Stagger Entrance Animations for Storefront
+  useGSAP(() => {
+    if (currentView !== 'storefront') return;
+
+    // Staggered entrance for category cards
+    const catCards = storefrontRef.current?.querySelectorAll('.category-card-item');
+    if (catCards && catCards.length > 0) {
+      gsap.fromTo(
+        catCards,
+        { opacity: 0, y: 18 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.5,
+          stagger: 0.05,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: storefrontRef.current.querySelector('.category-showcase-container'),
+            start: 'top 88%',
+            once: true,
+          },
+        }
+      );
+    }
+
+    // Staggered entrance for product cards
+    const prodCards = storefrontRef.current?.querySelectorAll('.product-card-item');
+    if (prodCards && prodCards.length > 0) {
+      gsap.fromTo(
+        prodCards,
+        { opacity: 0, y: 18 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.45,
+          stagger: 0.035,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: '#catalog-product-grid',
+            start: 'top 85%',
+            once: true,
+          },
+        }
+      );
+    }
+  }, { scope: storefrontRef, dependencies: [currentView, displayedCategories.length, filteredProducts.length] });
 
 
   // Fetch Categories from /api/catalog/categories
@@ -1100,7 +1181,7 @@ export default function App() {
 
         {/* VIEW 3: STOREFRONT (NGƯỜI MUA - TRANG CHỦ) */}
         {currentView === 'storefront' && (
-          <div className="space-y-6">
+          <div ref={storefrontRef} className="space-y-6">
             {/* Hero Carousel & Commitments Banner */}
             <HeroBanner onSelectCategory={(catId) => setSelectedCategory(catId)} />
 
@@ -1114,7 +1195,7 @@ export default function App() {
             />
 
             {/* Category Showcase Grid (Hiển thị 1 hàng, bấm xem tất cả mới mở rộng) */}
-            <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm space-y-3">
+            <div className="category-showcase-container bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wide flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-orange-600" />
@@ -1138,10 +1219,10 @@ export default function App() {
                     <button
                       key={c.id}
                       onClick={() => setSelectedCategory(isSelected ? null : c.id)}
-                      className={`p-3 sm:p-3.5 rounded-2xl border text-center transition-all duration-200 flex flex-col items-center justify-center space-y-2 group cursor-pointer ${
+                      className={`category-card-item p-3 sm:p-3.5 rounded-2xl border text-center transition-colors duration-200 flex flex-col items-center justify-center space-y-2 group cursor-pointer ${
                         isSelected
                           ? 'border-orange-500 bg-orange-50/90 text-orange-700 shadow-sm font-bold ring-2 ring-orange-400/20'
-                          : `border-slate-100/90 ${borderHover} hover:shadow-lg hover:-translate-y-0.5 bg-white text-slate-700`
+                          : `border-slate-100/90 ${borderHover} hover:shadow-lg bg-white text-slate-700`
                       }`}
                     >
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm ${
@@ -1358,14 +1439,14 @@ export default function App() {
                     </div>
 
                     {/* Modal Body - 3 Cột Lọc Thông Minh */}
-                    <div className="p-5 sm:p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+                    <div data-lenis-prevent className="p-5 sm:p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
                       {/* Cột 1: Theo Danh Mục */}
                       <div className="space-y-3">
                         <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5 pb-1 border-b border-slate-100">
                           <Store className="w-3.5 h-3.5 text-orange-500" />
                           Theo Danh Mục
                         </div>
-                        <div className="max-h-64 overflow-y-auto space-y-1 pr-1.5 scrollbar-thin">
+                        <div data-lenis-prevent className="max-h-64 overflow-y-auto space-y-1 pr-1.5 scrollbar-thin">
                           <button
                             onClick={() => setSelectedCategory(null)}
                             className={`w-full text-left px-3 py-2 rounded-xl transition flex justify-between items-center ${
@@ -1542,13 +1623,14 @@ export default function App() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4">
                     {filteredProducts.map((p) => (
-                      <ProductCard
-                        key={p.id}
-                        product={p}
-                        onSelect={handleSelectProduct}
-                        onSelectShop={handleSelectShop}
-                        onRequireAuth={() => handleRequireAuth('storefront')}
-                      />
+                      <div key={p.id} className="product-card-item h-full">
+                        <ProductCard
+                          product={p}
+                          onSelect={handleSelectProduct}
+                          onSelectShop={handleSelectShop}
+                          onRequireAuth={() => handleRequireAuth('storefront')}
+                        />
+                      </div>
                     ))}
                   </div>
 

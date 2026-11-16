@@ -294,7 +294,7 @@ export default function AiChatWidget() {
             </div>
 
             {/* Messages Body */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/50" role="log" aria-live="polite">
+            <div data-lenis-prevent className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/50" role="log" aria-live="polite">
               {messages.map((m, i) => (
                 <div
                   key={i}

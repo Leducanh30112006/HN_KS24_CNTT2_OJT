@@ -597,7 +597,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
             </div>
 
             {/* Timeline Stepper */}
-            <div className="space-y-4 max-h-72 overflow-y-auto px-1">
+            <div data-lenis-prevent className="space-y-4 max-h-72 overflow-y-auto px-1">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Hành trình kiện hàng</h4>
               <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
                 {(selectedShipment.timeline || []).map((tl, idx) => (

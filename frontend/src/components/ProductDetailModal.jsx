@@ -183,7 +183,7 @@ export default function ProductDetailModal({ product, onClose, onBuyNow, onRequi
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
+    <div data-lenis-prevent className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
       <div className="relative bg-white rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Header Bar */}
         <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50/50">
@@ -199,7 +199,7 @@ export default function ProductDetailModal({ product, onClose, onBuyNow, onRequi
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="overflow-y-auto p-4 sm:p-6 space-y-6">
+        <div data-lenis-prevent className="overflow-y-auto p-4 sm:p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
             {/* Left: Product Images with Zoom On Hover */}
             <div className="space-y-3">
@@ -450,7 +450,7 @@ export default function ProductDetailModal({ product, onClose, onBuyNow, onRequi
             </div>
 
             {/* List of Customer Reviews */}
-            <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+            <div data-lenis-prevent className="space-y-3 max-h-64 overflow-y-auto pr-1">
               {reviews.map((r) => (
                 <div key={r.id} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/70 space-y-1.5">
                   <div className="flex justify-between items-center text-xs">

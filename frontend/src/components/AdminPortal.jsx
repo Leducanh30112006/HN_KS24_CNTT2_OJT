@@ -3446,7 +3446,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 Cây Cấu Trúc Danh Mục Toàn Sàn ({categories.length})
               </h2>
             </div>
-            <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
+            <div data-lenis-prevent className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
               {categories.map((c) => (
                 <div key={c.id} className="p-4 hover:bg-slate-50 flex items-center justify-between text-xs">
                   <div className="flex items-center space-x-3">
@@ -3550,7 +3550,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   Làm mới
                 </button>
               </div>
-              <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
+              <div data-lenis-prevent className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
                 {emailLogs.map((log) => (
                   <div key={log.id} className="p-4 hover:bg-slate-50 text-xs flex justify-between items-center">
                     <div>

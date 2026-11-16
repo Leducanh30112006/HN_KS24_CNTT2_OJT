@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, Truck, RotateCcw, Award, ChevronLeft, ChevronRight, Zap, Sparkles } from 'lucide-react';
+import { gsap, useGSAP } from '../lib/gsap';
 
 export default function HeroBanner({ onSelectCategory }) {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const heroRef = useRef(null);
 
   const slides = [
     {
       title: 'LỄ HỘI CÔNG NGHỆ & MUA SẮM SIÊU TỐC',
       subtitle: 'Giảm đến 50% các dòng Flagship AI, Laptop & Phụ kiện chính hãng',
       tag: '🔥 SIÊU SALE HÔM NAY',
-      bgGradient: 'from-orange-600 via-rose-600 to-purple-700',
+      bgGradient: 'from-orange-600 via-rose-600 to-amber-700',
       image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&auto=format&fit=crop&q=80',
       badge: 'FreeShip Xtra 0đ',
     },
@@ -25,11 +27,22 @@ export default function HeroBanner({ onSelectCategory }) {
       title: 'NHÀ CỬA HIỆN ĐẠI - CÔNG NGHỆ TỰ ĐỘNG HÓA',
       subtitle: 'Robot hút bụi Omni 3000Pa cảm biến LiDAR & đồ gia dụng thông minh',
       tag: '✨ CHÍNH HÃNG MALL',
-      bgGradient: 'from-rose-600 via-purple-600 to-indigo-800',
+      bgGradient: 'from-slate-900 via-stone-800 to-orange-950',
       image: 'https://images.unsplash.com/photo-1558317374-067fb5f30001?w=600&auto=format&fit=crop&q=80',
       badge: 'Bảo hành 12T',
     },
   ];
+
+  useGSAP(() => {
+    const items = heroRef.current?.querySelectorAll('.hero-anim-item');
+    if (items && items.length > 0) {
+      gsap.fromTo(
+        items,
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.55, stagger: 0.08, ease: 'power2.out' }
+      );
+    }
+  }, { scope: heroRef });
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -39,11 +52,11 @@ export default function HeroBanner({ onSelectCategory }) {
   }, [slides.length]);
 
   return (
-    <div className="space-y-4">
+    <div ref={heroRef} className="space-y-4">
       {/* 1. Main Hero Carousel & Sub Banners */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* Main Banner Slide (Col span 2) */}
-        <div className="lg:col-span-2 relative rounded-2xl overflow-hidden shadow-lg min-h-[220px] sm:min-h-[280px] flex items-center">
+        <div className="hero-anim-item lg:col-span-2 relative rounded-3xl overflow-hidden shadow-xl shadow-orange-500/5 border border-orange-200/40 min-h-[220px] sm:min-h-[280px] flex items-center bg-slate-900">
           {slides.map((s, index) => (
             <div
               key={index}
@@ -114,7 +127,7 @@ export default function HeroBanner({ onSelectCategory }) {
 
         {/* 2 Sub Banners on the Right */}
         <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-          <div className="relative rounded-2xl overflow-hidden p-4 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md flex flex-col justify-between">
+          <div className="hero-anim-item relative rounded-3xl overflow-hidden p-4 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md border border-orange-200/30 flex flex-col justify-between hover:shadow-lg transition-shadow duration-300">
             <div>
               <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-black/20 rounded-md">
                 Độc quyền Sàn
@@ -127,7 +140,7 @@ export default function HeroBanner({ onSelectCategory }) {
             </div>
           </div>
 
-          <div className="relative rounded-2xl overflow-hidden p-4 bg-gradient-to-br from-purple-700 to-rose-600 text-white shadow-md flex flex-col justify-between">
+          <div className="hero-anim-item relative rounded-3xl overflow-hidden p-4 bg-gradient-to-br from-rose-600 via-orange-600 to-amber-600 text-white shadow-md border border-orange-200/30 flex flex-col justify-between hover:shadow-lg transition-shadow duration-300">
             <div>
               <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-black/20 rounded-md">
                 Vận chuyển 0Đ
@@ -135,7 +148,7 @@ export default function HeroBanner({ onSelectCategory }) {
               <h3 className="text-sm font-bold mt-2">FreeShip Xtra Toàn Quốc</h3>
               <p className="text-[11px] text-white/90 mt-0.5">Áp dụng đơn từ 99.000đ</p>
             </div>
-            <div className="mt-2 text-xs font-semibold text-rose-200 flex items-center gap-1">
+            <div className="mt-2 text-xs font-semibold text-rose-100 flex items-center gap-1">
               Thu thập mã →
             </div>
           </div>
@@ -143,7 +156,7 @@ export default function HeroBanner({ onSelectCategory }) {
       </div>
 
       {/* 2. 4 Gold Trust Commitments Bar (Bảo Chứng Vàng) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm">
+      <div className="hero-anim-item grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm">
         <div className="flex items-center space-x-3 p-1">
           <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0">
             <Award className="w-5 h-5" />
@@ -175,7 +188,7 @@ export default function HeroBanner({ onSelectCategory }) {
         </div>
 
         <div className="flex items-center space-x-3 p-1">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
