@@ -757,7 +757,7 @@ export default function ShipperPortal({ onBackToHome }) {
               </button>
             </div>
 
-            <div className="space-y-4 max-h-80 overflow-y-auto px-1">
+            <div data-lenis-prevent className="space-y-4 max-h-80 overflow-y-auto px-1">
               <div className="relative pl-6 space-y-5 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
                 {(selectedShipment.timeline || []).map((tl, idx) => (
                   <div key={idx} className="relative">

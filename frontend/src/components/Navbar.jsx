@@ -6,6 +6,7 @@ import {
 import { useAuthStore } from '../stores/useAuthStore';
 import { useCartStore } from '../stores/useCartStore';
 import { useNotificationStore } from '../stores/useNotificationStore';
+import { gsap } from '../lib/gsap';
 
 export default function Navbar({ 
   currentView, 
@@ -28,6 +29,20 @@ export default function Navbar({
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const searchInputRef = useRef(null);
+  const cartBadgeRef = useRef(null);
+  const prevCountRef = useRef(totalCartCount);
+
+  // Cart Badge Tactile Feedback: scale pop on item count increase
+  useEffect(() => {
+    if (totalCartCount > prevCountRef.current && cartBadgeRef.current) {
+      gsap.fromTo(
+        cartBadgeRef.current,
+        { scale: 1.28 },
+        { scale: 1, duration: 0.35, ease: 'back.out(2)' }
+      );
+    }
+    prevCountRef.current = totalCartCount;
+  }, [totalCartCount]);
 
   // Global Keyboard Shortcuts: '/' and 'Ctrl+K' / 'Cmd+K' to focus search
   useEffect(() => {
@@ -279,7 +294,7 @@ export default function Navbar({
                   )}
                 </div>
 
-                <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                <div data-lenis-prevent className="max-h-72 overflow-y-auto divide-y divide-slate-100">
                   {notifications.length === 0 ? (
                     <div className="p-6 text-center text-xs text-slate-400">
                       Chưa có thông báo nào
@@ -319,7 +334,10 @@ export default function Navbar({
             <div className="relative">
               <ShoppingCart className="w-5 h-5" />
               {totalCartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-white text-orange-600 text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                <span
+                  ref={cartBadgeRef}
+                  className="absolute -top-2 -right-2 bg-white text-orange-600 text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm select-none"
+                >
                   {totalCartCount}
                 </span>
               )}
