@@ -21,6 +21,8 @@ import {
   getSellerWalletData,
   createSellerWithdrawal,
 } from '../data/sampleOrders';
+import ProductDescriptionEditor from './ProductDescriptionEditor';
+import { stripHtml } from '../utils/sanitizeHtml';
 
 export default function SellerPortal({ categories = [], onProductCreated, onBackToStorefront }) {
   const { user, logout } = useAuthStore();
@@ -94,6 +96,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
   // AI SEO Generator state
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiSuccessMsg, setAiSuccessMsg] = useState('');
+  const [pendingAiContent, setPendingAiContent] = useState(null); // { isEditMode, generatedHtml, generatedHighlights, sampleDescImages }
 
   // Danh sách sản phẩm mẫu đầy đủ chi tiết cho gian hàng (Shop ID #1)
   const defaultSellerProducts = defaultProducts.filter(
@@ -309,7 +312,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
   };
 
   // ==========================================
-  // AI GEMINI DESCRIPTION GENERATOR
+  // AI GEMINI DESCRIPTION GENERATOR (CKEditor 5 Compatible)
   // ==========================================
   const handleGenerateAiDescription = (isEditMode = false) => {
     const targetName = isEditMode ? editName : name;
@@ -320,11 +323,11 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
     setAiGenerating(true);
     setAiSuccessMsg('');
+    setPendingAiContent(null);
 
     setTimeout(() => {
-      const generatedDesc = `Sản phẩm ${targetName} chính hãng thuộc phân khúc cao cấp tại gian hàng. Được sản xuất trên dây chuyền công nghệ hiện đại, đáp ứng các tiêu chuẩn kiểm định nghiêm ngặt về độ bền, hiệu năng và an toàn cho người sử dụng.
-
-Thiết kế tinh tế sang trọng với từng đường nét được gia công chuẩn xác. Tích hợp các công nghệ thông minh mới nhất giúp tối ưu trải nghiệm và tiết kiệm điện năng. Đầy đủ hóa đơn chứng từ, tem niêm phong và bảo hành chính hãng 12 tháng tại các trung tâm trên toàn quốc.`;
+      // Chuẩn hóa định dạng rich text HTML chuẩn cho CKEditor 5
+      const generatedHtml = `<h2>Giới thiệu sản phẩm ${targetName}</h2><p><strong>${targetName}</strong> chính hãng thuộc phân khúc cao cấp tại gian hàng. Được sản xuất trên dây chuyền công nghệ hiện đại, đáp ứng các tiêu chuẩn kiểm định nghiêm ngặt về độ bền, hiệu năng và an toàn cho người sử dụng.</p><h3>Đặc điểm thiết kế & Tính năng nổi bật</h3><p>Thiết kế tinh tế sang trọng với từng đường nét được gia công chuẩn xác. Tích hợp các công nghệ thông minh mới nhất giúp tối ưu trải nghiệm và tiết kiệm điện năng. Đầy đủ hóa đơn chứng từ, tem niêm phong và bảo hành chính hãng 12 tháng tại các trung tâm trên toàn quốc.</p>`;
 
       const generatedHighlights = [
         `Công nghệ tiên phong đáp ứng tối đa hiệu năng cho ${targetName}`,
@@ -338,20 +341,69 @@ Thiết kế tinh tế sang trọng với từng đường nét được gia cô
         'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=1000&auto=format&fit=crop&q=80',
       ];
 
-      if (isEditMode) {
-        setEditDescription(generatedDesc);
-        setEditHighlights(generatedHighlights);
-        setEditDescriptionImages(sampleDescImages);
-      } else {
-        setDescription(generatedDesc);
-        setHighlights(generatedHighlights);
-        setDescriptionImages(sampleDescImages);
-      }
+      const currentContent = isEditMode ? editDescription : description;
+      const hasExistingContent = stripHtml(currentContent).trim().length > 0;
+      const hasExistingImages = /<img\b|<figure\b/i.test(currentContent || '');
 
-      setAiGenerating(false);
-      setAiSuccessMsg('✨ AI Gemini đã sinh mô tả chi tiết, đặc điểm nổi bật và gợi ý hình ảnh minh họa thành công!');
-      setTimeout(() => setAiSuccessMsg(''), 5000);
+      if (hasExistingContent || hasExistingImages) {
+        // Đã có nội dung hoặc ảnh trong editor -> Không tự ý ghi đè mà hiển thị tùy chọn cho người dùng
+        setPendingAiContent({
+          isEditMode,
+          generatedHtml,
+          generatedHighlights,
+          sampleDescImages,
+          hasExistingImages
+        });
+        setAiGenerating(false);
+      } else {
+        // Chưa có nội dung -> Áp dụng trực tiếp
+        if (isEditMode) {
+          setEditDescription(generatedHtml);
+          setEditHighlights(generatedHighlights);
+          setEditDescriptionImages(sampleDescImages);
+        } else {
+          setDescription(generatedHtml);
+          setHighlights(generatedHighlights);
+          setDescriptionImages(sampleDescImages);
+        }
+        setAiGenerating(false);
+        setAiSuccessMsg('✨ AI Gemini đã sinh mô tả chi tiết chuẩn CKEditor 5 và gợi ý hình ảnh minh họa thành công!');
+        setTimeout(() => setAiSuccessMsg(''), 5000);
+      }
     }, 1200);
+  };
+
+  const handleApplyAiContent = (mode = 'replace') => {
+    if (!pendingAiContent) return;
+    const { isEditMode, generatedHtml, generatedHighlights, sampleDescImages } = pendingAiContent;
+
+    if (isEditMode) {
+      if (mode === 'append') {
+        const combined = editDescription ? `${editDescription}<p>&nbsp;</p>${generatedHtml}` : generatedHtml;
+        setEditDescription(combined);
+      } else {
+        setEditDescription(generatedHtml);
+      }
+      setEditHighlights(generatedHighlights);
+      setEditDescriptionImages(sampleDescImages);
+    } else {
+      if (mode === 'append') {
+        const combined = description ? `${description}<p>&nbsp;</p>${generatedHtml}` : generatedHtml;
+        setDescription(combined);
+      } else {
+        setDescription(generatedHtml);
+      }
+      setHighlights(generatedHighlights);
+      setDescriptionImages(sampleDescImages);
+    }
+
+    setPendingAiContent(null);
+    setAiSuccessMsg(
+      mode === 'append'
+        ? '✨ Đã chèn thêm mô tả AI vào cuối nội dung hiện tại!'
+        : '✨ Đã ghi đè mô tả AI vào trình soạn thảo CKEditor thành công!'
+    );
+    setTimeout(() => setAiSuccessMsg(''), 5000);
   };
 
   // Format currency helper
@@ -782,7 +834,7 @@ Thiết kế tinh tế sang trọng với từng đường nét được gia cô
                               />
                               <div className="min-w-0">
                                 <div className="font-bold text-slate-900 line-clamp-1">{p.name}</div>
-                                <div className="text-[11px] text-slate-400 line-clamp-1">{p.description}</div>
+                                <div className="text-[11px] text-slate-400 line-clamp-1">{stripHtml(p.description)}</div>
                               </div>
                             </div>
                           </td>
@@ -1467,15 +1519,67 @@ Thiết kế tinh tế sang trọng với từng đường nét được gia cô
               </div>
               {aiSuccessMsg && <p className="text-xs text-emerald-600 font-semibold">{aiSuccessMsg}</p>}
 
-              {/* Mô tả chi tiết */}
-              <div>
-                <label className="text-xs font-bold text-slate-700">Mô tả chi tiết sản phẩm:</label>
-                <textarea
-                  rows={4}
+              {/* Cảnh báo / Tùy chọn khi sinh AI mà đã có nội dung sẵn trong trình soạn thảo */}
+              {pendingAiContent && !pendingAiContent.isEditMode && (
+                <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-2xl space-y-2 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 text-amber-950 font-bold text-xs">
+                    <Sparkles className="w-4 h-4 text-amber-600" />
+                    <span>
+                      {pendingAiContent.hasExistingImages
+                        ? 'Trình soạn thảo đang có bài viết và hình ảnh nội tuyến. Bạn muốn xử lý như thế nào?'
+                        : 'Trình soạn thảo đã có nội dung. Bạn muốn áp dụng mô tả AI như thế nào?'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    {pendingAiContent.hasExistingImages ? (
+                      <span>
+                        ⚠️ <strong>Lưu ý:</strong> Nếu chọn <em>"Ghi đè"</em>, toàn bộ văn bản và <strong>hình ảnh bạn đã chèn trong bài</strong> sẽ bị thay thế bằng mô tả mới từ AI. Khuyến nghị chọn <em>"Chèn tiếp vào sau"</em> để giữ lại đầy đủ hình ảnh!
+                      </span>
+                    ) : (
+                      'Để không làm mất những gì bạn đã nhập, bạn có thể chọn ghi đè toàn bộ hoặc chèn tiếp nối vào sau nội dung hiện tại.'
+                    )}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleApplyAiContent('replace')}
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                    >
+                      {pendingAiContent.hasExistingImages ? 'Ghi đè (Thay thế cả ảnh)' : 'Ghi đè nội dung cũ'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyAiContent('append')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                    >
+                      {pendingAiContent.hasExistingImages ? 'Chèn tiếp vào sau (Giữ nguyên ảnh)' : 'Chèn tiếp vào sau'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingAiContent(null)}
+                      className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-bold transition"
+                    >
+                      Hủy bỏ
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Mô tả chi tiết với CKEditor 5 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <span>Mô tả chi tiết sản phẩm:</span>
+                    <span className="text-[10px] font-semibold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+                      CKEditor 5
+                    </span>
+                  </label>
+                  <span className="text-[10px] text-slate-400">Định dạng chữ, màu sắc, bảng biểu, danh sách</span>
+                </div>
+                <ProductDescriptionEditor
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Giới thiệu chi tiết về công năng, vật liệu, chế độ bảo hành..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-orange-500"
+                  onChange={(data) => setDescription(data)}
+                  placeholder="Giới thiệu chi tiết về công năng, vật liệu, bảng thông số kỹ thuật, chế độ bảo hành..."
                 />
               </div>
 
@@ -1651,13 +1755,87 @@ Thiết kế tinh tế sang trọng với từng đường nét được gia cô
                 />
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700">Mô tả chi tiết:</label>
-                <textarea
-                  rows={4}
+              {/* Nút AI Gemini Sinh mô tả chi tiết cho Modal Edit */}
+              <div className="p-3 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200/80 rounded-2xl flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-orange-950 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-orange-600" />
+                    <span>Trợ Lý AI Gemini Marketing & SEO</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">Tự động viết lại hoặc bổ sung mô tả sản phẩm chuẩn SEO</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleGenerateAiDescription(true)}
+                  disabled={aiGenerating}
+                  className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center gap-1"
+                >
+                  {aiGenerating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  <span>{aiGenerating ? 'Đang viết...' : 'Sinh Bằng AI'}</span>
+                </button>
+              </div>
+
+              {/* Tùy chọn khi sinh AI mà đã có nội dung trong editor */}
+              {pendingAiContent && pendingAiContent.isEditMode && (
+                <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-2xl space-y-2 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 text-amber-950 font-bold text-xs">
+                    <Sparkles className="w-4 h-4 text-amber-600" />
+                    <span>
+                      {pendingAiContent.hasExistingImages
+                        ? 'Sản phẩm đang có bài viết và hình ảnh nội tuyến. Bạn muốn xử lý như thế nào?'
+                        : 'Sản phẩm đã có nội dung mô tả sẵn có. Bạn muốn áp dụng mô tả AI như thế nào?'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    {pendingAiContent.hasExistingImages ? (
+                      <span>
+                        ⚠️ <strong>Lưu ý:</strong> Nếu chọn <em>"Ghi đè"</em>, toàn bộ văn bản và <strong>hình ảnh bạn đã chèn trong bài</strong> sẽ bị thay thế bằng mô tả mới từ AI. Khuyến nghị chọn <em>"Chèn tiếp vào sau"</em> để giữ lại đầy đủ hình ảnh!
+                      </span>
+                    ) : (
+                      'Để không làm mất dữ liệu bạn đã soạn thảo, bạn có thể chọn ghi đè hoặc chèn thêm vào cuối bài viết.'
+                    )}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleApplyAiContent('replace')}
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                    >
+                      {pendingAiContent.hasExistingImages ? 'Ghi đè (Thay thế cả ảnh)' : 'Ghi đè nội dung cũ'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyAiContent('append')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                    >
+                      {pendingAiContent.hasExistingImages ? 'Chèn tiếp vào sau (Giữ nguyên ảnh)' : 'Chèn tiếp vào sau'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingAiContent(null)}
+                      className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-bold transition"
+                    >
+                      Hủy bỏ
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Mô tả chi tiết với CKEditor 5 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                    <span>Mô tả chi tiết:</span>
+                    <span className="text-[10px] font-semibold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+                      CKEditor 5
+                    </span>
+                  </label>
+                  <span className="text-[10px] text-slate-400">Định dạng chữ, màu sắc, bảng biểu, danh sách</span>
+                </div>
+                <ProductDescriptionEditor
                   value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 outline-none"
+                  onChange={(data) => setEditDescription(data)}
+                  placeholder="Chỉnh sửa chi tiết mô tả sản phẩm..."
                 />
               </div>
 
