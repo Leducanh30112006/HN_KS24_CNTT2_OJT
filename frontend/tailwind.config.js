@@ -6,22 +6,22 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        primary: {
-          50: '#f0fdf4',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-        },
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },
-      borderRadius: {
-        'sm': '2px',
-        DEFAULT: '4px',
-        'md': '4px',
-        'lg': '4px',
-        'xl': '6px',
-        '2xl': '8px',
-        '3xl': '12px',
+      colors: {
+        obsidian: {
+          DEFAULT: '#0F172A',
+          card: '#111827',
+          surface: '#1E293B',
+        },
+        alabaster: '#FAFAFA',
+        brand: {
+          orange: '#F97316',
+          darkOrange: '#EA580C',
+          amber: '#F59E0B',
+        },
       },
     },
   },

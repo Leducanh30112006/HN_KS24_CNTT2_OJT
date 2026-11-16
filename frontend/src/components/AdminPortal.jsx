@@ -1276,17 +1276,17 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   ];
 
   return (
-    <div className="min-h-screen bg-slate-100 flex font-sans">
+    <div className="min-h-screen bg-[#FAFAFA] flex font-sans">
       {/* ========================================================== */}
       {/* 1. PROFESSIONAL SIDEBAR NAVIGATION (THANH BÊN ĐIỀU HƯỚNG) */}
       {/* ========================================================== */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-950 text-slate-200 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } shadow-2xl md:shadow-none border-r border-slate-800`}
+        } shadow-2xl md:shadow-none border-r border-slate-800/80`}
       >
         {/* Sidebar Header / Brand */}
-        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-800 bg-slate-950/60">
+        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-800/80 bg-black/40">
           <div className="flex items-center space-x-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/20 font-bold">
               <ShieldCheck className="w-5 h-5 text-slate-950" />
@@ -1311,7 +1311,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
         </div>
 
         {/* Admin Profile Quick Card */}
-        <div className="p-3 mx-3 my-3 bg-slate-800/60 rounded-2xl border border-slate-800/80">
+        <div className="p-3 mx-3 my-3 bg-slate-900/80 rounded-2xl border border-slate-800/80">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-xs border border-emerald-500/30">
               {user?.fullName?.charAt(0) || 'A'}
@@ -1327,7 +1327,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
         </div>
 
         {/* Sidebar Nav Items Grouped */}
-        <div className="px-3 py-1 flex-1 space-y-4 overflow-y-auto">
+        <div data-lenis-prevent className="px-3 py-1 flex-1 space-y-4 overflow-y-auto">
           {/* Group 1: TỔNG QUAN & HẠ TẦNG */}
           <div className="space-y-1">
             <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -1551,9 +1551,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       {/* ========================================================== */}
       {/* 2. MAIN CONTENT AREA (BÊN PHẢI THANH SIDEBAR) */}
       {/* ========================================================== */}
-      <div className="flex-1 flex flex-col md:pl-64 min-w-0">
+      <div className="flex-1 flex flex-col md:pl-64 min-w-0 bg-[#FAFAFA]">
         {/* Top Navbar */}
-        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6 shadow-xs">
+        <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-xl border-b border-slate-200/80 h-16 flex items-center justify-between px-4 sm:px-6 shadow-xs">
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -1599,7 +1599,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
         {/* Main Content Body */}
         <main className="p-4 sm:p-6 lg:p-8 space-y-6 flex-1 max-w-7xl w-full mx-auto">
           {/* Header Banner Card */}
-          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-stone-900 border border-slate-800/80 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shadow-lg">
@@ -1669,7 +1669,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       {activeTab === 'dashboard' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Welcome & System Status Banner */}
-          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-stone-900 border border-slate-800/80 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
             <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-orange-500/10 to-transparent pointer-events-none"></div>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
               <div className="space-y-1.5">
@@ -1723,8 +1723,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <Clock className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+              <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
                 {pendingModerationCount}
+              </div>
+              <div className="w-full h-1 bg-amber-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: pendingModerationCount > 0 ? '65%' : '5%' }} />
               </div>
               <div className="flex items-center gap-1.5 mt-2 text-[11px]">
                 {pendingModerationCount > 0 ? (
@@ -1755,8 +1758,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <Store className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+              <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
                 {pendingSellerCount}
+              </div>
+              <div className="w-full h-1 bg-blue-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: pendingSellerCount > 0 ? '50%' : '5%' }} />
               </div>
               <div className="flex items-center gap-1.5 mt-2 text-[11px]">
                 {pendingSellerCount > 0 ? (
@@ -1787,8 +1793,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <ShoppingBag className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-600 mt-2">
+              <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-600 mt-2 tracking-tight">
                 {approvedModerationCount}
+              </div>
+              <div className="w-full h-1 bg-emerald-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: '85%' }} />
               </div>
               <div className="text-[11px] text-slate-400 mt-2">
                 APPROVED trên Storefront
@@ -1802,18 +1811,21 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 setSellerFilter('ACTIVE');
                 setSellerPage(0);
               }}
-              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-purple-400 hover:shadow-md transition cursor-pointer group"
+              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-amber-400 hover:shadow-md transition cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Gian hàng hoạt động</span>
-                <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center group-hover:scale-110 transition">
                   <Award className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+              <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
                 {activeSellerCount}
               </div>
-              <div className="text-[11px] text-purple-600 font-medium mt-2">
+              <div className="w-full h-1 bg-amber-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: '70%' }} />
+              </div>
+              <div className="text-[11px] text-amber-700 font-medium mt-2">
                 Gồm {mallSellerCount} gian hàng Mall
               </div>
             </div>
@@ -1821,16 +1833,19 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
             {/* 5. Tài khoản người dùng */}
             <div 
               onClick={() => setActiveTab('users')}
-              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-indigo-400 hover:shadow-md transition cursor-pointer group"
+              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-slate-400 hover:shadow-md transition cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Tài khoản người dùng</span>
-                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition">
+                <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center group-hover:scale-110 transition">
                   <Users className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+              <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
                 {users.length}
+              </div>
+              <div className="w-full h-1 bg-slate-200 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-slate-500 rounded-full transition-all duration-500" style={{ width: '60%' }} />
               </div>
               <div className="text-[11px] text-slate-400 mt-2">
                 {users.filter((u) => u.role === 'ROLE_SELLER').length} Nhà bán • {users.filter((u) => u.role === 'ROLE_CUSTOMER').length} Khách hàng
@@ -1848,8 +1863,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <Ticket className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
+              <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-2 tracking-tight">
                 {activeVoucherCount}
+              </div>
+              <div className="w-full h-1 bg-pink-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-pink-500 rounded-full transition-all duration-500" style={{ width: '75%' }} />
               </div>
               <div className="text-[11px] text-pink-600 font-medium mt-2">
                 Giảm giá & Freeship sàn
@@ -1867,8 +1885,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <DollarSign className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-emerald-600 mt-2 truncate">
+              <div className="text-xl sm:text-2xl font-black font-mono text-emerald-600 mt-2 truncate tracking-tight">
                 329.800.000 ₫
+              </div>
+              <div className="w-full h-1 bg-emerald-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: '80%' }} />
               </div>
               <div className="text-[11px] text-slate-400 mt-2">
                 Ví ký quỹ Escrow bảo đảm
@@ -1886,11 +1907,15 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   <Server className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
-                7 / 7 Online
+              <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-600 mt-2 tracking-tight">
+                7/7 Up
               </div>
-              <div className="text-[11px] text-emerald-600 font-bold mt-2 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Tất cả dịch vụ sẵn sàng
+              <div className="w-full h-1 bg-emerald-100 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: '100%' }} />
+              </div>
+              <div className="text-[11px] text-emerald-600 font-semibold mt-2 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Tất cả dịch vụ Online</span>
               </div>
             </div>
           </div>

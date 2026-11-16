@@ -805,7 +805,7 @@ export default function CheckoutPage({
                   href={payOsData.checkoutUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition active:scale-95"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition active:scale-95"
                 >
                   <span>Mở Cổng Thanh Toán PayOS (MB Bank)</span>
                   <ExternalLink className="w-4 h-4" />
@@ -818,7 +818,7 @@ export default function CheckoutPage({
                     if (data?.checkoutUrl) window.open(data.checkoutUrl, '_blank');
                   }}
                   disabled={isGeneratingPayOs}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition active:scale-95"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition active:scale-95"
                 >
                   {isGeneratingPayOs ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -1580,7 +1580,7 @@ export default function CheckoutPage({
               disabled={isSubmitting}
               className={`w-full py-4 text-white font-black text-sm rounded-2xl transition shadow-xl active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 ${
                 (paymentMethod === 'payos' || paymentMethod === 'vnpay')
-                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/30'
+                  ? 'bg-gradient-to-r from-blue-600 via-sky-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-blue-500/25'
                   : 'bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 hover:from-orange-600 hover:to-rose-600 shadow-orange-500/30'
               }`}
             >

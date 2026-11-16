@@ -143,8 +143,8 @@ function getCategoryIconMeta(category) {
   if (iconKey === 'cpu' || slug.includes('dien-tu') || name.includes('điện tử')) {
     return {
       Icon: Cpu,
-      bg: 'bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white',
-      borderHover: 'hover:border-violet-300',
+      bg: 'bg-cyan-50 text-cyan-700 group-hover:bg-cyan-600 group-hover:text-white',
+      borderHover: 'hover:border-cyan-300',
     };
   }
   return {
@@ -172,6 +172,7 @@ export default function App() {
   const isSellerOnly = isSeller && !isAdmin;
   const lenisRef = useRef(null);
   const storefrontRef = useRef(null);
+  const mainViewRef = useRef(null);
 
   // Khởi tạo Lenis Smooth Scroll đồng bộ cùng GSAP ScrollTrigger và ticker
   useEffect(() => {
@@ -739,22 +740,23 @@ export default function App() {
 
   // GSAP ScrollTrigger Stagger Entrance Animations for Storefront
   useGSAP(() => {
-    if (currentView !== 'storefront') return;
+    if (currentView !== 'storefront' || !storefrontRef.current) return;
 
     // Staggered entrance for category cards
-    const catCards = storefrontRef.current?.querySelectorAll('.category-card-item');
-    if (catCards && catCards.length > 0) {
+    const catContainer = storefrontRef.current.querySelector('.category-showcase-container');
+    const catCards = storefrontRef.current.querySelectorAll('.category-card-item');
+    if (catContainer && catCards.length > 0) {
       gsap.fromTo(
         catCards,
-        { opacity: 0, y: 18 },
+        { opacity: 0, y: 28 },
         {
           opacity: 1,
           y: 0,
-          duration: 0.5,
+          duration: 0.55,
           stagger: 0.05,
           ease: 'power2.out',
           scrollTrigger: {
-            trigger: storefrontRef.current.querySelector('.category-showcase-container'),
+            trigger: catContainer,
             start: 'top 88%',
             once: true,
           },
@@ -762,20 +764,21 @@ export default function App() {
       );
     }
 
-    // Staggered entrance for product cards
-    const prodCards = storefrontRef.current?.querySelectorAll('.product-card-item');
-    if (prodCards && prodCards.length > 0) {
+    // ScrollTrigger Catalog Cascade with noticeable upward glide
+    const prodGrid = storefrontRef.current.querySelector('#catalog-product-grid');
+    const prodCards = storefrontRef.current.querySelectorAll('.product-card-item');
+    if (prodGrid && prodCards.length > 0) {
       gsap.fromTo(
         prodCards,
-        { opacity: 0, y: 18 },
+        { opacity: 0, y: 32 },
         {
           opacity: 1,
           y: 0,
-          duration: 0.45,
-          stagger: 0.035,
+          duration: 0.55,
+          stagger: 0.05,
           ease: 'power2.out',
           scrollTrigger: {
-            trigger: '#catalog-product-grid',
+            trigger: prodGrid,
             start: 'top 85%',
             once: true,
           },
@@ -783,6 +786,17 @@ export default function App() {
       );
     }
   }, { scope: storefrontRef, dependencies: [currentView, showAllCategories, products.length] });
+
+  // GSAP Smooth View Transition across navigation changes
+  useGSAP(() => {
+    if (mainViewRef.current) {
+      gsap.fromTo(
+        mainViewRef.current,
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.24, ease: 'power2.out' }
+      );
+    }
+  }, { scope: mainViewRef, dependencies: [currentView] });
 
   // VIEW RIÊNG BIỆT 1: DEDICATED FULL-PAGE LOGIN VIEW
   if (currentView === 'login') {
@@ -921,7 +935,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5FA] text-slate-800 font-sans flex flex-col">
+    <div className="min-h-screen bg-slate-50/70 text-slate-800 font-sans flex flex-col">
       {/* 1. Universal Top Navigation */}
       <Navbar
         currentView={currentView}
@@ -942,7 +956,7 @@ export default function App() {
       />
 
       {/* 2. Main Content Views */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6">
+      <main ref={mainViewRef} className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6">
 
         {/* VIEW 1: PRODUCT DETAIL PAGE (CHUYÊN BIỆT NHƯ SHOPEE VÀ TIKTOK SHOP) */}
         {currentView === 'product-detail' && selectedProduct && (
@@ -1191,8 +1205,13 @@ export default function App() {
         {/* VIEW 3: STOREFRONT (NGƯỜI MUA - TRANG CHỦ) */}
         {currentView === 'storefront' && (
           <div ref={storefrontRef} className="space-y-6">
-            {/* Hero Carousel & Commitments Banner */}
-            <HeroBanner onSelectCategory={(catId) => setSelectedCategory(catId)} />
+            {/* Lucian Labs-Style Asymmetrical 3-Card Bento Hero Grid */}
+            <HeroBanner
+              onSelectCategory={(catId) => setSelectedCategory(catId)}
+              onSelectProduct={handleSelectProduct}
+              onNavigateFlashSale={() => handleNavigateView('flash-sale')}
+              products={products}
+            />
 
             {/* Flash Sale Deal Shocker Section */}
             <FlashSaleSection
@@ -1203,17 +1222,20 @@ export default function App() {
               }}
             />
 
-            {/* Category Showcase Grid (Hiển thị 1 hàng, bấm xem tất cả mới mở rộng) */}
-            <div className="category-showcase-container bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm space-y-3">
+            {/* Architectural Category Dock (Thanh dock ngành hàng bo tròn, hover lift, active glow) */}
+            <div className="category-showcase-container bg-white/85 backdrop-blur-xl rounded-3xl p-5 border border-slate-200/80 shadow-sm space-y-3.5">
               <div className="flex justify-between items-center">
-                <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-orange-600" />
-                  Danh mục sàn nổi bật
-                </h3>
+                <div className="space-y-0.5">
+                  <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-orange-600" />
+                    <span>Danh Mục Sàn Nổi Bật</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400">Chọn nhanh ngành hàng yêu thích với bộ lọc tức thì</p>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowAllCategories(!showAllCategories)}
-                  className="text-xs text-orange-600 font-semibold cursor-pointer hover:underline flex items-center gap-1 transition"
+                  className="text-xs text-orange-600 font-bold cursor-pointer hover:underline flex items-center gap-1 transition active:scale-95 px-2.5 py-1 rounded-xl hover:bg-orange-50"
                 >
                   <span>{showAllCategories ? 'Thu gọn' : 'Xem tất cả ngành hàng'}</span>
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showAllCategories ? 'rotate-180' : ''}`} />
@@ -1228,19 +1250,19 @@ export default function App() {
                     <button
                       key={c.id}
                       onClick={() => setSelectedCategory(isSelected ? null : c.id)}
-                      className={`category-card-item p-3 sm:p-3.5 rounded-2xl border text-center transition-colors duration-200 flex flex-col items-center justify-center space-y-2 group cursor-pointer ${
+                      className={`category-card-item p-3 sm:p-4 rounded-2xl border text-center transition-all duration-200 flex flex-col items-center justify-center space-y-2.5 group cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-orange-500/5 ${
                         isSelected
-                          ? 'border-orange-500 bg-orange-50/90 text-orange-700 shadow-sm font-bold ring-2 ring-orange-400/20'
-                          : `border-slate-100/90 ${borderHover} hover:shadow-lg bg-white text-slate-700`
+                          ? 'border-orange-500 bg-orange-50/90 text-orange-950 shadow-md shadow-orange-500/10 font-bold ring-4 ring-orange-400/20'
+                          : `border-slate-200/70 ${borderHover} hover:shadow-md bg-white text-slate-700`
                       }`}
                     >
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm ${
-                        isSelected ? 'bg-orange-600 text-white shadow-orange-300' : bg
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 shadow-sm ${
+                        isSelected ? 'bg-orange-600 text-white shadow-orange-400/30' : bg
                       }`}>
                         <Icon className="w-6 h-6 stroke-[1.8] transition-transform duration-200 group-hover:scale-110" />
                       </div>
                       <span className={`text-xs font-semibold line-clamp-1 transition-colors ${
-                        isSelected ? 'text-orange-700' : 'group-hover:text-orange-600'
+                        isSelected ? 'text-orange-950 font-bold' : 'group-hover:text-orange-600'
                       }`}>
                         {c.name}
                       </span>
