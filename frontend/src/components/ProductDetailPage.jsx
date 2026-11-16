@@ -132,9 +132,21 @@ export default function ProductDetailPage({
           }
         })
         .catch((err) => {
-          console.warn('Lỗi đồng bộ chi tiết sản phẩm từ Catalog API:', err);
-          if (!initialProduct) {
-            setDetailError('Không thể tải dữ liệu chi tiết sản phẩm từ Catalog API.');
+          // Khi API gặp sự cố hoặc timeout, fallback mượt mà sang initialProduct & defaultProducts mà không gây gián đoạn
+          const sampleMatch = defaultProducts.find((p) => String(p.id) === String(initialProduct?.id));
+          if (sampleMatch || initialProduct) {
+            setLiveProduct({
+              ...sampleMatch,
+              ...initialProduct,
+              highlights: initialProduct?.highlights || sampleMatch?.highlights || [],
+              specifications: initialProduct?.specifications || sampleMatch?.specifications || [],
+              descriptionImages: initialProduct?.descriptionImages || sampleMatch?.descriptionImages || [],
+              variants: (initialProduct?.variants && initialProduct.variants.length > 0)
+                ? initialProduct.variants
+                : (sampleMatch?.variants || []),
+            });
+          } else {
+            setDetailError('Không thể tải dữ liệu chi tiết sản phẩm từ máy chủ.');
           }
         })
         .finally(() => {
