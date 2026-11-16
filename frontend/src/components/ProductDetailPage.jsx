@@ -11,6 +11,7 @@ import ProductCard from './ProductCard';
 import ApiErrorBanner from './ApiErrorBanner';
 import { defaultProducts } from '../data/sampleProducts';
 import { renderSanitizedContent } from '../utils/sanitizeHtml';
+import { AnimatedNumber } from './motion/MotionPrimitives';
 
 export default function ProductDetailPage({ 
   product: initialProduct, 
@@ -519,10 +520,10 @@ export default function ProductDetailPage({
             {/* Shopee Style Flash Price Banner */}
             <div className="bg-gradient-to-r from-orange-50 via-amber-50/60 to-rose-50 border border-orange-200/80 rounded-2xl p-4 sm:p-5 space-y-2">
               <div className="flex items-baseline gap-3 sm:gap-4 flex-wrap">
-                <div className="text-2xl sm:text-3xl font-black text-orange-600">
-                  {formatVND(currentPrice)}
+                <div className="text-2xl sm:text-3xl font-black font-mono text-orange-600">
+                  <AnimatedNumber value={currentPrice} formatter={formatVND} />
                 </div>
-                <div className="text-sm text-slate-400 line-through">
+                <div className="text-sm font-mono text-slate-400 line-through">
                   {formatVND(originalPrice)}
                 </div>
                 <div className="text-xs font-black text-rose-600 bg-rose-100 px-2.5 py-0.5 rounded-md uppercase">
@@ -628,17 +629,17 @@ export default function ProductDetailPage({
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   disabled={isOutOfStock || quantity <= 1}
-                  className="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-200 text-slate-700 font-bold transition active:scale-95 disabled:opacity-40"
+                  className="btn-icon px-3.5 py-1.5 bg-slate-50 hover:bg-slate-200 text-slate-700 font-bold transition active:scale-90 disabled:opacity-40 cursor-pointer"
                 >
                   -
                 </button>
-                <span className="px-5 py-1.5 text-xs font-bold text-slate-900 text-center min-w-[40px]">
-                  {isOutOfStock ? 0 : quantity}
+                <span className="px-5 py-1.5 text-xs font-mono font-bold text-slate-900 text-center min-w-[40px]">
+                  <AnimatedNumber value={isOutOfStock ? 0 : quantity} />
                 </span>
                 <button
                   onClick={() => setQuantity(Math.min(Math.max(1, currentStock), quantity + 1))}
                   disabled={isOutOfStock || quantity >= currentStock}
-                  className="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-200 text-slate-700 font-bold transition active:scale-95 disabled:opacity-40"
+                  className="btn-icon px-3.5 py-1.5 bg-slate-50 hover:bg-slate-200 text-slate-700 font-bold transition active:scale-90 disabled:opacity-40 cursor-pointer"
                 >
                   +
                 </button>

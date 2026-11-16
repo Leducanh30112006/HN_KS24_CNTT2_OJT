@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Trash2, ShoppingBag, Store, ArrowRight, ShieldCheck, Tag, CheckCircle2 } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import { AnimatedPresence, AnimatedNumber } from './motion/MotionPrimitives';
 
 export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
   const { items, updateQuantity, removeFromCart, clearCart, getTotalAmount, getItemsByShop, fetchCart } = useCartStore();
@@ -18,8 +19,6 @@ export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
       fetchCart(user.userId);
     }
   }, [isOpen, isAuthenticated, user?.userId]);
-
-  if (!isOpen) return null;
 
   const shopGroups = getItemsByShop();
   const subTotal = getTotalAmount();
@@ -58,19 +57,19 @@ export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-sm flex justify-end animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300">
+    <AnimatedPresence show={isOpen} mode="drawer" dataLenisPrevent={true} className="justify-end">
+      <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col justify-between">
         {/* Drawer Header */}
         <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/70">
           <div className="flex items-center space-x-2">
             <ShoppingBag className="w-5 h-5 text-orange-600" />
             <h2 className="font-bold text-sm sm:text-base text-slate-900">
-              Giỏ hàng của bạn ({items.reduce((s, i) => s + i.quantity, 0)})
+              Giỏ hàng của bạn (<AnimatedNumber value={items.reduce((s, i) => s + i.quantity, 0)} />)
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-slate-200 text-slate-500 transition"
+            className="p-1.5 rounded-full hover:bg-slate-200 text-slate-500 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -192,23 +191,23 @@ export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between text-slate-600">
                 <span>Tạm tính hàng hóa:</span>
-                <span className="font-semibold text-slate-900">{formatVND(subTotal)}</span>
+                <span className="font-semibold text-slate-900"><AnimatedNumber value={subTotal} formatter={formatVND} /></span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Phí vận chuyển toàn quốc:</span>
                 <span className="font-semibold text-slate-900">
-                  {shippingFee === 0 ? <span className="text-emerald-600">Miễn phí (Freeship)</span> : formatVND(shippingFee)}
+                  {shippingFee === 0 ? <span className="text-emerald-600">Miễn phí (Freeship)</span> : <AnimatedNumber value={shippingFee} formatter={formatVND} />}
                 </span>
               </div>
               {discountAmount > 0 && (
                 <div className="flex justify-between text-emerald-600 font-semibold">
                   <span>Giảm giá Voucher:</span>
-                  <span>-{formatVND(discountAmount)}</span>
+                  <span>-<AnimatedNumber value={discountAmount} formatter={formatVND} /></span>
                 </div>
               )}
               <div className="flex justify-between text-sm font-bold text-slate-900 pt-2 border-t border-slate-200">
                 <span>Tổng cộng thanh toán:</span>
-                <span className="text-base text-orange-600 font-black">{formatVND(finalTotal)}</span>
+                <span className="text-base text-orange-600 font-black"><AnimatedNumber value={finalTotal} formatter={formatVND} /></span>
               </div>
             </div>
 
@@ -220,7 +219,7 @@ export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
             ) : (
               <button
                 onClick={handleCheckout}
-                className="w-full py-3 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-orange-500/30 active:scale-95 flex items-center justify-center gap-2"
+                className="w-full py-3 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-orange-500/30 active:scale-95 flex items-center justify-center gap-2 cursor-pointer btn-tactile"
               >
                 Tiến hành Đặt hàng
                 <ArrowRight className="w-4 h-4" />
@@ -234,6 +233,6 @@ export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
           </div>
         )}
       </div>
-    </div>
+    </AnimatedPresence>
   );
 }

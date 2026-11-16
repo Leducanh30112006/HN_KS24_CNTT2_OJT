@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { 
   X, Ticket, Truck, Store, Check, AlertCircle, Sparkles, 
   ChevronRight, Tag, Info, ShieldCheck, Clock 
 } from 'lucide-react';
-import { gsap, useGSAP } from '../lib/gsap';
+import { AnimatedPresence, AnimatedNumber } from './motion/MotionPrimitives';
 
 export default function VoucherModal({ 
   isOpen, 
@@ -25,27 +25,6 @@ export default function VoucherModal({
   const [selectedShipping, setSelectedShipping] = useState(appliedVouchers.shippingVoucher);
   const [selectedPlatform, setSelectedPlatform] = useState(appliedVouchers.platformVoucher);
   const [selectedShopVouchers, setSelectedShopVouchers] = useState(appliedVouchers.shopVouchers || {});
-
-  const modalOverlayRef = useRef(null);
-  const modalCardRef = useRef(null);
-
-  // Smooth Spring Scale/Slide entrance animation on mount
-  useGSAP(() => {
-    if (modalOverlayRef.current && modalCardRef.current) {
-      gsap.fromTo(
-        modalOverlayRef.current,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.28, ease: 'power2.out' }
-      );
-      gsap.fromTo(
-        modalCardRef.current,
-        { scale: 0.94, y: 16, opacity: 0 },
-        { scale: 1, y: 0, opacity: 1, duration: 0.38, ease: 'back.out(1.4)', clearProps: 'transform' }
-      );
-    }
-  }, { scope: modalOverlayRef });
-
-  if (!isOpen) return null;
 
   const formatVND = (price) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -242,15 +221,8 @@ export default function VoucherModal({
   const totalPotentialSavings = (selectedShipping?.discount || 0) + (selectedPlatform?.discount || 0) + totalShopDiscount;
 
   return (
-    <div
-      ref={modalOverlayRef}
-      data-lenis-prevent
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
-    >
-      <div
-        ref={modalCardRef}
-        className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden"
-      >
+    <AnimatedPresence show={isOpen} mode="modal" dataLenisPrevent={true}>
+      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden">
         
         {/* 1. Modal Header */}
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
@@ -568,7 +540,7 @@ export default function VoucherModal({
         <div className="p-4 sm:p-5 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
           <div className="space-y-0.5 text-center sm:text-left">
             <div className="text-xs text-slate-500 font-medium">
-              Ước tính tiết kiệm được: <strong className="text-sm font-black text-rose-600">{formatVND(totalPotentialSavings)}</strong>
+              Ước tính tiết kiệm được: <strong className="text-sm font-black text-rose-600"><AnimatedNumber value={totalPotentialSavings} formatter={formatVND} /></strong>
             </div>
             <div className="flex flex-wrap gap-1 text-[11px] text-slate-600">
               {selectedShipping && <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">1 Freeship</span>}
@@ -585,7 +557,7 @@ export default function VoucherModal({
             <button
               type="button"
               onClick={handleResetAll}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold transition"
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold transition active:scale-95 cursor-pointer"
             >
               Bỏ chọn tất cả
             </button>
@@ -600,7 +572,7 @@ export default function VoucherModal({
         </div>
 
       </div>
-    </div>
+    </AnimatedPresence>
   );
 }
 

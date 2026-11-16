@@ -31,32 +31,7 @@ import {
 import { stripHtml } from '../utils/sanitizeHtml';
 import ApiErrorBanner from './ApiErrorBanner';
 import Pagination from './Pagination';
-
-function AnimatedNumber({ value = 0, suffix = '' }) {
-  const [displayValue, setDisplayValue] = useState(0);
-  const target = Number(value) || 0;
-
-  useEffect(() => {
-    let startTimestamp = null;
-    const duration = 650;
-    const startVal = 0;
-
-    let frameId;
-    const step = (timestamp) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      const ease = 1 - Math.pow(1 - progress, 3);
-      setDisplayValue(Math.round(startVal + (target - startVal) * ease));
-      if (progress < 1) {
-        frameId = requestAnimationFrame(step);
-      }
-    };
-    frameId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frameId);
-  }, [target]);
-
-  return <span>{displayValue.toLocaleString('vi-VN')}{suffix}</span>;
-}
+import { AnimatedPresence, AnimatedNumber, PageTransition } from './motion/MotionPrimitives';
 
 export default function AdminPortal({ categories = [], onCategoriesUpdated, onBackToStorefront }) {
   const { user, logout } = useAuthStore();
@@ -1691,6 +1666,8 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
         />
       )}
 
+      {/* Main Tab Views with PageTransition */}
+      <PageTransition viewKey={activeTab}>
       {/* ================= TAB 0: ADMIN DASHBOARD OVERVIEW ================= */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6 animate-in fade-in duration-200">
@@ -3049,9 +3026,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
           </div>
 
           {/* Modal Tạo Voucher Mới */}
-          {showCreateVoucherModal && (
-            <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+          <AnimatedPresence show={showCreateVoucherModal} mode="modal" dataLenisPrevent={true}>
+            {showCreateVoucherModal && (
+              <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4" onClick={(e) => e.stopPropagation()}>
                 <div className="flex justify-between items-start border-b border-slate-100 pb-3">
                   <div>
                     <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
@@ -3191,15 +3168,15 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                     </button>
                     <button
                       type="submit"
-                      className="px-5 py-2 bg-gradient-to-r from-orange-600 to-rose-600 hover:from-orange-700 hover:to-rose-700 text-white rounded-xl font-bold transition shadow-md cursor-pointer active:scale-95"
+                      className="btn-shimmer btn-primary-cta px-5 py-2 bg-gradient-to-r from-orange-600 to-rose-600 hover:from-orange-700 hover:to-rose-700 text-white rounded-xl font-bold transition shadow-md cursor-pointer active:scale-95"
                     >
                       Lưu & Phát Hành Voucher
                     </button>
                   </div>
                 </form>
               </div>
-            </div>
-          )}
+            )}
+          </AnimatedPresence>
         </div>
       )}
 
@@ -4220,11 +4197,12 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
           </div>
         </div>
       )}
+      </PageTransition>
 
       {/* ================= MODAL: XÁC NHẬN THAO TÁC QUẢN TRỊ (Duyệt / Xóa / Khóa Shop) ================= */}
-      {confirmDialog && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <AnimatedPresence show={Boolean(confirmDialog)} mode="modal" dataLenisPrevent={true}>
+        {confirmDialog && (
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
               <div className="flex items-start gap-2.5">
                 <div
@@ -4252,7 +4230,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   setConfirmDialog(null);
                   setConfirmModalError(null);
                 }}
-                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-50 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -4294,7 +4272,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   setConfirmDialog(null);
                   setConfirmModalError(null);
                 }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition disabled:opacity-50"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition disabled:opacity-50 cursor-pointer"
               >
                 Hủy bỏ
               </button>
@@ -4305,7 +4283,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   (confirmDialog.requireNote && !confirmNote.trim())
                 }
                 onClick={handleConfirmDialogSubmit}
-                className={`px-5 py-2 text-white rounded-xl text-xs font-bold transition shadow-sm active:scale-95 disabled:opacity-50 flex items-center gap-1.5 ${
+                className={`btn-shimmer btn-primary-cta px-5 py-2 text-white rounded-xl text-xs font-bold transition shadow-sm active:scale-95 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer ${
                   confirmDialog.tone === 'rose'
                     ? 'bg-rose-600 hover:bg-rose-700'
                     : 'bg-emerald-600 hover:bg-emerald-700'
@@ -4322,13 +4300,13 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedPresence>
 
       {/* ================= MODAL: TỪ CHỐI DUYỆT SẢN PHẨM ================= */}
-      {rejectingProduct && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <AnimatedPresence show={Boolean(rejectingProduct)} mode="modal" dataLenisPrevent={true}>
+        {rejectingProduct && (
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
@@ -4419,13 +4397,13 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedPresence>
 
       {/* ================= MODAL: TỪ CHỐI DUYỆT GIAN HÀNG KYC ================= */}
-      {rejectingShop && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <AnimatedPresence show={Boolean(rejectingShop)} mode="modal" dataLenisPrevent={true}>
+        {rejectingShop && (
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
@@ -4516,13 +4494,13 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedPresence>
 
       {/* ================= MODAL: CHI TIẾT NHẬT KÝ KIỂM TOÁN (AUDIT LOG) ================= */}
-      {selectedAuditLog && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <AnimatedPresence show={Boolean(selectedAuditLog)} mode="modal" dataLenisPrevent={true}>
+        {selectedAuditLog && (
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
@@ -4608,25 +4586,27 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedPresence>
 
       {/* ================= TOAST NOTIFICATION BANNER ================= */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 bg-slate-900/95 text-white backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/50 animate-in fade-in slide-in-from-bottom-5 duration-200 text-xs sm:text-sm font-medium">
-          {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />}
-          {toast.type === 'info' && <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />}
-          {toast.type === 'error' && <XCircle className="w-5 h-5 text-rose-400 shrink-0" />}
-          <span>{toast.message}</span>
-          <button
-            type="button"
-            onClick={() => setToast(null)}
-            className="ml-2 text-slate-400 hover:text-white p-1 rounded-lg transition"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+      <AnimatedPresence show={Boolean(toast)} mode="fade">
+        {toast && (
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 bg-slate-900/95 text-white backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/50 text-xs sm:text-sm font-medium">
+            {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />}
+            {toast.type === 'info' && <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />}
+            {toast.type === 'error' && <XCircle className="w-5 h-5 text-rose-400 shrink-0" />}
+            <span>{toast.message}</span>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="ml-2 text-slate-400 hover:text-white p-1 rounded-lg transition cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+      </AnimatedPresence>
       </main>
 
       {/* Standalone Admin Footer */}

@@ -17,6 +17,7 @@ import {
   submitCustomerRefundRequest
 } from '../data/sampleOrders';
 import axiosClient from '../api/axiosClient';
+import { AnimatedPresence, AnimatedNumber } from './motion/MotionPrimitives';
 
 export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, onBuyAgain }) {
   const { user } = useAuthStore();
@@ -545,9 +546,9 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       </div>
 
       {/* MODAL 1: Theo dõi đơn hàng & Hành trình Shipper trực quan */}
-      {trackingModalOpen && selectedShipment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-200">
+      <AnimatedPresence show={Boolean(trackingModalOpen && selectedShipment)} mode="modal" dataLenisPrevent={true} className="p-4">
+        {selectedShipment && (
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
@@ -562,7 +563,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
               </div>
               <button
                 onClick={() => setTrackingModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer"
               >
                 ✕
               </button>
@@ -642,18 +643,18 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
               <button
                 type="button"
                 onClick={() => setTrackingModalOpen(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition cursor-pointer btn-tactile"
               >
                 Đóng
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedPresence>
 
       {/* MODAL 2: Xác nhận hủy đơn */}
-      {orderToCancel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <AnimatedPresence show={Boolean(orderToCancel)} mode="modal" dataLenisPrevent={true} className="p-4">
+        {orderToCancel && (
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
               <AlertCircle className="w-6 h-6 stroke-[2.5]" />
@@ -685,26 +686,26 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
               <button
                 type="button"
                 onClick={() => setOrderToCancel(null)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer btn-tactile"
               >
                 Không, giữ lại
               </button>
               <button
                 type="button"
                 onClick={handleConfirmCancelOrder}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95"
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 cursor-pointer btn-tactile"
               >
                 Xác nhận hủy đơn
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedPresence>
 
       {/* MODAL 3: Đánh giá sản phẩm sau khi nhận hàng */}
-      {reviewModalOpen && reviewTargetItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-200">
+      <AnimatedPresence show={Boolean(reviewModalOpen && reviewTargetItem)} mode="modal" dataLenisPrevent={true} className="p-4">
+        {reviewTargetItem && (
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
@@ -717,7 +718,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
               </div>
               <button
                 onClick={() => setReviewModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
               >
                 <XCircle className="w-5 h-5" />
               </button>
@@ -786,27 +787,27 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
               <button
                 type="button"
                 onClick={() => setReviewModalOpen(false)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer btn-tactile"
               >
                 Hủy bỏ
               </button>
               <button
                 type="button"
                 onClick={handleSubmitReview}
-                className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 flex items-center gap-1.5"
+                className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 flex items-center gap-1.5 cursor-pointer btn-tactile"
               >
                 <Star className="w-3.5 h-3.5 fill-white" />
                 <span>Gửi đánh giá</span>
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedPresence>
 
       {/* MODAL 4: Yêu cầu Trả hàng / Hoàn tiền */}
-      {refundModalOpen && refundTargetSubOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-200">
+      <AnimatedPresence show={Boolean(refundModalOpen && refundTargetSubOrder)} mode="modal" dataLenisPrevent={true} className="p-4">
+        {refundTargetSubOrder && (
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
@@ -819,7 +820,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
               </div>
               <button
                 onClick={() => setRefundModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
               >
                 <XCircle className="w-5 h-5" />
               </button>
@@ -868,21 +869,21 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
               <button
                 type="button"
                 onClick={() => setRefundModalOpen(false)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer btn-tactile"
               >
                 Hủy bỏ
               </button>
               <button
                 type="button"
                 onClick={handleSubmitRefund}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95"
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 cursor-pointer btn-tactile"
               >
                 Gửi yêu cầu hoàn tiền
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedPresence>
     </div>
   );
 }

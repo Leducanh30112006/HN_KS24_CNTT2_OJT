@@ -12,6 +12,7 @@ import {
 } from '../data/sampleOrders';
 import axiosClient from '../api/axiosClient';
 import { useAuthStore } from '../stores/useAuthStore';
+import { AnimatedPresence, AnimatedNumber } from './motion/MotionPrimitives';
 
 export default function ShipperPortal({ onBackToHome }) {
   const { user, logout } = useAuthStore();
@@ -691,8 +692,8 @@ export default function ShipperPortal({ onBackToHome }) {
       </div>
 
       {/* MODAL 1: Báo giao hàng thất bại */}
-      {failureTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <AnimatedPresence show={Boolean(failureTarget)} mode="modal" dataLenisPrevent={true} className="p-4">
+        {failureTarget && (
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-6 h-6 stroke-[2.5]" />
@@ -724,25 +725,25 @@ export default function ShipperPortal({ onBackToHome }) {
               <button
                 type="button"
                 onClick={() => setFailureTarget(null)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer btn-tactile"
               >
                 Hủy bỏ
               </button>
               <button
                 type="button"
                 onClick={handleConfirmFailure}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95"
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 cursor-pointer btn-tactile"
               >
                 Xác nhận báo thất bại
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedPresence>
 
       {/* MODAL 2: Xem chi tiết vận đơn & Timeline */}
-      {selectedShipment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <AnimatedPresence show={Boolean(selectedShipment)} mode="modal" dataLenisPrevent={true} className="p-4">
+        {selectedShipment && (
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
@@ -751,7 +752,7 @@ export default function ShipperPortal({ onBackToHome }) {
               </div>
               <button
                 onClick={() => setSelectedShipment(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer"
               >
                 ✕
               </button>
@@ -784,14 +785,14 @@ export default function ShipperPortal({ onBackToHome }) {
               <button
                 type="button"
                 onClick={() => setSelectedShipment(null)}
-                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition"
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition cursor-pointer btn-tactile"
               >
                 Đóng
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedPresence>
     </div>
   );
 }
