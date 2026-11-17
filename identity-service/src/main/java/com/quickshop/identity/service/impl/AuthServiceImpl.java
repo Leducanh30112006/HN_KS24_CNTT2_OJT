@@ -60,8 +60,11 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (user.getStatus() == UserStatus.PENDING_VERIFICATION) {
-            auditLogService.logFailure(user.getId(), user.getUsername(), "LOGIN_BLOCKED", "User", user.getId(), "Tài khoản chưa xác thực OTP kích hoạt");
-            throw new BadRequestException("Tài khoản chưa được kích hoạt. Vui lòng xác thực mã OTP gửi về email của bạn");
+            // Tự động kích hoạt tài khoản đăng ký (bỏ xác nhận mail theo yêu cầu)
+            user.setStatus(UserStatus.ACTIVE);
+            user.setActive(true);
+            user = userRepository.save(user);
+            auditLogService.logSuccess(user.getId(), user.getUsername(), "AUTO_ACTIVATE", "User", user.getId(), "Tự động kích hoạt tài khoản không cần xác thực mail");
         }
 
         if (!user.isActive() || user.getStatus() == UserStatus.BLOCKED) {
@@ -115,17 +118,14 @@ public class AuthServiceImpl implements AuthService {
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
                 .fullName(registerRequest.getFullName())
                 .role(role)
-                .status(UserStatus.PENDING_VERIFICATION)
-                .active(false)
+                .status(UserStatus.ACTIVE)
+                .active(true)
                 .build();
 
         User savedUser = userRepository.save(user);
 
-        // Khởi tạo mã OTP qua Redis với TTL 5 phút và cooldown 60 giây
-        otpService.generateAndSaveOtp(savedUser.getEmail());
-
         auditLogService.logSuccess(savedUser.getId(), savedUser.getUsername(), "REGISTER", "User", savedUser.getId(),
-                "Đăng ký tài khoản mới thành công: " + savedUser.getUsername());
+                "Đăng ký tài khoản mới thành công (kích hoạt trực tiếp không cần xác nhận mail): " + savedUser.getUsername());
 
         String accessToken = tokenProvider.generateAccessToken(savedUser);
         String refreshToken = tokenProvider.generateRefreshToken(savedUser);

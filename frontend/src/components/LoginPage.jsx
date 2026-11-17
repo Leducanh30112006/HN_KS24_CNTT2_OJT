@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { 
   ShoppingBag, Store, ShieldCheck, Truck, User, Lock, Mail, Phone, 
   ArrowLeft, CheckCircle2, AlertCircle, Eye, EyeOff, Sparkles, KeyRound,
-  ChevronRight, ArrowRight
+  ChevronRight, ArrowRight, Check
 } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useCartStore } from '../stores/useCartStore';
 import { generateValidSignedToken } from '../utils/tokenHelper';
+import { validateRegisterInput, validateLoginInput } from '../utils/authValidation';
 import axiosClient from '../api/axiosClient';
 
 export default function LoginPage({ 
@@ -28,17 +29,34 @@ export default function LoginPage({
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Register form states
+  // Register form states & validations
   const [regUsername, setRegUsername] = useState('');
   const [regFullName, setRegFullName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const handleLoginSubmit = async (e) => {
     if (e) e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
+    setFieldErrors({});
+
+    const loginValidation = validateLoginInput({
+      usernameOrEmail: loginUsername,
+      password: loginPassword,
+    });
+
+    if (!loginValidation.isValid) {
+      setFieldErrors(loginValidation.errors);
+      setErrorMsg(loginValidation.firstError);
+      return;
+    }
 
     const trimmedUser = loginUsername.trim();
     const trimmedPass = loginPassword.trim();
@@ -181,40 +199,92 @@ export default function LoginPage({
 
   const handleRegisterSubmit = async (e) => {
     if (e) e.preventDefault();
-    setLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
 
+    // 1. Kiểm thực toàn bộ form Đăng ký bằng bộ rules chuẩn
+    const validation = validateRegisterInput({
+      fullName: regFullName,
+      username: regUsername,
+      email: regEmail,
+      phoneNumber: regPhone,
+      password: regPassword,
+      confirmPassword: regConfirmPassword,
+      agreeTerms,
+    });
+
+    if (!validation.isValid) {
+      setFieldErrors(validation.errors);
+      setErrorMsg(validation.firstError || 'Vui lòng kiểm tra và sửa các thông tin chưa hợp lệ (báo đỏ bên dưới).');
+      return;
+    }
+
+    setFieldErrors({});
+    setLoading(true);
+
     try {
-      const res = await axiosClient.post('/api/auth/register', {
+      const payload = {
         username: regUsername.trim(),
         fullName: regFullName.trim(),
         email: regEmail.trim(),
-        phoneNumber: regPhone.trim(),
+        phoneNumber: regPhone.trim() || undefined,
         password: regPassword,
-      });
+      };
+
+      const res = await axiosClient.post('/api/auth/register', payload);
 
       if (res && (res.success || res.data)) {
-        setSuccessMsg('Đăng ký tài khoản thành công! Bạn có thể đăng nhập ngay.');
+        setSuccessMsg('Đăng ký tài khoản thành công! Tài khoản của bạn đã được kích hoạt trực tiếp, không cần xác nhận qua email.');
+        
+        const registeredUser = regUsername.trim();
+        const registeredPass = regPassword;
+
+        // Tự động chuyển về Tab Đăng nhập và điền sẵn thông tin
         setTimeout(() => {
           setActiveTab('login');
-          setLoginUsername(regUsername.trim());
-          setLoginPassword(regPassword);
+          setLoginUsername(registeredUser);
+          setLoginPassword(registeredPass);
+          setSuccessMsg('Tài khoản đã sẵn sàng! Nhấn "ĐĂNG NHẬP NGAY" để bắt đầu trải nghiệm mua sắm.');
         }, 1500);
         return;
       }
-      setErrorMsg(res?.message || 'Đăng ký tài khoản thất bại.');
+
+      setErrorMsg(res?.message || 'Đăng ký tài khoản không thành công. Vui lòng thử lại.');
     } catch (err) {
-      if (err?.response?.data?.message) {
-        setErrorMsg(err.response.data.message);
+      const serverData = err?.response?.data;
+      const serverMsg = serverData?.message;
+      const validationMap = serverData?.data; // Map field errors từ Spring Boot Validation
+
+      // Xử lý lỗi validate chi tiết theo từng ô input từ server
+      if (validationMap && typeof validationMap === 'object' && Object.keys(validationMap).length > 0) {
+        setFieldErrors(prev => ({
+          ...prev,
+          fullName: validationMap.fullName || '',
+          username: validationMap.username || '',
+          email: validationMap.email || '',
+          phoneNumber: validationMap.phoneNumber || '',
+          password: validationMap.password || '',
+        }));
+        const firstErr = Object.values(validationMap)[0];
+        setErrorMsg(firstErr || serverMsg || 'Dữ liệu đăng ký không hợp lệ theo quy định máy chủ.');
         return;
       }
-      setSuccessMsg('Đăng ký tài khoản thành công! Đang chuyển sang màn hình đăng nhập...');
-      setTimeout(() => {
-        setActiveTab('login');
-        setLoginUsername(regUsername.trim());
-        setLoginPassword(regPassword);
-      }, 1200);
+
+      // Xử lý các lỗi nghiệp vụ trùng lặp username / email
+      if (serverMsg) {
+        const lowerMsg = serverMsg.toLowerCase();
+        if (lowerMsg.includes('username')) {
+          setFieldErrors(prev => ({ ...prev, username: serverMsg }));
+        } else if (lowerMsg.includes('email')) {
+          setFieldErrors(prev => ({ ...prev, email: serverMsg }));
+        } else if (lowerMsg.includes('số điện thoại') || lowerMsg.includes('phone')) {
+          setFieldErrors(prev => ({ ...prev, phoneNumber: serverMsg }));
+        }
+        setErrorMsg(serverMsg);
+        return;
+      }
+
+      setErrorMsg('Lỗi kết nối máy chủ xác thực hoặc máy chủ đang bận. Vui lòng thử lại sau!');
     } finally {
       setLoading(false);
     }
@@ -302,6 +372,7 @@ export default function LoginPage({
                     setActiveTab('login');
                     setErrorMsg('');
                     setSuccessMsg('');
+                    setFieldErrors({});
                   }}
                   className={`py-4 transition flex items-center justify-center gap-1.5 ${
                     activeTab === 'login'
@@ -319,6 +390,7 @@ export default function LoginPage({
                     setActiveTab('register');
                     setErrorMsg('');
                     setSuccessMsg('');
+                    setFieldErrors({});
                   }}
                   className={`py-4 transition flex items-center justify-center gap-1.5 ${
                     activeTab === 'register'
@@ -337,25 +409,38 @@ export default function LoginPage({
                   <form onSubmit={handleLoginSubmit} className="space-y-4 pt-1">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                        Tên đăng nhập hoặc Email:
+                        Tên đăng nhập hoặc Email: <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <input
                           type="text"
-                          required
                           value={loginUsername}
-                          onChange={(e) => { setLoginUsername(e.target.value); setErrorMsg(''); }}
+                          onChange={(e) => { 
+                            setLoginUsername(e.target.value); 
+                            setFieldErrors(prev => ({ ...prev, usernameOrEmail: '' }));
+                            setErrorMsg(''); 
+                          }}
                           placeholder="Nhập username hoặc email..."
-                          className="w-full pl-10 pr-4 py-2.5 bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition"
+                          className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                            fieldErrors.usernameOrEmail
+                              ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                              : 'bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10'
+                          }`}
                         />
-                        <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <User className={`w-4 h-4 absolute left-3.5 top-3 ${fieldErrors.usernameOrEmail ? 'text-red-500' : 'text-slate-400'}`} />
                       </div>
+                      {fieldErrors.usernameOrEmail && (
+                        <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                          <span>{fieldErrors.usernameOrEmail}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div>
                       <div className="flex justify-between items-center mb-1.5">
                         <label className="block text-xs font-bold text-slate-700">
-                          Mật khẩu:
+                          Mật khẩu: <span className="text-red-500">*</span>
                         </label>
                         <span className="text-[11px] text-orange-600 hover:underline cursor-pointer">
                           Quên mật khẩu?
@@ -364,37 +449,54 @@ export default function LoginPage({
                       <div className="relative">
                         <input
                           type={showPassword ? 'text' : 'password'}
-                          required
                           value={loginPassword}
-                          onChange={(e) => { setLoginPassword(e.target.value); setErrorMsg(''); }}
+                          onChange={(e) => { 
+                            setLoginPassword(e.target.value); 
+                            setFieldErrors(prev => ({ ...prev, password: '' }));
+                            setErrorMsg(''); 
+                          }}
                           placeholder="Nhập mật khẩu..."
-                          className="w-full pl-10 pr-10 py-2.5 bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition"
+                          className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                            fieldErrors.password
+                              ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                              : 'bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10'
+                          }`}
                         />
-                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <Lock className={`w-4 h-4 absolute left-3.5 top-3 ${fieldErrors.password ? 'text-red-500' : 'text-slate-400'}`} />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600"
+                          className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 transition"
                         >
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
+                      {fieldErrors.password && (
+                        <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                          <span>{fieldErrors.password}</span>
+                        </div>
+                      )}
                     </div>
 
+                    {/* THÔNG BÁO LỖI ĐỎ NỔI BẬT */}
                     {errorMsg && (
-                      <div className="p-3.5 bg-rose-50 border border-rose-300 text-rose-800 rounded-2xl text-xs flex items-start gap-2.5 animate-in fade-in shadow-xs">
-                        <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                      <div className="p-3.5 bg-red-50 border-2 border-red-500 text-red-900 rounded-2xl text-xs flex items-start gap-2.5 shadow-sm animate-in fade-in">
+                        <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1">
-                          <div className="font-bold text-rose-900">Đăng nhập không thành công</div>
-                          <div className="mt-0.5 text-rose-700 leading-relaxed">{errorMsg}</div>
+                          <div className="font-bold text-red-900">Đăng nhập không thành công:</div>
+                          <div className="mt-0.5 text-red-700 leading-relaxed font-medium">{errorMsg}</div>
                         </div>
                       </div>
                     )}
 
                     {successMsg && (
-                      <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                        <span>{successMsg}</span>
+                      <div className="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-2xl text-xs flex items-start gap-2.5 shadow-sm animate-in fade-in">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <div className="font-bold text-emerald-900">Thành công:</div>
+                          <div className="mt-0.5 text-emerald-700 leading-relaxed font-medium">{successMsg}</div>
+                        </div>
                       </div>
                     )}
 
@@ -415,98 +517,288 @@ export default function LoginPage({
                   </form>
                 )}
 
-                {/* TAB 2: REGISTER FORM */}
+                {/* TAB 2: REGISTER FORM - ĐẦY ĐỦ VALIDATE & THÔNG BÁO ĐỎ & BỎ XÁC NHẬN MAIL */}
                 {activeTab === 'register' && (
-                  <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Họ và tên:
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={regFullName}
-                        onChange={(e) => setRegFullName(e.target.value)}
-                        placeholder="Ví dụ: Nguyễn Văn Mua"
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-orange-500"
-                      />
+                  <form onSubmit={handleRegisterSubmit} className="space-y-3.5 pt-1" noValidate>
+                    {/* Banner thông báo trực quan: Đăng ký kích hoạt ngay, bỏ xác nhận email */}
+                    <div className="p-3 bg-emerald-50/90 border border-emerald-200 text-emerald-900 rounded-xl text-xs flex items-center gap-2.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                      <div className="text-[11px] leading-relaxed">
+                        Tài khoản được <strong>kích hoạt trực tiếp</strong> ngay sau khi đăng ký, không cần chờ xác thực qua email.
+                      </div>
                     </div>
 
+                    {/* 1. Họ và tên */}
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Tên đăng nhập (Username):
+                        Họ và tên: <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="text"
-                        required
-                        value={regUsername}
-                        onChange={(e) => setRegUsername(e.target.value)}
-                        placeholder="Ví dụ: buyer2026"
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-orange-500"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={regFullName}
+                          onChange={(e) => {
+                            setRegFullName(e.target.value);
+                            setFieldErrors(prev => ({ ...prev, fullName: '' }));
+                            setErrorMsg('');
+                          }}
+                          placeholder="Ví dụ: Nguyễn Văn Mua"
+                          className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                            fieldErrors.fullName
+                              ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                              : 'bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10'
+                          }`}
+                        />
+                        <User className={`w-4 h-4 absolute left-3.5 top-3 ${fieldErrors.fullName ? 'text-red-500' : 'text-slate-400'}`} />
+                      </div>
+                      {fieldErrors.fullName && (
+                        <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                          <span>{fieldErrors.fullName}</span>
+                        </div>
+                      )}
                     </div>
 
+                    {/* 2. Tên đăng nhập */}
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Email:
+                        Tên đăng nhập (Username): <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="email"
-                        required
-                        value={regEmail}
-                        onChange={(e) => setRegEmail(e.target.value)}
-                        placeholder="buyer@quickshop.vn"
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-orange-500"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={regUsername}
+                          onChange={(e) => {
+                            setRegUsername(e.target.value);
+                            setFieldErrors(prev => ({ ...prev, username: '' }));
+                            setErrorMsg('');
+                          }}
+                          placeholder="Từ 3-30 ký tự, viết liền không dấu..."
+                          className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                            fieldErrors.username
+                              ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                              : 'bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10'
+                          }`}
+                        />
+                        <User className={`w-4 h-4 absolute left-3.5 top-3 ${fieldErrors.username ? 'text-red-500' : 'text-slate-400'}`} />
+                      </div>
+                      {fieldErrors.username && (
+                        <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                          <span>{fieldErrors.username}</span>
+                        </div>
+                      )}
                     </div>
 
+                    {/* 3. Email */}
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Số điện thoại:
+                        Email: <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="tel"
-                        value={regPhone}
-                        onChange={(e) => setRegPhone(e.target.value)}
-                        placeholder="0988776655"
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-orange-500"
-                      />
+                      <div className="relative">
+                        <input
+                          type="email"
+                          value={regEmail}
+                          onChange={(e) => {
+                            setRegEmail(e.target.value);
+                            setFieldErrors(prev => ({ ...prev, email: '' }));
+                            setErrorMsg('');
+                          }}
+                          placeholder="buyer@example.com"
+                          className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                            fieldErrors.email
+                              ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                              : 'bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10'
+                          }`}
+                        />
+                        <Mail className={`w-4 h-4 absolute left-3.5 top-3 ${fieldErrors.email ? 'text-red-500' : 'text-slate-400'}`} />
+                      </div>
+                      {fieldErrors.email && (
+                        <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                          <span>{fieldErrors.email}</span>
+                        </div>
+                      )}
                     </div>
 
+                    {/* 4. Số điện thoại (tùy chọn) */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block text-xs font-bold text-slate-700">
+                          Số điện thoại:
+                        </label>
+                        <span className="text-[10px] text-slate-400">(Tùy chọn)</span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="tel"
+                          value={regPhone}
+                          onChange={(e) => {
+                            setRegPhone(e.target.value);
+                            setFieldErrors(prev => ({ ...prev, phoneNumber: '' }));
+                            setErrorMsg('');
+                          }}
+                          placeholder="0912345678"
+                          className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                            fieldErrors.phoneNumber
+                              ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                              : 'bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10'
+                          }`}
+                        />
+                        <Phone className={`w-4 h-4 absolute left-3.5 top-3 ${fieldErrors.phoneNumber ? 'text-red-500' : 'text-slate-400'}`} />
+                      </div>
+                      {fieldErrors.phoneNumber && (
+                        <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                          <span>{fieldErrors.phoneNumber}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 5. Mật khẩu */}
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Mật khẩu:
+                        Mật khẩu: <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="password"
-                        required
-                        value={regPassword}
-                        onChange={(e) => setRegPassword(e.target.value)}
-                        placeholder="Tối thiểu 6 ký tự"
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-orange-500"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showRegPassword ? 'text' : 'password'}
+                          value={regPassword}
+                          onChange={(e) => {
+                            setRegPassword(e.target.value);
+                            setFieldErrors(prev => ({ ...prev, password: '' }));
+                            setErrorMsg('');
+                          }}
+                          placeholder="Tối thiểu 6 ký tự..."
+                          className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                            fieldErrors.password
+                              ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                              : 'bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10'
+                          }`}
+                        />
+                        <Lock className={`w-4 h-4 absolute left-3.5 top-3 ${fieldErrors.password ? 'text-red-500' : 'text-slate-400'}`} />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegPassword(!showRegPassword)}
+                          className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 transition"
+                        >
+                          {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      {fieldErrors.password && (
+                        <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                          <span>{fieldErrors.password}</span>
+                        </div>
+                      )}
                     </div>
 
+                    {/* 6. Xác nhận mật khẩu */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Xác nhận mật khẩu: <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showRegConfirmPassword ? 'text' : 'password'}
+                          value={regConfirmPassword}
+                          onChange={(e) => {
+                            setRegConfirmPassword(e.target.value);
+                            setFieldErrors(prev => ({ ...prev, confirmPassword: '' }));
+                            setErrorMsg('');
+                          }}
+                          placeholder="Nhập lại mật khẩu vừa tạo..."
+                          className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                            fieldErrors.confirmPassword
+                              ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                              : 'bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10'
+                          }`}
+                        />
+                        <ShieldCheck className={`w-4 h-4 absolute left-3.5 top-3 ${fieldErrors.confirmPassword ? 'text-red-500' : 'text-slate-400'}`} />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                          className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 transition"
+                        >
+                          {showRegConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      {fieldErrors.confirmPassword && (
+                        <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                          <span>{fieldErrors.confirmPassword}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 7. Đồng ý điều khoản */}
+                    <div className="pt-1">
+                      <label className="flex items-start gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={agreeTerms}
+                          onChange={(e) => {
+                            setAgreeTerms(e.target.checked);
+                            setFieldErrors(prev => ({ ...prev, agreeTerms: '' }));
+                            setErrorMsg('');
+                          }}
+                          className="mt-0.5 rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                        />
+                        <span className="text-[11px] text-slate-600 leading-relaxed">
+                          Tôi đồng ý với{' '}
+                          <span className="text-orange-600 font-semibold hover:underline">
+                            Điều khoản dịch vụ
+                          </span>{' '}
+                          &{' '}
+                          <span className="text-orange-600 font-semibold hover:underline">
+                            Chính sách bảo mật
+                          </span>{' '}
+                          của sàn QuickShop.
+                        </span>
+                      </label>
+                      {fieldErrors.agreeTerms && (
+                        <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                          <span>{fieldErrors.agreeTerms}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* THÔNG BÁO LỖI ĐỎ NỔI BẬT */}
                     {errorMsg && (
-                      <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
-                        <span>{errorMsg}</span>
+                      <div className="p-3.5 bg-red-50 border-2 border-red-500 text-red-900 rounded-2xl text-xs flex items-start gap-2.5 shadow-sm animate-in fade-in">
+                        <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <div className="font-bold text-red-900">Lỗi đăng ký / Thông tin chưa hợp lệ:</div>
+                          <div className="mt-0.5 text-red-700 leading-relaxed font-medium">{errorMsg}</div>
+                        </div>
                       </div>
                     )}
 
+                    {/* THÔNG BÁO THÀNH CÔNG XANH LÁ */}
                     {successMsg && (
-                      <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                        <span>{successMsg}</span>
+                      <div className="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-2xl text-xs flex items-start gap-2.5 shadow-sm animate-in fade-in">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <div className="font-bold text-emerald-900">Đăng ký thành công!</div>
+                          <div className="mt-0.5 text-emerald-700 leading-relaxed font-medium">{successMsg}</div>
+                        </div>
                       </div>
                     )}
 
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow-lg shadow-orange-500/25 transition text-xs active:scale-95 disabled:opacity-50"
+                      className="btn-shimmer btn-primary-cta w-full py-3 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold rounded-xl shadow-lg shadow-orange-500/25 transition text-xs active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      {loading ? 'Đang đăng ký...' : 'ĐĂNG KÝ TÀI KHOẢN'}
+                      {loading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Đang đăng ký tài khoản...</span>
+                        </>
+                      ) : (
+                        <span>ĐĂNG KÝ TÀI KHOẢN NGAY</span>
+                      )}
                     </button>
                   </form>
                 )}

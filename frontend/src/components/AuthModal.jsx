@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { X, User, Key, ShieldCheck, Store, ShoppingBag, Truck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { 
+  X, User, Lock, Key, ShieldCheck, Store, ShoppingBag, Truck, 
+  CheckCircle2, AlertCircle, Mail, Phone, Eye, EyeOff, KeyRound, Sparkles
+} from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useCartStore } from '../stores/useCartStore';
 import { generateValidSignedToken } from '../utils/tokenHelper';
+import { validateRegisterInput, validateLoginInput } from '../utils/authValidation';
 import axiosClient from '../api/axiosClient';
 import { AnimatedPresence } from './motion/MotionPrimitives';
 
@@ -15,28 +19,57 @@ export default function AuthModal({
 }) {
   const { login } = useAuthStore();
   const { syncCartOnLogin } = useCartStore();
+  
+  const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
+
+  // Login form states
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Register form states
+  const [regFullName, setRegFullName] = useState('');
+  const [regUsername, setRegUsername] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(true);
+
+  // Common UI states
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const handleTabSwitch = (tab) => {
+    setActiveTab(tab);
+    setErrorMsg('');
+    setSuccessMsg('');
+    setFieldErrors({});
+  };
 
   const handleLoginSubmit = async (e) => {
     if (e) e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
+    setFieldErrors({});
+
+    const loginValidation = validateLoginInput({
+      usernameOrEmail: username,
+      password: password,
+    });
+
+    if (!loginValidation.isValid) {
+      setFieldErrors(loginValidation.errors);
+      setErrorMsg(loginValidation.firstError);
+      return;
+    }
 
     const trimmedUser = username.trim();
     const trimmedPass = password.trim();
-
-    if (!trimmedUser) {
-      setErrorMsg('Vui lòng nhập tên đăng nhập hoặc email.');
-      return;
-    }
-    if (!trimmedPass) {
-      setErrorMsg('Vui lòng nhập mật khẩu.');
-      return;
-    }
 
     setLoading(true);
 
@@ -127,25 +160,114 @@ export default function AuthModal({
 
         login(mockData);
         try {
-          if (role !== 'ROLE_SHIPPER') {
-            await syncCartOnLogin(mockData.userId, { dedupeRecent: true });
-          }
+          await syncCartOnLogin(mockData.userId);
         } catch {}
+
         setSuccessMsg(`Đăng nhập thành công: ${fullName} [${role}]`);
         setTimeout(() => {
           onClose();
           if (onLoginSuccess) {
-            const r = String(role).toUpperCase();
-            if (r.includes('ADMIN')) onLoginSuccess('admin');
-            else if (r.includes('SELLER')) onLoginSuccess('seller');
-            else if (r.includes('SHIPPER')) onLoginSuccess('shipper');
+            if (role === 'ROLE_ADMIN') onLoginSuccess('admin');
+            else if (role === 'ROLE_SELLER') onLoginSuccess('seller');
+            else if (role === 'ROLE_SHIPPER') onLoginSuccess('shipper');
             else onLoginSuccess('storefront');
           }
         }, 800);
         return;
       }
 
-      setErrorMsg(serverMessage || 'Lỗi kết nối tới máy chủ xác thực.');
+      setErrorMsg(serverMessage || 'Lỗi kết nối máy chủ xác thực hoặc thông tin đăng nhập không hợp lệ.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegisterSubmit = async (e) => {
+    if (e) e.preventDefault();
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    // Kiểm thực form đăng ký client-side
+    const validation = validateRegisterInput({
+      fullName: regFullName,
+      username: regUsername,
+      email: regEmail,
+      phoneNumber: regPhone,
+      password: regPassword,
+      confirmPassword: regConfirmPassword,
+      agreeTerms,
+    });
+
+    if (!validation.isValid) {
+      setFieldErrors(validation.errors);
+      setErrorMsg(validation.firstError || 'Vui lòng kiểm tra và hoàn thiện các ô thông tin bị báo đỏ.');
+      return;
+    }
+
+    setFieldErrors({});
+    setLoading(true);
+
+    try {
+      const payload = {
+        username: regUsername.trim(),
+        fullName: regFullName.trim(),
+        email: regEmail.trim(),
+        phoneNumber: regPhone.trim() || undefined,
+        password: regPassword,
+      };
+
+      const res = await axiosClient.post('/api/auth/register', payload);
+
+      if (res && (res.success || res.data)) {
+        setSuccessMsg('Đăng ký tài khoản thành công! Tài khoản của bạn đã được kích hoạt trực tiếp không cần xác nhận email.');
+        
+        const registeredUser = regUsername.trim();
+        const registeredPass = regPassword;
+
+        // Tự động chuyển sang tab Đăng nhập và điền sẵn thông tin
+        setTimeout(() => {
+          setActiveTab('login');
+          setUsername(registeredUser);
+          setPassword(registeredPass);
+          setSuccessMsg('Tài khoản đã sẵn sàng! Nhấn "ĐĂNG NHẬP NGAY" để tiếp tục.');
+        }, 1500);
+        return;
+      }
+
+      setErrorMsg(res?.message || 'Đăng ký tài khoản không thành công. Vui lòng thử lại.');
+    } catch (err) {
+      const serverData = err?.response?.data;
+      const serverMsg = serverData?.message;
+      const validationMap = serverData?.data;
+
+      if (validationMap && typeof validationMap === 'object' && Object.keys(validationMap).length > 0) {
+        setFieldErrors(prev => ({
+          ...prev,
+          fullName: validationMap.fullName || '',
+          username: validationMap.username || '',
+          email: validationMap.email || '',
+          phoneNumber: validationMap.phoneNumber || '',
+          password: validationMap.password || '',
+        }));
+        const firstErr = Object.values(validationMap)[0];
+        setErrorMsg(firstErr || serverMsg || 'Dữ liệu đăng ký không hợp lệ theo quy định máy chủ.');
+        return;
+      }
+
+      if (serverMsg) {
+        const lowerMsg = serverMsg.toLowerCase();
+        if (lowerMsg.includes('username')) {
+          setFieldErrors(prev => ({ ...prev, username: serverMsg }));
+        } else if (lowerMsg.includes('email')) {
+          setFieldErrors(prev => ({ ...prev, email: serverMsg }));
+        } else if (lowerMsg.includes('số điện thoại') || lowerMsg.includes('phone')) {
+          setFieldErrors(prev => ({ ...prev, phoneNumber: serverMsg }));
+        }
+        setErrorMsg(serverMsg);
+        return;
+      }
+
+      setErrorMsg('Lỗi kết nối máy chủ xác thực hoặc máy chủ đang bận. Vui lòng thử lại sau!');
     } finally {
       setLoading(false);
     }
@@ -154,13 +276,16 @@ export default function AuthModal({
   return (
     <AnimatedPresence show={isOpen} mode="modal" dataLenisPrevent={true}>
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+        {/* Header Modal */}
         <div className="p-5 bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 text-white flex justify-between items-center">
           <div className="flex items-center space-x-2.5">
             <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-              <User className="w-5 h-5 text-white" />
+              {activeTab === 'login' ? <User className="w-5 h-5 text-white" /> : <KeyRound className="w-5 h-5 text-white" />}
             </div>
             <div>
-              <h3 className="font-bold text-sm">Đăng nhập QuickShop</h3>
+              <h3 className="font-bold text-sm">
+                {activeTab === 'login' ? 'Đăng nhập QuickShop' : 'Đăng ký tài khoản mới'}
+              </h3>
               <p className="text-[11px] text-white/80">Hệ thống thương mại điện tử đa phân hệ</p>
             </div>
           </div>
@@ -169,59 +294,406 @@ export default function AuthModal({
           </button>
         </div>
 
-        <div className="p-6 space-y-4 text-xs">
-          <form onSubmit={handleLoginSubmit} className="space-y-3.5">
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Tên đăng nhập hoặc Email:</label>
-              <input
-                type="text"
-                required
-                value={username}
-                onChange={(e) => { setUsername(e.target.value); setErrorMsg(''); }}
-                placeholder="Nhập tên đăng nhập hoặc email..."
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-orange-500 focus:bg-white transition"
-              />
-            </div>
+        {/* Tab Toggle: Đăng nhập / Đăng ký */}
+        <div className="grid grid-cols-2 border-b border-slate-100 text-center text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => handleTabSwitch('login')}
+            className={`py-3 transition flex items-center justify-center gap-1.5 ${
+              activeTab === 'login'
+                ? 'text-orange-600 border-b-2 border-orange-600 bg-orange-50/40'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <User className="w-3.5 h-3.5" />
+            <span>Đăng Nhập</span>
+          </button>
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="font-bold text-slate-700">Mật khẩu:</label>
-              </div>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setErrorMsg(''); }}
-                placeholder="Nhập mật khẩu..."
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-orange-500 focus:bg-white transition"
-              />
-            </div>
+          <button
+            type="button"
+            onClick={() => handleTabSwitch('register')}
+            className={`py-3 transition flex items-center justify-center gap-1.5 ${
+              activeTab === 'register'
+                ? 'text-orange-600 border-b-2 border-orange-600 bg-orange-50/40'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <KeyRound className="w-3.5 h-3.5" />
+            <span>Đăng Ký Mới</span>
+          </button>
+        </div>
 
-            {errorMsg && (
-              <div className="p-3 bg-rose-50 border border-rose-300 text-rose-800 rounded-xl text-xs flex items-start gap-2 shadow-xs animate-in fade-in">
-                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <div className="font-bold text-rose-900">Thông báo lỗi:</div>
-                  <div className="text-rose-700 mt-0.5">{errorMsg}</div>
+        <div className="p-5 sm:p-6 space-y-4 text-xs max-h-[80vh] overflow-y-auto" data-lenis-prevent>
+          {/* TAB 1: FORM ĐĂNG NHẬP */}
+          {activeTab === 'login' && (
+            <form onSubmit={handleLoginSubmit} className="space-y-3.5" noValidate>
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Tên đăng nhập hoặc Email: <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => { 
+                      setUsername(e.target.value); 
+                      setFieldErrors(prev => ({ ...prev, usernameOrEmail: '' }));
+                      setErrorMsg(''); 
+                    }}
+                    placeholder="Nhập tên đăng nhập hoặc email..."
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                      fieldErrors.usernameOrEmail
+                        ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                    }`}
+                  />
+                  <User className={`w-4 h-4 absolute left-3.5 top-3 ${fieldErrors.usernameOrEmail ? 'text-red-500' : 'text-slate-400'}`} />
                 </div>
+                {fieldErrors.usernameOrEmail && (
+                  <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                    <span>{fieldErrors.usernameOrEmail}</span>
+                  </div>
+                )}
               </div>
-            )}
 
-            {successMsg && (
-              <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-[11px] flex items-center gap-1.5 animate-in fade-in">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>{successMsg}</span>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-700">
+                    Mật khẩu: <span className="text-red-500">*</span>
+                  </label>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => { 
+                      setPassword(e.target.value); 
+                      setFieldErrors(prev => ({ ...prev, password: '' }));
+                      setErrorMsg(''); 
+                    }}
+                    placeholder="Nhập mật khẩu..."
+                    className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                      fieldErrors.password
+                        ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                    }`}
+                  />
+                  <Lock className={`w-4 h-4 absolute left-3.5 top-3 ${fieldErrors.password ? 'text-red-500' : 'text-slate-400'}`} />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 transition"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {fieldErrors.password && (
+                  <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                    <span>{fieldErrors.password}</span>
+                  </div>
+                )}
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-shimmer btn-primary-cta w-full py-3 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 transition text-xs active:scale-95 disabled:opacity-50 cursor-pointer"
-            >
-              {loading ? 'Đang xác thực thông tin...' : 'ĐĂNG NHẬP NGAY'}
-            </button>
-          </form>
+              {/* THÔNG BÁO LỖI ĐỎ NỔI BẬT */}
+              {errorMsg && (
+                <div className="p-3 bg-red-50 border-2 border-red-500 text-red-900 rounded-xl text-xs flex items-start gap-2 shadow-sm animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="font-bold text-red-900">Thông báo lỗi:</div>
+                    <div className="text-red-700 mt-0.5 font-medium leading-relaxed">{errorMsg}</div>
+                  </div>
+                </div>
+              )}
+
+              {successMsg && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-[11px] flex items-center gap-1.5 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>{successMsg}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-shimmer btn-primary-cta w-full py-3 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 transition text-xs active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? 'Đang xác thực thông tin...' : 'ĐĂNG NHẬP NGAY'}
+              </button>
+            </form>
+          )}
+
+          {/* TAB 2: FORM ĐĂNG KÝ MỚI */}
+          {activeTab === 'register' && (
+            <form onSubmit={handleRegisterSubmit} className="space-y-3" noValidate>
+              {/* Banner kích hoạt ngay không cần mail */}
+              <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-[11px] flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <span>Kích hoạt tài khoản trực tiếp, <strong>không cần xác nhận email</strong>.</span>
+              </div>
+
+              {/* Họ và tên */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Họ và tên: <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={regFullName}
+                    onChange={(e) => {
+                      setRegFullName(e.target.value);
+                      setFieldErrors(prev => ({ ...prev, fullName: '' }));
+                      setErrorMsg('');
+                    }}
+                    placeholder="Ví dụ: Nguyễn Văn Mua"
+                    className={`w-full pl-9 pr-3.5 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                      fieldErrors.fullName
+                        ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                    }`}
+                  />
+                  <User className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${fieldErrors.fullName ? 'text-red-500' : 'text-slate-400'}`} />
+                </div>
+                {fieldErrors.fullName && (
+                  <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                    <span>{fieldErrors.fullName}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Tên đăng nhập */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Tên đăng nhập (Username): <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={regUsername}
+                    onChange={(e) => {
+                      setRegUsername(e.target.value);
+                      setFieldErrors(prev => ({ ...prev, username: '' }));
+                      setErrorMsg('');
+                    }}
+                    placeholder="Từ 3-30 ký tự, viết liền không dấu..."
+                    className={`w-full pl-9 pr-3.5 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                      fieldErrors.username
+                        ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                    }`}
+                  />
+                  <User className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${fieldErrors.username ? 'text-red-500' : 'text-slate-400'}`} />
+                </div>
+                {fieldErrors.username && (
+                  <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                    <span>{fieldErrors.username}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Email: <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={regEmail}
+                    onChange={(e) => {
+                      setRegEmail(e.target.value);
+                      setFieldErrors(prev => ({ ...prev, email: '' }));
+                      setErrorMsg('');
+                    }}
+                    placeholder="buyer@example.com"
+                    className={`w-full pl-9 pr-3.5 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                      fieldErrors.email
+                        ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                    }`}
+                  />
+                  <Mail className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${fieldErrors.email ? 'text-red-500' : 'text-slate-400'}`} />
+                </div>
+                {fieldErrors.email && (
+                  <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                    <span>{fieldErrors.email}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Số điện thoại (tùy chọn) */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="font-bold text-slate-700">Số điện thoại:</label>
+                  <span className="text-[10px] text-slate-400">(Tùy chọn)</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={regPhone}
+                    onChange={(e) => {
+                      setRegPhone(e.target.value);
+                      setFieldErrors(prev => ({ ...prev, phoneNumber: '' }));
+                      setErrorMsg('');
+                    }}
+                    placeholder="0912345678"
+                    className={`w-full pl-9 pr-3.5 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                      fieldErrors.phoneNumber
+                        ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                    }`}
+                  />
+                  <Phone className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${fieldErrors.phoneNumber ? 'text-red-500' : 'text-slate-400'}`} />
+                </div>
+                {fieldErrors.phoneNumber && (
+                  <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                    <span>{fieldErrors.phoneNumber}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Mật khẩu */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Mật khẩu: <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showRegPassword ? 'text' : 'password'}
+                    value={regPassword}
+                    onChange={(e) => {
+                      setRegPassword(e.target.value);
+                      setFieldErrors(prev => ({ ...prev, password: '' }));
+                      setErrorMsg('');
+                    }}
+                    placeholder="Tối thiểu 6 ký tự..."
+                    className={`w-full pl-9 pr-9 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                      fieldErrors.password
+                        ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                    }`}
+                  />
+                  <Lock className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${fieldErrors.password ? 'text-red-500' : 'text-slate-400'}`} />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition"
+                  >
+                    {showRegPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                {fieldErrors.password && (
+                  <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                    <span>{fieldErrors.password}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Xác nhận mật khẩu */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Xác nhận mật khẩu: <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showRegConfirmPassword ? 'text' : 'password'}
+                    value={regConfirmPassword}
+                    onChange={(e) => {
+                      setRegConfirmPassword(e.target.value);
+                      setFieldErrors(prev => ({ ...prev, confirmPassword: '' }));
+                      setErrorMsg('');
+                    }}
+                    placeholder="Nhập lại mật khẩu vừa tạo..."
+                    className={`w-full pl-9 pr-9 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                      fieldErrors.confirmPassword
+                        ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
+                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                    }`}
+                  />
+                  <ShieldCheck className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${fieldErrors.confirmPassword ? 'text-red-500' : 'text-slate-400'}`} />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition"
+                  >
+                    {showRegConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                {fieldErrors.confirmPassword && (
+                  <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                    <span>{fieldErrors.confirmPassword}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Checkbox điều khoản */}
+              <div className="pt-0.5">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreeTerms}
+                    onChange={(e) => {
+                      setAgreeTerms(e.target.checked);
+                      setFieldErrors(prev => ({ ...prev, agreeTerms: '' }));
+                      setErrorMsg('');
+                    }}
+                    className="mt-0.5 rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                  />
+                  <span className="text-[11px] text-slate-600 leading-snug">
+                    Tôi đồng ý với <span className="text-orange-600 font-semibold hover:underline">Điều khoản dịch vụ</span> & <span className="text-orange-600 font-semibold hover:underline">Chính sách bảo mật</span> của QuickShop.
+                  </span>
+                </label>
+                {fieldErrors.agreeTerms && (
+                  <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                    <span>{fieldErrors.agreeTerms}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* THÔNG BÁO LỖI ĐỎ NỔI BẬT */}
+              {errorMsg && (
+                <div className="p-3 bg-red-50 border-2 border-red-500 text-red-900 rounded-xl text-xs flex items-start gap-2 shadow-sm animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="font-bold text-red-900">Lỗi đăng ký:</div>
+                    <div className="text-red-700 mt-0.5 font-medium leading-relaxed">{errorMsg}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* THÔNG BÁO THÀNH CÔNG */}
+              {successMsg && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl text-[11px] flex items-center gap-1.5 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span className="font-medium">{successMsg}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-shimmer btn-primary-cta w-full py-2.5 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 transition text-xs active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Đang đăng ký tài khoản...</span>
+                  </>
+                ) : (
+                  <span>ĐĂNG KÝ TÀI KHOẢN NGAY</span>
+                )}
+              </button>
+            </form>
+          )}
 
           {/* Partner Onboarding Links */}
           <div className="pt-3 border-t border-slate-100 space-y-2">
