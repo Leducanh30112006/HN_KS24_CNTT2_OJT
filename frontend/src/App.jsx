@@ -11,6 +11,7 @@ import CartPage from './components/CartPage';
 import CheckoutPage from './components/CheckoutPage';
 import CartDrawer from './components/CartDrawer';
 import AiChatWidget from './components/AiChatWidget';
+import BuyerSellerChatModal from './components/BuyerSellerChatModal';
 import SellerPortal from './components/SellerPortal';
 import AdminPortal from './components/AdminPortal';
 import LoginPage from './components/LoginPage';
@@ -176,6 +177,7 @@ export default function App() {
     const savedView = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('quickshop_current_view') : null;
     return savedView || 'intro';
   });
+  const [globalShopChatOpen, setGlobalShopChatOpen] = useState(false);
   const { user, isAuthenticated } = useAuthStore();
   const { syncCartOnLogin, handleLogoutClear, ownerUserId } = useCartStore();
 
@@ -988,6 +990,7 @@ export default function App() {
         onOpenAuthModal={() => handleNavigateView('login')}
         onNavigateToLogin={() => handleNavigateView('login')}
         onGoToStorefront={() => handleBackToStorefront({ shuffle: true })}
+        onOpenChatWithShop={() => setGlobalShopChatOpen(true)}
       />
 
       {/* 2. Main Content Views */}
@@ -1860,6 +1863,21 @@ export default function App() {
       </AnimatedPresence>
 
       <AiChatWidget />
+
+      {/* Global Buyer <-> Seller Chat Modal */}
+      <BuyerSellerChatModal
+        isOpen={globalShopChatOpen}
+        onClose={() => setGlobalShopChatOpen(false)}
+        targetShopId={1}
+        targetShopName="TechWorld Official Store"
+        onSelectProduct={(pId) => handleSelectProduct({ id: pId })}
+        onBuyNow={(item) => {
+          if (item) {
+            setCheckoutItems([item]);
+            handleNavigateView('checkout');
+          }
+        }}
+      />
     </div>
   );
 }

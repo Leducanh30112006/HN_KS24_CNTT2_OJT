@@ -1,0 +1,162 @@
+import React, { useState } from 'react';
+import { ShoppingCart, Eye, Zap, Check, Star } from 'lucide-react';
+import { useCartStore } from '../stores/useCartStore';
+
+export default function ProductChatCard({ product, onSelectProduct, onBuyNow, onToast }) {
+  const addToCart = useCartStore((state) => state.addToCart);
+  const [isAdded, setIsAdded] = useState(false);
+
+  if (!product) return null;
+
+  const formatVND = (amount) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
+  };
+
+  const handleAddToCart = async (e) => {
+    e.stopPropagation();
+    try {
+      await addToCart(
+        {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          mainImage: product.imageUrl || product.mainImage,
+          shopId: product.shopId || 1,
+          shopName: product.shopName || 'TechWorld Official Store',
+        },
+        product.variants?.[0] || {
+          variantId: product.id * 10 + 1,
+          variantName: 'Mặc định',
+          price: product.price,
+        },
+        1
+      );
+      setIsAdded(true);
+      if (onToast) {
+        onToast(`Đã thêm "${product.name}" vào giỏ hàng thành công!`);
+      }
+      setTimeout(() => setIsAdded(false), 2000);
+    } catch (err) {
+      console.warn('Lỗi thêm sản phẩm vào giỏ từ chat:', err);
+    }
+  };
+
+  const handleViewDetail = (e) => {
+    e.stopPropagation();
+    if (onSelectProduct) {
+      onSelectProduct(product.id);
+    }
+  };
+
+  const handleBuyNow = async (e) => {
+    e.stopPropagation();
+    await handleAddToCart(e);
+    if (onBuyNow) {
+      onBuyNow({
+        productId: product.id,
+        productName: product.name,
+        price: product.price,
+        imageUrl: product.imageUrl || product.mainImage,
+        shopId: product.shopId || 1,
+        shopName: product.shopName || 'TechWorld Official Store',
+        quantity: 1,
+      });
+    }
+  };
+
+  return (
+    <div className="mt-2.5 p-3 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:border-orange-300 transition-all text-left max-w-xs sm:max-w-sm">
+      <div className="flex gap-3 items-start">
+        <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200/80">
+          <img
+            src={product.imageUrl || product.mainImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'}
+            alt={product.name}
+            className="w-full h-full object-cover"
+          />
+          {product.discountPercent && (
+            <span className="absolute top-1 left-1 bg-rose-600 text-white text-[9px] font-black px-1 py-0.5 rounded shadow">
+              -{product.discountPercent}%
+            </span>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center gap-1.5 text-[10px] text-orange-600 font-bold uppercase tracking-wider">
+            <span>{product.shopName || 'Shop Chính Hãng'}</span>
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          </div>
+          <h4
+            onClick={handleViewDetail}
+            className="text-xs font-bold text-slate-900 line-clamp-2 leading-tight hover:text-orange-600 cursor-pointer transition"
+            title={product.name}
+          >
+            {product.name}
+          </h4>
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-sm font-black text-orange-600 font-mono">
+              {formatVND(product.price)}
+            </span>
+            {product.originalPrice && product.originalPrice > product.price && (
+              <span className="text-[10px] text-slate-400 line-through font-mono">
+                {formatVND(product.originalPrice)}
+              </span>
+            )}
+          </div>
+          {product.rating && (
+            <div className="flex items-center gap-1 text-[10px] text-amber-500 font-bold">
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+              <span>{product.rating}</span>
+              {product.sold && <span className="text-slate-400 font-normal">({product.sold} đã bán)</span>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Action Buttons: Thêm vào giỏ, Xem chi tiết, Mua ngay */}
+      <div className="grid grid-cols-3 gap-1.5 mt-3 pt-2.5 border-t border-slate-100">
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          className={`px-2 py-1.5 text-[11px] font-bold rounded-xl border transition active:scale-95 flex items-center justify-center gap-1 ${
+            isAdded
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+              : 'bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200/80'
+          }`}
+          title="Thêm vào giỏ hàng"
+        >
+          {isAdded ? (
+            <>
+              <Check className="w-3 h-3 text-emerald-600" />
+              <span>Đã thêm</span>
+            </>
+          ) : (
+            <>
+              <ShoppingCart className="w-3 h-3 text-orange-600" />
+              <span>Thêm giỏ</span>
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleViewDetail}
+          className="px-2 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-[11px] font-bold rounded-xl border border-slate-200 transition active:scale-95 flex items-center justify-center gap-1"
+          title="Xem chi tiết sản phẩm"
+        >
+          <Eye className="w-3 h-3 text-slate-500" />
+          <span>Chi tiết</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleBuyNow}
+          className="px-2 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-[11px] font-bold rounded-xl shadow-sm transition active:scale-95 flex items-center justify-center gap-1"
+          title="Mua ngay lập tức"
+        >
+          <Zap className="w-3 h-3 text-amber-100" />
+          <span>Mua ngay</span>
+        </button>
+      </div>
+    </div>
+  );
+}
