@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Package, Search, Truck, CheckCircle2, Clock, XCircle, RotateCcw, 
   ChevronRight, Phone, MapPin, Eye, ArrowLeft, AlertCircle, 
@@ -170,40 +170,90 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
   }, [user]);
 
   /**
+   * TÁCH ĐƠN HÀNG THEO TỪNG SHOP ĐỘC LẬP:
+   * "ở giỏ hàng là 2 đơn nhưng vào đơn phải tách ra là 2 đơn chứ"
+   * Nếu đơn thanh toán gồm nhiều shop (như Gian Hàng 2 và Gian Hàng 5),
+   * tách thành các đơn độc lập với mã vận đơn riêng, tiến trình riêng và nút hủy riêng cho từng shop.
+   */
+  const splitOrders = useMemo(() => {
+    const list = [];
+    orders.forEach((order) => {
+      const subOrders = order.subOrders || [];
+      if (subOrders.length === 0) {
+        list.push({
+          ...order,
+          cardKey: String(order.id || order.orderCode),
+          displayOrderCode: order.orderCode || `QS-${order.id}`,
+          shopName: 'QuickShop Mall',
+          shopAvatar: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=100&auto=format&fit=crop&q=80',
+          shopCarrierName: 'Giao Hàng Nhanh (GHN)',
+          shopTrackingCode: `GHN-VNM-${100000 + (order.id || 1)}`,
+          shopStatus: order.status,
+          shopItems: order.items || [],
+          shopTotal: order.finalAmount || order.totalAmount || 0,
+          parentOrder: order,
+          subOrder: null,
+          isSplit: false,
+        });
+      } else {
+        subOrders.forEach((sub, idx) => {
+          const shopCode = subOrders.length > 1
+            ? `${order.orderCode}-GH${sub.shopId || idx + 1}`
+            : (sub.orderCode || order.orderCode || `QS-${order.id}`);
+
+          list.push({
+            ...order,
+            cardKey: `${order.id || order.orderCode}_sub_${sub.id || idx}`,
+            displayOrderCode: shopCode,
+            shopId: sub.shopId,
+            shopName: sub.shopName || `Gian Hàng #${sub.shopId || idx + 1}`,
+            shopAvatar: sub.shopAvatar || 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=100&auto=format&fit=crop&q=80',
+            shopCarrierName: sub.carrierName || 'Giao Hàng Nhanh (GHN)',
+            shopTrackingCode: sub.trackingCode || `GHN-VNM-${100000 + (order.id || 1)}`,
+            shopStatus: sub.status || order.status,
+            shopItems: sub.items || [],
+            shopTotal: (sub.subTotal || 0) + (sub.shippingFee || 0),
+            parentOrder: order,
+            subOrder: sub,
+            isSplit: subOrders.length > 1,
+          });
+        });
+      }
+    });
+    return list;
+  }, [orders]);
+
+  /**
    * KIỂM TRA ĐIỀU KIỆN ĐƯỢC PHÉP HỦY ĐƠN HÀNG:
    * "Khi shop chưa chuyển trạng thái hàng đã đóng thì vẫn được hủy"
    * Cho phép hủy nếu:
-   * - Đơn ở trạng thái: PENDING, PENDING_PAYMENT, PROCESSING, CONFIRMED, CREATED, DRAFT
-   * - VÀ chưa có kiện hàng con nào chuyển sang PACKING (Đã đóng gói), SHIPPING (Đang vận chuyển), DELIVERED, COMPLETED
+   * - Kiện hàng ở trạng thái: PENDING, PENDING_PAYMENT, PROCESSING, CONFIRMED, CREATED, DRAFT
+   * - Chưa chuyển sang PACKING (Đã đóng gói), SHIPPING (Đang vận chuyển), DELIVERED, COMPLETED
    */
-  const canCancelOrder = (order) => {
-    if (!order) return false;
-    const s = (order.status || '').toUpperCase();
-    if (['CANCELLED', 'COMPLETED', 'DELIVERED', 'REFUNDED'].includes(s)) return false;
-
-    const subOrders = order.subOrders || [];
-    const isPackedOrShipped = subOrders.some((sub) =>
-      ['PACKING', 'SHIPPING', 'DELIVERED', 'COMPLETED'].includes((sub.status || '').toUpperCase())
-    );
-    if (isPackedOrShipped) return false;
-
+  const canCancelOrder = (item) => {
+    if (!item) return false;
+    const s = (item.shopStatus || item.status || '').toUpperCase();
+    if (['CANCELLED', 'COMPLETED', 'DELIVERED', 'REFUNDED', 'PACKING', 'SHIPPING'].includes(s)) return false;
     return ['PENDING', 'PENDING_PAYMENT', 'PROCESSING', 'CONFIRMED', 'CREATED', 'DRAFT'].includes(s);
   };
 
   /**
-   * Thực hiện hủy đơn hàng kèm thông báo nổi bật cho người dùng
+   * Thực hiện hủy đơn hàng (hủy kiện hàng của shop cụ thể hoặc toàn bộ đơn)
    */
   const handleConfirmCancelOrder = async () => {
     if (!orderToCancel) return;
     setIsCancelling(true);
 
-    const orderId = orderToCancel.id;
-    const orderCode = orderToCancel.orderCode || `QS-${orderId}`;
+    const targetSubOrder = orderToCancel.subOrder;
+    const parentOrder = orderToCancel.parentOrder || orderToCancel;
+    const orderId = parentOrder.id;
+    const displayCode = orderToCancel.displayOrderCode || parentOrder.orderCode;
 
     try {
       // 1. Gửi yêu cầu hủy lên backend API
       await axiosClient.post(`/api/orders/${orderId}/cancel`, {
         reason: cancelReason,
+        subOrderId: targetSubOrder?.id,
       });
     } catch (err) {
       console.warn('Backend cancel endpoint error / offline fallback:', err);
@@ -214,14 +264,27 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
 
     // 3. Cập nhật state cục bộ
     const updated = orders.map((o) => {
-      if (String(o.id) === String(orderId) || o.orderCode === orderCode) {
-        return {
-          ...o,
-          status: 'CANCELLED',
-          cancelReason,
-          paymentStatus: o.paymentStatus === 'PAID' ? 'REFUNDED' : 'CANCELLED',
-          subOrders: (o.subOrders || []).map((sub) => ({ ...sub, status: 'CANCELLED' })),
-        };
+      if (String(o.id) === String(orderId) || o.orderCode === parentOrder.orderCode) {
+        if (targetSubOrder) {
+          const newSubOrders = (o.subOrders || []).map((sub) =>
+            sub.id === targetSubOrder.id ? { ...sub, status: 'CANCELLED', cancelReason } : sub
+          );
+          const allCancelled = newSubOrders.every((sub) => sub.status === 'CANCELLED');
+          return {
+            ...o,
+            status: allCancelled ? 'CANCELLED' : o.status,
+            cancelReason: allCancelled ? cancelReason : o.cancelReason,
+            subOrders: newSubOrders,
+          };
+        } else {
+          return {
+            ...o,
+            status: 'CANCELLED',
+            cancelReason,
+            paymentStatus: o.paymentStatus === 'PAID' ? 'REFUNDED' : 'CANCELLED',
+            subOrders: (o.subOrders || []).map((sub) => ({ ...sub, status: 'CANCELLED' })),
+          };
+        }
       }
       return o;
     });
@@ -229,13 +292,12 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
     setOrders(updated);
     saveStoredOrders(updated);
 
-    // Cập nhật selectedOrderDetails nếu đang xem chi tiết đơn này
-    if (selectedOrderDetails && (String(selectedOrderDetails.id) === String(orderId) || selectedOrderDetails.orderCode === orderCode)) {
+    if (selectedOrderDetails && (selectedOrderDetails.displayOrderCode === displayCode || selectedOrderDetails.orderCode === parentOrder.orderCode)) {
       setSelectedOrderDetails({
         ...selectedOrderDetails,
+        shopStatus: 'CANCELLED',
         status: 'CANCELLED',
         cancelReason,
-        paymentStatus: selectedOrderDetails.paymentStatus === 'PAID' ? 'REFUNDED' : 'CANCELLED',
       });
     }
 
@@ -246,14 +308,14 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
     setNotificationAlert({
       type: 'success',
       title: 'Đã hủy đơn hàng thành công!',
-      message: `Đơn hàng #${orderCode} đã được hủy thành công với lý do: "${cancelReason}". Bạn có thể xem lại tại tab "Đã hủy".`,
+      message: `Đơn hàng #${displayCode} từ "${orderToCancel.shopName}" đã được hủy thành công với lý do: "${cancelReason}". Bạn có thể xem lại tại tab "Đã hủy".`,
     });
     setTimeout(() => setNotificationAlert(null), 6000);
   };
 
-  // Lọc đơn hàng theo tab và từ khóa
-  const filteredOrders = orders.filter((order) => {
-    const s = (order.status || '').toUpperCase();
+  // Lọc đơn hàng theo tab và từ khóa trên danh sách đã tách theo Shop
+  const filteredOrders = splitOrders.filter((order) => {
+    const s = (order.shopStatus || order.status || '').toUpperCase();
 
     // Tab 'ALL': HIỆN HẾT TẤT CẢ CÁC ĐƠN HÀNG (đã đặt, đã hủy, đang giao...)
     if (activeTab === 'PENDING') {
@@ -271,11 +333,9 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
     // Lọc theo từ khóa tìm kiếm
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
-      const codeMatch = (order.orderCode || String(order.id)).toLowerCase().includes(q);
-      const productMatch = (order.subOrders || []).some((sub) =>
-        (sub.items || []).some((it) => (it.productName || '').toLowerCase().includes(q))
-      );
-      const shopMatch = (order.subOrders || []).some((s) => (s.shopName || '').toLowerCase().includes(q));
+      const codeMatch = (order.displayOrderCode || order.orderCode || String(order.id)).toLowerCase().includes(q);
+      const productMatch = (order.shopItems || []).some((it) => (it.productName || '').toLowerCase().includes(q));
+      const shopMatch = (order.shopName || '').toLowerCase().includes(q);
       return codeMatch || productMatch || shopMatch;
     }
 
@@ -574,31 +634,31 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-x-auto no-scrollbar">
           <div className="flex border-b border-slate-100 min-w-max">
             {[
-              { id: 'ALL', label: 'Tất cả đơn', count: orders.length },
+              { id: 'ALL', label: 'Tất cả đơn', count: splitOrders.length },
               {
                 id: 'PENDING',
-                label: 'Chờ xác nhận',
-                count: orders.filter((o) => ['PENDING', 'PENDING_PAYMENT', 'DRAFT', 'CREATED'].includes((o.status || '').toUpperCase())).length,
+                label: 'Chờ thanh toán / Chờ xác nhận',
+                count: splitOrders.filter((o) => ['PENDING', 'PENDING_PAYMENT', 'DRAFT', 'CREATED'].includes((o.shopStatus || o.status || '').toUpperCase())).length,
               },
               {
                 id: 'PROCESSING',
                 label: 'Đang xử lý / Đóng hàng',
-                count: orders.filter((o) => ['PROCESSING', 'PAID', 'CONFIRMED', 'PACKING'].includes((o.status || '').toUpperCase())).length,
+                count: splitOrders.filter((o) => ['PROCESSING', 'PAID', 'CONFIRMED', 'PACKING'].includes((o.shopStatus || o.status || '').toUpperCase())).length,
               },
               {
                 id: 'DELIVERING',
                 label: 'Đang giao hàng',
-                count: orders.filter((o) => ['DELIVERING', 'SHIPPING', 'PICKED'].includes((o.status || '').toUpperCase())).length,
+                count: splitOrders.filter((o) => ['DELIVERING', 'SHIPPING', 'PICKED'].includes((o.shopStatus || o.status || '').toUpperCase())).length,
               },
               {
                 id: 'COMPLETED',
                 label: 'Đã giao',
-                count: orders.filter((o) => ['COMPLETED', 'DELIVERED'].includes((o.status || '').toUpperCase())).length,
+                count: splitOrders.filter((o) => ['COMPLETED', 'DELIVERED'].includes((o.shopStatus || o.status || '').toUpperCase())).length,
               },
               {
                 id: 'CANCELLED',
                 label: 'Đã hủy',
-                count: orders.filter((o) => ['CANCELLED', 'REFUNDED'].includes((o.status || '').toUpperCase())).length,
+                count: splitOrders.filter((o) => ['CANCELLED', 'REFUNDED'].includes((o.shopStatus || o.status || '').toUpperCase())).length,
               },
             ].map((tab) => (
               <button
@@ -654,14 +714,14 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
 
               return (
                 <div
-                  key={order.id || order.orderCode}
+                  key={order.cardKey || order.id || order.orderCode}
                   className="bg-white rounded-3xl border border-slate-200/90 shadow-xs hover:border-orange-300 hover:shadow-md transition-all overflow-hidden"
                 >
-                  {/* Header card: Mã đơn, Thời gian, PTTT, Badge trạng thái */}
+                  {/* Header card: Mã đơn riêng theo từng Shop, Thời gian, PTTT, Badge trạng thái */}
                   <div className="p-4 sm:p-5 bg-slate-50/70 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 flex-wrap">
                       <span className="font-mono font-black text-xs sm:text-sm text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                        #{order.orderCode || order.id}
+                        #{order.displayOrderCode}
                       </span>
                       <span className="text-slate-300">|</span>
                       <span className="text-[11px] text-slate-500 flex items-center gap-1">
@@ -681,89 +741,89 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                               : 'bg-amber-100 text-amber-800'
                           }`}
                         >
-                          {order.paymentStatus === 'PAID' ? 'Đã thanh toán' : order.paymentStatus === 'CANCELLED' ? 'Đã hủy' : 'Chờ thanh toán'}
+                          {order.paymentStatus === 'PAID'
+                            ? 'Đã thanh toán'
+                            : order.paymentStatus === 'CANCELLED'
+                            ? 'Đã hủy'
+                            : 'Chờ thanh toán'}
                         </span>
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {getStatusBadge(order.status)}
+                      {getStatusBadge(order.shopStatus || order.status)}
                     </div>
                   </div>
 
-                  {/* Body: Danh sách SubOrders & Order Items */}
+                  {/* Body: Thông tin Shop & Các sản phẩm của riêng Shop này */}
                   <div
                     onClick={() => setSelectedOrderDetails(order)}
-                    className="divide-y divide-slate-100 cursor-pointer hover:bg-slate-50/30 transition-colors"
+                    className="p-4 sm:p-5 space-y-3.5 cursor-pointer hover:bg-slate-50/30 transition-colors"
                     title="Bấm vào đơn hàng để xem chi tiết đầy đủ"
                   >
-                    {(order.subOrders || []).map((subOrder) => (
-                      <div key={subOrder.id} className="p-4 sm:p-5 space-y-3.5">
-                        {/* Shop Header */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <img
-                              src={subOrder.shopAvatar || 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=50&auto=format&fit=crop&q=80'}
-                              alt=""
-                              className="w-6 h-6 rounded-lg object-cover border border-slate-200"
-                            />
-                            <span className="font-bold text-xs text-slate-900">{subOrder.shopName || 'TechWorld Official Store'}</span>
-                            <span className="text-[9px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded font-black uppercase">
-                              Mall
-                            </span>
-                          </div>
-
-                          {subOrder.trackingCode && (
-                            <div className="flex items-center gap-2 text-xs">
-                              <span className="text-slate-400 text-[11px]">Vận đơn:</span>
-                              <span className="font-mono font-bold text-blue-600">{subOrder.trackingCode}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Items list */}
-                        <div className="space-y-3">
-                          {(subOrder.items || []).map((item) => (
-                            <div key={item.id} className="flex items-center gap-3.5">
-                              <img
-                                src={item.imageUrl}
-                                alt={item.productName}
-                                className="w-16 h-16 rounded-xl object-cover border border-slate-200 flex-shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-xs font-semibold text-slate-900 line-clamp-1">
-                                  {fixMojibakeText(item.productName)}
-                                </h4>
-                                <div className="text-[11px] text-slate-500 pt-0.5">
-                                  Phân loại: {fixMojibakeText(item.variantName) || fixMojibakeText(`${item.color || ''} ${item.size || ''}`) || 'Bản Tiêu Chuẩn'}
-                                </div>
-                                <div className="text-[11px] text-slate-400">Số lượng: x{item.quantity}</div>
-                              </div>
-                              <div className="text-right flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <div className="text-xs font-bold text-slate-900">{formatVND(item.price)}</div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleBuyAgain(item)}
-                                  className="mt-1 text-[11px] text-orange-600 hover:underline font-semibold flex items-center gap-1 ml-auto cursor-pointer"
-                                >
-                                  <ShoppingCart className="w-3 h-3" />
-                                  <span>Mua lại</span>
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                    {/* Shop Header */}
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={order.shopAvatar || 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=50&auto=format&fit=crop&q=80'}
+                          alt=""
+                          className="w-6 h-6 rounded-lg object-cover border border-slate-200"
+                        />
+                        <span className="font-bold text-xs text-slate-900">{order.shopName}</span>
+                        <span className="text-[9px] bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded font-black uppercase">
+                          Mall
+                        </span>
                       </div>
-                    ))}
+
+                      {order.shopTrackingCode && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-slate-400 text-[11px]">Vận đơn:</span>
+                          <span className="font-mono font-bold text-blue-600">{order.shopTrackingCode}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Items list của riêng gian hàng này */}
+                    <div className="space-y-3">
+                      {(order.shopItems || []).map((item) => (
+                        <div key={item.id} className="flex items-center gap-3.5">
+                          <img
+                            src={item.imageUrl}
+                            alt={item.productName}
+                            className="w-16 h-16 rounded-xl object-cover border border-slate-200 flex-shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs font-semibold text-slate-900 line-clamp-1">
+                              {fixMojibakeText(item.productName)}
+                            </h4>
+                            <div className="text-[11px] text-slate-500 pt-0.5">
+                              Phân loại: {fixMojibakeText(item.variantName) || fixMojibakeText(`${item.color || ''} ${item.size || ''}`) || 'Bản Tiêu Chuẩn'}
+                            </div>
+                            <div className="text-[11px] text-slate-400">Số lượng: x{item.quantity}</div>
+                          </div>
+                          <div className="text-right flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <div className="text-xs font-bold text-slate-900">{formatVND(item.price)}</div>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyAgain(item)}
+                              className="mt-1 text-[11px] text-orange-600 hover:underline font-semibold flex items-center gap-1 ml-auto cursor-pointer"
+                            >
+                              <ShoppingCart className="w-3 h-3" />
+                              <span>Mua lại</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  {/* Footer card: Địa chỉ, Tổng tiền, Nút Xem chi tiết & Hủy đơn */}
+                  {/* Footer card: Địa chỉ, Tổng tiền shop, Nút Xem chi tiết & Hủy đơn */}
                   <div className="p-4 sm:p-5 bg-slate-50/60 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="text-xs text-slate-500 text-center sm:text-left space-y-1">
                       <div className="flex items-center gap-1.5 justify-center sm:justify-start">
                         <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                         <span>
-                          Địa chỉ nhận: <strong className="text-slate-800">{order.deliveryAddress}</strong>
+                          Địa chỉ nhận: <strong className="text-slate-800">{order.deliveryAddress || 'Số 18, Ngõ 45 Cầu Giấy, Hà Nội'}</strong>
                         </span>
                       </div>
                       {order.cancelReason && (
@@ -778,7 +838,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                       <div className="text-right mr-2">
                         <span className="text-[11px] text-slate-400">Tổng thanh toán:</span>
                         <div className="text-base sm:text-lg font-black text-orange-600 font-mono">
-                          {formatVND(order.finalAmount || order.totalAmount)}
+                          {formatVND(order.shopTotal)}
                         </div>
                       </div>
 
@@ -793,10 +853,10 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                       </button>
 
                       {/* Nút Theo dõi vận chuyển */}
-                      {['DELIVERING', 'SHIPPING', 'PICKED'].includes((order.status || '').toUpperCase()) && (
+                      {!['CANCELLED', 'REFUNDED'].includes((order.shopStatus || order.status || '').toUpperCase()) && (
                         <button
                           type="button"
-                          onClick={() => handleOpenTracking(order.subOrders?.[0] || {}, order)}
+                          onClick={() => handleOpenTracking(order.subOrder || {}, order.parentOrder || order)}
                           className="px-3.5 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-xl text-xs font-bold transition active:scale-95 flex items-center gap-1.5 shadow-2xs cursor-pointer"
                         >
                           <Truck className="w-3.5 h-3.5 text-orange-600" />
@@ -805,10 +865,10 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                       )}
 
                       {/* Nút Xác nhận đã nhận hàng */}
-                      {['DELIVERING', 'SHIPPING'].includes((order.status || '').toUpperCase()) && (
+                      {['DELIVERING', 'SHIPPING'].includes((order.shopStatus || order.status || '').toUpperCase()) && (
                         <button
                           type="button"
-                          onClick={() => handleConfirmReceived(order.subOrders?.[0] || {}, order)}
+                          onClick={() => handleConfirmReceived(order.subOrder || {}, order.parentOrder || order)}
                           className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition active:scale-95 shadow-sm cursor-pointer"
                         >
                           Đã nhận hàng
@@ -849,7 +909,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                 <div>
                   <h3 className="font-bold text-base text-slate-900">Chi Tiết Đơn Hàng</h3>
                   <p className="text-xs font-mono font-bold text-orange-600">
-                    Mã đơn: #{selectedOrderDetails.orderCode || selectedOrderDetails.id}
+                    Mã đơn: #{selectedOrderDetails.displayOrderCode || selectedOrderDetails.orderCode || selectedOrderDetails.id}
                   </p>
                 </div>
               </div>
@@ -865,7 +925,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-500 font-medium">Trạng thái hiện tại:</span>
-                <div>{getStatusBadge(selectedOrderDetails.status)}</div>
+                <div>{getStatusBadge(selectedOrderDetails.shopStatus || selectedOrderDetails.status)}</div>
               </div>
 
               {selectedOrderDetails.cancelReason ? (
@@ -944,15 +1004,15 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                 <span>Kiện Hàng & Sản Phẩm</span>
               </h4>
 
-              {(selectedOrderDetails.subOrders || []).map((sub, sIdx) => (
-                <div key={sub.id || sIdx} className="p-4 rounded-2xl border border-slate-200 space-y-3">
+              {selectedOrderDetails.shopItems && selectedOrderDetails.shopItems.length > 0 ? (
+                <div className="p-4 rounded-2xl border border-slate-200 space-y-3">
                   <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-100">
-                    <span className="font-bold text-slate-800">{sub.shopName || 'TechWorld Official Store'}</span>
-                    <span className="text-slate-500 font-mono text-[11px]">Vận đơn: {sub.trackingCode || 'Đang cập nhật'}</span>
+                    <span className="font-bold text-slate-800">{selectedOrderDetails.shopName || 'TechWorld Official Store'}</span>
+                    <span className="text-slate-500 font-mono text-[11px]">Vận đơn: {selectedOrderDetails.shopTrackingCode || 'Đang cập nhật'}</span>
                   </div>
 
                   <div className="divide-y divide-slate-100 space-y-2">
-                    {(sub.items || []).map((item) => (
+                    {selectedOrderDetails.shopItems.map((item) => (
                       <div key={item.id} className="pt-2 flex items-center gap-3">
                         <img
                           src={item.imageUrl}
@@ -972,18 +1032,48 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                     ))}
                   </div>
                 </div>
-              ))}
+              ) : (
+                (selectedOrderDetails.subOrders || []).map((sub, sIdx) => (
+                  <div key={sub.id || sIdx} className="p-4 rounded-2xl border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-100">
+                      <span className="font-bold text-slate-800">{sub.shopName || 'TechWorld Official Store'}</span>
+                      <span className="text-slate-500 font-mono text-[11px]">Vận đơn: {sub.trackingCode || 'Đang cập nhật'}</span>
+                    </div>
+
+                    <div className="divide-y divide-slate-100 space-y-2">
+                      {(sub.items || []).map((item) => (
+                        <div key={item.id} className="pt-2 flex items-center gap-3">
+                          <img
+                            src={item.imageUrl}
+                            alt=""
+                            className="w-14 h-14 rounded-xl object-cover border border-slate-200 flex-shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-slate-900 line-clamp-1">{fixMojibakeText(item.productName)}</p>
+                            <p className="text-[11px] text-slate-400">
+                              Phân loại: {fixMojibakeText(item.variantName) || 'Tiêu chuẩn'} • Số lượng: x{item.quantity}
+                            </p>
+                          </div>
+                          <div className="text-xs font-black text-slate-900 font-mono">
+                            {formatVND(item.price * item.quantity)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Bảng Chi Tiết Tài Chính */}
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
               <div className="flex justify-between text-slate-600">
                 <span>Tiền hàng (Tạm tính):</span>
-                <span className="font-mono">{formatVND(selectedOrderDetails.totalAmount || selectedOrderDetails.finalAmount)}</span>
+                <span className="font-mono">{formatVND(selectedOrderDetails.shopSubTotal || selectedOrderDetails.totalAmount || selectedOrderDetails.shopTotal)}</span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Phí vận chuyển:</span>
-                <span className="font-mono">{formatVND(selectedOrderDetails.shippingFee || 25000)}</span>
+                <span className="font-mono">{formatVND(selectedOrderDetails.shopShippingFee || selectedOrderDetails.shippingFee || 25000)}</span>
               </div>
               {selectedOrderDetails.discountAmount > 0 && (
                 <div className="flex justify-between text-emerald-600 font-semibold">
@@ -993,7 +1083,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
               )}
               <div className="flex justify-between text-sm font-black text-slate-900 pt-2 border-t border-slate-200">
                 <span>Tổng cộng thanh toán:</span>
-                <span className="text-orange-600 font-mono text-base">{formatVND(selectedOrderDetails.finalAmount || selectedOrderDetails.totalAmount)}</span>
+                <span className="text-orange-600 font-mono text-base">{formatVND(selectedOrderDetails.shopTotal || selectedOrderDetails.finalAmount || selectedOrderDetails.totalAmount)}</span>
               </div>
             </div>
 

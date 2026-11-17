@@ -111,6 +111,9 @@ export default function CheckoutPage({
   const [isGeneratingPayOs, setIsGeneratingPayOs] = useState(false);
   const [paymentStatusMsg, setPaymentStatusMsg] = useState('');
 
+  // Định nghĩa phương thức thanh toán chuyển khoản toàn cục trong component
+  const isBankTransfer = paymentMethod === 'payos' || paymentMethod === 'vnpay';
+
   const formatVND = (price) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   };
@@ -172,6 +175,12 @@ export default function CheckoutPage({
     setConfirmedPaymentDetails(paymentData);
     setShowSuccessModal(true);
     playSuccessChime();
+    // Đã thanh toán thành công -> Xóa các sản phẩm đã thanh toán khỏi giỏ hàng
+    try {
+      removeMultipleFromCart(displayItems.map((i) => i.variantId || i.id));
+    } catch (e) {
+      console.warn('Lỗi dọn giỏ hàng sau thanh toán:', e);
+    }
   };
 
   // 1. Lắng nghe Return URL từ PayOS khi người dùng quay lại sau thanh toán
@@ -413,7 +422,6 @@ export default function CheckoutPage({
     setOrderError('');
     setIsSubmitting(true);
     const userId = user?.userId || user?.id || 1001;
-    const isBankTransfer = paymentMethod === 'payos' || paymentMethod === 'vnpay';
 
     try {
       const payload = {
@@ -447,7 +455,12 @@ export default function CheckoutPage({
         createdOrderId = displayOrderId;
         setOrderId(displayOrderId);
         setOrderSuccess(true);
-        removeMultipleFromCart(displayItems.map((i) => i.variantId || i.id));
+
+        // NẾU LÀ THANH TOÁN COD: Xóa ngay các món đã đặt khỏi giỏ hàng
+        // NẾU LÀ CHUYỂN KHOẢN (PayOS/MB Bank): Giữ nguyên trong giỏ hàng và chuyển sang mục "Chờ thanh toán"
+        if (!isBankTransfer) {
+          removeMultipleFromCart(displayItems.map((i) => i.variantId || i.id));
+        }
 
         // Lưu đơn hàng vào kho dữ liệu mẫu & tracking
         try {
@@ -459,6 +472,7 @@ export default function CheckoutPage({
             actualShippingFee,
             totalDiscount,
             finalTotal: finalAmount,
+            status: isBankTransfer ? 'PENDING_PAYMENT' : 'CONFIRMED',
             paymentMethod: paymentMethod.toUpperCase(),
             paymentStatus: isBankTransfer ? 'PENDING' : 'PAID',
             shippingInfo: {
@@ -494,6 +508,7 @@ export default function CheckoutPage({
           actualShippingFee,
           totalDiscount,
           finalTotal,
+          status: isBankTransfer ? 'PENDING_PAYMENT' : 'CONFIRMED',
           paymentMethod: paymentMethod.toUpperCase(),
           paymentStatus: isBankTransfer ? 'PENDING' : 'PAID',
           shippingInfo: {
@@ -511,7 +526,9 @@ export default function CheckoutPage({
       }
       setOrderId(fallbackOrderId);
       setOrderSuccess(true);
-      removeMultipleFromCart(displayItems.map((i) => i.variantId || i.id));
+      if (!isBankTransfer) {
+        removeMultipleFromCart(displayItems.map((i) => i.variantId || i.id));
+      }
       if (isBankTransfer) {
         handleCreatePayOsPayment(fallbackOrderId, finalTotal);
       }
@@ -916,10 +933,20 @@ export default function CheckoutPage({
               )}
               <button
                 onClick={onBack}
-                className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition active:scale-95"
+                className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer"
               >
                 Quay lại danh sách sản phẩm
               </button>
+              {onViewOrders && (
+                <button
+                  type="button"
+                  onClick={onViewOrders}
+                  className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Package className="w-4 h-4" />
+                  <span>Xem Đơn Mua (Chờ thanh toán)</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

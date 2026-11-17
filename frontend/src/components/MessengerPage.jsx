@@ -135,11 +135,44 @@ export default function MessengerPage({
     if (!activeThread) return;
 
     let extractedProduct = productToSend;
-    if (!extractedProduct && trimmed) {
+    if (!extractedProduct && pinnedProduct) {
+      // Nếu có sản phẩm đang xem/hỏi mua, tự động đính kèm thẻ sản phẩm
+      extractedProduct = {
+        id: pinnedProduct.id,
+        name: pinnedProduct.name,
+        price: pinnedProduct.price,
+        originalPrice: pinnedProduct.originalPrice,
+        imageUrl: pinnedProduct.mainImage || pinnedProduct.imageUrl,
+        category: pinnedProduct.categoryName,
+        rating: pinnedProduct.rating,
+        shopId: pinnedProduct.shopId || activeThread.shopId,
+        shopName: pinnedProduct.shopName || activeThread.shopName,
+      };
+    } else if (!extractedProduct && trimmed) {
       const match = trimmed.match(/\[PRODUCT:(\d+)\]/i) || trimmed.match(/SP[-_]?(\d+)/i) || trimmed.match(/#(\d+)/);
       if (match && match[1]) {
         const pId = parseInt(match[1], 10);
         const found = defaultProducts.find((p) => p.id === pId);
+        if (found) {
+          extractedProduct = {
+            id: found.id,
+            name: found.name,
+            price: found.price,
+            originalPrice: found.originalPrice,
+            imageUrl: found.mainImage || found.imageUrl,
+            category: found.categoryName,
+            rating: found.rating,
+            shopId: found.shopId || activeThread.shopId,
+            shopName: found.shopName || activeThread.shopName,
+          };
+        }
+      } else {
+        // Tự động tìm kiếm sản phẩm của shop nếu câu chat nhắc tới tên sản phẩm
+        const lkw = trimmed.toLowerCase();
+        const found = defaultProducts.find((p) =>
+          (p.shopId === activeThread.shopId || p.shopId === 1) &&
+          (lkw.includes(p.name.toLowerCase()) || p.name.toLowerCase().includes(lkw))
+        );
         if (found) {
           extractedProduct = {
             id: found.id,
@@ -232,7 +265,7 @@ export default function MessengerPage({
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-4 h-[calc(100vh-84px)] min-h-[640px] flex flex-col">
+    <div className="w-full h-full flex flex-col bg-slate-50 overflow-hidden">
       {/* Toast thông báo hành động */}
       {toastMessage && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 animate-bounce">
@@ -242,7 +275,7 @@ export default function MessengerPage({
       )}
 
       {/* Main Messenger Container */}
-      <div className="flex-1 bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-row relative">
+      <div className="flex-1 bg-white border-t border-slate-200/90 shadow-none overflow-hidden flex flex-row relative h-full">
         
         {/* ========================================================================= */}
         {/* 1. CỘT TRÁI: DANH SÁCH ĐOẠN CHAT (CHATS SIDEBAR) */}
@@ -457,13 +490,17 @@ export default function MessengerPage({
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setShowRightInfo(!showRightInfo)}
-                  className={`p-2 rounded-xl transition cursor-pointer hidden lg:flex ${
-                    showRightInfo ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-100'
+                  className={`px-3 py-1.5 rounded-xl transition cursor-pointer text-xs font-bold flex items-center gap-1.5 active:scale-95 border ${
+                    showRightInfo
+                      ? 'bg-orange-50 text-orange-700 border-orange-200 shadow-2xs'
+                      : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200/80'
                   }`}
-                  title="Thông tin gian hàng"
+                  title={showRightInfo ? 'Thu gọn thông tin Shop' : 'Mở xem thông tin Shop'}
                 >
-                  <Info className="w-4 h-4" />
+                  <Info className="w-3.5 h-3.5 text-orange-600" />
+                  <span className="hidden sm:inline">{showRightInfo ? 'Thu gọn' : 'Chi tiết Shop'}</span>
                 </button>
               </div>
             </div>
@@ -618,7 +655,8 @@ export default function MessengerPage({
               {quickQuestions.map((q, idx) => (
                 <button
                   key={idx}
-                  onClick={() => handleSendMessage(q)}
+                  type="button"
+                  onClick={() => handleSendMessage(q, pinnedProduct)}
                   className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-full text-[11px] transition flex-shrink-0 active:scale-95 cursor-pointer"
                 >
                   {q}
@@ -668,7 +706,23 @@ export default function MessengerPage({
         {/* 3. CỘT PHẢI: THÔNG TIN GIAN HÀNG & SẢN PHẨM (CONTEXT INFO DRAWER) */}
         {/* ========================================================================= */}
         {showRightInfo && activeThread && (
-          <div className="w-80 border-l border-slate-200/80 bg-slate-50/40 p-5 hidden lg:flex flex-col space-y-6 overflow-y-auto no-scrollbar" data-lenis-prevent="true">
+          <div className="w-80 border-l border-slate-200/80 bg-slate-50/40 p-5 hidden lg:flex flex-col space-y-5 overflow-y-auto no-scrollbar" data-lenis-prevent="true">
+            {/* Header Drawer có nút Thu Gọn */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Store className="w-4 h-4 text-orange-600" />
+                <span>Thông tin Shop</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowRightInfo(false)}
+                className="p-1 hover:bg-slate-200/80 rounded-xl text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                title="Thu gọn bảng thông tin"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
             {/* Shop Profile Box */}
             <div className="text-center space-y-2 pb-4 border-b border-slate-200/80">
               <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center font-bold text-xl shadow-md overflow-hidden border-2 border-white">
