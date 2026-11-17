@@ -284,6 +284,25 @@ public class PayOsServiceImpl implements PayOsService {
             txnOpt = paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc("QS-" + orderId);
         }
         if (txnOpt.isEmpty()) {
+            try {
+                long num = Long.parseLong(orderId.replaceAll("[^0-9]", ""));
+                if (num > 100000L) {
+                    txnOpt = paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc(String.valueOf(num - 100000L));
+                    if (txnOpt.isEmpty()) {
+                        txnOpt = paymentTransactionRepository.findByTxnRef(String.valueOf(num - 100000L));
+                    }
+                } else if (num > 0) {
+                    txnOpt = paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc(String.valueOf(num + 100000L));
+                    if (txnOpt.isEmpty()) {
+                        txnOpt = paymentTransactionRepository.findFirstByOrderIdOrderByCreatedAtDesc("QS-" + (num + 100000L));
+                    }
+                    if (txnOpt.isEmpty()) {
+                        txnOpt = paymentTransactionRepository.findByTxnRef(String.valueOf(num + 100000L));
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        if (txnOpt.isEmpty()) {
             txnOpt = paymentTransactionRepository.findByTxnRef(orderId);
         }
 
@@ -608,7 +627,8 @@ public class PayOsServiceImpl implements PayOsService {
             try {
                 String digits = txn.getOrderId().replaceAll("[^0-9]", "");
                 if (!digits.isEmpty()) {
-                    masterOrderId = Long.parseLong(digits);
+                    long parsed = Long.parseLong(digits);
+                    masterOrderId = (parsed > 100000L) ? (parsed - 100000L) : parsed;
                 }
             } catch (Exception ignored) {}
 
