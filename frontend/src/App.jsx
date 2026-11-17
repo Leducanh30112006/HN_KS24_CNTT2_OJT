@@ -1243,6 +1243,8 @@ export default function App() {
           <IntroPage
             onNavigateToHome={() => handleNavigateView('home')}
             onNavigateToLogin={() => handleNavigateView('login')}
+            onNavigateToRegisterSeller={() => handleNavigateView('register-seller')}
+            onNavigateToRegisterShipper={() => handleNavigateView('register-shipper')}
           />
         )}
 
