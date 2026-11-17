@@ -363,9 +363,9 @@ export default function CheckoutPage({
     setOrderError('');
     setIsSubmitting(true);
     const userId = user?.userId || user?.id || 1001;
+    const isBankTransfer = paymentMethod === 'payos' || paymentMethod === 'vnpay';
 
     try {
-      const isBankTransfer = paymentMethod === 'payos' || paymentMethod === 'vnpay';
       const payload = {
         paymentMethod: isBankTransfer ? 'PAYOS' : paymentMethod.toUpperCase(),
         recipientName: address.name || 'Người nhận',
@@ -383,6 +383,7 @@ export default function CheckoutPage({
         headers: {
           'X-User-Id': userId,
         },
+        timeout: 30000,
       });
 
       let createdOrderId = null;
@@ -396,17 +397,53 @@ export default function CheckoutPage({
         createdOrderId = displayOrderId;
         setOrderId(displayOrderId);
         setOrderSuccess(true);
-        removeMultipleFromCart(displayItems.map((i) => i.variantId));
+        removeMultipleFromCart(displayItems.map((i) => i.variantId || i.id));
 
         // Lưu đơn hàng vào kho dữ liệu mẫu & tracking
+        try {
+          recordNewOrder({
+            userId: user?.userId || 2,
+            orderCode: displayOrderId,
+            shopGroups,
+            subTotal,
+            actualShippingFee,
+            totalDiscount,
+            finalTotal: finalAmount,
+            paymentMethod: paymentMethod.toUpperCase(),
+            paymentStatus: isBankTransfer ? 'PENDING' : 'PAID',
+            shippingInfo: {
+              fullName: address?.name || 'Khách Hàng',
+              phone: address?.phone || '0988 123 456',
+              address: address?.street || 'Số 18, Ngõ 45 Cầu Giấy',
+              ward: address?.ward || 'Quan Hoa',
+              district: address?.district || 'Cầu Giấy',
+              city: address?.city || 'Hà Nội',
+              note: address?.note || '',
+            },
+          });
+        } catch (e) {
+          console.warn('Không thể lưu đơn hàng cục bộ:', e);
+        }
+
+        // NẾU CHỌN THANH TOÁN CHUYỂN KHOẢN: Khởi tạo URL PayOS thực tế từ Backend
+        if (isBankTransfer) {
+          handleCreatePayOsPayment(displayOrderId, finalAmount);
+        }
+      } else {
+        setOrderError(res?.message || 'Không thể tạo đơn hàng. Vui lòng kiểm tra lại thông tin giỏ hàng!');
+      }
+    } catch (err) {
+      console.warn('Backend chưa phản hồi đặt hàng, ghi nhận đơn hàng cục bộ:', err);
+      const fallbackOrderId = `QS-${Date.now().toString().slice(-6)}`;
+      try {
         recordNewOrder({
           userId: user?.userId || 2,
-          orderCode: displayOrderId,
+          orderCode: fallbackOrderId,
           shopGroups,
           subTotal,
           actualShippingFee,
           totalDiscount,
-          finalTotal: finalAmount,
+          finalTotal,
           paymentMethod: paymentMethod.toUpperCase(),
           paymentStatus: isBankTransfer ? 'PENDING' : 'PAID',
           shippingInfo: {
@@ -419,40 +456,12 @@ export default function CheckoutPage({
             note: address?.note || '',
           },
         });
-
-        // NẾU CHỌN THANH TOÁN CHUYỂN KHOẢN: Khởi tạo URL PayOS thực tế từ Backend
-        if (isBankTransfer) {
-          handleCreatePayOsPayment(displayOrderId, finalAmount);
-        }
-      } else {
-        setOrderError(res?.message || 'Không thể tạo đơn hàng. Vui lòng kiểm tra lại thông tin giỏ hàng!');
+      } catch (e) {
+        console.warn('Không thể lưu đơn hàng cục bộ trong fallback:', e);
       }
-    } catch (err) {
-      console.warn('Backend chưa phản hồi đặt hàng, ghi nhận đơn hàng cục bộ:', err);
-      const fallbackOrderId = `QS-${Date.now().toString().slice(-6)}`;
-      recordNewOrder({
-        userId: user?.userId || 2,
-        orderCode: fallbackOrderId,
-        shopGroups,
-        subTotal,
-        actualShippingFee,
-        totalDiscount,
-        finalTotal,
-        paymentMethod: paymentMethod.toUpperCase(),
-        paymentStatus: isBankTransfer ? 'PENDING' : 'PAID',
-        shippingInfo: {
-          fullName: address?.name || 'Khách Hàng',
-          phone: address?.phone || '0988 123 456',
-          address: address?.street || 'Số 18, Ngõ 45 Cầu Giấy',
-          ward: address?.ward || 'Quan Hoa',
-          district: address?.district || 'Cầu Giấy',
-          city: address?.city || 'Hà Nội',
-          note: address?.note || '',
-        },
-      });
       setOrderId(fallbackOrderId);
       setOrderSuccess(true);
-      removeMultipleFromCart(displayItems.map((i) => i.variantId));
+      removeMultipleFromCart(displayItems.map((i) => i.variantId || i.id));
       if (isBankTransfer) {
         handleCreatePayOsPayment(fallbackOrderId, finalTotal);
       }
@@ -696,7 +705,7 @@ export default function CheckoutPage({
                   src={
                     payOsData?.qrCode && payOsData.qrCode.startsWith('http')
                       ? payOsData.qrCode
-                      : `https://img.vietqr.io/image/970422-0346746521-compact2.png?amount=${finalTotal}&addInfo=${encodeURIComponent('QS DH' + (orderId.replace(/[^0-9]/g, '') || orderId))}&accountName=NGUYEN%20VAN%20KIEN`
+                      : `https://img.vietqr.io/image/970422-0346746521-compact2.png?amount=${finalTotal}&addInfo=${encodeURIComponent('QS DH' + (String(orderId || '').replace(/[^0-9]/g, '') || String(orderId || '1001')))}&accountName=NGUYEN%20VAN%20KIEN`
                   }
                   alt="Mã QR PayOS MB Bank"
                   className="w-48 h-48 object-contain rounded-xl mx-auto"
@@ -749,11 +758,11 @@ export default function CheckoutPage({
                   <span className="text-slate-500">Nội dung chuyển khoản:</span>
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-slate-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                      {payOsData?.orderCode ? `QS DH${payOsData.orderCode}` : `QS DH${orderId.replace(/[^0-9]/g, '') || orderId}`}
+                      {payOsData?.orderCode ? `QS DH${payOsData.orderCode}` : `QS DH${String(orderId || '').replace(/[^0-9]/g, '') || String(orderId || '1001')}`}
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleCopy(payOsData?.orderCode ? `QS DH${payOsData.orderCode}` : `QS DH${orderId.replace(/[^0-9]/g, '') || orderId}`, 'content_success')}
+                      onClick={() => handleCopy(payOsData?.orderCode ? `QS DH${payOsData.orderCode}` : `QS DH${String(orderId || '').replace(/[^0-9]/g, '') || String(orderId || '1001')}`, 'content_success')}
                       className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold px-2 py-0.5 bg-blue-50 rounded border border-blue-200 flex items-center gap-1 active:scale-95 transition"
                     >
                       {copiedField === 'content_success' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
