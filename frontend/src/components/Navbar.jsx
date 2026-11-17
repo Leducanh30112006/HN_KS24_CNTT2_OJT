@@ -410,8 +410,14 @@ export default function Navbar({
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center gap-2 p-1.5 pr-2.5 rounded-xl border border-slate-200 hover:border-orange-300 transition"
               >
-                <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-600 font-bold flex items-center justify-center text-xs">
-                  {user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
+                <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-600 font-bold flex items-center justify-center text-xs overflow-hidden border border-orange-200/60 shadow-2xs">
+                  {user.avatar || user.avatarUrl ? (
+                    <img src={user.avatar || user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : user.fullName ? (
+                    user.fullName.charAt(0).toUpperCase()
+                  ) : (
+                    'U'
+                  )}
                 </div>
                 <div className="hidden lg:block text-left text-xs">
                   <div className="font-semibold text-slate-900 truncate max-w-[100px]">

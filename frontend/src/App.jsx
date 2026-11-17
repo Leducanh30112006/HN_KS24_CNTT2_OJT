@@ -1003,8 +1003,20 @@ export default function App() {
       />
 
       {/* 2. Main Content Views */}
-      <PageTransition viewKey={currentView} className={currentView === 'intro' ? 'flex-1 w-full' : 'flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6'}>
-        <main ref={mainViewRef} className="space-y-6">
+      <PageTransition
+        viewKey={currentView}
+        className={
+          currentView === 'intro'
+            ? 'flex-1 w-full'
+            : currentView === 'chat'
+            ? 'flex-1 w-full p-0 m-0 overflow-hidden h-[calc(100vh-64px)]'
+            : 'flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6'
+        }
+      >
+        <main
+          ref={mainViewRef}
+          className={currentView === 'chat' ? 'w-full h-full p-0 m-0 overflow-hidden' : 'space-y-6'}
+        >
 
         {/* VIEW 1: PRODUCT DETAIL PAGE (CHUYÊN BIỆT NHƯ SHOPEE VÀ TIKTOK SHOP) */}
         {currentView === 'product-detail' && selectedProduct && (
@@ -1760,53 +1772,55 @@ export default function App() {
       </main>
       </PageTransition>
 
-      {/* 3. Footer Chuẩn Sàn TMĐT Việt Nam */}
-      <footer className="bg-white border-t border-slate-200 mt-16 text-slate-600 text-xs">
-        <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="space-y-3">
-            <div className="text-lg font-black text-slate-900 flex items-center">
-              Quick<span className="text-orange-600">Shop</span>
+      {/* 3. Footer Chuẩn Sàn TMĐT Việt Nam - Ẩn khi đang chat để giao diện cố định chuẩn Messenger */}
+      {currentView !== 'chat' && (
+        <footer className="bg-white border-t border-slate-200 mt-16 text-slate-600 text-xs">
+          <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="space-y-3">
+              <div className="text-lg font-black text-slate-900 flex items-center">
+                Quick<span className="text-orange-600">Shop</span>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Sàn Thương mại Điện tử Đa người bán (Multi-Vendor Marketplace) chuẩn Microservices & Cloud-Native.
+              </p>
+              <div className="text-[11px] text-slate-400">
+                © 2026 QuickShop. Phát triển bởi Nhóm 06 (Lê Đức Anh, Triệu Quốc Bình, Nguyễn Văn Kiên).
+              </div>
             </div>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Sàn Thương mại Điện tử Đa người bán (Multi-Vendor Marketplace) chuẩn Microservices & Cloud-Native.
-            </p>
-            <div className="text-[11px] text-slate-400">
-              © 2026 QuickShop. Phát triển bởi Nhóm 06 (Lê Đức Anh, Triệu Quốc Bình, Nguyễn Văn Kiên).
+
+            <div className="space-y-2">
+              <h4 className="font-bold text-slate-900 uppercase text-xs tracking-wider">Chăm sóc khách hàng</h4>
+              <ul className="space-y-1.5 text-slate-500 text-xs">
+                <li className="hover:text-orange-600 cursor-pointer">Trung tâm trợ giúp</li>
+                <li className="hover:text-orange-600 cursor-pointer">Hướng dẫn mua hàng</li>
+                <li className="hover:text-orange-600 cursor-pointer">Chính sách vận chuyển</li>
+                <li className="hover:text-orange-600 cursor-pointer">Chính sách bảo hành & đổi trả</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-bold text-slate-900 uppercase text-xs tracking-wider">Về QuickShop</h4>
+              <ul className="space-y-1.5 text-slate-500 text-xs">
+                <li className="hover:text-orange-600 cursor-pointer">Giới thiệu sàn TMĐT</li>
+                <li className="hover:text-orange-600 cursor-pointer">Tuyển dụng đối tác</li>
+                <li className="hover:text-orange-600 cursor-pointer">Điều khoản dịch vụ</li>
+                <li className="hover:text-orange-600 cursor-pointer">Chính sách bảo mật</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-bold text-slate-900 uppercase text-xs tracking-wider">Đơn vị Vận chuyển & Thanh toán</h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Tích hợp đối tác vận chuyển GHN, GHTK, Viettel Post và cổng thanh toán VNPay Sandbox, Thẻ nội địa Napas, Ví điện tử Escrow.
+              </p>
+              <div className="pt-2 text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                <ShieldCheck className="w-4 h-4" />
+                Đã đăng ký chứng nhận với Bộ Công Thương
+              </div>
             </div>
           </div>
-
-          <div className="space-y-2">
-            <h4 className="font-bold text-slate-900 uppercase text-xs tracking-wider">Chăm sóc khách hàng</h4>
-            <ul className="space-y-1.5 text-slate-500 text-xs">
-              <li className="hover:text-orange-600 cursor-pointer">Trung tâm trợ giúp</li>
-              <li className="hover:text-orange-600 cursor-pointer">Hướng dẫn mua hàng</li>
-              <li className="hover:text-orange-600 cursor-pointer">Chính sách vận chuyển</li>
-              <li className="hover:text-orange-600 cursor-pointer">Chính sách bảo hành & đổi trả</li>
-            </ul>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-bold text-slate-900 uppercase text-xs tracking-wider">Về QuickShop</h4>
-            <ul className="space-y-1.5 text-slate-500 text-xs">
-              <li className="hover:text-orange-600 cursor-pointer">Giới thiệu sàn TMĐT</li>
-              <li className="hover:text-orange-600 cursor-pointer">Tuyển dụng đối tác</li>
-              <li className="hover:text-orange-600 cursor-pointer">Điều khoản dịch vụ</li>
-              <li className="hover:text-orange-600 cursor-pointer">Chính sách bảo mật</li>
-            </ul>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-bold text-slate-900 uppercase text-xs tracking-wider">Đơn vị Vận chuyển & Thanh toán</h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Tích hợp đối tác vận chuyển GHN, GHTK, Viettel Post và cổng thanh toán VNPay Sandbox, Thẻ nội địa Napas, Ví điện tử Escrow.
-            </p>
-            <div className="pt-2 text-[11px] text-emerald-600 font-bold flex items-center gap-1">
-              <ShieldCheck className="w-4 h-4" />
-              Đã đăng ký chứng nhận với Bộ Công Thương
-            </div>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      )}
 
       {/* 4. Modals & Widgets */}
       <CartDrawer

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   User, Mail, Phone, MapPin, Lock, ShieldCheck, Award, 
   ShoppingBag, CreditCard, ChevronRight, CheckCircle2, AlertCircle, 
-  ArrowLeft, Edit3, Save, Key, Plus, Trash2, Check, Sparkles, Building
+  ArrowLeft, Edit3, Save, Key, Plus, Trash2, Check, Sparkles, Building,
+  Camera, Upload, Image as ImageIcon, X
 } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { getStoredOrders } from '../data/sampleOrders';
@@ -19,6 +20,58 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
   const [bio, setBio] = useState('Khách hàng thân thiết của QuickShop Mall. Ưa chuộng công nghệ và đồ gia dụng.');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState(null);
+
+  // Avatar States
+  const [avatar, setAvatar] = useState(user?.avatar || user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200');
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [customAvatarUrl, setCustomAvatarUrl] = useState('');
+  const fileInputRef = useRef(null);
+
+  const PRESET_AVATARS = [
+    { label: 'Thanh lịch', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80' },
+    { label: 'Doanh nhân', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80' },
+    { label: 'Công nghệ', url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80' },
+    { label: 'Trẻ trung', url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80' },
+    { label: 'Năng động', url: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=200&auto=format&fit=crop&q=80' },
+    { label: 'Sáng tạo', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=80' },
+  ];
+
+  const handleAvatarFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Kích thước ảnh tối đa là 5MB!');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target.result;
+      setAvatar(dataUrl);
+      updateUser({ avatar: dataUrl, avatarUrl: dataUrl });
+      setShowAvatarModal(false);
+      setProfileMessage({ type: 'success', text: 'Cập nhật ảnh đại diện thành công!' });
+      setTimeout(() => setProfileMessage(null), 3500);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSelectPresetAvatar = (url) => {
+    setAvatar(url);
+    updateUser({ avatar: url, avatarUrl: url });
+    setShowAvatarModal(false);
+    setProfileMessage({ type: 'success', text: 'Đã đổi ảnh đại diện thành công!' });
+    setTimeout(() => setProfileMessage(null), 3500);
+  };
+
+  const handleSaveCustomUrlAvatar = () => {
+    if (!customAvatarUrl.trim()) return;
+    setAvatar(customAvatarUrl.trim());
+    updateUser({ avatar: customAvatarUrl.trim(), avatarUrl: customAvatarUrl.trim() });
+    setShowAvatarModal(false);
+    setCustomAvatarUrl('');
+    setProfileMessage({ type: 'success', text: 'Đã cập nhật ảnh đại diện từ link!' });
+    setTimeout(() => setProfileMessage(null), 3500);
+  };
 
   // Address Management States
   const DEFAULT_ADDRESSES = [
@@ -220,12 +273,23 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
         {/* User Card Header */}
         <div className="bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-orange-500/10">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-            <div className="relative">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/20 backdrop-blur-md border-2 border-white/50 flex items-center justify-center text-3xl sm:text-4xl font-black text-white shadow-lg">
-                {fullName ? fullName.charAt(0).toUpperCase() : 'U'}
+            <div className="relative group cursor-pointer" onClick={() => setShowAvatarModal(true)} title="Bấm để đổi ảnh đại diện">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/20 backdrop-blur-md border-2 border-white/50 flex items-center justify-center text-3xl sm:text-4xl font-black text-white shadow-lg overflow-hidden relative">
+                {avatar ? (
+                  <img src={avatar} alt={fullName} className="w-full h-full object-cover" />
+                ) : fullName ? (
+                  fullName.charAt(0).toUpperCase()
+                ) : (
+                  'U'
+                )}
+                {/* Camera overlay hover */}
+                <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold gap-1">
+                  <Camera className="w-5 h-5" />
+                  <span>Đổi ảnh</span>
+                </div>
               </div>
-              <div className="absolute -bottom-1 -right-1 bg-emerald-500 border-2 border-white text-white p-1 rounded-full" title="Tài khoản đã xác thực">
-                <Check className="w-3.5 h-3.5 stroke-[3]" />
+              <div className="absolute -bottom-1 -right-1 bg-orange-600 border-2 border-white text-white p-1.5 rounded-full shadow-md group-hover:scale-110 transition-transform" title="Đổi ảnh đại diện">
+                <Camera className="w-3.5 h-3.5" />
               </div>
             </div>
 
@@ -359,6 +423,29 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                 )}
 
                 <form onSubmit={handleSaveProfile} className="space-y-4">
+                  {/* Khung đổi ảnh đại diện trực tiếp trong tab Hồ Sơ */}
+                  <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                    <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-orange-100 flex-shrink-0 border border-slate-200 shadow-2xs">
+                      {avatar ? (
+                        <img src={avatar} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-8 h-8 text-orange-600 m-auto mt-3" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold text-slate-800">Ảnh đại diện tài khoản</div>
+                      <div className="text-[11px] text-slate-500">Hỗ trợ tải file từ máy tính hoặc chọn mẫu phong cách</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAvatarModal(true)}
+                      className="px-3.5 py-2 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 rounded-xl text-xs font-bold transition active:scale-95 flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Đổi ảnh</span>
+                    </button>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-700">Tên đăng nhập (Username)</label>
@@ -709,6 +796,107 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
           </div>
         </div>
       </div>
+
+      {/* MODAL ĐỔI ẢNH ĐẠI DIỆN ĐA NĂNG */}
+      {showAvatarModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 border border-slate-200 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <Camera className="w-4 h-4 text-orange-600" />
+                <span>Thay Đổi Ảnh Đại Diện</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAvatarModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Preview hiện tại */}
+            <div className="flex flex-col items-center gap-2 text-center py-2">
+              <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-orange-500 shadow-md">
+                <img src={avatar} alt="Avatar preview" className="w-full h-full object-cover" />
+              </div>
+              <span className="text-xs text-slate-500 font-medium">Ảnh đại diện đang áp dụng</span>
+            </div>
+
+            {/* 1. Tải ảnh từ thiết bị */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 block">1. Tải ảnh từ máy tính / điện thoại:</label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarFileUpload}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-2.5 px-4 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-2xs"
+              >
+                <Upload className="w-4 h-4 text-orange-600" />
+                <span>Chọn ảnh từ thiết bị... (Tối đa 5MB)</span>
+              </button>
+            </div>
+
+            {/* 2. Chọn avatar mẫu có sẵn */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 block">2. Hoặc chọn mẫu phong cách có sẵn:</label>
+              <div className="grid grid-cols-6 gap-2">
+                {PRESET_AVATARS.map((preset, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSelectPresetAvatar(preset.url)}
+                    title={preset.label}
+                    className={`relative rounded-xl overflow-hidden border-2 transition-transform hover:scale-105 active:scale-95 cursor-pointer ${
+                      avatar === preset.url ? 'border-orange-600 ring-2 ring-orange-500/20' : 'border-slate-200'
+                    }`}
+                  >
+                    <img src={preset.url} alt={preset.label} className="w-full h-12 object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Dán link ảnh online */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 block">3. Hoặc dán đường link ảnh trực tiếp:</label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={customAvatarUrl}
+                  onChange={(e) => setCustomAvatarUrl(e.target.value)}
+                  placeholder="https://.../avatar.jpg"
+                  className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-orange-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveCustomUrlAvatar}
+                  disabled={!customAvatarUrl.trim()}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer"
+                >
+                  Lưu
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowAvatarModal(false)}
+                className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
