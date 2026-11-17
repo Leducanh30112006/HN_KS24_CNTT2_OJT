@@ -190,6 +190,8 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
           shopTrackingCode: `GHN-VNM-${100000 + (order.id || 1)}`,
           shopStatus: order.status,
           shopItems: order.items || [],
+          shopSubTotal: order.totalAmount || order.finalAmount || 0,
+          shopShippingFee: order.shippingFee || 0,
           shopTotal: order.finalAmount || order.totalAmount || 0,
           parentOrder: order,
           subOrder: null,
@@ -200,6 +202,9 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
           const shopCode = subOrders.length > 1
             ? `${order.orderCode}-GH${sub.shopId || idx + 1}`
             : (sub.orderCode || order.orderCode || `QS-${order.id}`);
+
+          const sSubTotal = sub.subTotal || (sub.items || []).reduce((sum, it) => sum + (it.price || 0) * (it.quantity || 1), 0);
+          const sShipFee = sub.shippingFee ?? 25000;
 
           list.push({
             ...order,
@@ -212,7 +217,9 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
             shopTrackingCode: sub.trackingCode || `GHN-VNM-${100000 + (order.id || 1)}`,
             shopStatus: sub.status || order.status,
             shopItems: sub.items || [],
-            shopTotal: (sub.subTotal || 0) + (sub.shippingFee || 0),
+            shopSubTotal: sSubTotal,
+            shopShippingFee: sShipFee,
+            shopTotal: sSubTotal + sShipFee,
             parentOrder: order,
             subOrder: sub,
             isSplit: subOrders.length > 1,
@@ -897,9 +904,9 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       {/* ========================================================================= */}
       {/* MODAL 1: XEM CHI TIẾT ĐƠN HÀNG TOÀN DIỆN (ORDER DETAILS MODAL) */}
       {/* ========================================================================= */}
-      <AnimatedPresence show={Boolean(selectedOrderDetails)} mode="modal" dataLenisPrevent={true} className="p-3 sm:p-6">
+      <AnimatedPresence show={Boolean(selectedOrderDetails)} mode="modal" dataLenisPrevent={true} className="p-3 sm:p-6 no-scrollbar">
         {selectedOrderDetails && (
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto no-scrollbar">
             {/* Header Modal */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">

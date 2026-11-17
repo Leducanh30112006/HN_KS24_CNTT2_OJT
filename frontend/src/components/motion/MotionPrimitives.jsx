@@ -28,6 +28,17 @@ export function AnimatedPresence({
     }
   }, [show]);
 
+  // Khóa cuộn nền của body khi mở Modal hoặc Drawer để không hiện thanh cuộn kép
+  useEffect(() => {
+    if (show && (mode === 'modal' || mode === 'drawer')) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [show, mode]);
+
   useLayoutEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
