@@ -642,43 +642,21 @@ export const useCartStore = create(
 
         set({ items: nextItems, syncError: null });
 
-        const numericIds = Array.from(idSet).filter(isNumericId);
-        if (auth.canUseServer && numericIds.length > 0) {
-          try {
-            const results = await Promise.allSettled(
-              numericIds.map((id) =>
-                axiosClient.delete(`/api/cart/items/${Number(id)}`, {
-                  params: { userId: auth.userId },
-                  headers: { 'X-User-Id': String(auth.userId) },
-                })
-              )
-            );
-            const lastSuccess = [...results]
-              .reverse()
-              .find((r) => r.status === 'fulfilled');
-            if (lastSuccess) {
-              const cartData = extractCartResponse(lastSuccess.value);
-              const mapped = mapServerCartToItems(cartData, nextItems);
-              writeOfflineUserCart(auth.userId, mapped);
-              set({ items: mapped, ownerUserId: auth.userId, syncMode: 'server', syncError: null });
-              broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: mapped });
-              return { ok: true, items: mapped };
-            }
-            writeOfflineUserCart(auth.userId, nextItems);
-            broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
-            return { ok: false };
-          } catch {
-            writeOfflineUserCart(auth.userId, nextItems);
-            broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
-            return { ok: false, offline: true };
-          }
-        }
-
-        if (auth.isAuthenticated && auth.userId) {
+        if (auth.userId) {
           writeOfflineUserCart(auth.userId, nextItems);
           broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
         }
-        return { ok: true };
+
+        if (auth.canUseServer) {
+          try {
+            // Backend Checkout đã tự động dọn dẹp các mặt hàng này trong Redis Cart;
+            // Gọi fetchCart để đồng bộ trạng thái sạch nhất mà không kích hoạt 404 riêng lẻ
+            await get().fetchCart(auth.userId);
+          } catch {
+            // Giữ state client mượt mà
+          }
+        }
+        return { ok: true, items: nextItems };
       },
 
       // Xóa toàn bộ giỏ hàng hiện tại của người dùng
