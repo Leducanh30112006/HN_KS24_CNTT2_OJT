@@ -22,7 +22,8 @@ export default function ProductDetailPage({
   onSelectRelatedProduct, 
   onBuyNow, 
   onRequireAuth,
-  onSelectShop
+  onSelectShop,
+  onOpenChat,
 }) {
   const addToCart = useCartStore((state) => state.addToCart);
   const { user, isAuthenticated } = useAuthStore();
@@ -728,8 +729,14 @@ export default function ProductDetailPage({
               </div>
               <div className="flex gap-2 pt-1 items-center flex-wrap">
                 <button 
-                  onClick={() => setChatModalOpen(true)}
-                  className="px-3 py-1 bg-orange-50 border border-orange-200 text-orange-600 hover:bg-orange-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition active:scale-95"
+                  onClick={() => {
+                    if (onOpenChat) {
+                      onOpenChat({ shopId: product.shopId || 1, product });
+                    } else {
+                      setChatModalOpen(true);
+                    }
+                  }}
+                  className="px-3 py-1 bg-orange-50 border border-orange-200 text-orange-600 hover:bg-orange-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition active:scale-95 cursor-pointer"
                 >
                   <MessageSquare className="w-3 h-3" />
                   <span>Chat Ngay</span>

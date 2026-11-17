@@ -12,6 +12,7 @@ import CheckoutPage from './components/CheckoutPage';
 import CartDrawer from './components/CartDrawer';
 import AiChatWidget from './components/AiChatWidget';
 import BuyerSellerChatModal from './components/BuyerSellerChatModal';
+import MessengerPage from './components/MessengerPage';
 import SellerPortal from './components/SellerPortal';
 import AdminPortal from './components/AdminPortal';
 import LoginPage from './components/LoginPage';
@@ -178,6 +179,8 @@ export default function App() {
     return savedView || 'intro';
   });
   const [globalShopChatOpen, setGlobalShopChatOpen] = useState(false);
+  const [chatInitialShopId, setChatInitialShopId] = useState(1);
+  const [chatInitialProduct, setChatInitialProduct] = useState(null);
   const { user, isAuthenticated } = useAuthStore();
   const { syncCartOnLogin, handleLogoutClear, ownerUserId } = useCartStore();
 
@@ -668,6 +671,12 @@ export default function App() {
     handleNavigateView('shop-detail', { extra: { shopId: shop?.id || shop?.shopId } });
   };
 
+  const handleOpenChat = ({ shopId = 1, product = null } = {}) => {
+    setChatInitialShopId(shopId || 1);
+    setChatInitialProduct(product);
+    handleNavigateView('chat', { extra: { shopId: shopId || 1 } });
+  };
+
   const handleBackToStorefront = (options = {}) => {
     const shuffle = options?.shuffle !== undefined ? options.shuffle : true;
     setSelectedProduct(null);
@@ -990,7 +999,7 @@ export default function App() {
         onOpenAuthModal={() => handleNavigateView('login')}
         onNavigateToLogin={() => handleNavigateView('login')}
         onGoToStorefront={() => handleBackToStorefront({ shuffle: true })}
-        onOpenChatWithShop={() => setGlobalShopChatOpen(true)}
+        onOpenChatWithShop={() => handleOpenChat()}
       />
 
       {/* 2. Main Content Views */}
@@ -1008,6 +1017,7 @@ export default function App() {
             }}
             onSelectRelatedProduct={handleSelectProduct}
             onSelectShop={handleSelectShop}
+            onOpenChat={handleOpenChat}
             onBuyNow={(buyItem) => {
               if (buyItem) {
                 setCheckoutItems([buyItem]);
@@ -1072,6 +1082,23 @@ export default function App() {
             }}
             onBuyAgain={() => {
               handleNavigateView('cart');
+            }}
+          />
+        )}
+
+        {/* VIEW: FULL MESSENGER CHAT PAGE (TRANG CHAT MESSENGER TOÀN BỘ NHƯ MESS/SHOPEE) */}
+        {currentView === 'chat' && (
+          <MessengerPage
+            initialShopId={chatInitialShopId}
+            initialProduct={chatInitialProduct}
+            onBackToHome={() => handleNavigateView('home')}
+            onSelectProduct={(pId) => handleSelectProduct({ id: pId })}
+            onSelectShop={handleSelectShop}
+            onBuyNow={(item) => {
+              if (item) {
+                setCheckoutItems([item]);
+                handleNavigateView('checkout');
+              }
             }}
           />
         )}
