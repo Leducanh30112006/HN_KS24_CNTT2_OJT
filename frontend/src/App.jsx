@@ -22,6 +22,7 @@ import ApiErrorBanner from './components/ApiErrorBanner';
 import UserProfilePage from './components/UserProfilePage';
 import OrderHistoryPage from './components/OrderHistoryPage';
 import ShipperPortal from './components/ShipperPortal';
+import IntroPage from './components/IntroPage';
 import catalogApi, { mapPriceRange } from './api/catalogApi';
 import axiosClient from './api/axiosClient';
 import Lenis from 'lenis';
@@ -52,7 +53,11 @@ function shuffleArray(arr) {
 function buildUrlForState(view, extra = {}) {
   if (typeof window === 'undefined') return '/';
   const params = new URLSearchParams();
-  if (view && view !== 'storefront') {
+  if (view === 'intro') {
+    params.set('view', 'intro');
+  } else if (view && (view === 'home' || view === 'storefront')) {
+    params.set('view', 'home');
+  } else if (view) {
     params.set('view', view);
   }
   if (extra.id) {
@@ -71,21 +76,25 @@ function buildUrlForState(view, extra = {}) {
   return qs ? `?${qs}` : window.location.pathname;
 }
 
-// Đọc trạng thái ban đầu từ URL để phục hồi ngay khi tải lại trang
+// Đọc trạng thái ban đầu từ URL để phục hồi ngay khi tải lại trang (Mặc định trang giới thiệu 3D nếu không có view)
 function getInitialUrlState() {
   if (typeof window === 'undefined') {
-    return { view: 'storefront', q: '', cat: null, id: null, shopId: null };
+    return { view: 'intro', q: '', cat: null, id: null, shopId: null };
   }
   try {
     const params = new URLSearchParams(window.location.search);
-    const view = params.get('view') || 'storefront';
+    const rawView = params.get('view');
+    let view = 'intro';
+    if (rawView) {
+      view = rawView === 'storefront' ? 'home' : rawView;
+    }
     const q = params.get('q') || '';
     const cat = params.get('cat') ? Number(params.get('cat')) : null;
     const id = params.get('id') || null;
     const shopId = params.get('shopId') || null;
     return { view, q, cat, id, shopId };
   } catch {
-    return { view: 'storefront', q: '', cat: null, id: null, shopId: null };
+    return { view: 'intro', q: '', cat: null, id: null, shopId: null };
   }
 }
 
@@ -161,11 +170,11 @@ function getCategoryIconMeta(category) {
 export default function App() {
   const initialUrl = getInitialUrlState();
   const [currentView, setCurrentView] = useState(() => {
-    if (initialUrl.view && initialUrl.view !== 'storefront') {
+    if (initialUrl.view) {
       return initialUrl.view;
     }
     const savedView = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('quickshop_current_view') : null;
-    return savedView || 'storefront';
+    return savedView || 'intro';
   });
   const { user, isAuthenticated } = useAuthStore();
   const { syncCartOnLogin, handleLogoutClear, ownerUserId } = useCartStore();
@@ -234,7 +243,7 @@ export default function App() {
   // Điều hướng có tích hợp HTML5 History API (pushState/replaceState)
   const handleNavigateView = (view, options = {}) => {
     const { replace = false, extra = {}, skipPush = false, scroll = true } = options;
-    if (view === 'storefront') {
+    if (view === 'storefront' || view === 'home' || view === 'intro') {
       setSelectedProduct(null);
       setSelectedShop(null);
     }
@@ -387,7 +396,7 @@ export default function App() {
   useEffect(() => {
     const handlePopState = (e) => {
       const urlState = getInitialUrlState();
-      const targetView = e.state?.view || urlState.view || 'storefront';
+      const targetView = e.state?.view || urlState.view || 'intro';
       setCurrentView(targetView);
       sessionStorage.setItem('quickshop_current_view', targetView);
 
@@ -398,7 +407,7 @@ export default function App() {
         const prodId = urlState.id || e.state?.id;
         const found = defaultProducts.find((p) => String(p.id) === String(prodId));
         if (found) setSelectedProduct(normalizeProduct(found));
-      } else if (targetView === 'storefront') {
+      } else if (targetView === 'storefront' || targetView === 'home' || targetView === 'intro') {
         setSelectedProduct(null);
         setSelectedShop(null);
       }
@@ -667,7 +676,7 @@ export default function App() {
     setPriceRange('all');
     setMinRating(0);
     setCurrentPage(0);
-    handleNavigateView('storefront');
+    handleNavigateView('home');
     fetchProducts({
       catId: null,
       kw: '',
@@ -686,7 +695,7 @@ export default function App() {
     setPriceRange('all');
     setMinRating(0);
     setCurrentPage(0);
-    handleNavigateView('storefront');
+    handleNavigateView('home');
     fetchProducts({
       catId: null,
       kw: '',
@@ -972,7 +981,7 @@ export default function App() {
         selectedCategory={selectedCategory}
         setSelectedCategory={(catId) => {
           setSelectedCategory(catId);
-          handleNavigateView('storefront');
+          handleNavigateView('home');
         }}
         categories={categories}
         onOpenCart={() => handleNavigateView('cart')}
@@ -982,7 +991,7 @@ export default function App() {
       />
 
       {/* 2. Main Content Views */}
-      <PageTransition viewKey={currentView} className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6">
+      <PageTransition viewKey={currentView} className={currentView === 'intro' ? 'flex-1 w-full' : 'flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 space-y-6'}>
         <main ref={mainViewRef} className="space-y-6">
 
         {/* VIEW 1: PRODUCT DETAIL PAGE (CHUYÊN BIỆT NHƯ SHOPEE VÀ TIKTOK SHOP) */}
@@ -992,7 +1001,7 @@ export default function App() {
             allProducts={products}
             onBack={() => {
               setSelectedProduct(null);
-              handleNavigateView('storefront');
+              handleNavigateView('home');
             }}
             onSelectRelatedProduct={handleSelectProduct}
             onSelectShop={handleSelectShop}
@@ -1017,7 +1026,7 @@ export default function App() {
               if (selectedProduct) {
                 handleNavigateView('product-detail');
               } else {
-                handleNavigateView('storefront');
+                handleNavigateView('home');
               }
             }}
             onSelectProduct={handleSelectProduct}
@@ -1044,7 +1053,7 @@ export default function App() {
         {currentView === 'profile' && (
           <UserProfilePage
             onBackToHome={() => {
-              handleNavigateView('storefront');
+              handleNavigateView('home');
             }}
             onViewOrders={() => {
               handleNavigateView('orders');
@@ -1056,7 +1065,7 @@ export default function App() {
         {currentView === 'orders' && (
           <OrderHistoryPage
             onBackToHome={() => {
-              handleNavigateView('storefront');
+              handleNavigateView('home');
             }}
             onBuyAgain={() => {
               handleNavigateView('cart');
@@ -1082,7 +1091,7 @@ export default function App() {
               if (selectedProduct) {
                 handleNavigateView('product-detail');
               } else {
-                handleNavigateView('storefront');
+                handleNavigateView('home');
               }
             }}
             onSelectProduct={handleSelectProduct}
@@ -1229,8 +1238,16 @@ export default function App() {
           </div>
         )}
 
+        {/* VIEW 0: 3D INTRO PAGE (GIỚI THIỆU FLAGSHIP 3D) */}
+        {currentView === 'intro' && (
+          <IntroPage
+            onNavigateToHome={() => handleNavigateView('home')}
+            onNavigateToLogin={() => handleNavigateView('login')}
+          />
+        )}
+
         {/* VIEW 3: STOREFRONT (NGƯỜI MUA - TRANG CHỦ) */}
-        {currentView === 'storefront' && (
+        {(currentView === 'storefront' || currentView === 'home') && (
           <div ref={storefrontRef} className="space-y-6">
             {/* Lucian Labs-Style Asymmetrical 3-Card Bento Hero Grid */}
             <HeroBanner
@@ -1830,7 +1847,7 @@ export default function App() {
             <button
               onClick={() => {
                 setVnpayResult(null);
-                handleNavigateView('storefront');
+                handleNavigateView('home');
               }}
               className="w-full py-3 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-orange-500/20 transition active:scale-95 cursor-pointer btn-tactile"
             >

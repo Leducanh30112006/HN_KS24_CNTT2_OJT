@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShoppingBag, Search, Bell, ShoppingCart, User, Store, ShieldCheck, 
-  HelpCircle, Smartphone, ChevronDown, LogOut, CheckCircle, Tag, Truck, Package
+  HelpCircle, Smartphone, ChevronDown, LogOut, CheckCircle, Tag, Truck, Package, Sparkles
 } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useCartStore } from '../stores/useCartStore';
@@ -156,7 +156,7 @@ export default function Navbar({
                 } else {
                   if (setSearchKeyword) setSearchKeyword('');
                   if (setSelectedCategory) setSelectedCategory(null);
-                  setCurrentView('storefront');
+                  setCurrentView('home');
                 }
               }} 
               className="flex items-center gap-2.5 cursor-pointer group select-none"
@@ -175,6 +175,40 @@ export default function Navbar({
                   Flagship Storefront 2026
                 </div>
               </div>
+            </div>
+
+            {/* Two-Way Tactile Switcher: Giới thiệu 3D <-> Mua sắm */}
+            <div className="flex items-center p-0.5 sm:p-1 bg-slate-100/90 rounded-2xl border border-slate-200/80 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setCurrentView('intro')}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  currentView === 'intro'
+                    ? 'bg-slate-900 text-white shadow-sm ring-1 ring-slate-800'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                }`}
+                title="Trang giới thiệu 3D QuickShop"
+              >
+                <Sparkles className={`w-3.5 h-3.5 ${currentView === 'intro' ? 'text-amber-400' : 'text-slate-400'}`} />
+                <span className="hidden xs:inline">Giới thiệu</span>
+                <span className="xs:hidden">3D</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onGoToStorefront) onGoToStorefront();
+                  else setCurrentView('home');
+                }}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  currentView === 'home' || currentView === 'storefront'
+                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-sm ring-1 ring-orange-500'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                }`}
+                title="Khám phá sàn mua sắm sản phẩm chính hãng"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Mua sắm</span>
+              </button>
             </div>
 
             {/* Quick Role Navigation Pills */}
