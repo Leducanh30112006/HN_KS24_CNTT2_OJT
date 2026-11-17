@@ -30,6 +30,23 @@ export default function Navbar({
 
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  useEffect(() => {
+    const updateUnread = () => {
+      try {
+        const raw = localStorage.getItem('quickshop_buyer_seller_chat_v2');
+        if (raw) {
+          const threads = JSON.parse(raw);
+          const count = (threads || []).reduce((acc, t) => acc + (t.unreadByBuyer || 0), 0);
+          setUnreadChatCount(count);
+        }
+      } catch (e) {}
+    };
+    updateUnread();
+    window.addEventListener('quickshop_chat_update', updateUnread);
+    return () => window.removeEventListener('quickshop_chat_update', updateUnread);
+  }, []);
   const searchInputRef = useRef(null);
   const cartBadgeRef = useRef(null);
   const cartButtonRef = useRef(null);
@@ -262,11 +279,18 @@ export default function Navbar({
 
                   <button
                     onClick={onOpenChatWithShop}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition active:scale-95"
-                    title="Trò chuyện với Người bán / Shop"
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold transition active:scale-95 ${
+                      currentView === 'chat' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                    title="Trò chuyện với Người bán trên Messenger"
                   >
-                    <MessageSquare className="w-3 h-3 text-orange-600" />
-                    <span>Chat Shop</span>
+                    <MessageSquare className="w-3.5 h-3.5 text-orange-600" />
+                    <span>Messenger</span>
+                    {unreadChatCount > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-orange-600 text-white text-[9px] font-black flex items-center justify-center">
+                        {unreadChatCount}
+                      </span>
+                    )}
                   </button>
                 </>
               )}
