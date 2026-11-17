@@ -60,9 +60,9 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.ok("Xem trước thông tin thanh toán thành công", response));
     }
 
-    @Operation(summary = "Lấy danh sách các đơn hàng của người dùng")
+    @Operation(summary = "Lấy danh sách các đơn hàng của người dùng (kèm chi tiết SubOrder và OrderItems)")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<MasterOrder>>> getMyOrders(
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMyOrders(
             @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
             @RequestParam(value = "userId", required = false) Long paramUserId) {
 
@@ -76,10 +76,97 @@ public class OrderController {
             userId = paramUserId;
         }
 
+        List<MasterOrder> masterOrders;
         if (userId != null && userId > 0) {
-            return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách đơn hàng thành công", masterOrderRepository.findByUserId(userId)));
+            masterOrders = masterOrderRepository.findByUserId(userId);
+        } else {
+            masterOrders = masterOrderRepository.findAll();
         }
-        return ResponseEntity.ok(ApiResponse.ok("Lấy toàn bộ đơn hàng thành công", masterOrderRepository.findAll()));
+
+        List<Map<String, Object>> responseList = new ArrayList<>();
+        for (MasterOrder mo : masterOrders) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", mo.getId());
+            map.put("orderCode", "QS-" + (100000 + mo.getId()));
+            map.put("userId", mo.getUserId());
+            map.put("status", mo.getStatus() != null ? mo.getStatus().name() : "PROCESSING");
+            map.put("totalAmount", mo.getTotalAmount());
+            map.put("discountAmount", mo.getVoucherDiscount());
+            map.put("shippingFee", mo.getShippingFeeTotal());
+            map.put("finalAmount", mo.getTotalAmount());
+            map.put("paymentMethod", mo.getPaymentMethod());
+            map.put("paymentStatus", mo.getStatus() == com.quickshop.order.entity.MasterOrderStatus.CANCELLED ? "CANCELLED" : "PAID");
+            map.put("deliveryAddress", mo.getShippingAddress());
+            map.put("createdAt", mo.getCreatedAt() != null ? mo.getCreatedAt().toString() : java.time.LocalDateTime.now().toString());
+
+            List<SubOrder> subOrders = subOrderRepository.findByMasterOrderId(mo.getId());
+            List<Map<String, Object>> subOrderDetails = new ArrayList<>();
+            for (SubOrder sub : subOrders) {
+                Map<String, Object> subMap = new HashMap<>();
+                subMap.put("id", sub.getId());
+                subMap.put("masterOrderId", sub.getMasterOrderId());
+                subMap.put("shopId", sub.getShopId());
+                subMap.put("shopName", "Shop #" + sub.getShopId() + " (Official Mall)");
+                subMap.put("status", sub.getStatus() != null ? sub.getStatus().name() : "CONFIRMED");
+                subMap.put("subTotal", sub.getSubtotalAmount());
+                subMap.put("shippingFee", sub.getShippingFee());
+                subMap.put("finalAmount", sub.getFinalAmount());
+                subMap.put("carrierName", "Giao Hàng Nhanh (GHN)");
+                subMap.put("trackingCode", "GHN-VNM-" + (100000 + sub.getId()));
+
+                List<OrderItem> items = orderItemRepository.findBySubOrderId(sub.getId());
+                subMap.put("items", items);
+                subOrderDetails.add(subMap);
+            }
+            map.put("subOrders", subOrderDetails);
+            responseList.add(map);
+        }
+
+        return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách đơn hàng thành công", responseList));
+    }
+
+    @Operation(summary = "Hủy đơn hàng nếu người bán chưa đóng gói hoặc vận chuyển")
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> cancelOrder(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body) {
+
+        Long rawId = id;
+        if (id != null && id >= 100000) {
+            rawId = id - 100000;
+        }
+
+        MasterOrder masterOrder = masterOrderRepository.findById(rawId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với mã ID #" + id));
+
+        List<SubOrder> subOrders = subOrderRepository.findByMasterOrderId(rawId);
+        boolean anyPackedOrShipped = subOrders.stream().anyMatch(sub ->
+                sub.getStatus() == com.quickshop.order.entity.SubOrderStatus.PACKING ||
+                sub.getStatus() == com.quickshop.order.entity.SubOrderStatus.SHIPPING ||
+                sub.getStatus() == com.quickshop.order.entity.SubOrderStatus.DELIVERED ||
+                sub.getStatus() == com.quickshop.order.entity.SubOrderStatus.COMPLETED
+        );
+
+        if (anyPackedOrShipped) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Không thể hủy đơn hàng do người bán đã đóng hàng hoặc bưu tá đang vận chuyển"));
+        }
+
+        masterOrder.setStatus(com.quickshop.order.entity.MasterOrderStatus.CANCELLED);
+        masterOrderRepository.save(masterOrder);
+
+        for (SubOrder sub : subOrders) {
+            sub.setStatus(com.quickshop.order.entity.SubOrderStatus.CANCELLED);
+            subOrderRepository.save(sub);
+        }
+
+        String reason = (body != null && body.containsKey("reason")) ? body.get("reason") : "Khách hàng yêu cầu hủy đơn hàng";
+        Map<String, Object> res = new HashMap<>();
+        res.put("orderId", id);
+        res.put("status", "CANCELLED");
+        res.put("cancelReason", reason);
+
+        return ResponseEntity.ok(ApiResponse.ok("Hủy đơn hàng thành công", res));
     }
 
     @Operation(summary = "Lấy chi tiết đơn hàng tổng kèm các SubOrder và OrderItems snapshot")

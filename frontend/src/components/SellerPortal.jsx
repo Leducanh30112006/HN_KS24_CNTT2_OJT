@@ -22,6 +22,7 @@ import {
   createSellerWithdrawal,
 } from '../data/sampleOrders';
 import ProductDescriptionEditor from './ProductDescriptionEditor';
+import SellerCustomerChat from './SellerCustomerChat';
 import { stripHtml } from '../utils/sanitizeHtml';
 import { AnimatedPresence, PageTransition, AnimatedNumber } from './motion/MotionPrimitives';
 
@@ -542,6 +543,23 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
           </button>
 
           <button
+            onClick={() => { setActiveTab('chat'); setSidebarOpen(false); }}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+              activeTab === 'chat'
+                ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <MessageSquare className="w-4 h-4 text-amber-400" />
+              <span>Tin nhắn Khách hàng</span>
+            </div>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-emerald-500 text-white">
+              Trực tuyến
+            </span>
+          </button>
+
+          <button
             onClick={() => { setActiveTab('refunds'); setSidebarOpen(false); }}
             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
               activeTab === 'refunds'
@@ -659,6 +677,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
                 {activeTab === 'products' && 'Quản Lý Sản Phẩm & Tồn Kho SKU'}
                 {activeTab === 'orders' && 'Quản Lý Đơn Hàng & Đóng Gói (Fulfillment)'}
+                {activeTab === 'chat' && 'Tin Nhắn & Tư Vấn Khách Hàng Trực Tuyến'}
                 {activeTab === 'refunds' && 'Xử Lý Khiếu Nại Trả Hàng / Hoàn Tiền'}
                 {activeTab === 'reviews' && 'Phản Ánh & Đánh Giá Từ Khách Hàng'}
                 {activeTab === 'wallet' && 'Ví Người Bán & Quản Lý Dòng Tiền (Escrow)'}
@@ -1073,6 +1092,19 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
                   ))
                 )}
               </div>
+            </div>
+          )}
+
+          {/* ========================================================== */}
+          {/* TAB: TIN NHẮN KHÁCH HÀNG (BUYER - SELLER REALTIME CHAT) */}
+          {/* ========================================================== */}
+          {activeTab === 'chat' && (
+            <div className="space-y-6">
+              <SellerCustomerChat
+                shopId={user?.shopId || 1}
+                shopName={shopProfile?.shopName || 'TechWorld Official Store'}
+                onToast={showToast}
+              />
             </div>
           )}
 

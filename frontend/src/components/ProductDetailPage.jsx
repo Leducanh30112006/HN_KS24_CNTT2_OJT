@@ -13,6 +13,7 @@ import { defaultProducts } from '../data/sampleProducts';
 import { renderSanitizedContent } from '../utils/sanitizeHtml';
 import { AnimatedNumber } from './motion/MotionPrimitives';
 import { normalizeProduct, fixMojibakeText } from '../utils/vietnameseEncoding';
+import BuyerSellerChatModal from './BuyerSellerChatModal';
 
 export default function ProductDetailPage({ 
   product: initialProduct, 
@@ -39,6 +40,7 @@ export default function ProductDetailPage({
   const [shareCopied, setShareCopied] = useState(false);
   const [shopNotice, setShopNotice] = useState('');
   const [isFavorited, setIsFavorited] = useState(false);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
 
   // Reviews state
   const [reviews, setReviews] = useState([]);
@@ -726,10 +728,7 @@ export default function ProductDetailPage({
               </div>
               <div className="flex gap-2 pt-1 items-center flex-wrap">
                 <button 
-                  onClick={() => {
-                    setShopNotice(`Đã gửi yêu cầu trò chuyện tới ${product.shopName || 'TechWorld Official Store'}!`);
-                    setTimeout(() => setShopNotice(''), 3000);
-                  }}
+                  onClick={() => setChatModalOpen(true)}
                   className="px-3 py-1 bg-orange-50 border border-orange-200 text-orange-600 hover:bg-orange-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition active:scale-95"
                 >
                   <MessageSquare className="w-3 h-3" />
@@ -1070,6 +1069,19 @@ export default function ProductDetailPage({
           </div>
         </div>
       )}
+
+      {/* Modal Chat Trực Tuyến với Người Bán (Shop) */}
+      <BuyerSellerChatModal
+        isOpen={chatModalOpen}
+        onClose={() => setChatModalOpen(false)}
+        targetShopId={product.shopId || 1}
+        targetShopName={product.shopName || 'TechWorld Official Store'}
+        targetProduct={product}
+        onSelectProduct={(pId) => {
+          if (onSelectRelatedProduct) onSelectRelatedProduct({ id: pId });
+        }}
+        onBuyNow={onBuyNow}
+      />
     </div>
   );
 }
