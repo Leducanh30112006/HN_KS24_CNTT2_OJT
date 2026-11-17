@@ -307,14 +307,18 @@ public class OrderSagaOrchestrator {
     }
 
     private Long extractMasterOrderId(Long masterOrderId, String orderId) {
-        if (masterOrderId != null) {
-            return masterOrderId;
-        }
-        if (orderId != null && !orderId.isBlank()) {
+        Long id = masterOrderId;
+        if (id == null && orderId != null && !orderId.isBlank()) {
             try {
-                return Long.parseLong(orderId.trim());
+                id = Long.parseLong(orderId.replaceAll("[^0-9]", ""));
             } catch (NumberFormatException ignored) {}
         }
-        return 0L;
+        if (id != null && id > 100000L) {
+            Long normalized = id - 100000L;
+            if (masterOrderRepository.existsById(normalized)) {
+                return normalized;
+            }
+        }
+        return id != null ? id : 0L;
     }
 }
