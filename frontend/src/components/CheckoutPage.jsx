@@ -302,17 +302,21 @@ export default function CheckoutPage({
     setIsGeneratingPayOs(true);
     try {
       const targetId = String(orderIdToPay || orderId);
-      const res = await axiosClient.post('/api/payments/create', {
-        orderId: targetId,
-        amount: Number(amountToPay || finalTotal)
-      });
+      const res = await axiosClient.post(
+        '/api/payments/create',
+        {
+          orderId: targetId,
+          amount: Number(amountToPay || finalTotal),
+        },
+        { timeout: 35000 }
+      );
       const data = res?.data?.data || res?.data;
       if (data) {
         setPayOsData(data);
         return data;
       }
     } catch (e) {
-      console.warn('Lỗi tạo yêu cầu thanh toán PayOS:', e);
+      // Backend đang kết nối PayOS; giao diện vẫn sử dụng mã VietQR MB Bank chuẩn trực tiếp
     } finally {
       setIsGeneratingPayOs(false);
     }
