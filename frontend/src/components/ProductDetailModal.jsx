@@ -7,6 +7,7 @@ import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import axiosClient from '../api/axiosClient';
 import { renderSanitizedContent } from '../utils/sanitizeHtml';
+import { fixMojibakeText } from '../utils/vietnameseEncoding';
 
 export default function ProductDetailModal({ product, onClose, onBuyNow, onRequireAuth }) {
   const addToCart = useCartStore((state) => state.addToCart);
@@ -23,7 +24,13 @@ export default function ProductDetailModal({ product, onClose, onBuyNow, onRequi
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewMsg, setReviewMsg] = useState('');
 
-  const variants = product?.variants || [];
+  const rawVariants = product?.variants || [];
+  const variants = rawVariants.map((v) => ({
+    ...v,
+    color: fixMojibakeText(v.color) || 'Tiêu chuẩn',
+    size: fixMojibakeText(v.size) || 'Tiêu chuẩn',
+    variantName: fixMojibakeText(v.variantName) || ([v.color, v.size].filter(Boolean).map(fixMojibakeText).join(' - ') || 'Mặc định'),
+  }));
 
   // Group unique colors and sizes
   const colors = Array.from(new Set(variants.map((v) => v.color).filter(Boolean)));

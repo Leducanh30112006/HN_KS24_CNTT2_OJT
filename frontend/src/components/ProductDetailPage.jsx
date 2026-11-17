@@ -47,7 +47,13 @@ export default function ProductDetailPage({
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewMsg, setReviewMsg] = useState('');
 
-  const variants = product?.variants || [];
+  const rawVariants = product?.variants || [];
+  const variants = rawVariants.map((v) => ({
+    ...v,
+    color: fixMojibakeText(v.color) || 'Tiêu chuẩn',
+    size: fixMojibakeText(v.size) || 'Tiêu chuẩn',
+    variantName: fixMojibakeText(v.variantName) || ([v.color, v.size].filter(Boolean).map(fixMojibakeText).join(' - ') || 'Mặc định'),
+  }));
 
   // Group unique colors and sizes
   const colors = Array.from(new Set(variants.map((v) => v.color).filter(Boolean)));
