@@ -103,14 +103,13 @@ class AuthServiceTest {
     class RegisterTests {
 
         @Test
-        @DisplayName("Đăng ký thành công - hợp lệ username, email, phone và kích hoạt gửi OTP qua Redis")
+        @DisplayName("Đăng ký thành công - hợp lệ username, email, phone và kích hoạt trực tiếp")
         void register_Success() {
             when(userRepository.existsByUsername("testbuyer")).thenReturn(false);
             when(userRepository.existsByEmail("buyer@quickshop.vn")).thenReturn(false);
             when(userRepository.existsByPhoneNumber("0987654321")).thenReturn(false);
             when(passwordEncoder.encode("raw_password")).thenReturn("encoded_pass");
             when(userRepository.save(any(User.class))).thenReturn(sampleUser);
-            when(otpService.generateAndSaveOtp("buyer@quickshop.vn")).thenReturn("123456");
             when(tokenProvider.generateAccessToken(sampleUser)).thenReturn("mock_access_token");
             when(tokenProvider.generateRefreshToken(sampleUser)).thenReturn("mock_refresh_token");
 
@@ -122,12 +121,11 @@ class AuthServiceTest {
             assertThat(response.getUsername()).isEqualTo("testbuyer");
             assertThat(response.getRole()).isEqualTo(Role.ROLE_BUYER);
             verify(userRepository, times(1)).save(any(User.class));
-            verify(otpService, times(1)).generateAndSaveOtp("buyer@quickshop.vn");
         }
 
         @Test
-        @DisplayName("Đăng ký lưu user ở trạng thái PENDING_VERIFICATION và active=false")
-        void register_CreatesPendingVerificationUser() {
+        @DisplayName("Đăng ký lưu user ở trạng thái ACTIVE và active=true (bỏ xác nhận mail)")
+        void register_CreatesActiveUser() {
             when(userRepository.existsByUsername("testbuyer")).thenReturn(false);
             when(userRepository.existsByEmail("buyer@quickshop.vn")).thenReturn(false);
             when(passwordEncoder.encode("raw_password")).thenReturn("encoded_pass");
@@ -139,9 +137,8 @@ class AuthServiceTest {
             verify(userRepository).save(captor.capture());
             User saved = captor.getValue();
 
-            assertThat(saved.getStatus()).isEqualTo(UserStatus.PENDING_VERIFICATION);
-            assertThat(saved.isActive()).isFalse();
-            verify(otpService).generateAndSaveOtp("buyer@quickshop.vn");
+            assertThat(saved.getStatus()).isEqualTo(UserStatus.ACTIVE);
+            assertThat(saved.isActive()).isTrue();
         }
 
         @Test
@@ -374,15 +371,22 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("Đăng nhập thất bại - tài khoản chưa kích hoạt OTP (PENDING_VERIFICATION)")
-        void login_PendingVerificationUser_ThrowsBadRequest() {
+        @DisplayName("Đăng nhập với tài khoản PENDING_VERIFICATION sẽ tự động kích hoạt thành ACTIVE (bỏ xác nhận mail)")
+        void login_PendingVerificationUser_AutoActivates() {
             sampleUser.setStatus(UserStatus.PENDING_VERIFICATION);
+            sampleUser.setActive(false);
             when(userRepository.findByUsernameOrEmail("testbuyer", "testbuyer")).thenReturn(Optional.of(sampleUser));
             when(passwordEncoder.matches("raw_password", "encoded_pass")).thenReturn(true);
+            when(userRepository.save(any(User.class))).thenReturn(sampleUser);
+            when(tokenProvider.generateAccessToken(sampleUser)).thenReturn("mock_access_token");
+            when(tokenProvider.generateRefreshToken(sampleUser)).thenReturn("mock_refresh_token");
 
-            assertThatThrownBy(() -> authService.login(loginRequest))
-                    .isInstanceOf(BadRequestException.class)
-                    .hasMessageContaining("Tài khoản chưa được kích hoạt");
+            AuthResponse response = authService.login(loginRequest);
+
+            assertThat(response).isNotNull();
+            assertThat(sampleUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
+            assertThat(sampleUser.isActive()).isTrue();
+            verify(userRepository).save(sampleUser);
         }
 
         @Test

@@ -302,13 +302,13 @@ export default function RegisterSellerPage({
             </p>
           </div>
 
-          {/* Alert Error Banner */}
+          {/* Alert Error Banner (Thông báo đỏ nổi bật) */}
           {errorMsg && (
-            <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs flex items-start gap-3 animate-in fade-in">
-              <AlertCircle className="w-5 h-5 text-rose-500 flex-shrink-0 mt-0.5" />
+            <div className="mb-6 p-4 bg-red-50 border-2 border-red-500 text-red-900 rounded-2xl text-xs flex items-start gap-3 shadow-sm animate-in fade-in">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <div className="font-bold">Đăng ký chưa thành công</div>
-                <div className="mt-0.5">{errorMsg}</div>
+                <div className="font-bold text-red-900 text-sm">Thông tin đăng ký chưa hợp lệ:</div>
+                <div className="mt-1 text-red-700 leading-relaxed font-medium">{errorMsg}</div>
               </div>
             </div>
           )}
