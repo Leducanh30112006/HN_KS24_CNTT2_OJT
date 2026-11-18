@@ -326,18 +326,39 @@ public class AiAssistantServiceImpl implements AiAssistantService {
             } else {
                 log.warn("Google Gemini API returned status {} - {}", response.statusCode(), response.body());
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Google Gemini API call interrupted, falling back to local engine: {}", e.getMessage());
         } catch (Exception e) {
             log.warn("Google Gemini API call failed, falling back to local engine: {}", e.getMessage());
         }
         return null;
     }
 
+    private String stripCodeFence(String rawText) {
+        String trimmed = rawText.trim();
+        if (trimmed.startsWith("```")) {
+            int firstNewline = trimmed.indexOf('\n');
+            if (firstNewline >= 0) {
+                trimmed = trimmed.substring(firstNewline + 1);
+            } else {
+                int idx = 3;
+                while (idx < trimmed.length() && Character.isLetter(trimmed.charAt(idx))) {
+                    idx++;
+                }
+                trimmed = trimmed.substring(idx);
+            }
+            trimmed = trimmed.trim();
+            if (trimmed.endsWith("```")) {
+                trimmed = trimmed.substring(0, trimmed.length() - 3).trim();
+            }
+        }
+        return trimmed;
+    }
+
     private SanitizedSeoOutput parseAndSanitizeGeminiSeo(String rawJson, PreparedSeoInput input) {
         try {
-            String trimmed = rawJson.trim();
-            if (trimmed.startsWith("```")) {
-                trimmed = trimmed.replaceAll("^```[a-zA-Z]*\\s*", "").replaceAll("\\s*```$", "").trim();
-            }
+            String trimmed = stripCodeFence(rawJson);
             JsonNode node = objectMapper.readTree(trimmed);
             String title = node.path("optimizedTitle").asText("");
             String metaTitle = node.path("metaTitle").asText("");

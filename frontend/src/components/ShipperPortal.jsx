@@ -56,7 +56,7 @@ export default function ShipperPortal({ onBackToHome }) {
   };
 
   useEffect(() => {
-    loadShipments();
+    void loadShipments();
   }, []);
 
   // Filter shipments
@@ -125,7 +125,7 @@ export default function ShipperPortal({ onBackToHome }) {
 
   const handleConfirmFailure = () => {
     if (!failureTarget) return;
-    handleUpdateStatus(failureTarget.id, 'DELIVERY_FAILED', failureReason);
+    void handleUpdateStatus(failureTarget.id, 'DELIVERY_FAILED', failureReason);
     setFailureTarget(null);
   };
 
@@ -272,9 +272,11 @@ export default function ShipperPortal({ onBackToHome }) {
 
       {/* Backdrop for mobile */}
       {sidebarOpen && (
-        <div
+        <button
+          type="button"
+          aria-label="Đóng menu điều hướng"
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 md:hidden"
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 md:hidden w-full h-full border-0 p-0 cursor-default"
         />
       )}
 
@@ -370,9 +372,10 @@ export default function ShipperPortal({ onBackToHome }) {
 
           {/* KPI Metrics Dashboard */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div 
+            <button
+              type="button"
               onClick={() => setActiveFilter('READY_TO_PICK')}
-              className={`p-5 rounded-2xl border cursor-pointer transition ${
+              className={`w-full text-left p-5 rounded-2xl border cursor-pointer transition ${
                 activeFilter === 'READY_TO_PICK' 
                   ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-400/30' 
                   : 'bg-white border-slate-200 hover:border-amber-300'
@@ -384,11 +387,12 @@ export default function ShipperPortal({ onBackToHome }) {
               </div>
               <div className="text-2xl font-black text-amber-600">{countReady}</div>
               <div className="text-[11px] text-slate-400">Đơn hàng sẵn sàng lấy từ shop</div>
-            </div>
+            </button>
 
-            <div 
+            <button
+              type="button"
               onClick={() => setActiveFilter('DELIVERING')}
-              className={`p-5 rounded-2xl border cursor-pointer transition ${
+              className={`w-full text-left p-5 rounded-2xl border cursor-pointer transition ${
                 activeFilter === 'DELIVERING' 
                   ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-400/30' 
                   : 'bg-white border-slate-200 hover:border-blue-300'
@@ -400,11 +404,12 @@ export default function ShipperPortal({ onBackToHome }) {
               </div>
               <div className="text-2xl font-black text-blue-600">{countDelivering}</div>
               <div className="text-[11px] text-slate-400">Đang giao đến địa chỉ khách</div>
-            </div>
+            </button>
 
-            <div 
+            <button
+              type="button"
               onClick={() => setActiveFilter('DELIVERED')}
-              className={`p-5 rounded-2xl border cursor-pointer transition ${
+              className={`w-full text-left p-5 rounded-2xl border cursor-pointer transition ${
                 activeFilter === 'DELIVERED' 
                   ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-400/30' 
                   : 'bg-white border-slate-200 hover:border-emerald-300'
@@ -416,11 +421,12 @@ export default function ShipperPortal({ onBackToHome }) {
               </div>
               <div className="text-2xl font-black text-emerald-600">{countDelivered}</div>
               <div className="text-[11px] text-slate-400">Đã bàn giao cho người nhận</div>
-            </div>
+            </button>
 
-            <div 
+            <button
+              type="button"
               onClick={() => setActiveFilter('COD_REPORT')}
-              className={`p-5 rounded-2xl border cursor-pointer transition ${
+              className={`w-full text-left p-5 rounded-2xl border cursor-pointer transition ${
                 activeFilter === 'COD_REPORT' 
                   ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-400/30' 
                   : 'bg-white border-slate-200 hover:border-rose-300'
@@ -432,7 +438,7 @@ export default function ShipperPortal({ onBackToHome }) {
               </div>
               <div className="text-xl sm:text-2xl font-black text-rose-600">{formatVND(totalCodCollected)}</div>
               <div className="text-[11px] text-slate-400">Cần nộp về kế toán bưu cục cuối ngày</div>
-            </div>
+            </button>
           </div>
 
           {/* COD REPORT VIEW */}
@@ -707,8 +713,9 @@ export default function ShipperPortal({ onBackToHome }) {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Lý do không giao được:</label>
+              <label htmlFor="shipper-failure-reason" className="text-xs font-bold text-slate-700">Lý do không giao được:</label>
               <select
+                id="shipper-failure-reason"
                 value={failureReason}
                 onChange={(e) => setFailureReason(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 outline-none"

@@ -351,10 +351,12 @@ export default function VoucherModal({
                   const isSelected = selectedShipping?.code === v.code;
 
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={v.code}
+                      disabled={!isEligible}
                       onClick={() => isEligible && handleToggleShipping(v)}
-                      className={`relative flex items-center rounded-2xl border transition overflow-hidden shadow-sm ${
+                      className={`w-full text-left relative flex items-center rounded-2xl border transition overflow-hidden shadow-sm ${
                         !isEligible
                           ? 'opacity-50 bg-slate-100 border-slate-200 cursor-not-allowed'
                           : isSelected
@@ -395,7 +397,7 @@ export default function VoucherModal({
                           {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -419,10 +421,12 @@ export default function VoucherModal({
                   const isSelected = selectedPlatform?.code === v.code;
 
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={v.code}
+                      disabled={!isEligible}
                       onClick={() => isEligible && handleTogglePlatform(v)}
-                      className={`relative flex items-center rounded-2xl border transition overflow-hidden shadow-sm ${
+                      className={`w-full text-left relative flex items-center rounded-2xl border transition overflow-hidden shadow-sm ${
                         !isEligible
                           ? 'opacity-50 bg-slate-100 border-slate-200 cursor-not-allowed'
                           : isSelected
@@ -463,7 +467,7 @@ export default function VoucherModal({
                           {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -487,10 +491,12 @@ export default function VoucherModal({
                   const isSelected = selectedShopVouchers[v.shopId]?.code === v.code;
 
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={v.code}
+                      disabled={!isEligible}
                       onClick={() => isEligible && handleToggleShopVoucher(v)}
-                      className={`relative flex items-center rounded-2xl border transition overflow-hidden shadow-sm ${
+                      className={`w-full text-left relative flex items-center rounded-2xl border transition overflow-hidden shadow-sm ${
                         !isEligible
                           ? 'opacity-50 bg-slate-100 border-slate-200 cursor-not-allowed'
                           : isSelected
@@ -527,7 +533,7 @@ export default function VoucherModal({
                           {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>

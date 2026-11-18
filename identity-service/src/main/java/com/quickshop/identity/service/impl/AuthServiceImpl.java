@@ -51,11 +51,26 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse login(LoginRequest loginRequest) {
-        User user = userRepository.findByUsernameOrEmail(loginRequest.getUsernameOrEmail(), loginRequest.getUsernameOrEmail())
+        String identifier = loginRequest != null && loginRequest.getUsernameOrEmail() != null
+                ? loginRequest.getUsernameOrEmail().trim()
+                : "";
+        String rawPassword = loginRequest != null && loginRequest.getPassword() != null
+                ? loginRequest.getPassword()
+                : "";
+
+        // Chặn nhanh payload SQL Injection / ký tự điều khiển nguy hiểm trước khi truy vấn DB hoặc băm BCrypt
+        if (identifier.isEmpty() || rawPassword.isEmpty()
+                || identifier.contains("'") || identifier.contains("\"")
+                || identifier.contains(";") || identifier.contains("--")
+                || identifier.contains("/*") || identifier.contains("*/")) {
+            throw new BadRequestException("Tên đăng nhập hoặc mật khẩu không chính xác");
+        }
+
+        User user = userRepository.findByUsernameOrEmail(identifier, identifier)
                 .orElse(null);
 
-        if (user == null || !passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-            auditLogService.logFailure(user != null ? user.getId() : null, loginRequest.getUsernameOrEmail(), "LOGIN_FAILED", "Auth", null, "Sai tên đăng nhập hoặc mật khẩu");
+        if (user == null || !passwordEncoder.matches(rawPassword, user.getPassword())) {
+            auditLogService.logFailure(user != null ? user.getId() : null, identifier, "LOGIN_FAILED", "Auth", null, "Sai tên đăng nhập hoặc mật khẩu");
             throw new BadRequestException("Tên đăng nhập hoặc mật khẩu không chính xác");
         }
 

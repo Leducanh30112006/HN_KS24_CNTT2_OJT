@@ -349,7 +349,7 @@ export default function AiChatWidget() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  handleSendMessage();
+                  void handleSendMessage();
                 }}
                 className="flex gap-2"
               >

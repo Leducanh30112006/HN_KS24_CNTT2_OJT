@@ -328,11 +328,12 @@ export default function AuthModal({
           {activeTab === 'login' && (
             <form onSubmit={handleLoginSubmit} className="space-y-3.5" noValidate>
               <div>
-                <label className="font-bold text-slate-700 block mb-1">
+                <label htmlFor="auth-modal-login-username" className="font-bold text-slate-700 block mb-1">
                   Tên đăng nhập hoặc Email: <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
+                    id="auth-modal-login-username"
                     type="text"
                     value={username}
                     onChange={(e) => { 
@@ -359,12 +360,13 @@ export default function AuthModal({
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="auth-modal-login-password" className="font-bold text-slate-700">
                     Mật khẩu: <span className="text-red-500">*</span>
                   </label>
                 </div>
                 <div className="relative">
                   <input
+                    id="auth-modal-login-password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => { 
@@ -435,11 +437,12 @@ export default function AuthModal({
 
               {/* Họ và tên */}
               <div>
-                <label className="font-bold text-slate-700 block mb-1">
+                <label htmlFor="auth-modal-reg-fullname" className="font-bold text-slate-700 block mb-1">
                   Họ và tên: <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
+                    id="auth-modal-reg-fullname"
                     type="text"
                     value={regFullName}
                     onChange={(e) => {
@@ -466,11 +469,12 @@ export default function AuthModal({
 
               {/* Tên đăng nhập */}
               <div>
-                <label className="font-bold text-slate-700 block mb-1">
+                <label htmlFor="auth-modal-reg-username" className="font-bold text-slate-700 block mb-1">
                   Tên đăng nhập (Username): <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
+                    id="auth-modal-reg-username"
                     type="text"
                     value={regUsername}
                     onChange={(e) => {
@@ -497,11 +501,12 @@ export default function AuthModal({
 
               {/* Email */}
               <div>
-                <label className="font-bold text-slate-700 block mb-1">
+                <label htmlFor="auth-modal-reg-email" className="font-bold text-slate-700 block mb-1">
                   Email: <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
+                    id="auth-modal-reg-email"
                     type="email"
                     value={regEmail}
                     onChange={(e) => {
@@ -529,11 +534,12 @@ export default function AuthModal({
               {/* Số điện thoại (tùy chọn) */}
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="font-bold text-slate-700">Số điện thoại:</label>
+                  <label htmlFor="auth-modal-reg-phone" className="font-bold text-slate-700">Số điện thoại:</label>
                   <span className="text-[10px] text-slate-400">(Tùy chọn)</span>
                 </div>
                 <div className="relative">
                   <input
+                    id="auth-modal-reg-phone"
                     type="tel"
                     value={regPhone}
                     onChange={(e) => {
@@ -560,11 +566,12 @@ export default function AuthModal({
 
               {/* Mật khẩu */}
               <div>
-                <label className="font-bold text-slate-700 block mb-1">
+                <label htmlFor="auth-modal-reg-password" className="font-bold text-slate-700 block mb-1">
                   Mật khẩu: <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
+                    id="auth-modal-reg-password"
                     type={showRegPassword ? 'text' : 'password'}
                     value={regPassword}
                     onChange={(e) => {
@@ -598,11 +605,12 @@ export default function AuthModal({
 
               {/* Xác nhận mật khẩu */}
               <div>
-                <label className="font-bold text-slate-700 block mb-1">
+                <label htmlFor="auth-modal-reg-confirm-password" className="font-bold text-slate-700 block mb-1">
                   Xác nhận mật khẩu: <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
+                    id="auth-modal-reg-confirm-password"
                     type={showRegConfirmPassword ? 'text' : 'password'}
                     value={regConfirmPassword}
                     onChange={(e) => {

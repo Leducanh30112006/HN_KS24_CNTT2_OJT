@@ -659,7 +659,7 @@ Màn hình Liquid Retina XDR 14.2 inch với độ sáng duy trì 1000 nits, đ�
     categoryName: 'Mỹ phẩm & Làm đẹp',
     name: 'Sữa Rửa Mặt Tạo Bọt Làm Sạch Sâu Dịu Nhẹ CeraVe Foaming Cleanser 473ml',
     description: 'Chứa 3 loại Ceramide thiết yếu giúp củng cố hàng rào bảo vệ tự nhiên của da, Niacinamide làm dịu kích ứng và Hyaluronic Acid giữ ẩm sâu cả ngày.',
-    mainImage: 'https://images.unsplash.com/photo-1556228722-d0b71f3b39d1?w=600&auto=format&fit=crop&q=80',
+    mainImage: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&auto=format&fit=crop&q=80',
     status: 'ACTIVE',
     minPrice: 340000,
     maxPrice: 340000,

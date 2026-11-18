@@ -45,6 +45,11 @@ frontend/node_modules/
 .DS_Store
 graphify-out/
 
+# Environment Secrets
+.env
+.env.local
+.env.*.local
+
 # SSL Certificates & Private Keys
 deployments/nginx/ssl/*.crt
 deployments/nginx/ssl/*.key

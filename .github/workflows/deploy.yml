@@ -282,6 +282,9 @@ jobs:
 
             git fetch origin main
             git reset --hard origin/main
+            if [ ! -f .env ] && [ -f /root/.quickshop.env ]; then
+              cp /root/.quickshop.env .env
+            fi
 
             bash ./deployments/nginx/generate-ssl.sh || true
 

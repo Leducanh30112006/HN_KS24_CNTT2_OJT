@@ -336,9 +336,10 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
                 className="flex-shrink-0 px-1.5"
                 style={{ width: `${100 / itemsPerView}%` }}
               >
-                <div
+                <button
+                  type="button"
                   onClick={() => onSelectProduct && onSelectProduct(p)}
-                  className="flash-sale-card bg-white rounded-2xl p-3 text-slate-900 shadow-sm hover:shadow-xl transition-shadow cursor-pointer group/card flex flex-col justify-between h-full"
+                  className="flash-sale-card w-full text-left border-0 bg-white rounded-2xl p-3 text-slate-900 shadow-sm hover:shadow-xl transition-shadow cursor-pointer group/card flex flex-col justify-between h-full"
                 >
                   <div className="relative aspect-square overflow-hidden rounded-xl mb-2 bg-slate-100">
                     <img
@@ -388,7 +389,7 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
                       </div>
                     </div>
                   </div>
-                </div>
+                </button>
               </div>
             );
           })}

@@ -273,7 +273,7 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
         {/* User Card Header */}
         <div className="bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-orange-500/10">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-            <div className="relative group cursor-pointer" onClick={() => setShowAvatarModal(true)} title="Bấm để đổi ảnh đại diện">
+            <button type="button" className="relative group cursor-pointer bg-transparent border-0 p-0 text-left" onClick={() => setShowAvatarModal(true)} title="Bấm để đổi ảnh đại diện">
               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/20 backdrop-blur-md border-2 border-white/50 flex items-center justify-center text-3xl sm:text-4xl font-black text-white shadow-lg overflow-hidden relative">
                 {avatar ? (
                   <img src={avatar} alt={fullName} className="w-full h-full object-cover" />
@@ -291,7 +291,7 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
               <div className="absolute -bottom-1 -right-1 bg-orange-600 border-2 border-white text-white p-1.5 rounded-full shadow-md group-hover:scale-110 transition-transform" title="Đổi ảnh đại diện">
                 <Camera className="w-3.5 h-3.5" />
               </div>
-            </div>
+            </button>
 
             <div className="text-center sm:text-left flex-1 space-y-1.5">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
@@ -320,13 +320,14 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
 
             {/* Quick KPI stats */}
             <div className="grid grid-cols-2 gap-3 w-full sm:w-auto">
-              <div 
+              <button
+                type="button"
                 onClick={onViewOrders}
-                className="bg-white/15 backdrop-blur-md rounded-2xl p-3 sm:p-4 text-center border border-white/20 hover:bg-white/25 cursor-pointer transition"
+                className="bg-white/15 backdrop-blur-md rounded-2xl p-3 sm:p-4 text-center border border-white/20 hover:bg-white/25 cursor-pointer transition text-white"
               >
                 <div className="text-lg sm:text-2xl font-black">{userOrders.length}</div>
                 <div className="text-[10px] sm:text-xs text-orange-100 font-medium">Đơn hàng đã đặt</div>
-              </div>
+              </button>
               <div className="bg-white/15 backdrop-blur-md rounded-2xl p-3 sm:p-4 text-center border border-white/20">
                 <div className="text-base sm:text-xl font-black text-amber-200">{formatVND(totalSpent)}</div>
                 <div className="text-[10px] sm:text-xs text-orange-100 font-medium">Tổng chi tiêu</div>
@@ -448,8 +449,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Tên đăng nhập (Username)</label>
+                      <label htmlFor="profile-username" className="text-xs font-bold text-slate-700">Tên đăng nhập (Username)</label>
                       <input
+                        id="profile-username"
                         type="text"
                         disabled
                         value={user?.username || 'buyer'}
@@ -459,8 +461,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Họ và tên <span className="text-rose-500">*</span></label>
+                      <label htmlFor="profile-fullname" className="text-xs font-bold text-slate-700">Họ và tên <span className="text-rose-500">*</span></label>
                       <input
+                        id="profile-fullname"
                         type="text"
                         required
                         value={fullName}
@@ -471,8 +474,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Địa chỉ Email</label>
+                      <label htmlFor="profile-email" className="text-xs font-bold text-slate-700">Địa chỉ Email</label>
                       <input
+                        id="profile-email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -481,8 +485,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700">Số điện thoại nhận hàng <span className="text-rose-500">*</span></label>
+                      <label htmlFor="profile-phone" className="text-xs font-bold text-slate-700">Số điện thoại nhận hàng <span className="text-rose-500">*</span></label>
                       <input
+                        id="profile-phone"
                         type="tel"
                         required
                         value={phone}
@@ -494,8 +499,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">Giới thiệu ngắn (Bio)</label>
+                    <label htmlFor="profile-bio" className="text-xs font-bold text-slate-700">Giới thiệu ngắn (Bio)</label>
                     <textarea
+                      id="profile-bio"
                       rows="3"
                       value={bio}
                       onChange={(e) => setBio(e.target.value)}
@@ -545,8 +551,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700">Tên người nhận</label>
+                        <label htmlFor="profile-new-recipient" className="text-[11px] font-semibold text-slate-700">Tên người nhận</label>
                         <input
+                          id="profile-new-recipient"
                           type="text"
                           required
                           value={newRecipient}
@@ -556,8 +563,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700">Số điện thoại</label>
+                        <label htmlFor="profile-new-phone" className="text-[11px] font-semibold text-slate-700">Số điện thoại</label>
                         <input
+                          id="profile-new-phone"
                           type="tel"
                           required
                           value={newPhone}
@@ -567,8 +575,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="text-[11px] font-semibold text-slate-700">Địa chỉ chi tiết (Số nhà, Tên đường/Tòa nhà)</label>
+                        <label htmlFor="profile-new-street" className="text-[11px] font-semibold text-slate-700">Địa chỉ chi tiết (Số nhà, Tên đường/Tòa nhà)</label>
                         <input
+                          id="profile-new-street"
                           type="text"
                           required
                           value={newStreet}
@@ -578,8 +587,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700">Phường / Xã</label>
+                        <label htmlFor="profile-new-ward" className="text-[11px] font-semibold text-slate-700">Phường / Xã</label>
                         <input
+                          id="profile-new-ward"
                           type="text"
                           value={newWard}
                           onChange={(e) => setNewWard(e.target.value)}
@@ -588,8 +598,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700">Quận / Huyện & Thành phố</label>
+                        <label htmlFor="profile-new-district" className="text-[11px] font-semibold text-slate-700">Quận / Huyện & Thành phố</label>
                         <input
+                          id="profile-new-district"
                           type="text"
                           value={newDistrict}
                           onChange={(e) => setNewDistrict(e.target.value)}
@@ -689,8 +700,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
 
                 <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">Mật khẩu hiện tại</label>
+                    <label htmlFor="profile-current-password" className="text-xs font-bold text-slate-700">Mật khẩu hiện tại</label>
                     <input
+                      id="profile-current-password"
                       type="password"
                       required
                       value={currentPassword}
@@ -701,8 +713,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">Mật khẩu mới</label>
+                    <label htmlFor="profile-new-password" className="text-xs font-bold text-slate-700">Mật khẩu mới</label>
                     <input
+                      id="profile-new-password"
                       type="password"
                       required
                       value={newPassword}
@@ -713,8 +726,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">Xác nhận mật khẩu mới</label>
+                    <label htmlFor="profile-confirm-password" className="text-xs font-bold text-slate-700">Xác nhận mật khẩu mới</label>
                     <input
+                      id="profile-confirm-password"
                       type="password"
                       required
                       value={confirmPassword}
@@ -825,8 +839,9 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
 
             {/* 1. Tải ảnh từ thiết bị */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 block">1. Tải ảnh từ máy tính / điện thoại:</label>
+              <label htmlFor="profile-avatar-file" className="text-xs font-bold text-slate-700 block">1. Tải ảnh từ máy tính / điện thoại:</label>
               <input
+                id="profile-avatar-file"
                 type="file"
                 ref={fileInputRef}
                 accept="image/*"
@@ -845,7 +860,7 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
 
             {/* 2. Chọn avatar mẫu có sẵn */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 block">2. Hoặc chọn mẫu phong cách có sẵn:</label>
+              <div className="text-xs font-bold text-slate-700 block">2. Hoặc chọn mẫu phong cách có sẵn:</div>
               <div className="grid grid-cols-6 gap-2">
                 {PRESET_AVATARS.map((preset, idx) => (
                   <button
@@ -865,9 +880,10 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
 
             {/* 3. Dán link ảnh online */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 block">3. Hoặc dán đường link ảnh trực tiếp:</label>
+              <label htmlFor="profile-avatar-url" className="text-xs font-bold text-slate-700 block">3. Hoặc dán đường link ảnh trực tiếp:</label>
               <div className="flex gap-2">
                 <input
+                  id="profile-avatar-url"
                   type="url"
                   value={customAvatarUrl}
                   onChange={(e) => setCustomAvatarUrl(e.target.value)}

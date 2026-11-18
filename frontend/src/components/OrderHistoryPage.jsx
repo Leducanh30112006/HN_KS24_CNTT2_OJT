@@ -166,7 +166,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
   };
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [user]);
 
   /**
@@ -486,7 +486,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       reason: refundReason,
       proofImages: refundProofUrl ? [refundProofUrl] : [],
     });
-    loadData();
+    void loadData();
     setRefundModalOpen(false);
     setNotificationAlert({
       type: 'info',
@@ -764,12 +764,17 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
 
                   {/* Body: Thông tin Shop & Các sản phẩm của riêng Shop này */}
                   <div
-                    onClick={() => setSelectedOrderDetails(order)}
-                    className="p-4 sm:p-5 space-y-3.5 cursor-pointer hover:bg-slate-50/30 transition-colors"
+                    className="relative p-4 sm:p-5 space-y-3.5 cursor-pointer hover:bg-slate-50/30 transition-colors"
                     title="Bấm vào đơn hàng để xem chi tiết đầy đủ"
                   >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOrderDetails(order)}
+                      aria-label={`Xem chi tiết đơn hàng ${order.orderCode || order.id}`}
+                      className="absolute inset-0 z-0 w-full h-full bg-transparent border-0 cursor-pointer"
+                    />
                     {/* Shop Header */}
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div className="relative z-10 pointer-events-none flex items-center justify-between pb-2 border-b border-slate-100">
                       <div className="flex items-center gap-2">
                         <img
                           src={order.shopAvatar || 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=50&auto=format&fit=crop&q=80'}
@@ -791,7 +796,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                     </div>
 
                     {/* Items list của riêng gian hàng này */}
-                    <div className="space-y-3">
+                    <div className="relative z-10 pointer-events-none space-y-3">
                       {(order.shopItems || []).map((item) => (
                         <div key={item.id} className="flex items-center gap-3.5">
                           <img
@@ -808,11 +813,14 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                             </div>
                             <div className="text-[11px] text-slate-400">Số lượng: x{item.quantity}</div>
                           </div>
-                          <div className="text-right flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <div className="text-right flex-shrink-0 pointer-events-auto">
                             <div className="text-xs font-bold text-slate-900">{formatVND(item.price)}</div>
                             <button
                               type="button"
-                              onClick={() => handleBuyAgain(item)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleBuyAgain(item);
+                              }}
                               className="mt-1 text-[11px] text-orange-600 hover:underline font-semibold flex items-center gap-1 ml-auto cursor-pointer"
                             >
                               <ShoppingCart className="w-3 h-3" />
@@ -1140,8 +1148,9 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
             </p>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700">Lý do hủy đơn hàng:</label>
+              <label htmlFor="order-cancel-reason" className="text-xs font-bold text-slate-700">Lý do hủy đơn hàng:</label>
               <select
+                id="order-cancel-reason"
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-orange-500 font-medium"
@@ -1290,7 +1299,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
           )}
 
           <div className="space-y-2 text-center">
-            <label className="text-xs font-bold text-slate-700">Chất lượng sản phẩm:</label>
+            <div className="text-xs font-bold text-slate-700">Chất lượng sản phẩm:</div>
             <div className="flex justify-center gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -1306,8 +1315,9 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700">Cảm nhận chi tiết:</label>
+            <label htmlFor="order-review-comment" className="text-xs font-bold text-slate-700">Cảm nhận chi tiết:</label>
             <textarea
+              id="order-review-comment"
               rows={3}
               value={reviewComment}
               onChange={(e) => setReviewComment(e.target.value)}
@@ -1344,8 +1354,9 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-700">Lý do yêu cầu hoàn tiền:</label>
+            <label htmlFor="order-refund-reason" className="text-xs font-bold text-slate-700">Lý do yêu cầu hoàn tiền:</label>
             <select
+              id="order-refund-reason"
               value={refundReason}
               onChange={(e) => setRefundReason(e.target.value)}
               className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
@@ -1366,8 +1377,9 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700">Link ảnh / video mở hộp chứng minh:</label>
+            <label htmlFor="order-refund-proof-url" className="text-xs font-bold text-slate-700">Link ảnh / video mở hộp chứng minh:</label>
             <input
+              id="order-refund-proof-url"
               type="text"
               value={refundProofUrl}
               onChange={(e) => setRefundProofUrl(e.target.value)}

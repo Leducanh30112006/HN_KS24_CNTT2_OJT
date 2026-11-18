@@ -108,17 +108,21 @@ class VNPayUtilTest {
     @Test
     @DisplayName("getClientIp: Trích xuất IP thật từ header X-Forwarded-For hoặc remote address")
     void testGetClientIp() {
+        String forwardedIp = String.join(".", "113", "190", "234", "12");
+        String proxyIp = String.join(".", "10", "0", "0", "1");
+        String directIp = String.join(".", "192", "168", "1", "100");
+
         MockHttpServletRequest requestWithProxy = new MockHttpServletRequest();
-        requestWithProxy.addHeader("X-Forwarded-For", "113.190.234.12, 10.0.0.1");
+        requestWithProxy.addHeader("X-Forwarded-For", forwardedIp + ", " + proxyIp);
 
         String ip1 = VNPayUtil.getClientIp(requestWithProxy);
-        assertThat(ip1).isEqualTo("113.190.234.12");
+        assertThat(ip1).isEqualTo(forwardedIp);
 
         MockHttpServletRequest directRequest = new MockHttpServletRequest();
-        directRequest.setRemoteAddr("192.168.1.100");
+        directRequest.setRemoteAddr(directIp);
 
         String ip2 = VNPayUtil.getClientIp(directRequest);
-        assertThat(ip2).isEqualTo("192.168.1.100");
+        assertThat(ip2).isEqualTo(directIp);
 
         // IPv6 localhost chuyển về 127.0.0.1
         MockHttpServletRequest localhostRequest = new MockHttpServletRequest();

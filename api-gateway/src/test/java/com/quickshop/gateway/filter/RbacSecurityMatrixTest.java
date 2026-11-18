@@ -2,7 +2,6 @@ package com.quickshop.gateway.filter;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,17 +27,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("RBAC Security Matrix - Ma trận kiểm thử phân quyền Guest, Buyer, Seller, Admin & Dual Auth")
 class RbacSecurityMatrixTest {
 
-    private static final String SECRET = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
     private Key signingKey;
     private JwtAuthGatewayFilterFactory filterFactory;
 
     @BeforeEach
     void setUp() {
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET);
-        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+        Key generatedKey = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+        String encodedSigningKey = java.util.Base64.getEncoder().encodeToString(generatedKey.getEncoded());
+        this.signingKey = generatedKey;
 
         filterFactory = new JwtAuthGatewayFilterFactory();
-        filterFactory.setJwtSecret(SECRET);
+        filterFactory.setJwtSecret(encodedSigningKey);
     }
 
     private String createToken(String role) {

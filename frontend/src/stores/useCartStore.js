@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import axiosClient from '../api/axiosClient';
 import { useAuthStore, registerOnLogoutListener } from './useAuthStore';
 import { fixMojibakeText } from '../utils/vietnameseEncoding';
+import { secureRandomToken } from '../utils/secureRandom';
 
 const CART_STORAGE_KEY = 'quickshop_cart';
 const OFFLINE_CART_PREFIX = 'quickshop_offline_cart_';
@@ -75,7 +76,10 @@ const parseVariantAttributes = (variantName, fallbackColor, fallbackSize) => {
   if (!variantName || typeof variantName !== 'string') {
     return { color: '', size: '' };
   }
-  const parts = variantName.split(/\s*[-/|]\s*/).filter(Boolean);
+  const parts = variantName
+    .split(/[-/|]/)
+    .map((p) => p.trim())
+    .filter(Boolean);
   if (parts.length >= 2) {
     return { color: parts[0], size: parts.slice(1).join(' - ') };
   }
@@ -318,7 +322,7 @@ export const useCartStore = create(
           const requestId =
             typeof crypto !== 'undefined' && crypto.randomUUID
               ? crypto.randomUUID()
-              : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+              : `${Date.now()}-${secureRandomToken(8)}`;
 
           const res = await axiosClient.post(
             '/api/cart/merge',

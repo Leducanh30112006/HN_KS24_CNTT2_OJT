@@ -76,6 +76,7 @@ export default function Pagination({
           <div className="hidden md:flex items-center gap-1.5 ml-3 pl-3 border-l border-slate-200">
             <span className="text-slate-400">Mỗi trang:</span>
             <select
+              aria-label="Số sản phẩm hiển thị mỗi trang"
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
               className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-orange-500"

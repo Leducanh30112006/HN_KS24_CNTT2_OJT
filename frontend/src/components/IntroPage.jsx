@@ -803,15 +803,16 @@ export default function IntroPage({
         </div>
 
         {/* Animated Scroll-Down Cue Line */}
-        <div 
+        <button
+          type="button"
           onClick={() => handleScrollToSection('section-scrollytelling')}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer select-none text-slate-400 hover:text-orange-400 transition-colors"
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer select-none text-slate-400 hover:text-orange-400 transition-colors bg-transparent border-0 p-0"
         >
           <span className="text-[10px] font-mono uppercase tracking-widest">Cuộn để khám phá</span>
           <div className="w-5 h-9 rounded-full border border-slate-700 flex justify-center p-1">
             <div className="w-1.5 h-2 bg-orange-500 rounded-full animate-pulse" />
           </div>
-        </div>
+        </button>
       </section>
 
       {/* =========================================================================

@@ -252,8 +252,7 @@ public class SeoContentGuardrail {
             working = working.replaceAll("(?m)^#{5,}\\s+", "#### ");
         }
 
-        working = working.replaceAll("\\r\\n?", "\n")
-                .replaceAll("(?m)^[ \\t]+|[ \\t]+$", "")
+        working = trimEachLine(working.replaceAll("\\r\\n?", "\n"))
                 .replaceAll("\\n{3,}", "\n\n")
                 .trim();
 
@@ -313,9 +312,36 @@ public class SeoContentGuardrail {
         cleaned = cleaned.replaceAll("__([^_]+)__", "$1");
         cleaned = cleaned.replaceAll("`([^`]+)`", "$1");
         cleaned = cleaned.replaceAll("(?<!\\w)\\*([^*\\n]+)\\*(?!\\w)", "$1");
-        cleaned = cleaned.replaceAll("[ \\t]+", " ")
-                .replaceAll("(?m)^[ \\t]+|[ \\t]+$", "");
+        cleaned = trimEachLine(cleaned.replaceAll("[ \\t]+", " "));
         return cleaned.trim();
+    }
+
+    private String trimEachLine(String input) {
+        String[] lines = input.split("\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            int start = 0;
+            int end = lines[i].length();
+            while (start < end && (lines[i].charAt(start) == ' ' || lines[i].charAt(start) == '\t')) {
+                start++;
+            }
+            while (end > start && (lines[i].charAt(end - 1) == ' ' || lines[i].charAt(end - 1) == '\t')) {
+                end--;
+            }
+            lines[i] = lines[i].substring(start, end);
+        }
+        return String.join("\n", lines);
+    }
+
+    private String trimDashes(String input) {
+        int start = 0;
+        int end = input.length();
+        while (start < end && input.charAt(start) == '-') {
+            start++;
+        }
+        while (end > start && input.charAt(end - 1) == '-') {
+            end--;
+        }
+        return input.substring(start, end);
     }
 
     public String toSlug(String input) {
@@ -323,12 +349,11 @@ public class SeoContentGuardrail {
             return "san-pham-quickshop";
         }
         String replaced = input.replace('đ', 'd').replace('Đ', 'D');
-        String normalized = Normalizer.normalize(replaced, Normalizer.Form.NFD)
+        String normalized = trimDashes(Normalizer.normalize(replaced, Normalizer.Form.NFD)
                 .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
                 .toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9]+", "-")
-                .replaceAll("(^-+|-+$)", "");
-        return normalized.isBlank() ? "san-pham-quickshop" : truncateCleanly(normalized, 100).replaceAll("-+$", "");
+                .replaceAll("[^a-z0-9]+", "-"));
+        return normalized.isBlank() ? "san-pham-quickshop" : trimDashes(truncateCleanly(normalized, 100));
     }
 
     public String truncateCleanly(String text, int maxLen) {

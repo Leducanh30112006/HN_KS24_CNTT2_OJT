@@ -164,10 +164,11 @@ export default function Navbar({
     <header ref={navContainerRef} className="sticky top-2 sm:top-3.5 z-40 px-2.5 sm:px-6 w-full pointer-events-none transition-all">
       <div className="max-w-7xl mx-auto flex flex-col gap-1.5 pointer-events-auto">
         {/* Floating Glass Main Navigation Bar */}
-        <nav className="rounded-2xl bg-white/85 backdrop-blur-xl border border-slate-200/80 shadow-lg shadow-slate-900/5 px-3.5 sm:px-5 py-2 sm:py-2.5 flex items-center justify-between gap-3 sm:gap-5 transition-all">
+        <nav className="rounded-2xl bg-white/85 backdrop-blur-xl border border-slate-200/80 shadow-lg shadow-slate-900/5 px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-3 lg:gap-5 transition-all max-w-full overflow-x-clip">
           {/* Left: Brand Logo & Role Fast Switcher */}
-          <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
-            <div 
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 flex-shrink-0 min-w-0">
+            <button
+              type="button"
               onClick={() => {
                 if (onGoToStorefront) {
                   onGoToStorefront();
@@ -177,23 +178,23 @@ export default function Navbar({
                   setCurrentView('home');
                 }
               }} 
-              className="flex items-center gap-2.5 cursor-pointer group select-none"
+              className="flex items-center gap-2 cursor-pointer group select-none text-left bg-transparent border-0 p-0"
             >
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-orange-500 via-rose-500 to-amber-500 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-orange-500 via-rose-500 to-amber-500 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform flex-shrink-0">
                 <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]" />
               </div>
               <div>
-                <div className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 flex items-center">
+                <div className="text-lg sm:text-xl lg:text-2xl font-black tracking-tight text-slate-900 flex items-center">
                   Quick<span className="text-orange-600">Shop</span>
-                  <span className="ml-1 text-[9px] font-black uppercase tracking-wider bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-md">
+                  <span className="ml-1 text-[11px] font-black uppercase tracking-wider bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-md">
                     Mall
                   </span>
                 </div>
-                <div className="hidden sm:block text-[9px] text-slate-400 font-medium tracking-wide">
+                <div className="hidden lg:block text-[11px] text-slate-400 font-medium tracking-wide">
                   Flagship Storefront 2026
                 </div>
               </div>
-            </div>
+            </button>
 
             {/* Two-Way Tactile Switcher: Giới thiệu 3D <-> Mua sắm */}
             <div className="flex items-center p-0.5 sm:p-1 bg-slate-100/90 rounded-2xl border border-slate-200/80 shadow-xs">
@@ -298,12 +299,13 @@ export default function Navbar({
           </div>
 
           {/* Center: Command-Style Search Bar */}
-          <div className="flex-1 max-w-xl hidden md:block">
+          <div className="flex-1 max-w-xl hidden lg:block min-w-0">
             <div className="relative flex items-center">
               <Search className="absolute left-3.5 w-4 h-4 text-slate-400 pointer-events-none" />
               <input
                 ref={searchInputRef}
                 type="text"
+                aria-label="Tìm kiếm sản phẩm"
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 onKeyDown={handleSearchKeyPress}
@@ -311,19 +313,20 @@ export default function Navbar({
                 className="w-full pl-10 pr-24 py-2 bg-slate-100/80 hover:bg-slate-100 focus:bg-white text-xs sm:text-sm text-slate-900 rounded-xl border border-transparent focus:border-orange-500 focus:ring-2 focus:ring-orange-500/15 outline-none transition-all placeholder:text-slate-400"
               />
               <div className="absolute right-2.5 flex items-center gap-1 select-none pointer-events-none">
-                <kbd className="px-1.5 py-0.5 text-[9px] font-mono text-slate-500 bg-white/90 rounded border border-slate-200 shadow-xs">Ctrl K</kbd>
-                <kbd className="px-1.5 py-0.5 text-[9px] font-mono text-slate-500 bg-white/90 rounded border border-slate-200 shadow-xs">/</kbd>
+                <kbd className="px-1.5 py-0.5 text-[11px] font-mono text-slate-500 bg-white/90 rounded border border-slate-200 shadow-xs">Ctrl K</kbd>
+                <kbd className="px-1.5 py-0.5 text-[11px] font-mono text-slate-500 bg-white/90 rounded border border-slate-200 shadow-xs">/</kbd>
               </div>
             </div>
           </div>
 
           {/* Right: Notification, Tactile Cart Pill, User Profile */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           {/* Notifications Dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowNotifMenu(!showNotifMenu)}
-              className="btn-icon p-2.5 text-slate-600 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition relative cursor-pointer active:scale-90"
+              aria-label="Mở thông báo"
+              className="btn-icon p-2 sm:p-2.5 text-slate-600 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition relative cursor-pointer active:scale-90"
               title="Thông báo"
             >
               <Bell className="w-5 h-5" />
@@ -358,11 +361,12 @@ export default function Navbar({
                     </div>
                   ) : (
                     notifications.map((n) => (
-                      <div
+                      <button
+                        type="button"
                         key={n.id}
                         onClick={() => markAsRead(n.id)}
-                        className={`p-3 text-xs cursor-pointer transition hover:bg-slate-50 ${
-                          !n.isRead ? 'bg-orange-50/40 font-medium' : 'text-slate-600'
+                        className={`w-full text-left p-3 text-xs cursor-pointer transition hover:bg-slate-50 border-0 ${
+                          !n.isRead ? 'bg-orange-50/40 font-medium' : 'bg-transparent text-slate-600'
                         }`}
                       >
                         <div className="font-semibold text-slate-900 mb-0.5 flex items-center justify-between">
@@ -374,7 +378,7 @@ export default function Navbar({
                         <div className="text-slate-500 line-clamp-2 leading-relaxed">
                           {n.content}
                         </div>
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>
@@ -400,7 +404,7 @@ export default function Navbar({
                 </span>
               )}
             </div>
-            <span className="hidden sm:inline text-xs font-bold tracking-tight">Giỏ hàng</span>
+            <span className="hidden lg:inline text-xs font-bold tracking-tight">Giỏ hàng</span>
           </button>
 
           {/* User Account / Auth Dropdown */}

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,18 +30,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("JwtAuthGatewayFilterFactory - Gateway JWT Middleware & Chuẩn hóa lỗi 401/403")
 class JwtAuthGatewayFilterFactoryTest {
 
-    private static final String SECRET = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
     private Key signingKey;
     private JwtAuthGatewayFilterFactory filterFactory;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET);
-        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+        Key generatedKey = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+        String encodedSigningKey = java.util.Base64.getEncoder().encodeToString(generatedKey.getEncoded());
+        this.signingKey = generatedKey;
 
         filterFactory = new JwtAuthGatewayFilterFactory();
-        filterFactory.setJwtSecret(SECRET);
+        filterFactory.setJwtSecret(encodedSigningKey);
     }
 
     private String generateToken(String username, Long userId, String email, String role, String type, long ttlMs) {

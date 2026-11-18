@@ -151,7 +151,7 @@ export default function MessengerPage({
     } else if (!extractedProduct && trimmed) {
       const match = trimmed.match(/\[PRODUCT:(\d+)\]/i) || trimmed.match(/SP[-_]?(\d+)/i) || trimmed.match(/#(\d+)/);
       if (match && match[1]) {
-        const pId = parseInt(match[1], 10);
+        const pId = Number.parseInt(match[1], 10);
         const found = defaultProducts.find((p) => p.id === pId);
         if (found) {
           extractedProduct = {
@@ -356,16 +356,17 @@ export default function MessengerPage({
                 const lastMsg = thread.messages?.[thread.messages.length - 1];
 
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={thread.threadId}
                     onClick={() => {
                       setActiveThreadId(thread.threadId);
                       setMobileView('chat');
                     }}
-                    className={`p-3.5 flex items-start gap-3 cursor-pointer transition ${
+                    className={`w-full text-left border-0 p-3.5 flex items-start gap-3 cursor-pointer transition ${
                       isActive
                         ? 'bg-orange-50/70 border-l-4 border-orange-600'
-                        : 'hover:bg-slate-100/70'
+                        : 'bg-transparent hover:bg-slate-100/70'
                     }`}
                   >
                     {/* Avatar with online status */}
@@ -411,7 +412,7 @@ export default function MessengerPage({
                         {thread.unreadByBuyer}
                       </span>
                     )}
-                  </div>
+                  </button>
                 );
               })
             )}
@@ -619,10 +620,11 @@ export default function MessengerPage({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {shopProducts.slice(0, 9).map((prod) => (
-                    <div
+                    <button
+                      type="button"
                       key={prod.id}
                       onClick={() => handleSelectProductFromPicker(prod)}
-                      className="flex items-center gap-2.5 p-2 rounded-xl border border-slate-200 hover:border-orange-400 hover:bg-orange-50/50 cursor-pointer transition text-left group"
+                      className="flex items-center gap-2.5 p-2 rounded-xl border border-slate-200 hover:border-orange-400 hover:bg-orange-50/50 cursor-pointer transition text-left group w-full bg-white"
                     >
                       <img
                         src={prod.mainImage || prod.imageUrl}
@@ -637,7 +639,7 @@ export default function MessengerPage({
                           {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(prod.price)}
                         </p>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -799,10 +801,11 @@ export default function MessengerPage({
                 </h4>
                 <div className="space-y-2">
                   {sharedProducts.slice(0, 3).map((sp, idx) => (
-                    <div
+                    <button
+                      type="button"
                       key={idx}
                       onClick={() => onSelectProduct && onSelectProduct(sp.id)}
-                      className="p-2.5 bg-white rounded-2xl border border-slate-200/80 hover:border-orange-300 cursor-pointer transition flex items-center gap-2.5 group"
+                      className="w-full text-left p-2.5 bg-white rounded-2xl border border-slate-200/80 hover:border-orange-300 cursor-pointer transition flex items-center gap-2.5 group"
                     >
                       <img
                         src={sp.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100'}
@@ -817,7 +820,7 @@ export default function MessengerPage({
                           {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(sp.price)}
                         </p>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>

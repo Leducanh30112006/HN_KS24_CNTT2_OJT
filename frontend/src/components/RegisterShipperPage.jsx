@@ -6,14 +6,18 @@ import {
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { useAuthStore } from '../stores/useAuthStore';
+import { secureRandomInt } from '../utils/secureRandom';
 
 // Helper generating valid signed mock JWT token if backend is offline
 const generateValidSignedToken = (payload) => {
   const header = { alg: 'HS256', typ: 'JWT' };
   const base64UrlEncode = (obj) => {
     const json = JSON.stringify(obj);
-    const base64 = btoa(unescape(encodeURIComponent(json)));
-    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    let base64 = btoa(unescape(encodeURIComponent(json))).replaceAll('+', '-').replaceAll('/', '_');
+    while (base64.endsWith('=')) {
+      base64 = base64.slice(0, -1);
+    }
+    return base64;
   };
   const now = Math.floor(Date.now() / 1000);
   const jwtPayload = {
@@ -164,7 +168,7 @@ export default function RegisterShipperPage({
       }
 
       // Fallback mô phỏng nếu API Identity backend offline
-      const mockUserId = Math.floor(Math.random() * 9000) + 5000;
+      const mockUserId = secureRandomInt(5000, 14000);
       const validToken = generateValidSignedToken({
         userId: mockUserId,
         username: username.trim(),
@@ -202,9 +206,10 @@ export default function RegisterShipperPage({
       {/* Top Header */}
       <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 py-3.5 px-4 sm:px-8 shadow-xs">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div 
+          <button
+            type="button"
             onClick={onBackToHome}
-            className="flex items-center gap-2.5 cursor-pointer group"
+            className="flex items-center gap-2.5 cursor-pointer group bg-transparent border-0 p-0 text-left"
           >
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
               <Truck className="w-5 h-5 stroke-[2.5]" />
@@ -217,7 +222,7 @@ export default function RegisterShipperPage({
                 </span>
               </div>
             </div>
-          </div>
+          </button>
 
           <div className="flex items-center gap-3">
             <button
@@ -338,10 +343,11 @@ export default function RegisterShipperPage({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 {/* Họ tên */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="shipper-full-name" className="font-bold text-slate-700">
                     Họ và tên theo CCCD <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="shipper-full-name"
                     type="text"
                     required
                     value={fullName}
@@ -353,10 +359,11 @@ export default function RegisterShipperPage({
 
                 {/* Số điện thoại */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="shipper-phone" className="font-bold text-slate-700">
                     Số điện thoại nhận đơn <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="shipper-phone"
                     type="tel"
                     required
                     value={phoneNumber}
@@ -368,10 +375,11 @@ export default function RegisterShipperPage({
 
                 {/* Email */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="shipper-email" className="font-bold text-slate-700">
                     Email liên hệ <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="shipper-email"
                     type="email"
                     required
                     value={email}
@@ -383,10 +391,11 @@ export default function RegisterShipperPage({
 
                 {/* Số CCCD */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="shipper-cccd" className="font-bold text-slate-700">
                     Số Căn cước công dân (12 số) <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="shipper-cccd"
                     type="text"
                     required
                     value={cccd}
@@ -398,11 +407,13 @@ export default function RegisterShipperPage({
 
                 {/* Khu vực hoạt động ưu tiên */}
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="font-bold text-slate-700 flex items-center justify-between">
+                  <label htmlFor="shipper-operating-area" className="font-bold text-slate-700 flex items-center justify-between">
                     <span>Khu vực đăng ký giao nhận ưu tiên <span className="text-rose-500">*</span></span>
                     <span className="text-[11px] text-slate-400 font-normal">Hệ thống sẽ ưu tiên bắn đơn gần khu vực này</span>
                   </label>
                   <select
+                    id="shipper-operating-area"
+                    aria-label="Khu vực đăng ký giao nhận ưu tiên"
                     value={operatingArea}
                     onChange={(e) => setOperatingArea(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition bg-white"
@@ -425,10 +436,12 @@ export default function RegisterShipperPage({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                 {/* Loại phương tiện */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="shipper-vehicle-type" className="font-bold text-slate-700">
                     Loại phương tiện <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    id="shipper-vehicle-type"
+                    aria-label="Loại phương tiện"
                     value={vehicleType}
                     onChange={(e) => setVehicleType(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition bg-white"
@@ -441,10 +454,11 @@ export default function RegisterShipperPage({
 
                 {/* Biển số xe */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="shipper-license-plate" className="font-bold text-slate-700">
                     Biển số xe đăng ký <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="shipper-license-plate"
                     type="text"
                     required
                     value={licensePlate}
@@ -456,10 +470,12 @@ export default function RegisterShipperPage({
 
                 {/* Hạng bằng lái */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="shipper-driving-license" className="font-bold text-slate-700">
                     Hạng GPLX hiện có <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    id="shipper-driving-license"
+                    aria-label="Hạng giấy phép lái xe"
                     value={drivingLicense}
                     onChange={(e) => setDrivingLicense(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition bg-white"
@@ -483,10 +499,11 @@ export default function RegisterShipperPage({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                 {/* Username */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="shipper-username" className="font-bold text-slate-700">
                     Tên đăng nhập <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="shipper-username"
                     type="text"
                     required
                     value={username}
@@ -498,11 +515,12 @@ export default function RegisterShipperPage({
 
                 {/* Password */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="shipper-password" className="font-bold text-slate-700">
                     Mật khẩu tạo mới <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
                     <input
+                      id="shipper-password"
                       type={showPassword ? 'text' : 'password'}
                       required
                       value={password}
@@ -513,6 +531,7 @@ export default function RegisterShipperPage({
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -522,10 +541,11 @@ export default function RegisterShipperPage({
 
                 {/* Confirm Password */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="shipper-confirm-password" className="font-bold text-slate-700">
                     Xác nhận mật khẩu <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="shipper-confirm-password"
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={confirmPassword}
@@ -542,6 +562,7 @@ export default function RegisterShipperPage({
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
+                  aria-label="Đồng ý quy chuẩn tài xế QuickShop"
                   checked={agreeTerms}
                   onChange={(e) => setAgreeTerms(e.target.checked)}
                   className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"

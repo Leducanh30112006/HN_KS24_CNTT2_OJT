@@ -356,7 +356,7 @@ export default function ProductDetailPage({
             <ArrowLeft className="w-4 h-4" />
             <span>Quay lại</span>
           </button>
-          <span className="hover:text-orange-600 cursor-pointer" onClick={onBack}>Trang chủ</span>
+          <button type="button" className="hover:text-orange-600 cursor-pointer bg-transparent border-0 p-0" onClick={onBack}>Trang chủ</button>
           <span>&gt;</span>
           <span className="text-slate-700 font-medium">{product.categoryName || 'Danh mục sản phẩm'}</span>
           <span>&gt;</span>
@@ -702,9 +702,10 @@ export default function ProductDetailPage({
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           {/* Shop Profile Left */}
           <div className="flex items-center space-x-4">
-            <div 
+            <button
+              type="button"
               onClick={() => onSelectShop && onSelectShop({ id: product.shopId || 1, name: product.shopName || 'TechWorld Official Store' })}
-              className="relative cursor-pointer group"
+              className="relative cursor-pointer group bg-transparent border-0 p-0 text-left"
               title="Xem thông tin gian hàng"
             >
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-orange-500 to-rose-600 text-white font-black flex items-center justify-center text-xl shadow-md group-hover:scale-105 transition-transform">
@@ -713,17 +714,18 @@ export default function ProductDetailPage({
               <span className="absolute -bottom-1 -right-1 bg-rose-600 text-white text-[9px] font-black px-1 rounded shadow uppercase">
                 Mall
               </span>
-            </div>
+            </button>
 
             <div className="space-y-1">
-              <div 
+              <button
+                type="button"
                 onClick={() => onSelectShop && onSelectShop({ id: product.shopId || 1, name: product.shopName || 'TechWorld Official Store' })}
-                className="text-base font-bold text-slate-900 flex items-center gap-1.5 cursor-pointer hover:text-orange-600 transition"
+                className="text-base font-bold text-slate-900 flex items-center gap-1.5 cursor-pointer hover:text-orange-600 transition bg-transparent border-0 p-0 text-left"
                 title="Bấm để xem trang Shop"
               >
                 <span>{product.shopName || 'TechWorld Official Store'}</span>
                 <Check className="w-4 h-4 text-white bg-blue-500 rounded-full p-0.5" />
-              </div>
+              </button>
               <div className="text-xs text-slate-400">
                 Đang hoạt động • Phản hồi trong vài phút
               </div>
