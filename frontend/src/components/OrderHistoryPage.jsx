@@ -914,7 +914,10 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       {/* ========================================================================= */}
       <AnimatedPresence show={Boolean(selectedOrderDetails)} mode="modal" dataLenisPrevent={true} className="p-3 sm:p-6 no-scrollbar">
         {selectedOrderDetails && (
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto no-scrollbar">
+          <div
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto overflow-x-hidden no-scrollbar"
+          >
             {/* Header Modal */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
@@ -1081,26 +1084,47 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
             </div>
 
             {/* Bảng Chi Tiết Tài Chính */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-              <div className="flex justify-between text-slate-600">
-                <span>Tiền hàng (Tạm tính):</span>
-                <span className="font-mono">{formatVND(selectedOrderDetails.shopSubTotal || selectedOrderDetails.totalAmount || selectedOrderDetails.shopTotal)}</span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>Phí vận chuyển:</span>
-                <span className="font-mono">{formatVND(selectedOrderDetails.shopShippingFee || selectedOrderDetails.shippingFee || 25000)}</span>
-              </div>
-              {selectedOrderDetails.discountAmount > 0 && (
-                <div className="flex justify-between text-emerald-600 font-semibold">
-                  <span>Giảm giá Voucher:</span>
-                  <span className="font-mono">-{formatVND(selectedOrderDetails.discountAmount)}</span>
+            {(() => {
+              const modalItems = (selectedOrderDetails.shopItems && selectedOrderDetails.shopItems.length > 0)
+                ? selectedOrderDetails.shopItems
+                : (selectedOrderDetails.subOrders || []).flatMap(s => s.items || []);
+
+              const itemsSum = modalItems.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
+
+              const subTotal = (selectedOrderDetails.isSplit && itemsSum > 0)
+                ? itemsSum
+                : (selectedOrderDetails.shopSubTotal || (itemsSum > 0 ? itemsSum : (selectedOrderDetails.subtotalAmount || selectedOrderDetails.totalAmount || 0)));
+
+              const shippingFee = (selectedOrderDetails.isSplit && selectedOrderDetails.shopShippingFee != null)
+                ? selectedOrderDetails.shopShippingFee
+                : (selectedOrderDetails.shopShippingFee ?? selectedOrderDetails.shippingFee ?? 25000);
+
+              const discount = selectedOrderDetails.shopDiscount || selectedOrderDetails.discountAmount || selectedOrderDetails.voucherDiscount || 0;
+              const grandTotal = selectedOrderDetails.shopTotal || selectedOrderDetails.finalAmount || Math.max(0, subTotal + shippingFee - discount);
+
+              return (
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Tiền hàng (Tạm tính):</span>
+                    <span className="font-mono">{formatVND(subTotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Phí vận chuyển:</span>
+                    <span className="font-mono">{formatVND(shippingFee)}</span>
+                  </div>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-emerald-600 font-semibold">
+                      <span>Giảm giá Voucher:</span>
+                      <span className="font-mono">-{formatVND(discount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-black text-slate-900 pt-2 border-t border-slate-200">
+                    <span>Tổng cộng thanh toán:</span>
+                    <span className="text-orange-600 font-mono text-base">{formatVND(grandTotal)}</span>
+                  </div>
                 </div>
-              )}
-              <div className="flex justify-between text-sm font-black text-slate-900 pt-2 border-t border-slate-200">
-                <span>Tổng cộng thanh toán:</span>
-                <span className="text-orange-600 font-mono text-base">{formatVND(selectedOrderDetails.shopTotal || selectedOrderDetails.finalAmount || selectedOrderDetails.totalAmount)}</span>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Action buttons inside details modal */}
             <div className="flex items-center justify-end gap-3 pt-2">
