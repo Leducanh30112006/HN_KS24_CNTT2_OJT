@@ -214,6 +214,32 @@ class ProductServiceTest {
             assertThat(updated).isNotNull();
             assertThat(sampleProduct.getName()).isEqualTo("Tên đã được Admin chuẩn hóa");
         }
+
+        @Test
+        @DisplayName("Cập nhật biến thể sản phẩm thành công mà không gây lỗi trùng lặp SKU")
+        void updateProduct_WithVariants_UpdatesInPlaceWithoutDuplicateSku() {
+            when(productRepository.findById(100L)).thenReturn(Optional.of(sampleProduct));
+            when(productRepository.save(any(Product.class))).thenReturn(sampleProduct);
+            when(variantRepository.findByProductId(100L)).thenReturn(List.of(sampleVariant));
+
+            VariantCreateRequest variantReq = VariantCreateRequest.builder()
+                    .sku("KEY-75-WHITE") // Trùng SKU hiện tại
+                    .price(new BigDecimal("1490000"))
+                    .stock(60)
+                    .build();
+
+            ProductUpdateRequest request = ProductUpdateRequest.builder()
+                    .name("Bàn phím cơ mới")
+                    .variants(List.of(variantReq))
+                    .build();
+
+            ProductDto updated = productService.updateProduct(100L, request, 10L, "ROLE_SELLER");
+
+            assertThat(updated).isNotNull();
+            assertThat(sampleVariant.getPrice()).isEqualByComparingTo(new BigDecimal("1490000"));
+            assertThat(sampleVariant.getStock()).isEqualTo(60);
+            verify(variantRepository).save(sampleVariant);
+        }
     }
 
     @Nested

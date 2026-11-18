@@ -26,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -373,17 +375,41 @@ public class ProductService {
 
         // Cập nhật lại danh sách biến thể nếu có
         if (request.getVariants() != null && !request.getVariants().isEmpty()) {
-            variantRepository.deleteByProductId(id);
+            List<ProductVariant> existingVariants = variantRepository.findByProductId(id);
+            Map<String, ProductVariant> existingBySku = existingVariants.stream()
+                    .collect(Collectors.toMap(ProductVariant::getSku, v -> v, (v1, v2) -> v1));
+
+            Set<String> newSkus = request.getVariants().stream()
+                    .map(v -> v.getSku().trim())
+                    .collect(Collectors.toSet());
+
+            List<ProductVariant> toDelete = existingVariants.stream()
+                    .filter(v -> !newSkus.contains(v.getSku()))
+                    .collect(Collectors.toList());
+            if (!toDelete.isEmpty()) {
+                variantRepository.deleteAll(toDelete);
+                variantRepository.flush();
+            }
+
             for (VariantCreateRequest vReq : request.getVariants()) {
-                ProductVariant variant = ProductVariant.builder()
-                        .productId(id)
-                        .sku(vReq.getSku().trim())
-                        .color(vReq.getColor())
-                        .size(vReq.getSize())
-                        .price(vReq.getPrice())
-                        .stock(vReq.getStock() != null ? vReq.getStock() : 0)
-                        .reservedStock(0)
-                        .build();
+                String sku = vReq.getSku().trim();
+                ProductVariant variant = existingBySku.get(sku);
+                if (variant != null) {
+                    variant.setColor(vReq.getColor());
+                    variant.setSize(vReq.getSize());
+                    variant.setPrice(vReq.getPrice());
+                    variant.setStock(vReq.getStock() != null ? vReq.getStock() : 0);
+                } else {
+                    variant = ProductVariant.builder()
+                            .productId(id)
+                            .sku(sku)
+                            .color(vReq.getColor())
+                            .size(vReq.getSize())
+                            .price(vReq.getPrice())
+                            .stock(vReq.getStock() != null ? vReq.getStock() : 0)
+                            .reservedStock(0)
+                            .build();
+                }
                 variantRepository.save(variant);
             }
         }
