@@ -105,13 +105,14 @@ public class PayOsServiceImpl implements PayOsService {
             description = description.substring(0, 25);
         }
 
+        String frontendUrl = System.getenv().getOrDefault("FRONTEND_URL", "https://quickshop.io.vn");
         CreatePayOsPaymentRequest internalRequest = CreatePayOsPaymentRequest.builder()
                 .orderId(cleanOrderId)
                 .amount(amount)
                 .userId(userId)
                 .description(description)
-                .returnUrl("http://localhost/checkout?payos_status=success&orderId=" + cleanOrderId)
-                .cancelUrl("http://localhost/checkout?payos_status=cancelled&orderId=" + cleanOrderId)
+                .returnUrl(frontendUrl + "/?view=checkout&payos_status=success&orderId=" + cleanOrderId)
+                .cancelUrl(frontendUrl + "/?view=checkout&payos_status=cancelled&orderId=" + cleanOrderId)
                 .build();
 
         // 3. Tiến hành gọi PayOS SDK và tạo response trả về cho người dùng
@@ -123,7 +124,7 @@ public class PayOsServiceImpl implements PayOsService {
             String digits = orderId.replaceAll("[^0-9]", "");
             if (digits.isEmpty()) return null;
 
-            String orderServiceUrl = System.getenv().getOrDefault("ORDER_SERVICE_URL", "http://order-service:8082");
+            String orderServiceUrl = System.getenv().getOrDefault("ORDER_SERVICE_URL", "http://order-service:8083");
             String url = orderServiceUrl + "/api/orders/" + digits;
 
             RestTemplate restTemplate = new RestTemplate();
@@ -166,12 +167,13 @@ public class PayOsServiceImpl implements PayOsService {
         BigDecimal amount = request.getAmount();
         Long numericOrderCode = resolveNumericOrderCode(orderId);
 
+        String frontendUrl = System.getenv().getOrDefault("FRONTEND_URL", "https://quickshop.io.vn");
         String returnUrl = (request.getReturnUrl() != null && !request.getReturnUrl().isBlank())
                 ? request.getReturnUrl()
-                : "http://localhost/checkout?payos_status=success&orderId=" + orderId;
+                : frontendUrl + "/?view=checkout&payos_status=success&orderId=" + orderId;
         String cancelUrl = (request.getCancelUrl() != null && !request.getCancelUrl().isBlank())
                 ? request.getCancelUrl()
-                : "http://localhost/checkout?payos_status=cancelled&orderId=" + orderId;
+                : frontendUrl + "/?view=checkout&payos_status=cancelled&orderId=" + orderId;
 
         // Nội dung chuyển khoản cho PayOS tối đa 25 ký tự
         String description = "QS DH" + numericOrderCode;
@@ -181,6 +183,7 @@ public class PayOsServiceImpl implements PayOsService {
 
         String checkoutUrl = null;
         String qrCode = null;
+        String actualDescription = description;
         String accountNumber = "0346746521";
         String accountName = "NGUYEN VAN KIEN";
         String bin = "970422";
@@ -208,23 +211,35 @@ public class PayOsServiceImpl implements PayOsService {
                 if (payOsResp != null) {
                     checkoutUrl = payOsResp.getCheckoutUrl();
                     qrCode = payOsResp.getQrCode();
-                    if (payOsResp.getAccountNumber() != null) accountNumber = payOsResp.getAccountNumber();
-                    if (payOsResp.getAccountName() != null) accountName = payOsResp.getAccountName();
-                    if (payOsResp.getBin() != null) bin = payOsResp.getBin();
+                    if (payOsResp.getAccountNumber() != null && !payOsResp.getAccountNumber().isBlank()) {
+                        accountNumber = payOsResp.getAccountNumber();
+                    }
+                    if (payOsResp.getAccountName() != null && !payOsResp.getAccountName().isBlank()) {
+                        accountName = payOsResp.getAccountName();
+                    }
+                    if (payOsResp.getBin() != null && !payOsResp.getBin().isBlank()) {
+                        bin = payOsResp.getBin();
+                    }
+                    if (payOsResp.getDescription() != null && !payOsResp.getDescription().isBlank()) {
+                        actualDescription = payOsResp.getDescription();
+                    }
                     paymentLinkId = payOsResp.getPaymentLinkId();
-                    log.info("PayOS SDK tạo payment link thành công: id={}, orderCode={}, url={}", paymentLinkId, numericOrderCode, checkoutUrl);
+                    log.info("PayOS SDK tạo payment link thành công: id={}, orderCode={}, account={}, desc={}, url={}",
+                            paymentLinkId, numericOrderCode, accountNumber, actualDescription, checkoutUrl);
                 }
             }
         } catch (Exception e) {
             log.warn("PayOS SDK tạo payment link gặp lỗi: {}. Sử dụng mã VietQR MB Bank chuẩn dự phòng.", e.getMessage());
         }
 
-        // Nếu PayOS SDK không trả về mã QR trực tiếp hoặc đang chạy offline/fallback, tạo VietQR MB Bank chuẩn
+        // Tạo URL ảnh VietQR chuẩn theo đúng bin, số tài khoản (VA PayOS nếu có) và nội dung chuyển khoản thực tế từ PayOS
+        String vietQrUrl = "https://img.vietqr.io/image/" + bin + "-" + accountNumber + "-compact2.png"
+                + "?amount=" + amount.longValue()
+                + "&addInfo=" + URLEncoder.encode(actualDescription, StandardCharsets.UTF_8)
+                + "&accountName=" + URLEncoder.encode(accountName, StandardCharsets.UTF_8);
+
+        // Nếu PayOS SDK không trả về chuỗi EMVCo qrCode, dùng vietQrUrl làm dự phòng
         if (qrCode == null || qrCode.isBlank()) {
-            String vietQrUrl = "https://img.vietqr.io/image/" + bin + "-" + accountNumber + "-compact2.png"
-                    + "?amount=" + amount.longValue()
-                    + "&addInfo=" + URLEncoder.encode(description, StandardCharsets.UTF_8)
-                    + "&accountName=" + URLEncoder.encode(accountName, StandardCharsets.UTF_8);
             qrCode = vietQrUrl;
             if (checkoutUrl == null) {
                 checkoutUrl = vietQrUrl;
@@ -254,6 +269,8 @@ public class PayOsServiceImpl implements PayOsService {
                 .amount(amount)
                 .checkoutUrl(checkoutUrl)
                 .qrCode(qrCode)
+                .qrImageUrl(vietQrUrl)
+                .description(actualDescription)
                 .accountNumber(accountNumber)
                 .accountName(accountName)
                 .bin(bin)
@@ -321,8 +338,15 @@ public class PayOsServiceImpl implements PayOsService {
 
                     if (numericOrderCode != null && payOS != null) {
                         PaymentLink paymentLink = payOS.paymentRequests().get(numericOrderCode);
-                        if (paymentLink != null && paymentLink.getStatus() == PaymentLinkStatus.PAID) {
-                            log.info("PayOS Active Polling: Đơn hàng #{} đã xác nhận PAID trên PayOS!", numericOrderCode);
+                        boolean paidByStatus = paymentLink != null && paymentLink.getStatus() == PaymentLinkStatus.PAID;
+                        boolean paidByAmount = paymentLink != null
+                                && paymentLink.getAmountPaid() != null
+                                && paymentLink.getAmount() != null
+                                && paymentLink.getAmountPaid() > 0
+                                && paymentLink.getAmountPaid() >= paymentLink.getAmount();
+                        if (paidByStatus || paidByAmount) {
+                            log.info("PayOS Active Polling: Đơn hàng #{} đã xác nhận PAID trên PayOS (status={}, amountPaid={})!",
+                                    numericOrderCode, paymentLink.getStatus(), paymentLink.getAmountPaid());
                             txn.setStatus(PaymentStatus.SUCCESS);
                             txn.setPaymentMethod("PAYOS_MBBANK");
                             txn.setVnpResponseCode("00");

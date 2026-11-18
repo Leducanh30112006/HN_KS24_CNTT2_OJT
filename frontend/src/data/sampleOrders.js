@@ -1224,3 +1224,44 @@ export const createSellerWithdrawal = (shopId = 1, withdrawalData) => {
   }
   return updatedWallet;
 };
+
+// Cập nhật trạng thái đơn hàng khi thanh toán PayOS / chuyển khoản ngân hàng thành công
+export const markOrderAsPaid = (orderCodeOrId, paymentDetails = {}) => {
+  if (!orderCodeOrId) return null;
+  const cleanTarget = String(orderCodeOrId).trim();
+  const numericTarget = cleanTarget.replace(/[^0-9]/g, '');
+  const orders = getStoredOrders();
+  let matched = false;
+
+  const updatedOrders = orders.map((o) => {
+    const oCode = String(o.orderCode || '').trim();
+    const oId = String(o.id || '').trim();
+    const oDigits = oCode.replace(/[^0-9]/g, '');
+    const isMatch =
+      oCode === cleanTarget ||
+      oId === cleanTarget ||
+      (numericTarget && (oDigits === numericTarget || oId === numericTarget));
+
+    if (!isMatch) return o;
+    matched = true;
+    return {
+      ...o,
+      status: o.status === 'PENDING_PAYMENT' || o.status === 'PENDING' ? 'CONFIRMED' : o.status,
+      paymentStatus: 'PAID',
+      paidAt: new Date().toISOString(),
+      transactionNo: paymentDetails?.transactionNo || paymentDetails?.txnRef || o.transactionNo,
+      subOrders: (o.subOrders || []).map((sub) => ({
+        ...sub,
+        status: sub.status === 'PENDING_PAYMENT' || sub.status === 'PENDING' ? 'CONFIRMED' : sub.status,
+      })),
+    };
+  });
+
+  if (matched) {
+    saveStoredOrders(updatedOrders);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('quickshop_orders_updated', { detail: { orderId: cleanTarget, paymentStatus: 'PAID' } }));
+    }
+  }
+  return matched;
+};
