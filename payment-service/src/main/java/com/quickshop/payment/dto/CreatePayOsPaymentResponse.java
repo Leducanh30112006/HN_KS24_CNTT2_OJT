@@ -18,6 +18,8 @@ public class CreatePayOsPaymentResponse {
     private BigDecimal amount;
     private String checkoutUrl;
     private String qrCode;
+    private String qrImageUrl;
+    private String description;
     private String accountNumber;
     private String accountName;
     private String bin;

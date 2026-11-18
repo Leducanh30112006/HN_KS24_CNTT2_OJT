@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -29,7 +30,11 @@ public class CatalogServiceClientImpl implements CatalogServiceClient {
             @Value("${catalog.service.mock-enabled:true}") boolean mockFallbackEnabled) {
         this.catalogServiceUrl = catalogServiceUrl;
         this.mockFallbackEnabled = mockFallbackEnabled;
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(4000);
+        requestFactory.setReadTimeout(8000);
         this.restClient = restClientBuilder
+                .requestFactory(requestFactory)
                 .baseUrl(catalogServiceUrl)
                 .build();
     }
