@@ -319,7 +319,10 @@ public class ProductService {
             }
         }
 
-        cacheService.evictProductCaches(savedProduct.getId());
+        // Bỏ qua quét xóa Redis cache khi chỉ lưu bản nháp DRAFT (bản nháp không nằm trong cache storefront)
+        if (initialStatus != ProductStatus.DRAFT) {
+            cacheService.evictProductCaches(savedProduct.getId());
+        }
         log.info("Đã tạo sản phẩm mới ID {} ở trạng thái {} cho shopId {}", savedProduct.getId(), initialStatus, finalShopId);
 
         return mapToDto(savedProduct);

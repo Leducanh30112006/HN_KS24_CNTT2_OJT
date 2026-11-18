@@ -159,7 +159,6 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
     public AuthResponse refreshToken(String refreshToken) {
         if (!tokenProvider.validateToken(refreshToken)) {
             throw new BadRequestException("Refresh token không hợp lệ hoặc đã hết hạn");
