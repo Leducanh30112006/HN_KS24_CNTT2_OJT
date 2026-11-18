@@ -23,7 +23,7 @@ public class VariantCreateRequest {
     private String size;
 
     @NotNull(message = "Giá bán không được để trống")
-    @DecimalMin(value = "0", message = "Giá bán phải lớn hơn hoặc bằng 0")
+    @DecimalMin(value = "0.01", message = "Giá bán phải lớn hơn 0")
     private BigDecimal price;
 
     @Builder.Default

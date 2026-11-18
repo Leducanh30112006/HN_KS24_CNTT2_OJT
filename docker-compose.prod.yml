@@ -6,6 +6,7 @@ services:
     image: mysql:8.0
     container_name: quickshop-prod-mysql
     restart: always
+    command: ["--performance-schema=OFF", "--innodb-buffer-pool-size=48M", "--max-connections=60"]
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}
       TZ: Asia/Ho_Chi_Minh
@@ -134,7 +135,7 @@ services:
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-quickshop}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required}
-      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx112m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dserver.tomcat.threads.max=20 -Dserver.tomcat.threads.min-spare=2 -Dspring.jpa.show-sql=false -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
+      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx112m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dserver.tomcat.threads.max=20 -Dserver.tomcat.threads.min-spare=2 -Dspring.jpa.show-sql=false -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
     depends_on:
       mysql:
         condition: service_healthy
@@ -163,7 +164,7 @@ services:
       RABBITMQ_PORT: 5672
       MINIO_ENDPOINT: http://minio:9000
       ORDER_SERVICE_URL: http://order-service:8083
-      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx112m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dserver.tomcat.threads.max=20 -Dserver.tomcat.threads.min-spare=2 -Dspring.jpa.show-sql=false -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
+      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx112m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dserver.tomcat.threads.max=20 -Dserver.tomcat.threads.min-spare=2 -Dspring.jpa.show-sql=false -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
     depends_on:
       mysql:
         condition: service_healthy
@@ -191,7 +192,8 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       CATALOG_SERVICE_URL: http://catalog-service:8082
-      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx112m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dserver.tomcat.threads.max=20 -Dserver.tomcat.threads.min-spare=2 -Dspring.jpa.show-sql=false -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
+      CATALOG_SERVICE_MOCK_ENABLED: "false"
+      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx112m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dserver.tomcat.threads.max=20 -Dserver.tomcat.threads.min-spare=2 -Dspring.jpa.show-sql=false -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
     depends_on:
       mysql:
         condition: service_healthy
@@ -218,7 +220,7 @@ services:
       RABBITMQ_PORT: 5672
       VNP_TMN_CODE: ${VNP_TMN_CODE}
       VNP_HASH_SECRET: ${VNP_HASH_SECRET}
-      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx112m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dserver.tomcat.threads.max=20 -Dserver.tomcat.threads.min-spare=2 -Dspring.jpa.show-sql=false -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
+      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx112m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dserver.tomcat.threads.max=20 -Dserver.tomcat.threads.min-spare=2 -Dspring.jpa.show-sql=false -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
     depends_on:
       mysql:
         condition: service_healthy
@@ -243,7 +245,7 @@ services:
       DB_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx96m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dserver.tomcat.threads.max=20 -Dserver.tomcat.threads.min-spare=2 -Dspring.jpa.show-sql=false -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
+      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx96m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dserver.tomcat.threads.max=20 -Dserver.tomcat.threads.min-spare=2 -Dspring.jpa.show-sql=false -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
     depends_on:
       mysql:
         condition: service_healthy
@@ -272,7 +274,8 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       CATALOG_SERVICE_URL: http://catalog-service:8082
-      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx112m -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dserver.tomcat.threads.max=20 -Dserver.tomcat.threads.min-spare=2 -Dspring.jpa.show-sql=false -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
+      CATALOG_SERVICE_MOCK_ENABLED: "false"
+      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx112m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dserver.tomcat.threads.max=20 -Dserver.tomcat.threads.min-spare=2 -Dspring.jpa.show-sql=false -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
     volumes:
       - ./notification-ai-service/src/main/resources/application.yml:/app/config/application.yml:ro
     depends_on:
@@ -297,12 +300,13 @@ services:
       REDIS_PORT: 6379
       IDENTITY_SERVICE_URL: http://identity-service:8081
       CATALOG_SERVICE_URL: http://catalog-service:8082
+      CATALOG_SERVICE_MOCK_ENABLED: "false"
       ORDER_SERVICE_URL: http://order-service:8083
       PAYMENT_SERVICE_URL: http://payment-service:8084
       SHIPPING_SERVICE_URL: http://shipping-service:8085
       NOTIFICATION_SERVICE_URL: http://notification-ai-service:8086
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required}
-      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx96m -XX:MaxMetaspaceSize=80m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
+      JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx96m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
     volumes:
       - ./api-gateway/src/main/resources/application.yml:/app/config/application.yml:ro
     depends_on:

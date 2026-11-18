@@ -8,6 +8,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.io.Encoders;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
 import jakarta.annotation.PostConstruct;
@@ -99,10 +100,22 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
             }
 
             try {
+                // Kiểm tra định dạng 3 phần và tính chính tắc (canonical Base64URL) của chữ ký
+                // Ngăn chặn trường hợp sửa 2 bit dư ở ký tự cuối cùng của chữ ký HS256 (43 ký tự) vượt qua Base64URL decoder
+                String[] jwtParts = token.trim().split("\\.");
+                if (jwtParts.length != 3 || !StringUtils.hasText(jwtParts[2])) {
+                    return onError(exchange, "Chữ ký hoặc định dạng Token không hợp lệ", HttpStatus.UNAUTHORIZED);
+                }
+                byte[] decodedSignature = Decoders.BASE64URL.decode(jwtParts[2]);
+                if (!Encoders.BASE64URL.encode(decodedSignature).equals(jwtParts[2])) {
+                    log.warn("Invalid non-canonical JWT signature detected (trailing-bit tampering)");
+                    return onError(exchange, "Chữ ký hoặc định dạng Token không hợp lệ", HttpStatus.UNAUTHORIZED);
+                }
+
                 Claims claims = Jwts.parserBuilder()
                         .setSigningKey(signingKey)
                         .build()
-                        .parseClaimsJws(token)
+                        .parseClaimsJws(token.trim())
                         .getBody();
 
                 // Ngăn chặn sử dụng nhầm Refresh Token để gọi API được bảo vệ
