@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -105,8 +106,14 @@ public class AiAssistantController {
     }
 
     @PostMapping("/circuit-breaker/reset")
-    @Operation(summary = "Reset AI Catalog Circuit Breaker về trạng thái CLOSED")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> resetCircuitBreaker() {
+    @Operation(summary = "Reset AI Catalog Circuit Breaker về trạng thái CLOSED (Yêu cầu ROLE_ADMIN)")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> resetCircuitBreaker(
+            @RequestHeader(value = "X-User-Role", required = false) String userRole
+    ) {
+        if (userRole == null || (!"ROLE_ADMIN".equalsIgnoreCase(userRole.trim()) && !"ADMIN".equalsIgnoreCase(userRole.trim()))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Bạn không có quyền reset AI Circuit Breaker (Yêu cầu ROLE_ADMIN)"));
+        }
         aiCatalogSearchService.resetCircuitBreaker();
         Map<String, Object> resp = new HashMap<>(aiCatalogSearchService.getCircuitBreakerStatus());
         resp.put("message", "Circuit Breaker đã được reset về trạng thái CLOSED thành công.");

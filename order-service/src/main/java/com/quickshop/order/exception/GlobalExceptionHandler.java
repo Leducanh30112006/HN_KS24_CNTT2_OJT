@@ -8,11 +8,13 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -65,6 +67,13 @@ public class GlobalExceptionHandler {
         log.warn("Thiếu Request Header: {}", ex.getHeaderName());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error("Yêu cầu header bắt buộc: " + ex.getHeaderName()));
+    }
+
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, HttpMessageNotReadableException.class, IllegalArgumentException.class})
+    public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(Exception ex) {
+        log.warn("Tham số hoặc JSON không hợp lệ trong Order Service: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Tham số hoặc định dạng dữ liệu đầu vào không hợp lệ"));
     }
 
     @ExceptionHandler({RedisConnectionFailureException.class, DataAccessException.class})

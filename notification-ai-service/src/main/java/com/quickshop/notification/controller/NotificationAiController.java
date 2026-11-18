@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,12 +49,17 @@ public class NotificationAiController {
     }
 
     @GetMapping("/api/notifications/email-logs")
-    @Operation(summary = "Tra cứu danh sách email logs (phân trang và lọc theo status)")
+    @Operation(summary = "Tra cứu danh sách email logs (phân trang và lọc theo status - Yêu cầu ROLE_ADMIN)")
     public ResponseEntity<ApiResponse<Page<EmailLog>>> getEmailLogs(
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole
     ) {
+        if (userRole == null || (!"ROLE_ADMIN".equalsIgnoreCase(userRole.trim()) && !"ADMIN".equalsIgnoreCase(userRole.trim()))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Bạn không có quyền truy cập nhật ký email hệ thống (Yêu cầu ROLE_ADMIN)"));
+        }
         Pageable pageable = PageRequest.of(page, Math.min(size, 100));
         return ResponseEntity.ok(ApiResponse.ok(notificationService.getEmailLogs(status, pageable)));
     }

@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -31,6 +32,9 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure = true;
 
     @PostMapping("/login")
     @Operation(summary = "Đăng nhập tài khoản & cấp JWT kèm HttpOnly Cookies")
@@ -114,18 +118,30 @@ public class AuthController {
             @CookieValue(name = "refreshToken", required = false) String cookieRefresh,
             @RequestHeader(value = "X-User-Id", required = false) String userIdHeader
     ) {
-        Long userId = StringUtils.hasText(userIdHeader) ? Long.parseLong(userIdHeader.trim()) : null;
-
-        String tokenToRevoke = null;
-        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-            tokenToRevoke = authHeader.substring(7);
-        } else if (StringUtils.hasText(cookieAccess)) {
-            tokenToRevoke = cookieAccess;
-        } else if (StringUtils.hasText(cookieRefresh)) {
-            tokenToRevoke = cookieRefresh;
+        Long userId = null;
+        if (StringUtils.hasText(userIdHeader)) {
+            try {
+                userId = Long.parseLong(userIdHeader.trim());
+            } catch (NumberFormatException ignored) {}
         }
 
-        authService.logout(tokenToRevoke, userId);
+        String accessTokenToRevoke = null;
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            accessTokenToRevoke = authHeader.substring(7).trim();
+        } else if (StringUtils.hasText(cookieAccess)) {
+            accessTokenToRevoke = cookieAccess.trim();
+        }
+
+        // Thu hồi cả Access Token và Refresh Token trong Redis Blacklist
+        if (StringUtils.hasText(accessTokenToRevoke)) {
+            authService.logout(accessTokenToRevoke, userId);
+        }
+        if (StringUtils.hasText(cookieRefresh) && !cookieRefresh.trim().equals(accessTokenToRevoke)) {
+            authService.revokeToken(cookieRefresh.trim(), userId);
+        }
+        if (!StringUtils.hasText(accessTokenToRevoke) && !StringUtils.hasText(cookieRefresh)) {
+            authService.logout(null, userId);
+        }
 
         ResponseCookie cleanAccess = createCookie("accessToken", "", 0);
         ResponseCookie cleanRefresh = createCookie("refreshToken", "", 0);
@@ -174,7 +190,7 @@ public class AuthController {
     private ResponseCookie createCookie(String name, String value, long maxAgeSecs) {
         return ResponseCookie.from(name, value)
                 .httpOnly(true)
-                .secure(false) // Set true in production behind HTTPS
+                .secure(cookieSecure)
                 .sameSite("Lax")
                 .path("/")
                 .maxAge(maxAgeSecs)

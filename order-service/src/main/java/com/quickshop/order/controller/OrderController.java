@@ -64,23 +64,25 @@ public class OrderController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMyOrders(
             @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole,
             @RequestParam(value = "userId", required = false) Long paramUserId) {
 
-        Long userId = null;
-        if (userIdHeader != null && !userIdHeader.isBlank()) {
-            try {
-                userId = Long.parseLong(userIdHeader.trim());
-            } catch (NumberFormatException ignored) {}
-        }
-        if (userId == null) {
-            userId = paramUserId;
+        Long headerUserId = parseUserIdQuietly(userIdHeader);
+        Long targetUserId;
+        if (isAdmin(userRole)) {
+            targetUserId = paramUserId != null ? paramUserId : headerUserId;
+        } else {
+            // Chống IDOR: Buyer/Seller/Shipper chỉ được xem đơn hàng của chính mình
+            targetUserId = headerUserId != null ? headerUserId : paramUserId;
         }
 
         List<MasterOrder> masterOrders;
-        if (userId != null && userId > 0) {
-            masterOrders = masterOrderRepository.findByUserId(userId);
-        } else {
+        if (targetUserId != null && targetUserId > 0) {
+            masterOrders = masterOrderRepository.findByUserId(targetUserId);
+        } else if (isAdmin(userRole)) {
             masterOrders = masterOrderRepository.findAll();
+        } else {
+            masterOrders = Collections.emptyList();
         }
 
         List<Map<String, Object>> responseList = new ArrayList<>();
@@ -129,6 +131,8 @@ public class OrderController {
     @PostMapping("/{id}/cancel")
     public ResponseEntity<ApiResponse<Map<String, Object>>> cancelOrder(
             @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole,
             @RequestBody(required = false) Map<String, String> body) {
 
         Long rawId = id;
@@ -138,6 +142,15 @@ public class OrderController {
 
         MasterOrder masterOrder = masterOrderRepository.findById(rawId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với mã ID #" + id));
+
+        // Chống IDOR: chỉ chủ sở hữu đơn hàng hoặc Admin mới có quyền hủy đơn hàng
+        Long requesterId = parseUserIdQuietly(userIdHeader);
+        if (!isAdmin(userRole) && (requesterId == null || !requesterId.equals(masterOrder.getUserId()))) {
+            log.warn("IDOR blocked on POST /api/orders/{}/cancel: requesterId={}, role={}, ownerId={}",
+                    id, requesterId, userRole, masterOrder.getUserId());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Bạn không có quyền hủy đơn hàng của người dùng khác"));
+        }
 
         List<SubOrder> subOrders = subOrderRepository.findByMasterOrderId(rawId);
         boolean anyPackedOrShipped = subOrders.stream().anyMatch(sub ->
@@ -171,9 +184,22 @@ public class OrderController {
 
     @Operation(summary = "Lấy chi tiết đơn hàng tổng kèm các SubOrder và OrderItems snapshot")
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getOrderDetails(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getOrderDetails(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
         MasterOrder masterOrder = masterOrderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với mã ID #" + id));
+
+        // Chống lỗ hổng IDOR: Buyer chỉ được xem đơn hàng thuộc quyền sở hữu của mình (Admin/Seller/Shipper được phép theo nghiệp vụ)
+        Long requesterId = parseUserIdQuietly(userIdHeader);
+        boolean isOwner = requesterId != null && requesterId.equals(masterOrder.getUserId());
+        if (!isOwner && !isPrivilegedOrderViewer(userRole)) {
+            log.warn("IDOR blocked on GET /api/orders/{}: requesterId={}, role={}, ownerId={}",
+                    id, requesterId, userRole, masterOrder.getUserId());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Bạn không có quyền xem chi tiết đơn hàng của người dùng khác"));
+        }
 
         List<SubOrder> subOrders = subOrderRepository.findByMasterOrderId(id);
         List<Map<String, Object>> subOrderDetailsList = new ArrayList<>();
@@ -247,5 +273,34 @@ public class OrderController {
             throw new BadRequestException("Yêu cầu thông tin định danh người dùng qua X-User-Id header hoặc param userId");
         }
         return userId;
+    }
+
+    private Long parseUserIdQuietly(String userIdHeader) {
+        if (userIdHeader == null || userIdHeader.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userIdHeader.trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private boolean isAdmin(String userRole) {
+        if (userRole == null || userRole.isBlank()) {
+            return false;
+        }
+        String r = userRole.trim().toUpperCase();
+        return "ROLE_ADMIN".equals(r) || "ADMIN".equals(r);
+    }
+
+    private boolean isPrivilegedOrderViewer(String userRole) {
+        if (userRole == null || userRole.isBlank()) {
+            return false;
+        }
+        String r = userRole.trim().toUpperCase();
+        return "ROLE_ADMIN".equals(r) || "ADMIN".equals(r)
+                || "ROLE_SELLER".equals(r) || "SELLER".equals(r)
+                || "ROLE_SHIPPER".equals(r) || "SHIPPER".equals(r);
     }
 }

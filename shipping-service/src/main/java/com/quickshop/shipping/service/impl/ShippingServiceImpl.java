@@ -35,8 +35,18 @@ public class ShippingServiceImpl implements ShippingService {
 
     @Override
     public CalculateFeeResponse calculateFee(CalculateFeeRequest request) {
+        if (request == null) {
+            throw new BadRequestException("Dữ liệu tính phí vận chuyển không được để trống");
+        }
+        if (request.getWeightGrams() != null && request.getWeightGrams() <= 0) {
+            throw new BadRequestException("Cân nặng gói hàng (weightGrams) phải lớn hơn 0");
+        }
+        if (request.getOrderValue() != null && request.getOrderValue().compareTo(BigDecimal.ZERO) < 0) {
+            throw new BadRequestException("Giá trị đơn hàng (orderValue) không được nhỏ hơn 0");
+        }
+
         String carrier = request.getCarrier() != null ? request.getCarrier().toUpperCase() : "GHN";
-        int weight = request.getWeightGrams() != null && request.getWeightGrams() > 0 ? request.getWeightGrams() : 500;
+        int weight = request.getWeightGrams() != null ? request.getWeightGrams() : 500;
         boolean isExpress = Boolean.TRUE.equals(request.getIsExpress());
 
         BigDecimal baseFee;
@@ -150,9 +160,19 @@ public class ShippingServiceImpl implements ShippingService {
     @Override
     @Transactional
     public boolean handleWebhook(ShippingController.WebhookPayload payload) {
+        if (payload == null) {
+            throw new BadRequestException("Dữ liệu webhook vận chuyển không được để trống");
+        }
         if (payload.getEventId() == null || payload.getEventId().isBlank()) {
             throw new BadRequestException("Mã sự kiện webhook (eventId) không được để trống");
         }
+        if (payload.getTrackingCode() == null || payload.getTrackingCode().isBlank()) {
+            throw new BadRequestException("Mã vận đơn (trackingCode) không được để trống");
+        }
+
+        // Xác thực vận đơn tồn tại trước khi xử lý webhook (Chống webhook giả mạo)
+        Shipment shipment = shipmentRepository.findByTrackingCode(payload.getTrackingCode().trim())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vận đơn hợp lệ với mã: " + payload.getTrackingCode()));
 
         // Idempotency check
         if (webhookLogRepository.existsByEventId(payload.getEventId())) {
@@ -167,15 +187,11 @@ public class ShippingServiceImpl implements ShippingService {
                 .payload(payload.toString())
                 .build());
 
-        // Update shipment
-        if (payload.getTrackingCode() != null) {
-            shipmentRepository.findByTrackingCode(payload.getTrackingCode()).ifPresent(shipment -> {
-                if (payload.getStatus() != null) {
-                    shipment.setShippingStatus(payload.getStatus().toUpperCase());
-                    shipmentRepository.save(shipment);
-                    log.info("Shipment {} status updated to {} via webhook", payload.getTrackingCode(), payload.getStatus());
-                }
-            });
+        // Update shipment status
+        if (payload.getStatus() != null && !payload.getStatus().isBlank()) {
+            shipment.setShippingStatus(payload.getStatus().trim().toUpperCase());
+            shipmentRepository.save(shipment);
+            log.info("Shipment {} status updated to {} via webhook", payload.getTrackingCode(), payload.getStatus());
         }
         return true;
     }
