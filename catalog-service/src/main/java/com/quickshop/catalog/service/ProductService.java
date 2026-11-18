@@ -267,10 +267,21 @@ public class ProductService {
 
         Long finalShopId = authShopId != null ? authShopId : (request.getShopId() != null ? request.getShopId() : 1L);
 
-        // Xác định trạng thái ban đầu: DRAFT hoặc PENDING
+        // Xác định trạng thái ban đầu: DRAFT, PENDING hoặc AI AUTO-APPROVED
         ProductStatus initialStatus = ProductStatus.PENDING;
+        String aiNote = null;
         if (Boolean.TRUE.equals(request.getIsDraft()) || request.getStatus() == ProductStatus.DRAFT) {
             initialStatus = ProductStatus.DRAFT;
+        } else if (Boolean.TRUE.equals(request.getAiAutoApprove())) {
+            String violationReason = detectAiPolicyViolation(request);
+            if (violationReason == null) {
+                initialStatus = ProductStatus.APPROVED;
+                log.info("AI Auto-Moderation APPROVED product '{}' for shopId {}", request.getName(), finalShopId);
+            } else {
+                initialStatus = ProductStatus.PENDING;
+                aiNote = "[AI CẢNH BÁO] " + violationReason;
+                log.warn("AI Auto-Moderation FLAGGED product '{}': {}", request.getName(), violationReason);
+            }
         } else if (request.getStatus() != null) {
             // Nếu người bán yêu cầu APPROVED mà không phải Admin -> ép về PENDING
             if (request.getStatus().isApproved() && !isAdmin(callerRole)) {
@@ -287,6 +298,7 @@ public class ProductService {
                 .description(request.getDescription())
                 .mainImage(request.getMainImage())
                 .status(initialStatus)
+                .rejectionReason(aiNote)
                 .build();
 
         Product savedProduct = productRepository.save(product);
@@ -565,6 +577,32 @@ public class ProductService {
                 .reviewCount(reviewCount)
                 .variants(variantDtos)
                 .build();
+    }
+
+    private String detectAiPolicyViolation(ProductCreateRequest request) {
+        String combined = ((request.getName() != null ? request.getName() : "") + " " +
+                (request.getDescription() != null ? request.getDescription() : "")).toLowerCase();
+
+        List<String> bannedKeywords = List.of(
+                "hàng giả", "hàng nhái", "siêu fake", "vũ khí", "súng", "đạn", "ma túy",
+                "cờ bạc", "cá độ", "lừa đảo", "pháo nổ", "thuốc lá điện tử", "rượu lậu", "18+", "khiêu dâm"
+        );
+        for (String kw : bannedKeywords) {
+            if (combined.contains(kw)) {
+                return "Phát hiện từ khóa vi phạm chính sách sàn ('" + kw + "'). Chuyển Admin hậu kiểm thủ công.";
+            }
+        }
+        if (request.getName() == null || request.getName().trim().length() < 5) {
+            return "Tên sản phẩm quá ngắn (< 5 ký tự), chưa đạt chuẩn SEO QuickShop.";
+        }
+        if (request.getVariants() != null) {
+            for (VariantCreateRequest v : request.getVariants()) {
+                if (v.getPrice() == null || v.getPrice().compareTo(BigDecimal.valueOf(1000)) < 0) {
+                    return "Giá bán biến thể bất thường (< 1.000đ). Cần Admin xác minh.";
+                }
+            }
+        }
+        return null;
     }
 
     private boolean isAdmin(String role) {

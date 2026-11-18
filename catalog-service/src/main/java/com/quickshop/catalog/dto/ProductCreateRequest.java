@@ -41,6 +41,12 @@ public class ProductCreateRequest {
      */
     private ProductStatus status;
 
+    /**
+     * Cờ kích hoạt kiểm duyệt tự động bằng AI khi người bán đăng sản phẩm.
+     * Nếu true và vượt qua kiểm tra chính sách an toàn AI -> tự động APPROVED & lưu nhật ký cho Admin theo dõi.
+     */
+    private Boolean aiAutoApprove;
+
     @NotEmpty(message = "Sản phẩm phải có ít nhất một biến thể SKU")
     @Valid
     private List<VariantCreateRequest> variants;
