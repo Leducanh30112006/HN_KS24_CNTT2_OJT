@@ -41,7 +41,16 @@ spring:
             key-resolver: "#{@ipKeyResolver}"
 
       routes:
-        # 1. Identity Service - Public Auth Endpoints (Đăng ký, Đăng nhập, OTP, Refresh Token)
+        # 1a. Identity Service - Protected Auth Endpoints (/api/auth/me, /api/auth/revoke) - Bắt buộc JWT
+        - id: identity-auth-protected-route
+          uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/auth/me, /api/auth/revoke
+          filters:
+            - name: JwtAuth
+            - StripPrefix=0
+
+        # 1b. Identity Service - Public Auth Endpoints (Đăng ký, Đăng nhập, OTP, Refresh Token, Logout)
         - id: identity-public-route
           uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
           predicates:
@@ -49,16 +58,18 @@ spring:
           filters:
             - StripPrefix=0
 
-        # 2. Identity Service - Public Shop Browsing (Xem thông tin gian hàng)
-        - id: identity-shops-public-route
+        # 2a. Identity Service - Protected My Shop (/api/shops/my-shop)
+        - id: identity-shops-my-route
           uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/shops, /api/shops/{id}, /api/shops/owner/{ownerId}
-            - Method=GET
+            - Path=/api/shops/my-shop
           filters:
+            - name: JwtAuth
+              args:
+                allowedRoles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN"
             - StripPrefix=0
 
-        # 3. Identity Service - Admin Shop Approval & Suspension (Admin duyệt/từ chối/khóa/mở khóa gian hàng)
+        # 2b. Identity Service - Admin Shop Approval & Suspension (Admin duyệt/từ chối/khóa/mở khóa gian hàng)
         - id: identity-admin-shops-route
           uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
           predicates:
@@ -70,7 +81,7 @@ spring:
                 requiredRole: ROLE_ADMIN
             - StripPrefix=0
 
-        # 3a. Identity Service - Admin Filter Shops by Status
+        # 2c. Identity Service - Admin Filter Shops by Status
         - id: identity-admin-shops-status-route
           uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
           predicates:
@@ -80,6 +91,15 @@ spring:
             - name: JwtAuth
               args:
                 requiredRole: ROLE_ADMIN
+            - StripPrefix=0
+
+        # 2d. Identity Service - Public Shop Browsing (Xem thông tin gian hàng)
+        - id: identity-shops-public-route
+          uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/shops, /api/shops/{id}, /api/shops/owner/{ownerId}
+            - Method=GET
+          filters:
             - StripPrefix=0
 
         # 3b. Identity Service - Admin Audit Logs
@@ -93,22 +113,92 @@ spring:
                 requiredRole: ROLE_ADMIN
             - StripPrefix=0
 
-        # 4. Identity Service - Protected User & Shop Onboarding (Buyer, Seller, Admin)
-        - id: identity-protected-route
+        # 4a. Identity Service - Protected User Profile (/api/users/me) & Shop Onboarding
+        - id: identity-users-me-route
           uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/users/**, /api/shops/register
+            - Path=/api/users/me, /api/shops/register, /api/shops/{id}
+          filters:
+            - name: JwtAuth
+              args:
+                allowedRoles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN,ROLE_SHIPPER"
+            - StripPrefix=0
+
+        # 4b. Identity Service - Admin User Management (Chống lộ PII: chỉ ROLE_ADMIN được truy cập GET /api/users)
+        - id: identity-users-admin-route
+          uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/users, /api/users/**
+          filters:
+            - name: JwtAuth
+              args:
+                requiredRole: ROLE_ADMIN
+            - StripPrefix=0
+
+        # 5a. Catalog Service - Admin Moderation & Category Write (Yêu cầu ROLE_ADMIN)
+        - id: catalog-admin-route
+          uri: ${CATALOG_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/catalog/products/admin, /api/catalog/products/*/status
+          filters:
+            - name: JwtAuth
+              args:
+                requiredRole: ROLE_ADMIN
+            - StripPrefix=0
+
+        # 5b. Catalog Service - Admin Category Write Operations (POST/PUT/DELETE/PATCH)
+        - id: catalog-categories-write-route
+          uri: ${CATALOG_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/catalog/categories, /api/catalog/categories/**
+            - Method=POST,PUT,DELETE,PATCH
+          filters:
+            - name: JwtAuth
+              args:
+                requiredRole: ROLE_ADMIN
+            - StripPrefix=0
+
+        # 5c. Catalog Service - Buyer/Seller Product Reviews Write (POST)
+        - id: catalog-reviews-write-route
+          uri: ${CATALOG_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/catalog/products/*/reviews
+            - Method=POST
           filters:
             - name: JwtAuth
               args:
                 allowedRoles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN"
             - StripPrefix=0
 
-        # 5. Catalog Service - Public Catalog Browsing (Xem sản phẩm, danh mục, đánh giá)
+        # 5d. Catalog Service - Seller My Products (GET /api/catalog/products/seller/**)
+        - id: catalog-seller-my-route
+          uri: ${CATALOG_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/catalog/products/seller/**
+          filters:
+            - name: JwtAuth
+              args:
+                allowedRoles: "ROLE_SELLER,ROLE_ADMIN"
+            - StripPrefix=0
+
+        # 5e. Catalog Service - Seller/Admin Product, Variant, Inventory & Media Write Operations
+        - id: catalog-write-route
+          uri: ${CATALOG_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/catalog/**
+            - Method=POST,PUT,DELETE,PATCH
+          filters:
+            - name: JwtAuth
+              args:
+                allowedRoles: "ROLE_SELLER,ROLE_ADMIN"
+            - StripPrefix=0
+
+        # 5f. Catalog Service - Public Catalog Browsing (Xem sản phẩm, danh mục, đánh giá - GET)
         - id: catalog-service-route
           uri: ${CATALOG_SERVICE_URL:http://localhost:8082}
           predicates:
             - Path=/api/catalog/**
+            - Method=GET
           filters:
             - StripPrefix=0
 
@@ -120,18 +210,29 @@ spring:
           filters:
             - name: JwtAuth
               args:
-                allowedRoles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN"
+                allowedRoles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN,ROLE_SHIPPER"
             - StripPrefix=0
 
-        # 7a. Payment Service - Public Webhooks, Callbacks & Status (VNPay IPN, PayOS Webhook, Polling, Create)
+        # 7a. Payment Service - Admin Protected Endpoints (Chặn gọi public simulate-success & confirm-webhook)
+        - id: payment-admin-route
+          uri: ${PAYMENT_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/payments/payos/simulate-success, /api/payments/payos/confirm-webhook
+          filters:
+            - name: JwtAuth
+              args:
+                requiredRole: ROLE_ADMIN
+            - StripPrefix=0
+
+        # 7b. Payment Service - Public Webhooks, Callbacks & Status (VNPay IPN, PayOS Webhook, Polling, Create)
         - id: payment-public-route
           uri: ${PAYMENT_SERVICE_URL:http://localhost:8084}
           predicates:
-            - Path=/api/payments/create, /api/payments/vnpay/**, /api/payments/payos/**, /api/payments/status/**, /api/payments/vnpay-ipn, /api/payments/vnpay-return, /api/payments/vnpay-create
+            - Path=/api/payments/create, /api/payments/vnpay/**, /api/payments/payos/webhook, /api/payments/payos/create, /api/payments/payos/create/**, /api/payments/payos/status/**, /api/payments/payos/cancel, /api/payments/status/**, /api/payments/vnpay-ipn, /api/payments/vnpay-return, /api/payments/vnpay-create
           filters:
             - StripPrefix=0
 
-        # 7b. Payment Service - VNPay & Wallet (Yêu cầu đăng nhập)
+        # 7c. Payment Service - VNPay & Wallet (Yêu cầu đăng nhập)
         - id: payment-service-route
           uri: ${PAYMENT_SERVICE_URL:http://localhost:8084}
           predicates:
@@ -158,10 +259,21 @@ spring:
           filters:
             - name: JwtAuth
               args:
-                allowedRoles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN"
+                allowedRoles: "ROLE_BUYER,ROLE_SELLER,ROLE_ADMIN,ROLE_SHIPPER"
             - StripPrefix=0
 
-        # 9. Notification & AI Chatbot Service
+        # 9a. Notification & AI Service - Admin Internal Endpoints (Chặn Guest đọc email logs & reset Circuit Breaker)
+        - id: notification-admin-route
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/api/notifications/email-logs, /api/notifications/email-logs/**, /api/ai/circuit-breaker/reset
+          filters:
+            - name: JwtAuth
+              args:
+                requiredRole: ROLE_ADMIN
+            - StripPrefix=0
+
+        # 9b. Notification & AI Chatbot Service (Public AI chat & user notifications)
         - id: notification-service-route
           uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
           predicates:

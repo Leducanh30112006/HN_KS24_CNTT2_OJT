@@ -11,6 +11,7 @@ import com.quickshop.payment.service.LedgerService;
 import com.quickshop.payment.service.PayOsService;
 import com.quickshop.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -58,7 +59,13 @@ public class PaymentController {
     }
 
     @PostMapping("/withdrawals")
-    public ResponseEntity<ApiResponse<Withdrawal>> requestWithdrawal(@RequestBody WithdrawalRequestDto request) {
+    public ResponseEntity<ApiResponse<Withdrawal>> requestWithdrawal(@RequestBody(required = false) WithdrawalRequestDto request) {
+        if (request == null || request.getShopId() == null) {
+            throw new BadRequestException("Thiếu thông tin gian hàng (shopId) hoặc số tiền rút");
+        }
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("Số tiền rút phải lớn hơn 0");
+        }
         Withdrawal withdrawal = paymentService.requestWithdrawal(request);
         return ResponseEntity.ok(ApiResponse.success("Tạo yêu cầu rút tiền thành công", withdrawal));
     }
@@ -140,23 +147,28 @@ public class PaymentController {
         if (targetOrderId == null || targetOrderId.isBlank()) {
             targetOrderId = orderIdParam;
         }
-        if ((targetOrderId == null || targetOrderId.isBlank()) && body != null) {
-            targetOrderId = String.valueOf(body.getOrDefault("orderId", ""));
+        if ((targetOrderId == null || targetOrderId.isBlank()) && body != null && body.get("orderId") != null) {
+            targetOrderId = String.valueOf(body.get("orderId"));
         }
-        if (targetOrderId == null || targetOrderId.isBlank()) {
+        if (targetOrderId == null || targetOrderId.isBlank() || "null".equalsIgnoreCase(targetOrderId.trim())) {
             throw new BadRequestException("Mã đơn hàng (orderId) không được để trống");
         }
 
         BigDecimal customAmount = null;
-        if (body != null && body.containsKey("amount")) {
+        if (body != null && body.containsKey("amount") && body.get("amount") != null) {
             try {
                 customAmount = new BigDecimal(String.valueOf(body.get("amount")));
-            } catch (Exception ignored) {}
+            } catch (Exception ex) {
+                throw new BadRequestException("Số tiền thanh toán (amount) không đúng định dạng số");
+            }
+            if (customAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new BadRequestException("Số tiền thanh toán (amount) phải lớn hơn 0");
+            }
         }
 
-        CreatePayOsPaymentResponse response = (customAmount != null && customAmount.compareTo(BigDecimal.ZERO) > 0)
-                ? payOsService.createPayment(targetOrderId, customAmount)
-                : payOsService.createPayment(targetOrderId);
+        CreatePayOsPaymentResponse response = (customAmount != null)
+                ? payOsService.createPayment(targetOrderId.trim(), customAmount)
+                : payOsService.createPayment(targetOrderId.trim());
 
         return ResponseEntity.ok(ApiResponse.success("Tạo yêu cầu thanh toán PayOS thành công", response));
     }
@@ -227,13 +239,21 @@ public class PaymentController {
     }
 
     /**
-     * Endpoint giả lập chuyển khoản MB Bank thành công (dùng cho dev/test và demo kiểm thử tức thì)
+     * Endpoint giả lập chuyển khoản MB Bank thành công (chỉ cho phép ROLE_ADMIN xác nhận thủ công)
      */
     @PostMapping("/payos/simulate-success")
     public ResponseEntity<ApiResponse<PaymentTransactionResponse>> simulateSuccess(
             @RequestParam String orderId,
-            @RequestParam(required = false) BigDecimal amount
+            @RequestParam(required = false) BigDecimal amount,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole
     ) {
+        if (userRole == null || (!"ROLE_ADMIN".equalsIgnoreCase(userRole.trim()) && !"ADMIN".equalsIgnoreCase(userRole.trim()))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Endpoint xác nhận thanh toán thủ công chỉ dành cho Quản trị viên (ROLE_ADMIN)"));
+        }
+        if (amount != null && amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("Số tiền xác nhận phải lớn hơn 0");
+        }
         PaymentTransactionResponse response = paymentService.simulatePaymentSuccess(orderId, amount);
         return ResponseEntity.ok(ApiResponse.success("Xác nhận chuyển khoản MB Bank thành công", response));
     }

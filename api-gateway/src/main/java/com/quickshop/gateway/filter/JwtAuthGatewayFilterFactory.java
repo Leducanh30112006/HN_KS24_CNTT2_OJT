@@ -13,10 +13,12 @@ import io.jsonwebtoken.security.SignatureException;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -30,6 +32,7 @@ import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -37,14 +40,23 @@ import java.util.List;
 @Component
 public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<JwtAuthGatewayFilterFactory.Config> {
 
+    public static final String REVOKED_TOKEN_PREFIX = "identity:revoked_token:";
+
     @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
     private String jwtSecret;
+
+    @Autowired(required = false)
+    private ReactiveStringRedisTemplate reactiveStringRedisTemplate;
 
     private Key signingKey;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public JwtAuthGatewayFilterFactory() {
         super(Config.class);
+    }
+
+    public void setReactiveStringRedisTemplate(ReactiveStringRedisTemplate reactiveStringRedisTemplate) {
+        this.reactiveStringRedisTemplate = reactiveStringRedisTemplate;
     }
 
     @Override
@@ -111,11 +123,35 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
                 }
 
                 ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+                        .headers(h -> {
+                            h.remove("X-Auth-Username");
+                            h.remove("X-User-Id");
+                            h.remove("X-User-Email");
+                            h.remove("X-User-Role");
+                        })
                         .header("X-Auth-Username", username != null ? username : "")
                         .header("X-User-Id", userId != null ? String.valueOf(userId) : "")
                         .header("X-User-Email", email != null ? String.valueOf(email) : "")
                         .header("X-User-Role", userRoleStr)
                         .build();
+
+                // Kiểm tra Redis Blacklist (Chặn tái sử dụng Access Token đã Logout / Revoke)
+                if (reactiveStringRedisTemplate != null) {
+                    String revokedKey = REVOKED_TOKEN_PREFIX + token.trim();
+                    return reactiveStringRedisTemplate.hasKey(revokedKey)
+                            .timeout(Duration.ofSeconds(2))
+                            .onErrorResume(ex -> {
+                                log.warn("Redis blacklist check failed/timed out, continuing: {}", ex.getMessage());
+                                return Mono.just(false);
+                            })
+                            .flatMap(isRevoked -> {
+                                if (Boolean.TRUE.equals(isRevoked)) {
+                                    log.warn("Access denied: JWT token for user '{}' has been revoked/logged out", username);
+                                    return onError(exchange, "Token xác thực đã bị thu hồi hoặc đã đăng xuất, vui lòng đăng nhập lại", HttpStatus.UNAUTHORIZED);
+                                }
+                                return chain.filter(exchange.mutate().request(mutatedRequest).build());
+                            });
+                }
 
                 return chain.filter(exchange.mutate().request(mutatedRequest).build());
 

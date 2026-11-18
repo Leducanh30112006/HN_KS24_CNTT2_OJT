@@ -1,6 +1,7 @@
 package com.quickshop.catalog.controller;
 
 import com.quickshop.catalog.dto.CategoryDto;
+import com.quickshop.catalog.exception.ForbiddenException;
 import com.quickshop.catalog.service.CategoryService;
 import com.quickshop.common.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,7 +40,11 @@ public class CategoryController {
 
     @PostMapping
     @Operation(summary = "Admin tạo danh mục mới (tự động xóa cache)")
-    public ResponseEntity<ApiResponse<CategoryDto>> createCategory(@RequestBody CategoryDto dto) {
+    public ResponseEntity<ApiResponse<CategoryDto>> createCategory(
+            @RequestBody CategoryDto dto,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole
+    ) {
+        requireAdmin(userRole);
         CategoryDto created = categoryService.createCategory(dto);
         return ResponseEntity.ok(ApiResponse.created("Tạo danh mục mới thành công", created));
     }
@@ -48,16 +53,28 @@ public class CategoryController {
     @Operation(summary = "Admin cập nhật danh mục (tự động xóa cache)")
     public ResponseEntity<ApiResponse<CategoryDto>> updateCategory(
             @PathVariable Long id,
-            @RequestBody CategoryDto dto
+            @RequestBody CategoryDto dto,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole
     ) {
+        requireAdmin(userRole);
         CategoryDto updated = categoryService.updateCategory(id, dto);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật danh mục thành công", updated));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Admin xóa danh mục (tự động xóa cache)")
-    public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteCategory(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole
+    ) {
+        requireAdmin(userRole);
         categoryService.deleteCategory(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa danh mục thành công", null));
+    }
+
+    private void requireAdmin(String userRole) {
+        if (userRole == null || (!"ROLE_ADMIN".equalsIgnoreCase(userRole.trim()) && !"ADMIN".equalsIgnoreCase(userRole.trim()))) {
+            throw new ForbiddenException("Bạn không có quyền quản trị danh mục (Yêu cầu ROLE_ADMIN)");
+        }
     }
 }

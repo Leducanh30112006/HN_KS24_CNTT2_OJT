@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -25,16 +26,39 @@ public class UserController {
 
     @GetMapping
     @Operation(summary = "Lấy danh sách tất cả người dùng (Dành cho Admin)")
-    public ResponseEntity<ApiResponse<List<User>>> getAllUsers() {
+    public ResponseEntity<ApiResponse<List<User>>> getAllUsers(
+            @RequestHeader(value = "X-User-Role", required = false) String userRole
+    ) {
+        if (!isAdmin(userRole)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Bạn không có quyền xem danh sách người dùng hệ thống (Yêu cầu ROLE_ADMIN)"));
+        }
         return ResponseEntity.ok(ApiResponse.ok(userRepository.findAll()));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Lấy thông tin người dùng theo ID")
-    public ResponseEntity<ApiResponse<User>> getUserById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<User>> getUserById(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole
+    ) {
+        boolean isOwner = StringUtils.hasText(userIdHeader) && userIdHeader.trim().equals(String.valueOf(id));
+        if (!isAdmin(userRole) && !isOwner) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Bạn không có quyền truy cập thông tin của người dùng khác"));
+        }
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
         return ResponseEntity.ok(ApiResponse.ok(user));
+    }
+
+    private boolean isAdmin(String userRole) {
+        if (!StringUtils.hasText(userRole)) {
+            return false;
+        }
+        String r = userRole.trim().toUpperCase();
+        return "ROLE_ADMIN".equals(r) || "ADMIN".equals(r);
     }
 
     @GetMapping("/me")
