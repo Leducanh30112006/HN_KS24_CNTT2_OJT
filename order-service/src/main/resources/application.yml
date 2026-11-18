@@ -35,6 +35,7 @@ spring:
 catalog:
   service:
     url: ${CATALOG_SERVICE_URL:http://localhost:8082}
+    mock-enabled: ${CATALOG_SERVICE_MOCK_ENABLED:true}
 
 springdoc:
   swagger-ui:

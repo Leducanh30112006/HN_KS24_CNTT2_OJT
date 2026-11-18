@@ -372,4 +372,32 @@ class JwtAuthGatewayFilterFactoryTest {
 
         assertThat(chainCalled.get()).isTrue();
     }
+
+    @Test
+    @DisplayName("Sửa 1 ký tự cuối cùng của chữ ký HS256 (trailing-bit tampering) - Bắt buộc trả 401 UNAUTHORIZED")
+    void apply_TamperedLastCharSignature_Returns401Unauthorized() {
+        String validToken = generateToken("buyer1", 5L, "buyer@quickshop.vn", "ROLE_BUYER", "ACCESS", 3600000L);
+        char lastChar = validToken.charAt(validToken.length() - 1);
+        // Đổi sang ký tự liền kề (thường chỉ khác 1-2 bit dư cuối Base64URL)
+        char tamperedLast = (lastChar == 'A') ? 'B' : (char) (lastChar + 1);
+        if (tamperedLast == '[' || tamperedLast == '{' || tamperedLast == ':') {
+            tamperedLast = 'B';
+        }
+        String tamperedToken = validToken.substring(0, validToken.length() - 1) + tamperedLast;
+
+        GatewayFilter filter = filterFactory.apply(new JwtAuthGatewayFilterFactory.Config());
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/orders")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + tamperedToken)
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        AtomicBoolean chainCalled = new AtomicBoolean(false);
+        StepVerifier.create(filter.filter(exchange, ex -> {
+            chainCalled.set(true);
+            return Mono.empty();
+        })).verifyComplete();
+
+        assertThat(chainCalled.get()).isFalse();
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
 }

@@ -49,7 +49,6 @@ public class AuthServiceImpl implements AuthService {
     private final AuditLogService auditLogService;
 
     @Override
-    @Transactional
     public AuthResponse login(LoginRequest loginRequest) {
         String identifier = loginRequest != null && loginRequest.getUsernameOrEmail() != null
                 ? loginRequest.getUsernameOrEmail().trim()
