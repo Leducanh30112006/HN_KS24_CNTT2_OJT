@@ -116,15 +116,18 @@ export default function LoginPage({
 
       setErrorMsg(res?.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
     } catch (err) {
-      const status = err?.response?.status;
-      const serverMessage = err?.response?.data?.message;
+      const status = err?.status ?? err?.response?.status;
+      const serverMessage = err?.message ?? err?.response?.data?.message;
 
       if (status === 400 || status === 401 || status === 403) {
-        setErrorMsg(serverMessage || 'Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại!');
+        const msg = serverMessage || 'Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại!';
+        setErrorMsg(msg);
+        setFieldErrors(prev => ({ ...prev, password: 'Tên đăng nhập hoặc mật khẩu không chính xác' }));
         return;
       }
       if (status === 404) {
         setErrorMsg(serverMessage || 'Tài khoản không tồn tại trên hệ thống. Vui lòng kiểm tra lại hoặc Đăng ký mới!');
+        setFieldErrors(prev => ({ ...prev, usernameOrEmail: 'Tài khoản không tồn tại' }));
         return;
       }
 
@@ -195,7 +198,8 @@ export default function LoginPage({
         return;
       }
 
-      setErrorMsg(serverMessage || 'Lỗi kết nối máy chủ xác thực hoặc thông tin đăng nhập không hợp lệ.');
+      setErrorMsg('Đăng nhập không thành công: Tên đăng nhập hoặc mật khẩu không chính xác hoặc lỗi kết nối.');
+      setFieldErrors(prev => ({ ...prev, password: 'Đăng nhập không thành công' }));
     } finally {
       setLoading(false);
     }

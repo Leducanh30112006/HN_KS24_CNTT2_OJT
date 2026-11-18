@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -69,7 +70,14 @@ public class AuthServiceImpl implements AuthService {
                 .orElse(null);
 
         if (user == null || !passwordEncoder.matches(rawPassword, user.getPassword())) {
-            auditLogService.logFailure(user != null ? user.getId() : null, identifier, "LOGIN_FAILED", "Auth", null, "Sai tên đăng nhập hoặc mật khẩu");
+            final Long failedUserId = user != null ? user.getId() : null;
+            CompletableFuture.runAsync(() -> {
+                try {
+                    auditLogService.logFailure(failedUserId, identifier, "LOGIN_FAILED", "Auth", null, "Sai tên đăng nhập hoặc mật khẩu");
+                } catch (Exception ex) {
+                    log.warn("Async audit log failure failed: {}", ex.getMessage());
+                }
+            });
             throw new BadRequestException("Tên đăng nhập hoặc mật khẩu không chính xác");
         }
 
