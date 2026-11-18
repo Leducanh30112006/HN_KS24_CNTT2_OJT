@@ -3,6 +3,7 @@ import { Star, ShoppingCart, MapPin, CheckCircle2 } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { fixMojibakeText } from '../utils/vietnameseEncoding';
+import { FALLBACK_PRODUCT_IMAGE, handleImageError } from '../utils/imageFallback';
 
 export default function ProductCard({ product, onSelect, onRequireAuth, onSelectShop }) {
   const addToCart = useCartStore((state) => state.addToCart);
@@ -32,15 +33,21 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
 
   return (
     <div
-      onClick={() => onSelect(product)}
       className="product-card-item bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-xl hover:border-orange-400/80 transition-shadow transition-colors duration-300 ease-out cursor-pointer flex flex-col justify-between group relative select-none"
     >
+      <button
+        type="button"
+        onClick={() => onSelect(product)}
+        aria-label={`Xem chi tiết ${fixMojibakeText(product.name)}`}
+        className="absolute inset-0 z-0 w-full h-full bg-transparent border-0 cursor-pointer"
+      />
       <div>
         {/* Product Image & Badges: Clean Aspect-[4/5] Rounded Framing */}
-        <div className="relative aspect-[4/5] overflow-hidden bg-slate-100/80 m-2 sm:m-2.5 rounded-2xl">
+        <div className="relative aspect-[4/5] overflow-hidden bg-slate-100/80 m-2 sm:m-2.5 rounded-2xl pointer-events-none">
           <img
-            src={product.mainImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'}
+            src={product.mainImage || FALLBACK_PRODUCT_IMAGE}
             alt={product.name}
+            onError={handleImageError}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out pointer-events-none"
             loading="lazy"
           />
@@ -62,8 +69,9 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
           </div>
 
           {/* Floating 'Thêm vào giỏ' Quick-Action Pill that slides up smoothly on card hover */}
-          <div className="absolute inset-x-2 bottom-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out pointer-events-none">
+          <div className="absolute inset-x-2 bottom-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out pointer-events-none z-10">
             <button
+              type="button"
               onClick={handleQuickAdd}
               className="btn-shimmer w-full py-2 bg-slate-900/90 hover:bg-orange-600 backdrop-blur-md text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-slate-950/20 active:scale-95 transition-colors duration-200 pointer-events-auto cursor-pointer"
               title="Thêm nhanh vào giỏ hàng (Yêu cầu đăng nhập)"
@@ -81,18 +89,19 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
               {fixMojibakeText(product.categoryName) || 'Sản phẩm chính hãng'}
             </span>
             {product.shopName && (
-              <span
+              <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   if (onSelectShop) {
                     onSelectShop({ id: product.shopId || 1, name: fixMojibakeText(product.shopName) });
                   }
                 }}
-                className="text-[10px] text-slate-400 hover:text-orange-600 hover:underline truncate max-w-[85px] cursor-pointer"
+                className="relative z-10 text-[10px] text-slate-400 hover:text-orange-600 hover:underline truncate max-w-[85px] cursor-pointer bg-transparent border-0 p-0 text-left"
                 title={`Xem gian hàng: ${fixMojibakeText(product.shopName)}`}
               >
                 {fixMojibakeText(product.shopName)}
-              </span>
+              </button>
             )}
           </div>
 

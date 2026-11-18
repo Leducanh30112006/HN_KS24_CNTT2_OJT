@@ -275,7 +275,9 @@ public class MinioStorageService {
 
     private String buildPublicUrl(String uniqueFileName) {
         String baseUrl = minioPublicUrl != null && !minioPublicUrl.isBlank() ? minioPublicUrl : minioEndpoint;
-        baseUrl = baseUrl.replaceAll("/+$", "");
+        while (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
         return String.format("%s/%s/%s", baseUrl, bucketName, uniqueFileName);
     }
 }

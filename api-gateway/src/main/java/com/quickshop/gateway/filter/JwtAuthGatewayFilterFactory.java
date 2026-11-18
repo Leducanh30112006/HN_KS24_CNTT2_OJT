@@ -42,7 +42,7 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
 
     public static final String REVOKED_TOKEN_PREFIX = "identity:revoked_token:";
 
-    @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
+    @Value("${jwt.secret:}")
     private String jwtSecret;
 
     @Autowired(required = false)
@@ -71,6 +71,9 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
 
     @PostConstruct
     public void init() {
+        if (!StringUtils.hasText(jwtSecret)) {
+            return;
+        }
         byte[] keyBytes;
         try {
             keyBytes = Decoders.BASE64.decode(jwtSecret);

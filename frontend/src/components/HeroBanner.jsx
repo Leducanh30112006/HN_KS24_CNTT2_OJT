@@ -210,9 +210,10 @@ export default function HeroBanner({
         <div className="lg:col-span-5 flex flex-col gap-3.5 sm:gap-4">
           
           {/* CARD 2: INTERACTIVE FEATURED PRODUCT SPOTLIGHT CARD */}
-          <div
+          <button
+            type="button"
             onClick={() => onSelectProduct && onSelectProduct(spotlightProduct)}
-            className="bento-reveal-item flex-1 bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm hover:shadow-xl hover:border-orange-400/80 transition-all duration-300 flex flex-col justify-between cursor-pointer group relative overflow-hidden"
+            className="bento-reveal-item w-full text-left flex-1 bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm hover:shadow-xl hover:border-orange-400/80 transition-all duration-300 flex flex-col justify-between cursor-pointer group relative overflow-hidden"
           >
             <div>
               <div className="flex items-center justify-between gap-2 pb-2.5">
@@ -263,7 +264,7 @@ export default function HeroBanner({
                 Xem chi tiết →
               </span>
             </div>
-          </div>
+          </button>
 
           {/* CARD 3: LIVE FLASH SALE COUNTDOWN CARD WITH TABULAR MONOSPACE DIGITS */}
           <div className="bento-reveal-item bg-[#18181B] rounded-3xl p-5 border border-slate-800 text-white shadow-xl flex flex-col justify-between relative overflow-hidden group select-none">

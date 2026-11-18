@@ -181,7 +181,7 @@ export default function CartPage({
         </button>
 
         <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-          <span className="text-slate-400 cursor-pointer hover:text-orange-600" onClick={onBack}>Trang chủ</span>
+          <button type="button" className="text-slate-400 cursor-pointer hover:text-orange-600 bg-transparent border-0 p-0" onClick={onBack}>Trang chủ</button>
           <ChevronRight className="w-3.5 h-3.5" />
           <span className="text-orange-600 font-bold">Giỏ Hàng QuickShop</span>
           <span className="bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full text-[11px] ml-1">

@@ -426,7 +426,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
   };
 
   useEffect(() => {
-    fetchMyProducts();
+    void fetchMyProducts();
     const handleAiSync = () => {
       setProducts((prev) => mergeAiMetadata(prev));
     };
@@ -560,7 +560,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
   const handleRequestWithdraw = (e) => {
     e.preventDefault();
-    const amt = parseInt(withdrawAmount, 10);
+    const amt = Number.parseInt(withdrawAmount, 10);
     if (!amt || amt <= 0 || amt > wallet.availableBalance) {
       showToast('Số tiền rút không hợp lệ hoặc vượt quá số dư khả dụng!', 'error');
       return;
@@ -933,10 +933,12 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
       {/* Backdrop for mobile sidebar */}
       {sidebarOpen && (
-        <div
+        <button
+          type="button"
+          aria-label="Đóng menu điều hướng"
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm md:hidden"
-        ></div>
+          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm md:hidden w-full h-full border-0 p-0 cursor-default"
+        />
       )}
 
       {/* ========================================================== */}
@@ -1865,8 +1867,9 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
             <div data-lenis-prevent className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
               <div>
-                <label className="text-xs font-bold text-slate-700">Tên sản phẩm (*):</label>
+                <label htmlFor="seller-create-name" className="text-xs font-bold text-slate-700">Tên sản phẩm (*):</label>
                 <input
+                  id="seller-create-name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -1877,8 +1880,9 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700">Danh mục:</label>
+                  <label htmlFor="seller-create-category" className="text-xs font-bold text-slate-700">Danh mục:</label>
                   <select
+                    id="seller-create-category"
                     value={categoryId}
                     onChange={(e) => setCategoryId(Number(e.target.value))}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 outline-none"
@@ -1889,8 +1893,9 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-700">Thương hiệu:</label>
+                  <label htmlFor="seller-create-brand" className="text-xs font-bold text-slate-700">Thương hiệu:</label>
                   <input
+                    id="seller-create-brand"
                     type="text"
                     value={brand}
                     onChange={(e) => setBrand(e.target.value)}
@@ -1902,7 +1907,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               {/* Tải ảnh đại diện chính từ máy tính hoặc dán URL */}
               <div className="space-y-2.5 p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200/90">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <label htmlFor="seller-create-main-image-file" className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                     <ImageIcon className="w-3.5 h-3.5 text-orange-600" />
                     <span>Ảnh đại diện chính sản phẩm:</span>
                   </label>
@@ -1910,6 +1915,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
                 </div>
 
                 <input
+                  id="seller-create-main-image-file"
                   type="file"
                   ref={mainImageFileRef}
                   accept="image/*"
@@ -2044,12 +2050,12 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               {/* Mô tả chi tiết với CKEditor 5 */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                     <span>Mô tả chi tiết sản phẩm:</span>
                     <span className="text-[10px] font-semibold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
                       CKEditor 5
                     </span>
-                  </label>
+                  </div>
                   <span className="text-[10px] text-slate-400">Định dạng chữ, màu sắc, bảng biểu, danh sách</span>
                 </div>
                 <ProductDescriptionEditor
@@ -2062,11 +2068,12 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               {/* Thêm hình ảnh minh họa trong mô tả (Tải từ máy tính hoặc dán URL) */}
               <div className="space-y-2 p-3 bg-slate-50 rounded-2xl border border-slate-200">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <label htmlFor="seller-create-desc-image-file" className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                     <ImageIcon className="w-3.5 h-3.5 text-orange-600" />
                     <span>Hình ảnh minh họa chèn trong mô tả (Rich Visual Showcase):</span>
                   </label>
                   <input
+                    id="seller-create-desc-image-file"
                     type="file"
                     ref={descImageFileRef}
                     accept="image/*"
@@ -2130,7 +2137,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
               {/* Biến thể SKU */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700">Biến thể phân loại SKU & Giá:</label>
+                <div className="text-xs font-bold text-slate-700">Biến thể phân loại SKU & Giá:</div>
                 {variants.map((v, idx) => (
                   <div key={idx} className="grid grid-cols-4 gap-2 items-center bg-slate-50 p-2 rounded-xl">
                     <input
@@ -2228,8 +2235,9 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
             <div data-lenis-prevent className="space-y-4 max-h-[75vh] overflow-y-auto pr-1 text-xs">
               <div>
-                <label className="font-bold text-slate-700">Tên sản phẩm:</label>
+                <label htmlFor="seller-edit-name" className="font-bold text-slate-700">Tên sản phẩm:</label>
                 <input
+                  id="seller-edit-name"
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
@@ -2239,11 +2247,12 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
               {/* Đổi ảnh đại diện sản phẩm từ máy tính */}
               <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                <label className="font-bold text-slate-800 flex items-center gap-1.5">
+                <label htmlFor="seller-edit-main-image-file" className="font-bold text-slate-800 flex items-center gap-1.5">
                   <ImageIcon className="w-3.5 h-3.5 text-orange-600" />
                   <span>Ảnh đại diện chính sản phẩm:</span>
                 </label>
                 <input
+                  id="seller-edit-main-image-file"
                   type="file"
                   ref={editMainImageFileRef}
                   accept="image/*"
@@ -2348,12 +2357,12 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               {/* Mô tả chi tiết với CKEditor 5 */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                  <div className="font-bold text-slate-700 flex items-center gap-1.5">
                     <span>Mô tả chi tiết:</span>
                     <span className="text-[10px] font-semibold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
                       CKEditor 5
                     </span>
-                  </label>
+                  </div>
                   <span className="text-[10px] text-slate-400">Định dạng chữ, màu sắc, bảng biểu, danh sách</span>
                 </div>
                 <ProductDescriptionEditor
@@ -2366,8 +2375,9 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               {/* Ảnh minh họa trong mô tả */}
               <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <label className="font-bold text-slate-800">Ảnh minh họa chi tiết:</label>
+                  <label htmlFor="seller-edit-desc-image-file" className="font-bold text-slate-800">Ảnh minh họa chi tiết:</label>
                   <input
+                    id="seller-edit-desc-image-file"
                     type="file"
                     ref={editDescImageFileRef}
                     accept="image/*"
@@ -2572,8 +2582,9 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
             <form onSubmit={handleRequestWithdraw} className="space-y-3 text-xs">
               <div>
-                <label className="font-bold text-slate-700">Số tiền muốn rút (VNĐ):</label>
+                <label htmlFor="seller-withdraw-amount" className="font-bold text-slate-700">Số tiền muốn rút (VNĐ):</label>
                 <input
+                  id="seller-withdraw-amount"
                   type="number"
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
@@ -2582,8 +2593,9 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               </div>
 
               <div>
-                <label className="font-bold text-slate-700">Ngân hàng thụ hưởng:</label>
+                <label htmlFor="seller-withdraw-bank" className="font-bold text-slate-700">Ngân hàng thụ hưởng:</label>
                 <select
+                  id="seller-withdraw-bank"
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none"
@@ -2597,8 +2609,9 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               </div>
 
               <div>
-                <label className="font-bold text-slate-700">Số tài khoản ngân hàng:</label>
+                <label htmlFor="seller-withdraw-account-number" className="font-bold text-slate-700">Số tài khoản ngân hàng:</label>
                 <input
+                  id="seller-withdraw-account-number"
                   type="text"
                   value={accountNumber}
                   onChange={(e) => setAccountNumber(e.target.value)}
@@ -2607,8 +2620,9 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               </div>
 
               <div>
-                <label className="font-bold text-slate-700">Tên chủ tài khoản (Viết hoa không dấu):</label>
+                <label htmlFor="seller-withdraw-account-holder" className="font-bold text-slate-700">Tên chủ tài khoản (Viết hoa không dấu):</label>
                 <input
+                  id="seller-withdraw-account-holder"
                   type="text"
                   value={accountHolder}
                   onChange={(e) => setAccountHolder(e.target.value.toUpperCase())}

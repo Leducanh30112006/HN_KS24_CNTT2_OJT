@@ -5,9 +5,11 @@ export const JWT_SECRET_BASE64 = '404E635266556A586E3272357538782F413F4428472B4B
 
 function base64url(source) {
   let encodedSource = CryptoJS.enc.Base64.stringify(source);
-  encodedSource = encodedSource.replace(/=+$/, '');
-  encodedSource = encodedSource.replace(/\+/g, '-');
-  encodedSource = encodedSource.replace(/\//g, '_');
+  while (encodedSource.endsWith('=')) {
+    encodedSource = encodedSource.slice(0, -1);
+  }
+  encodedSource = encodedSource.replaceAll('+', '-');
+  encodedSource = encodedSource.replaceAll('/', '_');
   return encodedSource;
 }
 

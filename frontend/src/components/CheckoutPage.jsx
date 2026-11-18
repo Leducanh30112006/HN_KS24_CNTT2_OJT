@@ -128,7 +128,7 @@ export default function CheckoutPage({
   const [copiedField, setCopiedField] = useState(null);
   const handleCopy = (text, fieldName) => {
     if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(text);
+      void navigator.clipboard.writeText(text);
       setCopiedField(fieldName);
       setTimeout(() => setCopiedField(null), 2000);
     }
@@ -580,7 +580,7 @@ export default function CheckoutPage({
 
         // NẾU CHỌN THANH TOÁN CHUYỂN KHOẢN: Khởi tạo URL PayOS thực tế từ Backend
         if (isBankTransfer) {
-          handleCreatePayOsPayment(displayOrderId, finalAmount);
+          void handleCreatePayOsPayment(displayOrderId, finalAmount);
         }
       } else {
         setOrderError(res?.message || 'Không thể tạo đơn hàng. Vui lòng kiểm tra lại thông tin giỏ hàng!');
@@ -619,7 +619,7 @@ export default function CheckoutPage({
         removeMultipleFromCart(displayItems.map((i) => i.variantId || i.id));
       }
       if (isBankTransfer) {
-        handleCreatePayOsPayment(fallbackOrderId, finalTotal);
+        void handleCreatePayOsPayment(fallbackOrderId, finalTotal);
       }
     } finally {
       setIsSubmitting(false);
@@ -1252,7 +1252,7 @@ export default function CheckoutPage({
         </button>
 
         <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-          <span className="text-slate-400 cursor-pointer hover:text-orange-600" onClick={onBack}>Giỏ hàng</span>
+          <button type="button" className="text-slate-400 cursor-pointer hover:text-orange-600 bg-transparent border-0 p-0" onClick={onBack}>Giỏ hàng</button>
           <ChevronRight className="w-3.5 h-3.5" />
           <h1 className="text-orange-600 font-bold inline text-xs">Thanh toán đơn hàng</h1>
           <span className="bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full text-[11px] ml-1">
@@ -1286,8 +1286,9 @@ export default function CheckoutPage({
             {isEditingAddress ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
                 <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Họ và tên người nhận:</label>
+                  <label htmlFor="checkout-address-name" className="block text-slate-600 font-semibold mb-1">Họ và tên người nhận:</label>
                   <input
+                    id="checkout-address-name"
                     type="text"
                     value={address.name}
                     onChange={(e) => setAddress({ ...address, name: e.target.value })}
@@ -1295,8 +1296,9 @@ export default function CheckoutPage({
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Số điện thoại liên hệ:</label>
+                  <label htmlFor="checkout-address-phone" className="block text-slate-600 font-semibold mb-1">Số điện thoại liên hệ:</label>
                   <input
+                    id="checkout-address-phone"
                     type="text"
                     value={address.phone}
                     onChange={(e) => setAddress({ ...address, phone: e.target.value })}
@@ -1304,8 +1306,9 @@ export default function CheckoutPage({
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-slate-600 font-semibold mb-1">Địa chỉ chi tiết (Số nhà, đường, phường, quận):</label>
+                  <label htmlFor="checkout-address-line" className="block text-slate-600 font-semibold mb-1">Địa chỉ chi tiết (Số nhà, đường, phường, quận):</label>
                   <input
+                    id="checkout-address-line"
                     type="text"
                     value={address.addressLine}
                     onChange={(e) => setAddress({ ...address, addressLine: e.target.value })}
@@ -1369,11 +1372,14 @@ export default function CheckoutPage({
                           className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover bg-slate-50 border border-slate-200/80 flex-shrink-0"
                         />
                         <div className="space-y-1 min-w-0">
-                          <h4 
-                            onClick={() => onSelectProduct && onSelectProduct({ id: item.productId, name: fixMojibakeText(item.productName) })}
-                            className="text-xs sm:text-sm font-bold text-slate-800 line-clamp-2 hover:text-orange-600 transition cursor-pointer"
-                          >
-                            {fixMojibakeText(item.productName)}
+                          <h4 className="text-xs sm:text-sm font-bold text-slate-800 line-clamp-2">
+                            <button
+                              type="button"
+                              onClick={() => onSelectProduct && onSelectProduct({ id: item.productId, name: fixMojibakeText(item.productName) })}
+                              className="text-left hover:text-orange-600 transition cursor-pointer bg-transparent border-0 p-0 font-bold"
+                            >
+                              {fixMojibakeText(item.productName)}
+                            </button>
                           </h4>
                           <div className="text-[11px] text-slate-500 flex flex-wrap gap-2">
                             {item.color && (
@@ -1562,13 +1568,14 @@ export default function CheckoutPage({
             <div className="space-y-2.5">
               {/* Option 1: COD */}
               <label
-                onClick={() => setPaymentMethod('cod')}
+                htmlFor="checkout-payment-cod"
                 className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
                   paymentMethod === 'cod'
                     ? 'border-orange-500 bg-orange-50/50 ring-2 ring-orange-500/20'
                     : 'border-slate-200 hover:bg-slate-50'
                 }`}
               >
+                <span className="sr-only">Thanh toán khi nhận hàng (COD)</span>
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs">
                     <DollarSign className="w-5 h-5" />
@@ -1579,6 +1586,7 @@ export default function CheckoutPage({
                   </div>
                 </div>
                 <input
+                  id="checkout-payment-cod"
                   type="radio"
                   name="payment"
                   checked={paymentMethod === 'cod'}
@@ -1589,13 +1597,14 @@ export default function CheckoutPage({
 
               {/* Option 2: MB Bank (PayOS / VietQR) */}
               <label
-                onClick={() => setPaymentMethod('payos')}
+                htmlFor="checkout-payment-payos"
                 className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
                   paymentMethod === 'payos' || paymentMethod === 'vnpay'
                     ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-500/20'
                     : 'border-slate-200 hover:bg-slate-50'
                 }`}
               >
+                <span className="sr-only">Chuyển khoản QR Ngân Hàng (MB Bank / PayOS 24/7)</span>
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
                     <QrCode className="w-5 h-5" />
@@ -1611,6 +1620,7 @@ export default function CheckoutPage({
                   </div>
                 </div>
                 <input
+                  id="checkout-payment-payos"
                   type="radio"
                   name="payment"
                   checked={paymentMethod === 'payos' || paymentMethod === 'vnpay'}
@@ -1621,13 +1631,14 @@ export default function CheckoutPage({
 
               {/* Option 3: Credit Card */}
               <label
-                onClick={() => setPaymentMethod('credit')}
+                htmlFor="checkout-payment-credit"
                 className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
                   paymentMethod === 'credit'
                     ? 'border-orange-500 bg-orange-50/50 ring-2 ring-orange-500/20'
                     : 'border-slate-200 hover:bg-slate-50'
                 }`}
               >
+                <span className="sr-only">Thẻ Quốc Tế (Visa, MasterCard, JCB)</span>
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs">
                     <CreditCard className="w-5 h-5" />
@@ -1638,6 +1649,7 @@ export default function CheckoutPage({
                   </div>
                 </div>
                 <input
+                  id="checkout-payment-credit"
                   type="radio"
                   name="payment"
                   checked={paymentMethod === 'credit'}
@@ -1650,10 +1662,11 @@ export default function CheckoutPage({
 
           {/* Section E: Order Note */}
           <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-2">
-            <label className="block text-xs font-bold text-slate-800">
+            <label htmlFor="checkout-order-note" className="block text-xs font-bold text-slate-800">
               Ghi chú cho Người bán & Đơn vị vận chuyển:
             </label>
             <input
+              id="checkout-order-note"
               type="text"
               value={orderNote}
               onChange={(e) => setOrderNote(e.target.value)}
@@ -1679,9 +1692,10 @@ export default function CheckoutPage({
             </div>
 
             {/* Shopee-style Clickable Voucher Row 1: Sàn & Freeship */}
-            <div
+            <button
+              type="button"
               onClick={() => setIsVoucherModalOpen(true)}
-              className="p-3 bg-gradient-to-r from-orange-50/70 to-rose-50/40 hover:from-orange-100/60 hover:to-rose-100/40 border border-orange-200 rounded-2xl cursor-pointer transition flex items-center justify-between gap-2 shadow-sm group"
+              className="w-full text-left p-3 bg-gradient-to-r from-orange-50/70 to-rose-50/40 hover:from-orange-100/60 hover:to-rose-100/40 border border-orange-200 rounded-2xl cursor-pointer transition flex items-center justify-between gap-2 shadow-sm group"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-7 h-7 rounded-xl bg-orange-600 text-white flex items-center justify-center flex-shrink-0">
@@ -1714,12 +1728,13 @@ export default function CheckoutPage({
                 <span className="text-[11px]">{appliedPlatformVoucher || appliedShippingVoucher ? 'Đổi mã' : 'Chọn mã'}</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </div>
-            </div>
+            </button>
 
             {/* Shopee-style Clickable Voucher Row 2: Voucher Của Shop */}
-            <div
+            <button
+              type="button"
               onClick={() => setIsVoucherModalOpen(true)}
-              className="p-3 bg-gradient-to-r from-amber-50/80 to-orange-50/50 hover:from-amber-100/70 hover:to-orange-100/60 border border-amber-200/80 rounded-2xl cursor-pointer transition flex items-center justify-between gap-2 shadow-sm group"
+              className="w-full text-left p-3 bg-gradient-to-r from-amber-50/80 to-orange-50/50 hover:from-amber-100/70 hover:to-orange-100/60 border border-amber-200/80 rounded-2xl cursor-pointer transition flex items-center justify-between gap-2 shadow-sm group"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-7 h-7 rounded-xl bg-amber-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
@@ -1748,7 +1763,7 @@ export default function CheckoutPage({
                 <span className="text-[11px]">{shopDiscount > 0 ? 'Đổi mã' : 'Chọn mã'}</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </div>
-            </div>
+            </button>
 
             {/* Big Shopee CTA Button to Open Voucher Modal */}
             <button

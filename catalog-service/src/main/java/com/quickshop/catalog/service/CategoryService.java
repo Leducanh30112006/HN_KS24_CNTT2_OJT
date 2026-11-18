@@ -262,6 +262,15 @@ public class CategoryService {
         String nowhitespace = WHITESPACE.matcher(input).replaceAll("-");
         String normalized = Normalizer.normalize(nowhitespace, Normalizer.Form.NFD);
         String slug = NONLATIN.matcher(normalized).replaceAll("");
-        return slug.toLowerCase(Locale.ENGLISH).replaceAll("-+", "-").replaceAll("^-|-$", "");
+        String normalizedSlug = slug.toLowerCase(Locale.ENGLISH).replaceAll("-+", "-");
+        int start = 0;
+        int end = normalizedSlug.length();
+        while (start < end && normalizedSlug.charAt(start) == '-') {
+            start++;
+        }
+        while (end > start && normalizedSlug.charAt(end - 1) == '-') {
+            end--;
+        }
+        return normalizedSlug.substring(start, end);
     }
 }

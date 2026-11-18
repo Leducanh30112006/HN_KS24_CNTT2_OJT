@@ -116,13 +116,25 @@ export const renderSanitizedContent = (content, fallbackText = '') => {
  */
 export const stripHtml = (html) => {
   if (!html || typeof html !== 'string') return '';
-  return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
+  let plain = '';
+  let insideTag = false;
+  for (let i = 0; i < html.length; i++) {
+    const ch = html[i];
+    if (ch === '<') {
+      insideTag = true;
+      plain += ' ';
+    } else if (ch === '>') {
+      insideTag = false;
+    } else if (!insideTag) {
+      plain += ch;
+    }
+  }
+  return plain
+    .replaceAll('&nbsp;', ' ')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
     .replace(/\s+/g, ' ')
     .trim();
 };

@@ -76,7 +76,7 @@ export default function SellerCustomerChat({
     if (!extractedProduct && trimmed) {
       const match = trimmed.match(/\[PRODUCT:(\d+)\]/i) || trimmed.match(/SP[-_]?(\d+)/i) || trimmed.match(/#(\d+)/);
       if (match && match[1]) {
-        const pId = parseInt(match[1], 10);
+        const pId = Number.parseInt(match[1], 10);
         const found = defaultProducts.find((p) => p.id === pId);
         if (found) {
           extractedProduct = {
@@ -165,11 +165,12 @@ export default function SellerCustomerChat({
               const isActive = thread.threadId === activeThread?.threadId;
               const lastMsg = thread.messages?.[thread.messages.length - 1];
               return (
-                <div
+                <button
+                  type="button"
                   key={thread.threadId}
                   onClick={() => setActiveThreadId(thread.threadId)}
-                  className={`p-3.5 flex items-start gap-3 cursor-pointer transition ${
-                    isActive ? 'bg-orange-50/70 border-l-4 border-orange-600' : 'hover:bg-slate-100/70'
+                  className={`w-full text-left border-0 p-3.5 flex items-start gap-3 cursor-pointer transition ${
+                    isActive ? 'bg-orange-50/70 border-l-4 border-orange-600' : 'bg-transparent hover:bg-slate-100/70'
                   }`}
                 >
                   <div className="relative flex-shrink-0">
@@ -204,7 +205,7 @@ export default function SellerCustomerChat({
                       {thread.unreadBySeller}
                     </span>
                   )}
-                </div>
+                </button>
               );
             })
           )}
@@ -307,10 +308,11 @@ export default function SellerCustomerChat({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {shopProducts.map((prod) => (
-                  <div
+                  <button
+                    type="button"
                     key={prod.id}
                     onClick={() => handleSendProduct(prod)}
-                    className="flex items-center gap-2.5 p-2 rounded-xl border border-slate-200 hover:border-orange-400 hover:bg-orange-50/50 cursor-pointer transition text-left group"
+                    className="flex items-center gap-2.5 p-2 rounded-xl border border-slate-200 hover:border-orange-400 hover:bg-orange-50/50 cursor-pointer transition text-left group w-full bg-white"
                   >
                     <img
                       src={prod.mainImage || prod.imageUrl}
@@ -325,7 +327,7 @@ export default function SellerCustomerChat({
                         {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(prod.price)}
                       </p>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

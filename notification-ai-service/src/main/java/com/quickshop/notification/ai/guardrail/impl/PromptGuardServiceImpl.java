@@ -33,27 +33,29 @@ public class PromptGuardServiceImpl implements PromptGuardService {
                     "Bypass Attempt: Cố tình yêu cầu tắt bộ lọc an toàn"
             ),
             new ThreatPattern(
-                    Pattern.compile("(?i)(<script\\b[^<]*(?:(?!<\\/script>)<[^<]*)*<\\/script>|javascript:|onerror\\s*=|onload\\s*=)", Pattern.CASE_INSENSITIVE),
+                    Pattern.compile("(<script\\b|</script>|javascript:|onerror\\s*=|onload\\s*=)", Pattern.CASE_INSENSITIVE),
                     "XSS Injection Attempt: Chèn mã kịch bản độc hại"
             ),
             new ThreatPattern(
-                    Pattern.compile("(?i)(union\\s+select|select\\s+.*\\s+from\\s+users|truncate\\s+table|exec\\s*\\(|eval\\s*\\()", Pattern.CASE_INSENSITIVE),
+                    Pattern.compile("(union\\s+select|select\\s+[^\\n]{1,80}\\s+from\\s+users|truncate\\s+table|exec\\s*\\(|eval\\s*\\()", Pattern.CASE_INSENSITIVE),
                     "SQL/Command Injection Attempt: Truy vấn bất hợp pháp hoặc thực thi mã hệ thống"
             ),
             new ThreatPattern(
-                    Pattern.compile("(?i)(cat\\s+/etc/passwd|cmd\\.exe|powershell\\.exe|/bin/sh|rm\\s+-rf)", Pattern.CASE_INSENSITIVE),
+                    Pattern.compile("(cat\\s+/etc/passwd|cmd\\.exe|powershell\\.exe|/bin/sh|rm\\s+-rf)", Pattern.CASE_INSENSITIVE),
                     "OS Command Injection: Thao tác lệnh shell hệ thống"
             )
     );
 
     // Danh sách mẫu Prompt Injection mức độ trung bình (được lọc sạch chuỗi vi phạm -> [FILTERED])
     private static final Pattern FILTER_INJECTION_REGEX = Pattern.compile(
-            "(?i)(ignore\\s+(all\\s+)?previous\\s+instructions|drop\\s+database|drop\\s+table|system\\s+prompt|reveal\\s+secrets|disregard\\s+previous\\s+instructions)"
+            "(ignore\\s+(all\\s+)?previous\\s+instructions|drop\\s+database|drop\\s+table|system\\s+prompt|reveal\\s+secrets|disregard\\s+previous\\s+instructions)",
+            Pattern.CASE_INSENSITIVE
     );
 
     // Danh sách từ khóa ngoài phạm vi thương mại điện tử (Off-topic check)
     private static final Pattern OFF_TOPIC_REGEX = Pattern.compile(
-            "(?i)((viết|tạo|phát triển|hướng dẫn)\\s+.*(mã độc|virus|malware|trojan)|hack\\s+(pass|tài khoản|mật khẩu)|tấn công\\s+(ddos|máy chủ)|chế tạo vũ khí|đánh bạc online|lô đề cờ bạc|khiêu dâm|chính trị quốc gia)"
+            "((viết|tạo|phát triển|hướng dẫn)\\s+[^\\n]{0,60}(mã độc|virus|malware|trojan)|hack\\s+(pass|tài khoản|mật khẩu)|tấn công\\s+(ddos|máy chủ)|chế tạo vũ khí|đánh bạc online|lô đề cờ bạc|khiêu dâm|chính trị quốc gia)",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
     );
 
     @Override

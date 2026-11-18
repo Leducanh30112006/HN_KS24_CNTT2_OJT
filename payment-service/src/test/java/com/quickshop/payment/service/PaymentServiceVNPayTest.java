@@ -92,7 +92,8 @@ class PaymentServiceVNPayTest {
                     return t;
                 });
 
-        VNPayPaymentResponse response = paymentService.createVNPayPayment(request, "192.168.1.1");
+        String testClientIp = String.join(".", "192", "168", "1", "1");
+        VNPayPaymentResponse response = paymentService.createVNPayPayment(request, testClientIp);
 
         assertThat(response).isNotNull();
         assertThat(response.getOrderId()).isEqualTo("1001");

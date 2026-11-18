@@ -227,9 +227,14 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
             return (
               <div
                 key={deal.id}
-                onClick={() => onSelectProduct && onSelectProduct(deal)}
-                className="flash-sale-grid-card bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-xl hover:border-orange-400 transition-shadow duration-300 cursor-pointer flex flex-col justify-between group"
+                className="flash-sale-grid-card relative bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-xl hover:border-orange-400 transition-shadow duration-300 cursor-pointer flex flex-col justify-between group"
               >
+                <button
+                  type="button"
+                  onClick={() => onSelectProduct && onSelectProduct(deal)}
+                  aria-label={`Xem ưu đãi ${fixMojibakeText(deal.name)}`}
+                  className="absolute inset-0 z-0 w-full h-full bg-transparent border-0 cursor-pointer"
+                />
                 <div>
                   {/* Thumbnail & Badges */}
                   <div className="relative aspect-square overflow-hidden bg-slate-50">
@@ -287,8 +292,9 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
                 </div>
 
                 {/* Footer Action Button */}
-                <div className="p-4 pt-0">
+                <div className="p-4 pt-0 relative z-10">
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectProduct && onSelectProduct(deal);

@@ -6,14 +6,18 @@ import {
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { useAuthStore } from '../stores/useAuthStore';
+import { secureRandomInt } from '../utils/secureRandom';
 
 // Helper generating valid signed mock JWT token if backend is offline
 const generateValidSignedToken = (payload) => {
   const header = { alg: 'HS256', typ: 'JWT' };
   const base64UrlEncode = (obj) => {
     const json = JSON.stringify(obj);
-    const base64 = btoa(unescape(encodeURIComponent(json)));
-    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    let base64 = btoa(unescape(encodeURIComponent(json))).replaceAll('+', '-').replaceAll('/', '_');
+    while (base64.endsWith('=')) {
+      base64 = base64.slice(0, -1);
+    }
+    return base64;
   };
   const now = Math.floor(Date.now() / 1000);
   const jwtPayload = {
@@ -161,7 +165,7 @@ export default function RegisterSellerPage({
       }
 
       // Fallback mô phỏng nếu API Identity backend không chạy offline
-      const mockUserId = Math.floor(Math.random() * 9000) + 1000;
+      const mockUserId = secureRandomInt(1000, 10000);
       const validToken = generateValidSignedToken({
         userId: mockUserId,
         username: username.trim(),
@@ -199,9 +203,10 @@ export default function RegisterSellerPage({
       {/* Top Header */}
       <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 py-3.5 px-4 sm:px-8 shadow-xs">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div 
+          <button
+            type="button"
             onClick={onBackToHome}
-            className="flex items-center gap-2.5 cursor-pointer group"
+            className="flex items-center gap-2.5 cursor-pointer group bg-transparent border-0 p-0 text-left"
           >
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-500 via-rose-500 to-amber-500 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
               <ShoppingBag className="w-5 h-5 stroke-[2.5]" />
@@ -214,7 +219,7 @@ export default function RegisterSellerPage({
                 </span>
               </div>
             </div>
-          </div>
+          </button>
 
           <div className="flex items-center gap-3">
             <button
@@ -335,11 +340,12 @@ export default function RegisterSellerPage({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 {/* Tên gian hàng */}
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="font-bold text-slate-700 flex items-center justify-between">
+                  <label htmlFor="seller-shop-name" className="font-bold text-slate-700 flex items-center justify-between">
                     <span>Tên gian hàng / Thương hiệu kinh doanh <span className="text-rose-500">*</span></span>
                     <span className="text-[11px] text-slate-400 font-normal">Sẽ hiển thị cho khách hàng</span>
                   </label>
                   <input
+                    id="seller-shop-name"
                     type="text"
                     required
                     value={shopName}
@@ -351,10 +357,12 @@ export default function RegisterSellerPage({
 
                 {/* Loại hình kinh doanh */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="seller-business-type" className="font-bold text-slate-700">
                     Loại hình kinh doanh <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    id="seller-business-type"
+                    aria-label="Loại hình kinh doanh"
                     value={businessType}
                     onChange={(e) => setBusinessType(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition bg-white"
@@ -367,10 +375,12 @@ export default function RegisterSellerPage({
 
                 {/* Ngành hàng chính */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="seller-main-category" className="font-bold text-slate-700">
                     Ngành hàng đăng ký chính <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    id="seller-main-category"
+                    aria-label="Ngành hàng đăng ký chính"
                     value={mainCategory}
                     onChange={(e) => setMainCategory(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition bg-white"
@@ -383,10 +393,11 @@ export default function RegisterSellerPage({
 
                 {/* Mã số thuế hoặc CCCD */}
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="seller-tax-cccd" className="font-bold text-slate-700">
                     Mã số thuế doanh nghiệp hoặc Số CCCD/CMND đại diện <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="seller-tax-cccd"
                     type="text"
                     required
                     value={taxOrCccd}
@@ -398,11 +409,12 @@ export default function RegisterSellerPage({
 
                 {/* Địa chỉ kho hàng */}
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="font-bold text-slate-700 flex items-center justify-between">
+                  <label htmlFor="seller-pickup-address" className="font-bold text-slate-700 flex items-center justify-between">
                     <span>Địa chỉ kho lấy hàng (Bưu tá sẽ đến lấy bưu gửi) <span className="text-rose-500">*</span></span>
                     <span className="text-[11px] text-slate-400 font-normal">Hỗ trợ giao hàng toàn quốc</span>
                   </label>
                   <input
+                    id="seller-pickup-address"
                     type="text"
                     required
                     value={pickupAddress}
@@ -424,10 +436,11 @@ export default function RegisterSellerPage({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 {/* Họ và tên chủ shop */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="seller-full-name" className="font-bold text-slate-700">
                     Họ và tên chủ sở hữu <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="seller-full-name"
                     type="text"
                     required
                     value={fullName}
@@ -439,10 +452,11 @@ export default function RegisterSellerPage({
 
                 {/* Số điện thoại */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="seller-phone" className="font-bold text-slate-700">
                     Số điện thoại liên hệ <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="seller-phone"
                     type="tel"
                     required
                     value={phoneNumber}
@@ -454,10 +468,11 @@ export default function RegisterSellerPage({
 
                 {/* Email */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="seller-email" className="font-bold text-slate-700">
                     Email nhận thông báo & đối soát <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="seller-email"
                     type="email"
                     required
                     value={email}
@@ -469,10 +484,11 @@ export default function RegisterSellerPage({
 
                 {/* Username */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="seller-username" className="font-bold text-slate-700">
                     Tên đăng nhập tài khoản <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="seller-username"
                     type="text"
                     required
                     value={username}
@@ -484,11 +500,12 @@ export default function RegisterSellerPage({
 
                 {/* Password */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="seller-password" className="font-bold text-slate-700">
                     Mật khẩu tạo mới <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
                     <input
+                      id="seller-password"
                       type={showPassword ? 'text' : 'password'}
                       required
                       value={password}
@@ -499,6 +516,7 @@ export default function RegisterSellerPage({
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -508,10 +526,11 @@ export default function RegisterSellerPage({
 
                 {/* Confirm Password */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">
+                  <label htmlFor="seller-confirm-password" className="font-bold text-slate-700">
                     Xác nhận mật khẩu <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="seller-confirm-password"
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={confirmPassword}
@@ -528,6 +547,7 @@ export default function RegisterSellerPage({
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
+                  aria-label="Đồng ý điều khoản mở gian hàng"
                   checked={agreeTerms}
                   onChange={(e) => setAgreeTerms(e.target.checked)}
                   className="mt-0.5 rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"

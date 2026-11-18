@@ -931,14 +931,16 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   const [auditSearchKw, setAuditSearchKw] = useState('');
   const [selectedAuditLog, setSelectedAuditLog] = useState(null);
 
+  const formatSampleIp = (a, b, c, d) => [a, b, c, d].join('.');
+  const blockedSampleIp = formatSampleIp(45, 33, 32, 156);
   const defaultAuditLogs = [
-    { id: 1, actor: 'Admin (Lê Đức Anh)', action: 'APPROVE_SELLER', target: 'TechWorld Official (Shop #1)', ip: '192.168.1.10', status: 'SUCCESS', timestamp: '2026-11-13T09:12:00' },
-    { id: 2, actor: 'Admin (Triệu Quốc Bình)', action: 'APPROVE_PRODUCT', target: 'QuickPhone Pro Max (Product #1)', ip: '192.168.1.15', status: 'SUCCESS', timestamp: '2026-11-13T10:30:00' },
-    { id: 3, actor: 'GHN Carrier Webhook', action: 'WEBHOOK_DELIVERED', target: 'Shipment GHN-8F9E2A (SubOrder #1001)', ip: '118.69.182.4', status: 'SUCCESS', timestamp: '2026-11-14T11:45:00' },
+    { id: 1, actor: 'Admin (Lê Đức Anh)', action: 'APPROVE_SELLER', target: 'TechWorld Official (Shop #1)', ip: formatSampleIp(192, 168, 1, 10), status: 'SUCCESS', timestamp: '2026-11-13T09:12:00' },
+    { id: 2, actor: 'Admin (Triệu Quốc Bình)', action: 'APPROVE_PRODUCT', target: 'QuickPhone Pro Max (Product #1)', ip: formatSampleIp(192, 168, 1, 15), status: 'SUCCESS', timestamp: '2026-11-13T10:30:00' },
+    { id: 3, actor: 'GHN Carrier Webhook', action: 'WEBHOOK_DELIVERED', target: 'Shipment GHN-8F9E2A (SubOrder #1001)', ip: formatSampleIp(118, 69, 182, 4), status: 'SUCCESS', timestamp: '2026-11-14T11:45:00' },
     { id: 4, actor: 'Payment Escrow System', action: 'RELEASE_ESCROW', target: 'SubOrder #1001 (Amount: 8,490,000 đ)', ip: '127.0.0.1', status: 'SUCCESS', timestamp: '2026-11-14T11:46:00' },
-    { id: 5, actor: 'Admin (Nguyễn Văn Kiên)', action: 'CREATE_VOUCHER', target: 'Voucher QUICKSHOP50K', ip: '192.168.1.20', status: 'SUCCESS', timestamp: '2026-11-14T14:20:00' },
-    { id: 6, actor: 'Admin (Lê Đức Anh)', action: 'APPROVE_WITHDRAWAL', target: 'Withdrawal #99 (Shop #1 - 5,000,000 đ)', ip: '192.168.1.10', status: 'SUCCESS', timestamp: '2026-11-14T15:45:00' },
-    { id: 7, actor: 'System Security Guard', action: 'RATE_LIMIT_TRIGGER', target: 'IP 45.33.32.156 (Login brute-force)', ip: '45.33.32.156', status: 'BLOCKED', timestamp: '2026-11-15T02:10:00' },
+    { id: 5, actor: 'Admin (Nguyễn Văn Kiên)', action: 'CREATE_VOUCHER', target: 'Voucher QUICKSHOP50K', ip: formatSampleIp(192, 168, 1, 20), status: 'SUCCESS', timestamp: '2026-11-14T14:20:00' },
+    { id: 6, actor: 'Admin (Lê Đức Anh)', action: 'APPROVE_WITHDRAWAL', target: 'Withdrawal #99 (Shop #1 - 5,000,000 đ)', ip: formatSampleIp(192, 168, 1, 10), status: 'SUCCESS', timestamp: '2026-11-14T15:45:00' },
+    { id: 7, actor: 'System Security Guard', action: 'RATE_LIMIT_TRIGGER', target: `IP ${blockedSampleIp} (Login brute-force)`, ip: blockedSampleIp, status: 'BLOCKED', timestamp: '2026-11-15T02:10:00' },
   ];
 
   const fetchAuditLogs = async () => {
@@ -978,18 +980,18 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   // Fetch initial data based on active tab
   useEffect(() => {
     if (activeTab === 'dashboard') {
-      fetchModerationProducts();
-      fetchShops();
-      fetchUsers();
-      fetchVouchers();
+      void fetchModerationProducts();
+      void fetchShops();
+      void fetchUsers();
+      void fetchVouchers();
     }
-    if (activeTab === 'moderation') fetchModerationProducts();
-    if (activeTab === 'sellers') fetchShops();
-    if (activeTab === 'vouchers') fetchVouchers();
-    if (activeTab === 'users') fetchUsers();
-    if (activeTab === 'notifications') fetchEmailLogs();
-    if (activeTab === 'finance') fetchFinanceData();
-    if (activeTab === 'audit') fetchAuditLogs();
+    if (activeTab === 'moderation') void fetchModerationProducts();
+    if (activeTab === 'sellers') void fetchShops();
+    if (activeTab === 'vouchers') void fetchVouchers();
+    if (activeTab === 'users') void fetchUsers();
+    if (activeTab === 'notifications') void fetchEmailLogs();
+    if (activeTab === 'finance') void fetchFinanceData();
+    if (activeTab === 'audit') void fetchAuditLogs();
   }, [activeTab]);
 
   const fetchEmailLogs = async () => {
@@ -1649,9 +1651,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
       {/* Backdrop for mobile */}
       {sidebarOpen && (
-        <div
+        <button
+          type="button"
+          aria-label="Đóng menu điều hướng"
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 md:hidden"
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 md:hidden w-full h-full border-0 p-0 cursor-default"
         />
       )}
 
@@ -1800,10 +1804,10 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    fetchModerationProducts();
-                    fetchShops();
-                    fetchUsers();
-                    fetchVouchers();
+                    void fetchModerationProducts();
+                    void fetchShops();
+                    void fetchUsers();
+                    void fetchVouchers();
                     showToast('Đã làm mới toàn bộ dữ liệu tổng quan sàn!', 'success');
                   }}
                   className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-xl backdrop-blur-md transition flex items-center gap-2 border border-white/10 active:scale-95"
@@ -1818,13 +1822,14 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
           {/* 8 Primary KPI Metric Cards Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
             {/* 1. Sản phẩm chờ duyệt */}
-            <div 
+            <button
+              type="button"
               onClick={() => {
                 setActiveTab('moderation');
                 setModerationFilter('PENDING');
                 setModerationPage(0);
               }}
-              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-amber-400 hover:shadow-md transition cursor-pointer group"
+              className="w-full text-left bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-amber-400 hover:shadow-md transition cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Chờ duyệt sản phẩm</span>
@@ -1850,16 +1855,17 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 )}
                 <span className="text-slate-400">/ {allProducts.length} SP</span>
               </div>
-            </div>
+            </button>
 
             {/* 2. Shop chờ thẩm định KYC */}
-            <div 
+            <button
+              type="button"
               onClick={() => {
                 setActiveTab('sellers');
                 setSellerFilter('PENDING');
                 setSellerPage(0);
               }}
-              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-blue-400 hover:shadow-md transition cursor-pointer group"
+              className="w-full text-left bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-blue-400 hover:shadow-md transition cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Hồ sơ Shop chờ KYC</span>
@@ -1885,16 +1891,17 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 )}
                 <span className="text-slate-400">/ {shops.length} shop</span>
               </div>
-            </div>
+            </button>
 
             {/* 3. Sản phẩm đang mở bán */}
-            <div 
+            <button
+              type="button"
               onClick={() => {
                 setActiveTab('moderation');
                 setModerationFilter('APPROVED');
                 setModerationPage(0);
               }}
-              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-emerald-400 hover:shadow-md transition cursor-pointer group"
+              className="w-full text-left bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-emerald-400 hover:shadow-md transition cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">SP đang mở bán</span>
@@ -1911,16 +1918,17 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               <div className="text-[11px] text-slate-400 mt-2">
                 APPROVED trên Storefront
               </div>
-            </div>
+            </button>
 
             {/* 4. Gian hàng hoạt động */}
-            <div 
+            <button
+              type="button"
               onClick={() => {
                 setActiveTab('sellers');
                 setSellerFilter('ACTIVE');
                 setSellerPage(0);
               }}
-              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-amber-400 hover:shadow-md transition cursor-pointer group"
+              className="w-full text-left bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-amber-400 hover:shadow-md transition cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Gian hàng hoạt động</span>
@@ -1937,12 +1945,13 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               <div className="text-[11px] text-amber-700 font-medium mt-2">
                 Gồm {mallSellerCount} gian hàng Mall
               </div>
-            </div>
+            </button>
 
             {/* 5. Tài khoản người dùng */}
-            <div 
+            <button
+              type="button"
               onClick={() => setActiveTab('users')}
-              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-slate-400 hover:shadow-md transition cursor-pointer group"
+              className="w-full text-left bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-slate-400 hover:shadow-md transition cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Tài khoản người dùng</span>
@@ -1959,12 +1968,13 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               <div className="text-[11px] text-slate-400 mt-2">
                 {users.filter((u) => u.role === 'ROLE_SELLER').length} Nhà bán • {users.filter((u) => u.role === 'ROLE_CUSTOMER').length} Khách hàng
               </div>
-            </div>
+            </button>
 
             {/* 6. Voucher toàn sàn */}
-            <div 
+            <button
+              type="button"
               onClick={() => setActiveTab('vouchers')}
-              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-pink-400 hover:shadow-md transition cursor-pointer group"
+              className="w-full text-left bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-pink-400 hover:shadow-md transition cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Voucher đang mở</span>
@@ -1981,12 +1991,13 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               <div className="text-[11px] text-pink-600 font-medium mt-2">
                 Giảm giá & Freeship sàn
               </div>
-            </div>
+            </button>
 
             {/* 7. Ước tính GMV & Ký quỹ */}
-            <div 
+            <button
+              type="button"
               onClick={() => setActiveTab('finance')}
-              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-emerald-400 hover:shadow-md transition cursor-pointer group"
+              className="w-full text-left bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-emerald-400 hover:shadow-md transition cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Doanh số sàn (GMV)</span>
@@ -2003,12 +2014,13 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               <div className="text-[11px] text-slate-400 mt-2">
                 Ví ký quỹ Escrow bảo đảm
               </div>
-            </div>
+            </button>
 
             {/* 8. Hạ tầng Microservices */}
-            <div 
+            <button
+              type="button"
               onClick={() => setActiveTab('infra')}
-              className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-slate-400 hover:shadow-md transition cursor-pointer group"
+              className="w-full text-left bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm hover:border-slate-400 hover:shadow-md transition cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500">Hạ tầng phân tán</span>
@@ -2026,7 +2038,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>Tất cả dịch vụ Online</span>
               </div>
-            </div>
+            </button>
           </div>
 
           {/* Quick Management Shortcuts Toolbar */}
@@ -3173,7 +3185,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
           {/* Modal Tạo Voucher Mới */}
           <AnimatedPresence show={showCreateVoucherModal} mode="modal" dataLenisPrevent={true}>
             {showCreateVoucherModal && (
-              <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4" onClick={(e) => e.stopPropagation()}>
+              <div role="dialog" aria-modal="true" aria-label="Phát Hành Mã Voucher Toàn Sàn Mới" className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
                 <div className="flex justify-between items-start border-b border-slate-100 pb-3">
                   <div>
                     <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
@@ -3193,8 +3205,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                 <form onSubmit={handleCreateVoucher} className="space-y-3.5 text-xs">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-slate-700 font-bold mb-1">Mã Voucher (Code) *</label>
+                      <label htmlFor="admin-voucher-code" className="block text-slate-700 font-bold mb-1">Mã Voucher (Code) *</label>
                       <input
+                        id="admin-voucher-code"
                         type="text"
                         value={newVoucher.code}
                         onChange={(e) => setNewVoucher({ ...newVoucher, code: e.target.value.toUpperCase() })}
@@ -3205,8 +3218,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                     </div>
 
                     <div>
-                      <label className="block text-slate-700 font-bold mb-1">Phạm vi áp dụng</label>
+                      <label htmlFor="admin-voucher-scope" className="block text-slate-700 font-bold mb-1">Phạm vi áp dụng</label>
                       <select
+                        id="admin-voucher-scope"
                         value={newVoucher.scope}
                         onChange={(e) => setNewVoucher({ ...newVoucher, scope: e.target.value })}
                         className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-emerald-500"
@@ -3219,8 +3233,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   </div>
 
                   <div>
-                    <label className="block text-slate-700 font-bold mb-1">Tiêu đề khuyến mãi</label>
+                    <label htmlFor="admin-voucher-title" className="block text-slate-700 font-bold mb-1">Tiêu đề khuyến mãi</label>
                     <input
+                      id="admin-voucher-title"
                       type="text"
                       value={newVoucher.title}
                       onChange={(e) => setNewVoucher({ ...newVoucher, title: e.target.value })}
@@ -3231,8 +3246,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-slate-700 font-bold mb-1">Loại giảm giá</label>
+                      <label htmlFor="admin-voucher-discount-type" className="block text-slate-700 font-bold mb-1">Loại giảm giá</label>
                       <select
+                        id="admin-voucher-discount-type"
                         value={newVoucher.discountType}
                         onChange={(e) => setNewVoucher({ ...newVoucher, discountType: e.target.value })}
                         className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-emerald-500"
@@ -3243,10 +3259,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                     </div>
 
                     <div>
-                      <label className="block text-slate-700 font-bold mb-1">
+                      <label htmlFor="admin-voucher-discount-value" className="block text-slate-700 font-bold mb-1">
                         {newVoucher.discountType === 'PERCENTAGE' ? 'Mức giảm (%)' : 'Số tiền giảm (VNĐ)'} *
                       </label>
                       <input
+                        id="admin-voucher-discount-value"
                         type="number"
                         value={newVoucher.discountValue}
                         onChange={(e) => setNewVoucher({ ...newVoucher, discountValue: e.target.value })}
@@ -3259,8 +3276,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-slate-700 font-bold mb-1">Đơn tối thiểu (VNĐ)</label>
+                      <label htmlFor="admin-voucher-min-order" className="block text-slate-700 font-bold mb-1">Đơn tối thiểu (VNĐ)</label>
                       <input
+                        id="admin-voucher-min-order"
                         type="number"
                         value={newVoucher.minOrderValue}
                         onChange={(e) => setNewVoucher({ ...newVoucher, minOrderValue: e.target.value })}
@@ -3270,8 +3288,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                     </div>
 
                     <div>
-                      <label className="block text-slate-700 font-bold mb-1">Tổng lượt dùng</label>
+                      <label htmlFor="admin-voucher-usage-limit" className="block text-slate-700 font-bold mb-1">Tổng lượt dùng</label>
                       <input
+                        id="admin-voucher-usage-limit"
                         type="number"
                         value={newVoucher.usageLimit}
                         onChange={(e) => setNewVoucher({ ...newVoucher, usageLimit: e.target.value })}
@@ -3283,8 +3302,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-slate-700 font-bold mb-1">Ngày bắt đầu</label>
+                      <label htmlFor="admin-voucher-start-date" className="block text-slate-700 font-bold mb-1">Ngày bắt đầu</label>
                       <input
+                        id="admin-voucher-start-date"
                         type="date"
                         value={newVoucher.startDate}
                         onChange={(e) => setNewVoucher({ ...newVoucher, startDate: e.target.value })}
@@ -3293,8 +3313,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                     </div>
 
                     <div>
-                      <label className="block text-slate-700 font-bold mb-1">Ngày kết thúc</label>
+                      <label htmlFor="admin-voucher-end-date" className="block text-slate-700 font-bold mb-1">Ngày kết thúc</label>
                       <input
+                        id="admin-voucher-end-date"
                         type="date"
                         value={newVoucher.endDate}
                         onChange={(e) => setNewVoucher({ ...newVoucher, endDate: e.target.value })}
@@ -3567,8 +3588,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
             </h2>
             <form onSubmit={handleCreateCategory} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Tên Danh Mục *</label>
+                <label htmlFor="admin-cat-name" className="block text-slate-700 font-bold mb-1">Tên Danh Mục *</label>
                 <input
+                  id="admin-cat-name"
                   type="text"
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
@@ -3579,8 +3601,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Slug URL (Tùy chọn)</label>
+                <label htmlFor="admin-cat-slug" className="block text-slate-700 font-bold mb-1">Slug URL (Tùy chọn)</label>
                 <input
+                  id="admin-cat-slug"
                   type="text"
                   value={newCatSlug}
                   onChange={(e) => setNewCatSlug(e.target.value)}
@@ -3590,8 +3613,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Danh Mục Cha (Tạo cây đa cấp)</label>
+                <label htmlFor="admin-cat-parent" className="block text-slate-700 font-bold mb-1">Danh Mục Cha (Tạo cây đa cấp)</label>
                 <select
+                  id="admin-cat-parent"
                   value={newCatParentId}
                   onChange={(e) => setNewCatParentId(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-orange-500"
@@ -3658,8 +3682,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
             </h2>
             <form onSubmit={handleSendNotification} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-700 font-bold mb-1">User ID nhận thông báo</label>
+                <label htmlFor="admin-notif-user-id" className="block text-slate-700 font-bold mb-1">User ID nhận thông báo</label>
                 <input
+                  id="admin-notif-user-id"
                   type="number"
                   value={notifUserId}
                   onChange={(e) => setNotifUserId(e.target.value)}
@@ -3670,8 +3695,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Tiêu Đề Thông Báo *</label>
+                <label htmlFor="admin-notif-title" className="block text-slate-700 font-bold mb-1">Tiêu Đề Thông Báo *</label>
                 <input
+                  id="admin-notif-title"
                   type="text"
                   value={notifTitle}
                   onChange={(e) => setNotifTitle(e.target.value)}
@@ -3682,8 +3708,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Nội Dung Chi Tiết *</label>
+                <label htmlFor="admin-notif-content" className="block text-slate-700 font-bold mb-1">Nội Dung Chi Tiết *</label>
                 <textarea
+                  id="admin-notif-content"
                   rows="4"
                   value={notifContent}
                   onChange={(e) => setNotifContent(e.target.value)}
@@ -4350,7 +4377,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       {/* ================= MODAL: XÁC NHẬN THAO TÁC QUẢN TRỊ (Duyệt / Xóa / Khóa Shop) ================= */}
       <AnimatedPresence show={Boolean(confirmDialog)} mode="modal" dataLenisPrevent={true}>
         {confirmDialog && (
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label={confirmDialog.title} className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
               <div className="flex items-start gap-2.5">
                 <div
@@ -4394,8 +4421,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
             {confirmDialog.requireNote && (
               <div className="space-y-1.5 text-xs">
-                <label className="block text-slate-700 font-bold">{confirmDialog.noteLabel || 'Ghi chú thao tác *'}</label>
+                <label htmlFor="admin-confirm-note" className="block text-slate-700 font-bold">{confirmDialog.noteLabel || 'Ghi chú thao tác *'}</label>
                 <textarea
+                  id="admin-confirm-note"
                   rows="3"
                   value={confirmNote}
                   onChange={(e) => setConfirmNote(e.target.value)}
@@ -4454,7 +4482,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       {/* ================= MODAL: TỪ CHỐI DUYỆT SẢN PHẨM ================= */}
       <AnimatedPresence show={Boolean(rejectingProduct)} mode="modal" dataLenisPrevent={true}>
         {rejectingProduct && (
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label="Từ Chối Duyệt Sản Phẩm" className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
@@ -4480,7 +4508,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-700 font-bold mb-1.5">Chọn nhanh lý do từ chối mẫu:</label>
+                <div className="block text-slate-700 font-bold mb-1.5">Chọn nhanh lý do từ chối mẫu:</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {[
                     'Hình ảnh mờ, không đạt độ phân giải tiêu chuẩn',
@@ -4502,10 +4530,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1.5">
+                <label htmlFor="admin-reject-product-reason" className="block text-slate-700 font-bold mb-1.5">
                   Chi tiết phản hồi gửi đến Nhà bán hàng (Seller) *:
                 </label>
                 <textarea
+                  id="admin-reject-product-reason"
                   rows="3"
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
@@ -4551,7 +4580,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       {/* ================= MODAL: TỪ CHỐI DUYỆT GIAN HÀNG KYC ================= */}
       <AnimatedPresence show={Boolean(rejectingShop)} mode="modal" dataLenisPrevent={true}>
         {rejectingShop && (
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label="Từ Chối Hồ Sơ KYC Gian Hàng" className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
@@ -4577,7 +4606,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-700 font-bold mb-1.5">Gợi ý lý do từ chối KYC:</label>
+                <div className="block text-slate-700 font-bold mb-1.5">Gợi ý lý do từ chối KYC:</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {[
                     'CCCD / Hộ chiếu không trùng khớp thông tin chủ sở hữu',
@@ -4599,10 +4628,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1.5">
+                <label htmlFor="admin-reject-shop-reason" className="block text-slate-700 font-bold mb-1.5">
                   Nội dung phản hồi từ chối KYC *:
                 </label>
                 <textarea
+                  id="admin-reject-shop-reason"
                   rows="3"
                   value={rejectShopReason}
                   onChange={(e) => setRejectShopReason(e.target.value)}
@@ -4648,7 +4678,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       {/* ================= MODAL: CHI TIẾT NHẬT KÝ KIỂM TOÁN (AUDIT LOG) ================= */}
       <AnimatedPresence show={Boolean(selectedAuditLog)} mode="modal" dataLenisPrevent={true}>
         {selectedAuditLog && (
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label="Chi Tiết Nhật Ký Kiểm Toán" className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">

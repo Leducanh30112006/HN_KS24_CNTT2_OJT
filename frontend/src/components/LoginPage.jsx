@@ -73,10 +73,14 @@ export default function LoginPage({
     setLoading(true);
 
     try {
-      const res = await axiosClient.post('/api/auth/login', {
-        usernameOrEmail: trimmedUser,
-        password: trimmedPass,
-      });
+      const res = await axiosClient.post(
+        '/api/auth/login',
+        {
+          usernameOrEmail: trimmedUser,
+          password: trimmedPass,
+        },
+        { timeout: 15000 }
+      );
 
       if (res && (res.success || res.data)) {
         const data = res.data || {};
@@ -295,9 +299,10 @@ export default function LoginPage({
       {/* Top Header */}
       <header className="bg-white border-b border-slate-200 py-3 px-4 sm:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div 
+          <button
+            type="button"
             onClick={onBackToHome}
-            className="flex items-center gap-2.5 cursor-pointer group"
+            className="flex items-center gap-2.5 cursor-pointer group bg-transparent border-0 p-0 text-left"
           >
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-500 via-rose-500 to-amber-500 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
               <ShoppingBag className="w-6 h-6 stroke-[2.5]" />
@@ -307,7 +312,7 @@ export default function LoginPage({
                 Quick<span className="text-orange-600">Shop</span>
               </div>
             </div>
-          </div>
+          </button>
 
           <button
             onClick={onBackToHome}
@@ -408,11 +413,12 @@ export default function LoginPage({
                 {activeTab === 'login' && (
                   <form onSubmit={handleLoginSubmit} className="space-y-4 pt-1">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      <label htmlFor="login-page-username" className="block text-xs font-bold text-slate-700 mb-1.5">
                         Tên đăng nhập hoặc Email: <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <input
+                          id="login-page-username"
                           type="text"
                           value={loginUsername}
                           onChange={(e) => { 
@@ -439,7 +445,7 @@ export default function LoginPage({
 
                     <div>
                       <div className="flex justify-between items-center mb-1.5">
-                        <label className="block text-xs font-bold text-slate-700">
+                        <label htmlFor="login-page-password" className="block text-xs font-bold text-slate-700">
                           Mật khẩu: <span className="text-red-500">*</span>
                         </label>
                         <span className="text-[11px] text-orange-600 hover:underline cursor-pointer">
@@ -448,6 +454,7 @@ export default function LoginPage({
                       </div>
                       <div className="relative">
                         <input
+                          id="login-page-password"
                           type={showPassword ? 'text' : 'password'}
                           value={loginPassword}
                           onChange={(e) => { 
@@ -466,6 +473,7 @@ export default function LoginPage({
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
+                          aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                           className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 transition"
                         >
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -481,7 +489,7 @@ export default function LoginPage({
 
                     {/* THÔNG BÁO LỖI ĐỎ NỔI BẬT */}
                     {errorMsg && (
-                      <div className="p-3.5 bg-red-50 border-2 border-red-500 text-red-900 rounded-2xl text-xs flex items-start gap-2.5 shadow-sm animate-in fade-in">
+                      <div role="alert" aria-live="assertive" className="p-3.5 bg-red-50 border-2 border-red-500 text-red-900 rounded-2xl text-xs flex items-start gap-2.5 shadow-sm animate-in fade-in">
                         <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <div className="font-bold text-red-900">Đăng nhập không thành công:</div>
@@ -530,11 +538,12 @@ export default function LoginPage({
 
                     {/* 1. Họ và tên */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label htmlFor="login-page-reg-fullname" className="block text-xs font-bold text-slate-700 mb-1">
                         Họ và tên: <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <input
+                          id="login-page-reg-fullname"
                           type="text"
                           value={regFullName}
                           onChange={(e) => {
@@ -561,11 +570,12 @@ export default function LoginPage({
 
                     {/* 2. Tên đăng nhập */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label htmlFor="login-page-reg-username" className="block text-xs font-bold text-slate-700 mb-1">
                         Tên đăng nhập (Username): <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <input
+                          id="login-page-reg-username"
                           type="text"
                           value={regUsername}
                           onChange={(e) => {
@@ -592,11 +602,12 @@ export default function LoginPage({
 
                     {/* 3. Email */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label htmlFor="login-page-reg-email" className="block text-xs font-bold text-slate-700 mb-1">
                         Email: <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <input
+                          id="login-page-reg-email"
                           type="email"
                           value={regEmail}
                           onChange={(e) => {
@@ -624,13 +635,14 @@ export default function LoginPage({
                     {/* 4. Số điện thoại (tùy chọn) */}
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                        <label className="block text-xs font-bold text-slate-700">
+                        <label htmlFor="login-page-reg-phone" className="block text-xs font-bold text-slate-700">
                           Số điện thoại:
                         </label>
                         <span className="text-[10px] text-slate-400">(Tùy chọn)</span>
                       </div>
                       <div className="relative">
                         <input
+                          id="login-page-reg-phone"
                           type="tel"
                           value={regPhone}
                           onChange={(e) => {
@@ -657,11 +669,12 @@ export default function LoginPage({
 
                     {/* 5. Mật khẩu */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label htmlFor="login-page-reg-password" className="block text-xs font-bold text-slate-700 mb-1">
                         Mật khẩu: <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <input
+                          id="login-page-reg-password"
                           type={showRegPassword ? 'text' : 'password'}
                           value={regPassword}
                           onChange={(e) => {
@@ -680,6 +693,7 @@ export default function LoginPage({
                         <button
                           type="button"
                           onClick={() => setShowRegPassword(!showRegPassword)}
+                          aria-label={showRegPassword ? 'Ẩn mật khẩu đăng ký' : 'Hiện mật khẩu đăng ký'}
                           className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 transition"
                         >
                           {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -695,11 +709,12 @@ export default function LoginPage({
 
                     {/* 6. Xác nhận mật khẩu */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label htmlFor="login-page-reg-confirm-password" className="block text-xs font-bold text-slate-700 mb-1">
                         Xác nhận mật khẩu: <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <input
+                          id="login-page-reg-confirm-password"
                           type={showRegConfirmPassword ? 'text' : 'password'}
                           value={regConfirmPassword}
                           onChange={(e) => {
@@ -718,6 +733,7 @@ export default function LoginPage({
                         <button
                           type="button"
                           onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                          aria-label={showRegConfirmPassword ? 'Ẩn mật khẩu xác nhận' : 'Hiện mật khẩu xác nhận'}
                           className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 transition"
                         >
                           {showRegConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -736,6 +752,7 @@ export default function LoginPage({
                       <label className="flex items-start gap-2.5 cursor-pointer">
                         <input
                           type="checkbox"
+                          aria-label="Đồng ý điều khoản dịch vụ"
                           checked={agreeTerms}
                           onChange={(e) => {
                             setAgreeTerms(e.target.checked);

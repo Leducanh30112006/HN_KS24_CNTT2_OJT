@@ -599,7 +599,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchCategories();
+    void fetchCategories();
   }, []);
 
   // Bắt sự kiện Return Redirect từ cổng thanh toán PayOS / MB Bank hoặc VNPay
@@ -649,14 +649,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchProducts();
+    void fetchProducts();
   }, [selectedCategory, sortBy, priceRange, minRating]);
 
   const handleSearchSubmit = (keywordOverride) => {
     const kw = keywordOverride !== undefined ? keywordOverride : searchKeyword;
     setSearchKeyword(kw);
     setCurrentPage(0);
-    fetchProducts({ kw, page: 0 });
+    void fetchProducts({ kw, page: 0 });
     // Chuyển sang trang kết quả tìm kiếm chuyên biệt với query params trong URL
     handleNavigateView('search', { extra: { kw, cat: selectedCategory } });
   };
@@ -688,7 +688,7 @@ export default function App() {
     setMinRating(0);
     setCurrentPage(0);
     handleNavigateView('home');
-    fetchProducts({
+    void fetchProducts({
       catId: null,
       kw: '',
       sort: 'newest',
@@ -707,7 +707,7 @@ export default function App() {
     setMinRating(0);
     setCurrentPage(0);
     handleNavigateView('home');
-    fetchProducts({
+    void fetchProducts({
       catId: null,
       kw: '',
       sort: 'newest',
@@ -721,7 +721,7 @@ export default function App() {
   const handlePageChange = (newPage) => {
     if (newPage < 0 || newPage >= totalPages || newPage === currentPage) return;
     setCurrentPage(newPage);
-    fetchProducts({ page: newPage });
+    void fetchProducts({ page: newPage });
     const gridElem = document.getElementById('catalog-product-grid');
     if (gridElem) {
       gridElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -733,13 +733,13 @@ export default function App() {
   const handlePageSizeChange = (newSize) => {
     setPageSize(newSize);
     setCurrentPage(0);
-    fetchProducts({ size: newSize, page: 0 });
+    void fetchProducts({ size: newSize, page: 0 });
   };
 
   const handleRetryApi = () => {
     setIsRetrying(true);
-    fetchCategories();
-    fetchProducts();
+    void fetchCategories();
+    void fetchProducts();
   };
 
   // filteredProducts luôn tương đương products vì server hoặc fallback đã phân trang & lọc
@@ -1426,7 +1426,7 @@ export default function App() {
                     <button
                       onClick={() => {
                         setCurrentPage(0);
-                        fetchProducts({ page: 0, shuffle: true });
+                        void fetchProducts({ page: 0, shuffle: true });
                       }}
                       className="px-3 py-1.5 rounded-xl font-semibold transition bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200/80 flex items-center gap-1.5 cursor-pointer active:scale-95"
                       title="Làm mới và khám phá các sản phẩm gợi ý ngẫu nhiên khác nhau"
@@ -1463,7 +1463,7 @@ export default function App() {
                 {activeFilterCount > 0 && (
                   <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
                     <span className="text-slate-400 text-[11px]">Đang lọc:</span>
-                    {selectedCategory && (
+                    {Boolean(selectedCategory) && (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 border border-orange-200/80 font-medium text-[11px]">
                         Danh mục: {categories.find((c) => c.id === selectedCategory)?.name || selectedCategory}
                         <button
@@ -1520,8 +1520,10 @@ export default function App() {
                 >
                   {/* Hộp Modal Căn Giữa Màn Hình */}
                   <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Tùy chọn bộ lọc chi tiết"
                     className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
-                    onClick={(e) => e.stopPropagation()}
                     data-lenis-prevent
                     onWheel={(e) => e.stopPropagation()}
                   >

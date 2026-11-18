@@ -90,7 +90,7 @@ export default function BuyerSellerChatModal({
     if (!extractedProduct && trimmed) {
       const match = trimmed.match(/\[PRODUCT:(\d+)\]/i) || trimmed.match(/SP[-_]?(\d+)/i) || trimmed.match(/#(\d+)/);
       if (match && match[1]) {
-        const pId = parseInt(match[1], 10);
+        const pId = Number.parseInt(match[1], 10);
         const found = defaultProducts.find((p) => p.id === pId);
         if (found) {
           extractedProduct = {
@@ -310,10 +310,11 @@ export default function BuyerSellerChatModal({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {shopProducts.slice(0, 6).map((prod) => (
-                <div
+                <button
+                  type="button"
                   key={prod.id}
                   onClick={() => handleSelectProductFromPicker(prod)}
-                  className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 hover:border-orange-400 hover:bg-orange-50/50 cursor-pointer transition text-left group"
+                  className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 hover:border-orange-400 hover:bg-orange-50/50 cursor-pointer transition text-left group w-full bg-white"
                 >
                   <img
                     src={prod.mainImage || prod.imageUrl}
@@ -328,7 +329,7 @@ export default function BuyerSellerChatModal({
                       {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(prod.price)}
                     </p>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>

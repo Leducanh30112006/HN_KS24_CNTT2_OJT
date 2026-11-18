@@ -7,7 +7,7 @@ services:
     container_name: quickshop-prod-mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}
       TZ: Asia/Ho_Chi_Minh
     volumes:
       - mysql_prod_data:/var/lib/mysql
@@ -42,7 +42,7 @@ services:
     restart: always
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-quickshop}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-quickshop123}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD required}
     volumes:
       - rabbitmq_prod_data:/var/lib/rabbitmq
     networks:
@@ -60,7 +60,7 @@ services:
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY required}
     volumes:
       - minio_prod_data:/data
     networks:
@@ -100,7 +100,7 @@ services:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-quickshop123}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD required}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - ./deployments/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -126,14 +126,14 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-quickshop}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-quickshop123}
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required}
     depends_on:
       mysql:
         condition: service_healthy
@@ -155,7 +155,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       RABBITMQ_HOST: rabbitmq
@@ -183,7 +183,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       RABBITMQ_HOST: rabbitmq
@@ -210,7 +210,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       VNP_TMN_CODE: ${VNP_TMN_CODE}
@@ -236,7 +236,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
     depends_on:
@@ -260,7 +260,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       OPENAI_API_KEY: ${OPENAI_API_KEY}
@@ -296,7 +296,7 @@ services:
       PAYMENT_SERVICE_URL: http://payment-service:8084
       SHIPPING_SERVICE_URL: http://shipping-service:8085
       NOTIFICATION_SERVICE_URL: http://notification-ai-service:8086
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required}
     volumes:
       - ./api-gateway/src/main/resources/application.yml:/app/config/application.yml:ro
     depends_on:

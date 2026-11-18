@@ -14,7 +14,7 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_GATEWAY_URL || 'http://221.121.5.123',
+        target: process.env.VITE_API_GATEWAY_URL || 'https://quickshop.io.vn',
         changeOrigin: true,
       },
     },
