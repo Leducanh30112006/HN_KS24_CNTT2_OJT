@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Store, Plus, Upload, Trash2, Edit, Sparkles, CheckCircle2, 
   Clock, XCircle, FileText, Send, ArrowLeft, Filter, Layers, 
@@ -6,7 +6,7 @@ import {
   LogOut, ShoppingBag, Truck, RotateCcw, MessageSquare, Wallet, 
   User, Printer, ChevronRight, Eye, Star, Check, Phone, MapPin, 
   Building, CreditCard, ExternalLink, HelpCircle, ShieldCheck,
-  Menu, X, Search, RefreshCw, Zap, CheckCircle
+  Menu, X, Search, RefreshCw, Zap, CheckCircle, BarChart3
 } from 'lucide-react';
 import { catalogApi } from '../api/catalogApi';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -23,11 +23,24 @@ import {
 } from '../data/sampleOrders';
 import ProductDescriptionEditor from './ProductDescriptionEditor';
 import SellerCustomerChat from './SellerCustomerChat';
+import ProductRevenueStatsTable from './ProductRevenueStatsTable';
+import {
+  evaluateProductWithAI,
+  saveAiModeratedProduct,
+  getAiModeratedProducts,
+} from '../utils/aiModerationStore';
 import { stripHtml } from '../utils/sanitizeHtml';
 import { AnimatedPresence, PageTransition, AnimatedNumber } from './motion/MotionPrimitives';
 
 export default function SellerPortal({ categories = [], onProductCreated, onBackToStorefront }) {
   const { user, logout } = useAuthStore();
+
+  // Định nghĩa hồ sơ gian hàng chuẩn (tránh ReferenceError shopProfile is not defined)
+  const shopProfile = {
+    shopId: user?.shopId || 1,
+    shopName: user?.shopName || 'TechWorld Official Store',
+    ownerName: user?.fullName || 'Lê Đức Anh',
+  };
 
   const handleLogout = () => {
     logout();
@@ -95,15 +108,259 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
   const [editSpecifications, setEditSpecifications] = useState([]);
   const [editVariants, setEditVariants] = useState([]);
 
-  // AI SEO Generator state
+  // AI SEO Generator & AI Auto-Moderation states
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiSuccessMsg, setAiSuccessMsg] = useState('');
   const [pendingAiContent, setPendingAiContent] = useState(null); // { isEditMode, generatedHtml, generatedHighlights, sampleDescImages }
+  const [uploadingMainImage, setUploadingMainImage] = useState(false);
+  const [uploadingDescImage, setUploadingDescImage] = useState(false);
+  const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
+  const [lastAiModerationResult, setLastAiModerationResult] = useState(null);
+
+  const mainImageFileRef = useRef(null);
+  const editMainImageFileRef = useRef(null);
+  const descImageFileRef = useRef(null);
+  const editDescImageFileRef = useRef(null);
+
+  // Nén ảnh thành DataURL nhỏ gọn khi MinIO/Backend upload không phản hồi
+  const compressFileToDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new window.Image();
+        img.onload = () => {
+          const maxDim = 900;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = () => resolve(ev.target.result);
+        img.src = ev.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  // Upload ảnh lên MinIO (/api/catalog/upload), fallback sang ảnh nén DataURL cục bộ
+  const uploadLocalImageFile = async (file) => {
+    if (!file) return null;
+    if (!file.type || !file.type.startsWith('image/')) {
+      showToast('Vui lòng chọn file hình ảnh hợp lệ (JPG, PNG, WebP)!', 'error');
+      return null;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Dung lượng ảnh tối đa là 5MB!', 'error');
+      return null;
+    }
+
+    try {
+      const res = await catalogApi.uploadProductImage(file);
+      const data = res?.data?.data || res?.data || res;
+      const uploadedUrl = data?.url || data?.fileUrl || (data?.fileName ? `/api/catalog/media/${data.fileName}` : null);
+      if (uploadedUrl) {
+        return uploadedUrl;
+      }
+    } catch (err) {
+      console.warn('Upload MinIO fallback sang ảnh nén nội bộ:', err?.message || err);
+    }
+
+    return await compressFileToDataUrl(file);
+  };
+
+  const handleMainImageFileChange = async (e, isEditMode = false) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingMainImage(true);
+    try {
+      const url = await uploadLocalImageFile(file);
+      if (url) {
+        if (isEditMode) {
+          setEditMainImage(url);
+        } else {
+          setMainImage(url);
+        }
+        showToast('Tải ảnh đại diện sản phẩm từ máy thành công!');
+      }
+    } finally {
+      setUploadingMainImage(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDescImageFileChange = async (e, isEditMode = false) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploadingDescImage(true);
+    try {
+      const uploaded = [];
+      for (const f of files.slice(0, 5)) {
+        const url = await uploadLocalImageFile(f);
+        if (url) uploaded.push(url);
+      }
+      if (uploaded.length > 0) {
+        if (isEditMode) {
+          setEditDescriptionImages((prev) => [...prev, ...uploaded]);
+        } else {
+          setDescriptionImages((prev) => [...prev, ...uploaded]);
+        }
+        showToast(`Đã tải lên ${uploaded.length} ảnh minh họa từ máy tính!`);
+      }
+    } finally {
+      setUploadingDescImage(false);
+      e.target.value = '';
+    }
+  };
+
+  // Đăng bán sản phẩm mới kèm AI Auto-Moderation + đồng bộ sang Admin Portal để quản lý & theo dõi
+  const handleCreateProductWithAi = async () => {
+    if (!name.trim()) {
+      showToast('Vui lòng nhập tên sản phẩm!', 'error');
+      return;
+    }
+
+    const sanitizedVariants = variants.map((v, idx) => ({
+      sku: (v.sku && v.sku.trim()) || `SKU-${Date.now().toString().slice(-5)}-${idx + 1}`,
+      color: v.color || 'Mặc định',
+      size: v.size || 'Tiêu chuẩn',
+      price: Number(v.price) || 0,
+      stock: Number(v.stock) || 0,
+    }));
+
+    const resolvedImage =
+      mainImage.trim() ||
+      'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&auto=format&fit=crop&q=80';
+    const resolvedCategoryName =
+      categories.find((c) => Number(c.id) === Number(categoryId))?.name || 'Thiết bị Điện tử';
+
+    setIsSubmittingProduct(true);
+    try {
+      // 1. Chạy bộ máy AI Auto-Moderation chấm điểm & kiểm duyệt tự động
+      const aiReport = evaluateProductWithAI({
+        name: name.trim(),
+        description,
+        mainImage: resolvedImage,
+        variants: sanitizedVariants,
+      });
+
+      // 2. Gửi lên Backend Catalog Service (với cờ aiAutoApprove = true) để lưu DB & xuất bản lên sàn thật
+      let backendId = null;
+      let backendStatus = aiReport.productStatus;
+      try {
+        const apiPayload = {
+          shopId: shopProfile.shopId,
+          categoryId: Number(categoryId) || 1,
+          name: name.trim(),
+          description: description || `Sản phẩm ${name.trim()} chính hãng tại ${shopProfile.shopName}.`,
+          mainImage: resolvedImage.startsWith('data:image/')
+            ? 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&auto=format&fit=crop&q=80'
+            : resolvedImage,
+          isDraft: false,
+          aiAutoApprove: true,
+          variants: sanitizedVariants,
+        };
+        const apiRes = await catalogApi.createProduct(apiPayload);
+        const createdDto = apiRes?.data?.data || apiRes?.data;
+        if (createdDto?.id) {
+          backendId = createdDto.id;
+          if (createdDto.status) {
+            backendStatus = createdDto.status;
+          }
+        }
+      } catch (err) {
+        console.warn('Backend createProduct fallback lưu cục bộ + đồng bộ Admin:', err?.message || err);
+      }
+
+      const newProduct = {
+        id: backendId || Date.now(),
+        shopId: shopProfile.shopId,
+        shopName: shopProfile.shopName,
+        categoryId: Number(categoryId) || 1,
+        categoryName: resolvedCategoryName,
+        brand: brand || 'Chính Hãng Phân Phối',
+        name: name.trim(),
+        description,
+        highlights,
+        specifications,
+        descriptionImages,
+        mainImage: resolvedImage,
+        status: backendStatus,
+        rejectionReason:
+          aiReport.decision === 'AI_FLAGGED' ? `[AI CẢNH BÁO] ${aiReport.flaggedReasons.join('; ')}` : null,
+        minPrice: sanitizedVariants[0]?.price || 299000,
+        totalStock: sanitizedVariants.reduce((s, v) => s + (Number(v.stock) || 0), 0),
+        createdAt: new Date().toISOString(),
+        variants: sanitizedVariants,
+        aiModeration: aiReport,
+      };
+
+      // 3. Lưu đồng bộ vào cả danh sách Seller lẫn Kho theo dõi AI Moderation của Admin Portal
+      const updated = [newProduct, ...products.filter((p) => String(p.id) !== String(newProduct.id))];
+      setProducts(updated);
+      localStorage.setItem('quickshop_seller_products', JSON.stringify(updated));
+      saveAiModeratedProduct(newProduct);
+
+      setLastAiModerationResult({ productName: newProduct.name, ...aiReport });
+      setShowCreateModal(false);
+
+      // Reset form tạo sản phẩm
+      setName('');
+      setDescription('');
+      setMainImage('');
+      setDescriptionImages([]);
+      setVariants([{ sku: `SKU-${Date.now().toString().slice(-4)}`, color: 'Đen', size: 'Tiêu chuẩn', price: 299000, stock: 50 }]);
+
+      if (aiReport.decision === 'AI_APPROVED') {
+        showToast(`✨ AI đã tự động phê duyệt "${newProduct.name}" (${aiReport.score}/100 điểm) lên sàn & lưu nhật ký bên Admin!`);
+      } else {
+        showToast(`⚠️ AI gắn cờ cảnh báo "${newProduct.name}" (${aiReport.score}/100 điểm) — Đã chuyển Admin hậu kiểm!`, 'error');
+      }
+
+      if (onProductCreated) onProductCreated();
+    } finally {
+      setIsSubmittingProduct(false);
+    }
+  };
 
   // Danh sách sản phẩm mẫu đầy đủ chi tiết cho gian hàng (Shop ID #1)
   const defaultSellerProducts = defaultProducts.filter(
     (p) => Number(p.shopId) === Number(user?.shopId || 1) || !p.shopId
   );
+
+  // Merge AI moderation metadata (từ store dùng chung với Admin) vào danh sách sản phẩm Seller
+  const mergeAiMetadata = (list) => {
+    const aiRecords = getAiModeratedProducts();
+    const aiMap = new Map(aiRecords.map((r) => [String(r.id), r]));
+    const merged = list.map((p) => {
+      const aiMatch = aiMap.get(String(p.id));
+      if (!aiMatch) return p;
+      return {
+        ...p,
+        status: aiMatch.aiModeration?.adminReviewed ? aiMatch.status : (p.status || aiMatch.status),
+        rejectionReason: aiMatch.rejectionReason ?? p.rejectionReason,
+        aiModeration: aiMatch.aiModeration || p.aiModeration,
+        mainImage: p.mainImage || aiMatch.mainImage,
+      };
+    });
+    // Thêm các sản phẩm mới tạo cục bộ thuộc shop này chưa có trong server list
+    const existingIds = new Set(merged.map((p) => String(p.id)));
+    const localShopAi = aiRecords.filter(
+      (r) => Number(r.shopId || 1) === Number(shopProfile.shopId) && !existingIds.has(String(r.id))
+    );
+    return [...localShopAi, ...merged];
+  };
 
   // Fetch products
   const fetchMyProducts = async () => {
@@ -132,7 +389,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
         // Kết hợp với các sản phẩm mẫu của shop để người bán luôn có danh mục đa dạng
         const serverIds = new Set(enriched.map((p) => String(p.id)));
         const additional = defaultSellerProducts.filter((p) => !serverIds.has(String(p.id)));
-        const finalSellerList = [...enriched, ...additional];
+        const finalSellerList = mergeAiMetadata([...enriched, ...additional]);
 
         setProducts(finalSellerList);
         localStorage.setItem('quickshop_seller_products', JSON.stringify(finalSellerList));
@@ -141,13 +398,14 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
         if (local) {
           try {
             const parsed = JSON.parse(local);
-            setProducts(Array.isArray(parsed) && parsed.length > 0 ? parsed : defaultSellerProducts);
+            setProducts(mergeAiMetadata(Array.isArray(parsed) && parsed.length > 0 ? parsed : defaultSellerProducts));
           } catch {
-            setProducts(defaultSellerProducts);
+            setProducts(mergeAiMetadata(defaultSellerProducts));
           }
         } else {
-          setProducts(defaultSellerProducts);
-          localStorage.setItem('quickshop_seller_products', JSON.stringify(defaultSellerProducts));
+          const init = mergeAiMetadata(defaultSellerProducts);
+          setProducts(init);
+          localStorage.setItem('quickshop_seller_products', JSON.stringify(init));
         }
       }
     } catch {
@@ -155,12 +413,12 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
       if (local) {
         try {
           const parsed = JSON.parse(local);
-          setProducts(Array.isArray(parsed) && parsed.length > 0 ? parsed : defaultSellerProducts);
+          setProducts(mergeAiMetadata(Array.isArray(parsed) && parsed.length > 0 ? parsed : defaultSellerProducts));
         } catch {
-          setProducts(defaultSellerProducts);
+          setProducts(mergeAiMetadata(defaultSellerProducts));
         }
       } else {
-        setProducts(defaultSellerProducts);
+        setProducts(mergeAiMetadata(defaultSellerProducts));
       }
     } finally {
       setLoading(false);
@@ -169,6 +427,11 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
   useEffect(() => {
     fetchMyProducts();
+    const handleAiSync = () => {
+      setProducts((prev) => mergeAiMetadata(prev));
+    };
+    window.addEventListener('quickshop_ai_moderation_updated', handleAiSync);
+    return () => window.removeEventListener('quickshop_ai_moderation_updated', handleAiSync);
   }, []);
 
   // ==========================================
@@ -600,6 +863,23 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
           </div>
 
           <button
+            onClick={() => { setActiveTab('revenue'); setSidebarOpen(false); }}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+              activeTab === 'revenue'
+                ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <BarChart3 className="w-4 h-4 text-amber-400" />
+              <span>Thống kê Doanh thu SP</span>
+            </div>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-orange-500/20 text-orange-300">
+              Top SP
+            </span>
+          </button>
+
+          <button
             onClick={() => { setActiveTab('wallet'); setSidebarOpen(false); }}
             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
               activeTab === 'wallet'
@@ -786,6 +1066,65 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
                 </div>
               </div>
 
+              {/* Kết quả Kiểm duyệt Tự động bằng AI vừa thực hiện */}
+              {lastAiModerationResult && (
+                <div
+                  className={`p-4 rounded-2xl border space-y-2.5 animate-in fade-in duration-200 ${
+                    lastAiModerationResult.decision === 'AI_APPROVED'
+                      ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+                      : 'bg-amber-50/90 border-amber-300 text-amber-950'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles
+                        className={`w-5 h-5 flex-shrink-0 ${
+                          lastAiModerationResult.decision === 'AI_APPROVED' ? 'text-emerald-600' : 'text-amber-600'
+                        }`}
+                      />
+                      <div>
+                        <div className="text-xs font-black flex items-center gap-2 flex-wrap">
+                          <span>
+                            {lastAiModerationResult.decision === 'AI_APPROVED'
+                              ? `AI Đã Tự Động Phê Duyệt: "${lastAiModerationResult.productName}"`
+                              : `AI Gắn Cờ Chờ Admin Hậu Kiểm: "${lastAiModerationResult.productName}"`}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-white border border-current/20">
+                            Điểm AI: {lastAiModerationResult.score}/100
+                          </span>
+                        </div>
+                        <p className="text-[11px] opacity-80 mt-0.5">{lastAiModerationResult.summary}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLastAiModerationResult(null)}
+                      className="p-1 rounded-lg hover:bg-black/5 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 pt-1">
+                    {(lastAiModerationResult.checks || []).map((c, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-1.5 text-[11px] bg-white/80 px-2.5 py-1.5 rounded-xl border border-black/5"
+                      >
+                        {c.passed ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                        ) : (
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
+                        )}
+                        <span className="truncate font-medium" title={c.note}>
+                          {c.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Filters */}
               <div className="flex flex-wrap items-center gap-2">
                 {['ALL', 'APPROVED', 'PENDING', 'DRAFT', 'REJECTED'].map((st) => (
@@ -869,23 +1208,44 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
                             {formatVND(p.minPrice || p.variants?.[0]?.price || 299000)}
                           </td>
                           <td className="py-3.5 px-4">
-                            {p.status === 'APPROVED' || p.status === 'ACTIVE' ? (
-                              <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg font-bold text-[10px]">
-                                Đang hiển thị
-                              </span>
-                            ) : p.status === 'PENDING' ? (
-                              <span className="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-lg font-bold text-[10px]">
-                                Chờ duyệt
-                              </span>
-                            ) : p.status === 'DRAFT' ? (
-                              <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg font-bold text-[10px]">
-                                Bản nháp
-                              </span>
-                            ) : (
-                              <span className="px-2.5 py-1 bg-rose-100 text-rose-800 rounded-lg font-bold text-[10px]">
-                                Bị từ chối
-                              </span>
-                            )}
+                            <div className="flex flex-col items-start gap-1">
+                              {p.status === 'APPROVED' || p.status === 'ACTIVE' ? (
+                                <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg font-bold text-[10px] inline-flex items-center gap-1">
+                                  {p.aiModeration?.decision === 'AI_APPROVED' ? (
+                                    <>
+                                      <Sparkles className="w-3 h-3 text-emerald-600" />
+                                      <span>AI Đã Duyệt ({p.aiModeration.score}/100)</span>
+                                    </>
+                                  ) : (
+                                    <span>Đang hiển thị</span>
+                                  )}
+                                </span>
+                              ) : p.status === 'PENDING' ? (
+                                <span className="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-lg font-bold text-[10px] inline-flex items-center gap-1">
+                                  {p.aiModeration?.decision === 'AI_FLAGGED' ? (
+                                    <>
+                                      <AlertTriangle className="w-3 h-3 text-amber-700" />
+                                      <span>AI Cảnh báo • Chờ Admin</span>
+                                    </>
+                                  ) : (
+                                    <span>Chờ duyệt</span>
+                                  )}
+                                </span>
+                              ) : p.status === 'DRAFT' ? (
+                                <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg font-bold text-[10px]">
+                                  Bản nháp
+                                </span>
+                              ) : (
+                                <span className="px-2.5 py-1 bg-rose-100 text-rose-800 rounded-lg font-bold text-[10px]">
+                                  Bị từ chối
+                                </span>
+                              )}
+                              {p.aiModeration?.adminReviewed && (
+                                <span className="text-[9px] text-slate-500 font-semibold">
+                                  Admin đã hậu kiểm
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3.5 px-4 text-right">
                             <div className="inline-flex items-center gap-1.5">
@@ -1324,6 +1684,19 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
           )}
 
           {/* ========================================================== */}
+          {/* TAB: THỐNG KÊ DOANH THU ĐẾN TỪ TỪNG SẢN PHẨM */}
+          {/* ========================================================== */}
+          {activeTab === 'revenue' && (
+            <div className="space-y-6">
+              <ProductRevenueStatsTable
+                mode="seller"
+                shopId={shopProfile.shopId}
+                products={products}
+              />
+            </div>
+          )}
+
+          {/* ========================================================== */}
           {/* TAB 5: VÍ TIỀN & DOANH THU (WALLET & FINANCE) */}
           {/* ========================================================== */}
           {activeTab === 'wallet' && (
@@ -1378,6 +1751,13 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
                   </div>
                 </div>
               </div>
+
+              {/* Bảng Thống kê Doanh thu đến từ sản phẩm nào */}
+              <ProductRevenueStatsTable
+                mode="seller"
+                shopId={shopProfile.shopId}
+                products={products}
+              />
 
               {/* Withdrawals History */}
               <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm space-y-4">
@@ -1519,15 +1899,79 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-700">Ảnh đại diện chính (URL):</label>
+              {/* Tải ảnh đại diện chính từ máy tính hoặc dán URL */}
+              <div className="space-y-2.5 p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200/90">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-orange-600" />
+                    <span>Ảnh đại diện chính sản phẩm:</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400">Hỗ trợ tải ảnh trực tiếp từ máy (JPG, PNG, WebP ≤ 5MB)</span>
+                </div>
+
                 <input
-                  type="text"
-                  value={mainImage}
-                  onChange={(e) => setMainImage(e.target.value)}
-                  placeholder="https://images.unsplash.com/photo-..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 outline-none"
+                  type="file"
+                  ref={mainImageFileRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleMainImageFileChange(e, false)}
                 />
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  {/* Live Preview */}
+                  <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden flex-shrink-0 relative group">
+                    {mainImage ? (
+                      <>
+                        <img src={mainImage} alt="Preview" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setMainImage('')}
+                          title="Xóa ảnh đại diện"
+                          className="absolute inset-0 bg-slate-900/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <ImageIcon className="w-7 h-7 text-slate-300" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={uploadingMainImage}
+                        onClick={() => mainImageFileRef.current?.click()}
+                        className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                      >
+                        {uploadingMainImage ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Upload className="w-3.5 h-3.5" />
+                        )}
+                        <span>{uploadingMainImage ? 'Đang tải ảnh...' : 'Tải ảnh lên từ máy tính'}</span>
+                      </button>
+                      {mainImage && (
+                        <button
+                          type="button"
+                          onClick={() => setMainImage('')}
+                          className="px-3 py-2 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                        >
+                          Xóa ảnh
+                        </button>
+                      )}
+                    </div>
+
+                    <input
+                      type="text"
+                      value={mainImage}
+                      onChange={(e) => setMainImage(e.target.value)}
+                      placeholder="Hoặc dán đường link ảnh URL (https://images.unsplash.com/...)"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 outline-none focus:border-orange-500"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Nút AI Gemini Sinh mô tả chi tiết & ảnh */}
@@ -1615,19 +2059,42 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
                 />
               </div>
 
-              {/* Thêm hình ảnh minh họa trong mô tả (User Requirement) */}
+              {/* Thêm hình ảnh minh họa trong mô tả (Tải từ máy tính hoặc dán URL) */}
               <div className="space-y-2 p-3 bg-slate-50 rounded-2xl border border-slate-200">
-                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5 text-orange-600" />
-                  <span>Hình ảnh minh họa chèn trong mô tả (Rich Visual Showcase):</span>
-                </label>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-orange-600" />
+                    <span>Hình ảnh minh họa chèn trong mô tả (Rich Visual Showcase):</span>
+                  </label>
+                  <input
+                    type="file"
+                    ref={descImageFileRef}
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleDescImageFileChange(e, false)}
+                  />
+                  <button
+                    type="button"
+                    disabled={uploadingDescImage}
+                    onClick={() => descImageFileRef.current?.click()}
+                    className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-xl text-[11px] font-bold flex items-center gap-1 transition cursor-pointer active:scale-95"
+                  >
+                    {uploadingDescImage ? (
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Upload className="w-3 h-3" />
+                    )}
+                    <span>{uploadingDescImage ? 'Đang tải...' : 'Tải ảnh từ máy'}</span>
+                  </button>
+                </div>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={newDescImageUrl}
                     onChange={(e) => setNewDescImageUrl(e.target.value)}
-                    placeholder="Dán link ảnh minh họa (https://...)"
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-xl text-xs outline-none"
+                    placeholder="Hoặc dán link ảnh minh họa (https://...)"
+                    className="flex-1 px-3 py-2 border border-slate-300 bg-white rounded-xl text-xs outline-none"
                   />
                   <button
                     type="button"
@@ -1637,9 +2104,9 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
                         setNewDescImageUrl('');
                       }
                     }}
-                    className="px-3 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800"
+                    className="px-3 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 cursor-pointer"
                   >
-                    Thêm ảnh
+                    Thêm link
                   </button>
                 </div>
 
@@ -1715,49 +2182,33 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!name) {
-                    showToast('Vui lòng nhập tên sản phẩm', 'error');
-                    return;
-                  }
-                  const newProduct = {
-                    id: Date.now(),
-                    shopId: user?.shopId || 1,
-                    shopName: 'TechWorld Official Store',
-                    categoryId,
-                    categoryName: categories.find((c) => c.id === categoryId)?.name || 'Điện tử',
-                    brand,
-                    name,
-                    description,
-                    highlights,
-                    specifications,
-                    descriptionImages,
-                    mainImage: mainImage || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&auto=format&fit=crop&q=80',
-                    status: 'PENDING',
-                    minPrice: variants[0]?.price || 299000,
-                    variants,
-                  };
-                  const updated = [newProduct, ...products];
-                  setProducts(updated);
-                  localStorage.setItem('quickshop_seller_products', JSON.stringify(updated));
-                  setShowCreateModal(false);
-                  showToast('Đã gửi sản phẩm lên kiểm duyệt thành công!');
-                  if (onProductCreated) onProductCreated();
-                }}
-                className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white text-xs font-bold rounded-xl shadow-md"
-              >
-                Gửi duyệt sản phẩm
-              </button>
+            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                <span>AI tự động kiểm duyệt lên sàn tức thì & lưu hồ sơ sang Admin giám sát</span>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmittingProduct}
+                  onClick={handleCreateProductWithAi}
+                  className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 disabled:opacity-60 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  {isSubmittingProduct ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isSubmittingProduct ? 'AI đang kiểm duyệt...' : 'Đăng bán & AI Duyệt Tự Động'}</span>
+                </button>
+              </div>
             </div>
           </div>
       </AnimatedPresence>
@@ -1784,6 +2235,48 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
                   onChange={(e) => setEditName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 outline-none"
                 />
+              </div>
+
+              {/* Đổi ảnh đại diện sản phẩm từ máy tính */}
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <label className="font-bold text-slate-800 flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-orange-600" />
+                  <span>Ảnh đại diện chính sản phẩm:</span>
+                </label>
+                <input
+                  type="file"
+                  ref={editMainImageFileRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleMainImageFileChange(e, true)}
+                />
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden border border-slate-300 bg-white flex-shrink-0">
+                    {editMainImage ? (
+                      <img src={editMainImage} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon className="w-6 h-6 text-slate-300 m-auto mt-5" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    <button
+                      type="button"
+                      disabled={uploadingMainImage}
+                      onClick={() => editMainImageFileRef.current?.click()}
+                      className="px-3.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{uploadingMainImage ? 'Đang tải...' : 'Tải ảnh mới từ máy'}</span>
+                    </button>
+                    <input
+                      type="text"
+                      value={editMainImage}
+                      onChange={(e) => setEditMainImage(e.target.value)}
+                      placeholder="Hoặc dán link ảnh URL..."
+                      className="w-full px-3 py-1.5 border border-slate-200 bg-white rounded-xl text-xs"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Nút AI Gemini Sinh mô tả chi tiết cho Modal Edit */}
@@ -1872,14 +2365,33 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
               {/* Ảnh minh họa trong mô tả */}
               <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                <label className="font-bold text-slate-800">Ảnh minh họa chi tiết:</label>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="font-bold text-slate-800">Ảnh minh họa chi tiết:</label>
+                  <input
+                    type="file"
+                    ref={editDescImageFileRef}
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleDescImageFileChange(e, true)}
+                  />
+                  <button
+                    type="button"
+                    disabled={uploadingDescImage}
+                    onClick={() => editDescImageFileRef.current?.click()}
+                    className="px-3 py-1 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-xl text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Upload className="w-3 h-3" />
+                    <span>{uploadingDescImage ? 'Đang tải...' : 'Tải ảnh từ máy'}</span>
+                  </button>
+                </div>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={editNewDescImageUrl}
                     onChange={(e) => setEditNewDescImageUrl(e.target.value)}
                     placeholder="Thêm link ảnh minh họa..."
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-xl"
+                    className="flex-1 px-3 py-2 border border-slate-300 bg-white rounded-xl"
                   />
                   <button
                     type="button"
@@ -1927,6 +2439,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
                       ? {
                           ...p,
                           name: editName,
+                          mainImage: editMainImage || p.mainImage,
                           description: editDescription,
                           descriptionImages: editDescriptionImages,
                         }

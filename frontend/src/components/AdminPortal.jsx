@@ -31,6 +31,12 @@ import {
 import { stripHtml } from '../utils/sanitizeHtml';
 import ApiErrorBanner from './ApiErrorBanner';
 import Pagination from './Pagination';
+import ProductRevenueStatsTable from './ProductRevenueStatsTable';
+import {
+  getAiModeratedProducts,
+  syncAdminDecisionToAiStore,
+  removeAiModeratedProduct,
+} from '../utils/aiModerationStore';
 import { AnimatedPresence, AnimatedNumber, PageTransition } from './motion/MotionPrimitives';
 
 export default function AdminPortal({ categories = [], onCategoriesUpdated, onBackToStorefront }) {
@@ -75,7 +81,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   const [moderationError, setModerationError] = useState(null);
   const [usingProductFallback, setUsingProductFallback] = useState(false);
   const [processingProductId, setProcessingProductId] = useState(null);
-  const [moderationFilter, setModerationFilter] = useState('PENDING'); // PENDING, REJECTED, APPROVED, ALL
+  const [moderationFilter, setModerationFilter] = useState('ALL'); // ALL, AI_AUTO, PENDING, APPROVED, REJECTED
   const [moderationSearchKw, setModerationSearchKw] = useState('');
   const [moderationCategoryFilter, setModerationCategoryFilter] = useState('ALL');
   const [moderationPage, setModerationPage] = useState(0);
@@ -126,22 +132,49 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
     },
   ];
 
+  const mergeWithAiModerationLogs = (serverItems) => {
+    const aiLogs = getAiModeratedProducts();
+    const aiMap = new Map(aiLogs.map((item) => [String(item.id), item]));
+
+    const mergedServer = (serverItems || []).map((item) => {
+      const aiMatch = aiMap.get(String(item.id));
+      if (!aiMatch) return item;
+      return {
+        ...item,
+        aiModeration: aiMatch.aiModeration || item.aiModeration,
+        mainImage: item.mainImage || aiMatch.mainImage,
+      };
+    });
+
+    const serverIds = new Set(mergedServer.map((item) => String(item.id)));
+    const aiOnlyItems = aiLogs.filter((item) => !serverIds.has(String(item.id)));
+    return [...aiOnlyItems, ...mergedServer];
+  };
+
   const fetchModerationProducts = async () => {
     setLoadingProducts(true);
     setModerationError(null);
     try {
       const { items } = await fetchAdminProducts({ page: 0, size: 100 });
-      setAllProducts(items);
+      setAllProducts(mergeWithAiModerationLogs(items));
       setUsingProductFallback(false);
     } catch (err) {
       const msg = extractApiErrorMessage(err, 'Không thể tải danh sách kiểm duyệt sản phẩm từ Catalog API.');
       setModerationError(msg);
-      setAllProducts((prev) => (prev.length > 0 ? prev : defaultModerationProducts));
+      setAllProducts((prev) => mergeWithAiModerationLogs(prev.length > 0 ? prev : defaultModerationProducts));
       setUsingProductFallback(true);
     } finally {
       setLoadingProducts(false);
     }
   };
+
+  useEffect(() => {
+    const handleAiSync = () => {
+      setAllProducts((prev) => mergeWithAiModerationLogs(prev));
+    };
+    window.addEventListener('quickshop_ai_moderation_updated', handleAiSync);
+    return () => window.removeEventListener('quickshop_ai_moderation_updated', handleAiSync);
+  }, []);
 
   // ================= 2. SELLER MANAGEMENT STATE =================
   const [shops, setShops] = useState([]);
@@ -1003,20 +1036,51 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
         status: 'APPROVED',
         reason: 'Sản phẩm hợp lệ chuẩn chính sách sàn QuickShop Mall',
       });
+      syncAdminDecisionToAiStore(id, updated?.status || 'APPROVED', 'Admin đã xác nhận phê duyệt hợp lệ');
       setAllProducts((prev) =>
         prev.map((p) =>
           p.id === id
-            ? { ...p, ...(updated || {}), status: updated?.status || 'APPROVED', rejectionReason: null }
+            ? {
+                ...p,
+                ...(updated || {}),
+                status: updated?.status || 'APPROVED',
+                rejectionReason: null,
+                aiModeration: p.aiModeration
+                  ? { ...p.aiModeration, adminReviewed: true, adminDecision: 'APPROVED' }
+                  : p.aiModeration,
+              }
             : p
         )
       );
       setConfirmDialog(null);
       showToast('Đã phê duyệt sản phẩm thành công! Sản phẩm đã xuất hiện công khai trên Storefront.', 'success');
     } catch (err) {
-      const msg = extractApiErrorMessage(err, 'Phê duyệt sản phẩm thất bại.');
-      setConfirmModalError(msg);
-      setActionError(msg);
-      showToast(msg, 'error');
+      // Nếu là sản phẩm lưu cục bộ từ AI Moderation store -> vẫn cho phép Admin cập nhật đồng bộ
+      const isLocalAi = getAiModeratedProducts().some((item) => String(item.id) === String(id));
+      if (isLocalAi) {
+        syncAdminDecisionToAiStore(id, 'APPROVED', 'Admin đã xác nhận phê duyệt hợp lệ');
+        setAllProducts((prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  status: 'APPROVED',
+                  rejectionReason: null,
+                  aiModeration: p.aiModeration
+                    ? { ...p.aiModeration, adminReviewed: true, adminDecision: 'APPROVED' }
+                    : p.aiModeration,
+                }
+              : p
+          )
+        );
+        setConfirmDialog(null);
+        showToast('Đã xác nhận phê duyệt sản phẩm AI thành công & đồng bộ sang Seller!', 'success');
+      } else {
+        const msg = extractApiErrorMessage(err, 'Phê duyệt sản phẩm thất bại.');
+        setConfirmModalError(msg);
+        setActionError(msg);
+        showToast(msg, 'error');
+      }
     } finally {
       setProcessingProductId(null);
     }
@@ -1047,21 +1111,52 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
         status: 'REJECTED',
         reason,
       });
+      syncAdminDecisionToAiStore(id, updated?.status || 'REJECTED', reason);
       setAllProducts((prev) =>
         prev.map((p) =>
           p.id === id
-            ? { ...p, ...(updated || {}), status: updated?.status || 'REJECTED', rejectionReason: reason }
+            ? {
+                ...p,
+                ...(updated || {}),
+                status: updated?.status || 'REJECTED',
+                rejectionReason: reason,
+                aiModeration: p.aiModeration
+                  ? { ...p.aiModeration, adminReviewed: true, adminDecision: 'REJECTED', adminActionNote: reason }
+                  : p.aiModeration,
+              }
             : p
         )
       );
       setRejectingProduct(null);
       setRejectReason('');
-      showToast('Đã từ chối duyệt sản phẩm và gửi lý do phản hồi đến người bán.', 'info');
+      showToast('Đã từ chối / thu hồi sản phẩm và đồng bộ thông báo đến người bán.', 'info');
     } catch (err) {
-      const msg = extractApiErrorMessage(err, 'Từ chối sản phẩm thất bại.');
-      setRejectModalError(msg);
-      setActionError(msg);
-      showToast(msg, 'error');
+      const isLocalAi = getAiModeratedProducts().some((item) => String(item.id) === String(id));
+      if (isLocalAi) {
+        syncAdminDecisionToAiStore(id, 'REJECTED', reason);
+        setAllProducts((prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  status: 'REJECTED',
+                  rejectionReason: reason,
+                  aiModeration: p.aiModeration
+                    ? { ...p.aiModeration, adminReviewed: true, adminDecision: 'REJECTED', adminActionNote: reason }
+                    : p.aiModeration,
+                }
+              : p
+          )
+        );
+        setRejectingProduct(null);
+        setRejectReason('');
+        showToast('Đã thu hồi / từ chối sản phẩm AI & đồng bộ sang Kênh Người Bán.', 'info');
+      } else {
+        const msg = extractApiErrorMessage(err, 'Từ chối sản phẩm thất bại.');
+        setRejectModalError(msg);
+        setActionError(msg);
+        showToast(msg, 'error');
+      }
     } finally {
       setSubmittingModalAction(false);
       setProcessingProductId(null);
@@ -1090,14 +1185,23 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
     setConfirmModalError(null);
     try {
       await deleteAdminProduct(id);
+      removeAiModeratedProduct(id);
       setAllProducts((prev) => prev.filter((p) => p.id !== id));
       setConfirmDialog(null);
       showToast('Đã xóa sản phẩm khỏi cơ sở dữ liệu hệ thống.', 'info');
     } catch (err) {
-      const msg = extractApiErrorMessage(err, 'Xóa sản phẩm thất bại.');
-      setConfirmModalError(msg);
-      setActionError(msg);
-      showToast(msg, 'error');
+      const isLocalAi = getAiModeratedProducts().some((item) => String(item.id) === String(id));
+      if (isLocalAi) {
+        removeAiModeratedProduct(id);
+        setAllProducts((prev) => prev.filter((p) => p.id !== id));
+        setConfirmDialog(null);
+        showToast('Đã xóa sản phẩm khỏi nhật ký quản lý Admin.', 'info');
+      } else {
+        const msg = extractApiErrorMessage(err, 'Xóa sản phẩm thất bại.');
+        setConfirmModalError(msg);
+        setActionError(msg);
+        showToast(msg, 'error');
+      }
     } finally {
       setProcessingProductId(null);
     }
@@ -1181,6 +1285,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   // Filter moderation products
   const filteredModerationProducts = allProducts.filter((p) => {
     if (moderationFilter === 'ALL') return true;
+    if (moderationFilter === 'AI_AUTO') return Boolean(p.aiModeration);
     if (moderationFilter === 'PENDING') return p.status === 'PENDING' || p.status === 'PENDING_APPROVAL';
     if (moderationFilter === 'REJECTED') return p.status === 'REJECTED';
     if (moderationFilter === 'APPROVED') return p.status === 'APPROVED' || p.status === 'ACTIVE';
@@ -1208,6 +1313,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
     (moderationPage + 1) * moderationPageSize
   );
 
+  const aiAutoModerationCount = allProducts.filter((p) => Boolean(p.aiModeration)).length;
   const pendingModerationCount = allProducts.filter((p) => p.status === 'PENDING' || p.status === 'PENDING_APPROVAL').length;
   const approvedModerationCount = allProducts.filter((p) => p.status === 'APPROVED' || p.status === 'ACTIVE').length;
   const rejectedModerationCount = allProducts.filter((p) => p.status === 'REJECTED').length;
@@ -2141,6 +2247,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </div>
             </div>
           </div>
+
+          {/* Bảng Thống kê Doanh thu Toàn Sàn đến từ từng Sản phẩm */}
+          <ProductRevenueStatsTable mode="admin" products={allProducts} />
         </div>
       )}
 
@@ -2213,10 +2322,11 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
                 {/* Status Tabs */}
                 {[
-                  { id: 'PENDING', label: `Chờ duyệt (${pendingModerationCount})` },
-                  { id: 'REJECTED', label: `Bị từ chối (${rejectedModerationCount})` },
-                  { id: 'APPROVED', label: `Đã duyệt (${approvedModerationCount})` },
                   { id: 'ALL', label: `Tất cả (${allProducts.length})` },
+                  { id: 'AI_AUTO', label: `✨ AI Kiểm duyệt (${aiAutoModerationCount})` },
+                  { id: 'PENDING', label: `Chờ duyệt (${pendingModerationCount})` },
+                  { id: 'APPROVED', label: `Đã duyệt (${approvedModerationCount})` },
+                  { id: 'REJECTED', label: `Bị từ chối (${rejectedModerationCount})` },
                 ].map((f) => (
                   <button
                     key={f.id}
@@ -2301,9 +2411,44 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                               Tồn kho ban đầu: {p.variants ? p.variants.reduce((acc, v) => acc + (v.stock || 0), 0) : '0'}
                             </span>
                           </div>
+                          {p.aiModeration && (
+                            <div
+                              className={`mt-2.5 p-2.5 rounded-xl border text-[11px] space-y-1.5 max-w-xl ${
+                                p.aiModeration.decision === 'AI_APPROVED'
+                                  ? 'bg-emerald-50/70 border-emerald-200/80 text-emerald-900'
+                                  : 'bg-amber-50/80 border-amber-200 text-amber-900'
+                              }`}
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-bold flex items-center gap-1">
+                                  <Sparkles className="w-3.5 h-3.5 text-orange-600" />
+                                  <span>
+                                    {p.aiModeration.decision === 'AI_APPROVED'
+                                      ? 'AI Tự Động Phê Duyệt'
+                                      : 'AI Gắn Cờ Cần Hậu Kiểm'}
+                                  </span>
+                                  <span className="px-1.5 py-0.5 rounded-md bg-white border border-current/20 font-mono text-[10px] font-black">
+                                    {p.aiModeration.score}/100
+                                  </span>
+                                </span>
+                                {p.aiModeration.checkedAt && (
+                                  <span className="text-[10px] opacity-70 font-mono">
+                                    {new Date(p.aiModeration.checkedAt).toLocaleString('vi-VN')}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="opacity-85">{p.aiModeration.summary}</p>
+                              {p.aiModeration.adminReviewed && (
+                                <div className="text-[10px] font-bold text-slate-700 pt-0.5">
+                                  ✓ Admin đã hậu kiểm: {p.aiModeration.adminActionNote || p.aiModeration.adminDecision}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           {p.rejectionReason && (
                             <div className="mt-2 text-xs text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-100">
-                              <strong>Lý do từ chối:</strong> {p.rejectionReason}
+                              <strong>Lý do từ chối / cảnh báo:</strong> {p.rejectionReason}
                             </div>
                           )}
                         </div>
@@ -3751,6 +3896,9 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
           {/* SUB-TAB: OVERVIEW */}
           {financeSubTab === 'overview' && (
             <div className="space-y-6">
+              {/* Bảng Thống kê Doanh thu đến từ từng Sản phẩm */}
+              <ProductRevenueStatsTable mode="admin" products={allProducts} />
+
               {/* Payment Channel Breakdown & Escrow Flow */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
