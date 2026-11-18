@@ -170,15 +170,15 @@ public class ShippingServiceImpl implements ShippingService {
             throw new BadRequestException("Mã vận đơn (trackingCode) không được để trống");
         }
 
-        // Xác thực vận đơn tồn tại trước khi xử lý webhook (Chống webhook giả mạo)
-        Shipment shipment = shipmentRepository.findByTrackingCode(payload.getTrackingCode().trim())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vận đơn hợp lệ với mã: " + payload.getTrackingCode()));
-
-        // Idempotency check
+        // Idempotency check (kiểm tra trước để bỏ qua sự kiện trùng eventId mà không cần truy vấn lại vận đơn)
         if (webhookLogRepository.existsByEventId(payload.getEventId())) {
             log.warn("Webhook duplicate eventId detected: {}, skipping", payload.getEventId());
             return false;
         }
+
+        // Xác thực vận đơn tồn tại trước khi xử lý webhook (Chống webhook giả mạo)
+        Shipment shipment = shipmentRepository.findByTrackingCode(payload.getTrackingCode().trim())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vận đơn hợp lệ với mã: " + payload.getTrackingCode()));
 
         // Save log
         webhookLogRepository.save(ShippingWebhookLog.builder()

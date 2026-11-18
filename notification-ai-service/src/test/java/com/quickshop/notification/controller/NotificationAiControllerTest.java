@@ -94,7 +94,8 @@ class NotificationAiControllerTest {
     void getEmailLogs_Success() throws Exception {
         when(notificationService.getEmailLogs(any(), any())).thenReturn(new PageImpl<>(List.of()));
 
-        mockMvc.perform(get("/api/notifications/email-logs"))
+        mockMvc.perform(get("/api/notifications/email-logs")
+                        .header("X-User-Role", "ROLE_ADMIN"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }

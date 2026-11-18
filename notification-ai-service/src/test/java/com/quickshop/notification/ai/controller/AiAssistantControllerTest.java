@@ -186,7 +186,8 @@ class AiAssistantControllerTest {
                 "failureCount", 0
         ));
 
-        mockMvc.perform(post("/api/ai/circuit-breaker/reset"))
+        mockMvc.perform(post("/api/ai/circuit-breaker/reset")
+                        .header("X-User-Role", "ROLE_ADMIN"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.state").value("CLOSED"))
