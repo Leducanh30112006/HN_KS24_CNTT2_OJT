@@ -36,6 +36,8 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+      timeout: 2s
+      connect-timeout: 2s
 
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9010}
