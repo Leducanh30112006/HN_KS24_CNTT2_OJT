@@ -210,7 +210,8 @@ class OrderControllerTest {
         when(subOrderRepository.findByMasterOrderId(101L)).thenReturn(List.of(subOrder));
         when(orderItemRepository.findBySubOrderId(501L)).thenReturn(List.of(item));
 
-        mockMvc.perform(get("/api/orders/101"))
+        mockMvc.perform(get("/api/orders/101")
+                        .header("X-User-Id", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.masterOrder.id").value(101))
