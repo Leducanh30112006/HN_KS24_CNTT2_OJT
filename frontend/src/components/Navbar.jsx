@@ -474,11 +474,8 @@ export default function Navbar({
                   )}
                 </div>
                 <div className="hidden lg:block text-left text-xs">
-                  <div className="font-semibold text-slate-900 truncate max-w-[100px]">
+                  <div className="font-semibold text-slate-900 truncate max-w-[120px]">
                     {user.fullName || user.username}
-                  </div>
-                  <div className="text-[10px] text-orange-600 font-medium">
-                    {user.role}
                   </div>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
@@ -500,9 +497,6 @@ export default function Navbar({
                 <div className="p-2.5 border-b border-slate-100 mb-1">
                   <div className="font-bold text-xs text-slate-900">{user?.fullName || user?.username}</div>
                   <div className="text-[11px] text-slate-500 truncate">{user?.email}</div>
-                  <div className="text-[10px] font-extrabold text-orange-600 mt-1 uppercase tracking-wide">
-                    {user?.role}
-                  </div>
                 </div>
 
                 {/* Các chức năng cá nhân của người mua */}

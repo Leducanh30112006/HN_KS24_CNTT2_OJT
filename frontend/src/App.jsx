@@ -1907,7 +1907,17 @@ export default function App() {
         )}
       </AnimatedPresence>
 
-      <AiChatWidget />
+      <AiChatWidget
+        products={products}
+        onSelectProduct={(pId) => handleSelectProduct({ id: pId })}
+        onBuyNow={(item) => {
+          if (item) {
+            setCheckoutItems([item]);
+            handleNavigateView('checkout');
+          }
+        }}
+        onToast={showToast}
+      />
 
       {/* Global Buyer <-> Seller Chat Modal */}
       <BuyerSellerChatModal

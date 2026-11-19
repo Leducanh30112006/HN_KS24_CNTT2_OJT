@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Flame, Clock, ArrowLeft, Zap, Sparkles, Filter, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { gsap, useGSAP } from '../lib/gsap';
 import { fixMojibakeText } from '../utils/vietnameseEncoding';
 import { LucianButton } from './ui/LucianPrimitives';
+import { calculateSlotRemainingTime, getEffectiveFlashSaleProducts } from '../utils/flashSaleStore';
 
 export default function FlashSalePage({ products = [], onBack, onSelectProduct }) {
-  // Live Countdown Timer
-  const [timeLeft, setTimeLeft] = useState({ hours: 2, minutes: 45, seconds: 18 });
+  // Live Countdown Timer đồng bộ chuẩn thời gian thực
+  const [timeLeft, setTimeLeft] = useState(() => calculateSlotRemainingTime());
   const [selectedSlot, setSelectedSlot] = useState(0);
   const [selectedCategoryTab, setSelectedCategoryTab] = useState('all');
+  const [flashSaleVersion, setFlashSaleVersion] = useState(0);
   const pageRef = useRef(null);
   const secondsBadgeRef = useRef(null);
 
@@ -24,19 +26,17 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
   }, [timeLeft.seconds]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: 59, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        }
-        return { hours: 3, minutes: 0, seconds: 0 };
-      });
-    }, 1000);
-    return () => clearInterval(timer);
+    const updateTime = () => setTimeLeft(calculateSlotRemainingTime());
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+
+    const handleConfigUpdate = () => setFlashSaleVersion((v) => v + 1);
+    window.addEventListener('quickshop_flash_sale_updated', handleConfigUpdate);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('quickshop_flash_sale_updated', handleConfigUpdate);
+    };
   }, []);
 
   const formatVND = (price) => {
@@ -58,18 +58,22 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
     { id: 'beauty', label: 'Mỹ phẩm & Làm đẹp' },
   ];
 
-  // Enrich & filter flash sale products
-  const flashSaleItems = products.map((p, idx) => {
-    const discountPercent = 25 + ((idx * 7) % 25);
-    const originalPrice = p.minPrice ? Math.round(p.minPrice * (1 + discountPercent / 100)) : 1000000;
-    const soldPercent = Math.min(95, 60 + ((idx * 9) % 35));
-    return {
-      ...p,
-      discountPercent,
-      originalPrice,
-      soldPercent,
-    };
-  });
+  // Enrich & filter flash sale products (từ store Flash Sale hiệu lực hoặc fallback)
+  const flashSaleItems = useMemo(() => {
+    const effective = getEffectiveFlashSaleProducts(products);
+    const source = effective.length > 0 ? effective : products;
+    return source.map((p, idx) => {
+      const discountPercent = p.discountPercent || (25 + ((idx * 7) % 25));
+      const originalPrice = p.minPrice ? Math.round(p.minPrice * (1 + discountPercent / 100)) : 1000000;
+      const soldPercent = Math.min(95, 60 + ((idx * 9) % 35));
+      return {
+        ...p,
+        discountPercent,
+        originalPrice,
+        soldPercent,
+      };
+    });
+  }, [products, flashSaleVersion]);
 
   const filteredDeals = flashSaleItems.filter((item) => {
     if (selectedCategoryTab === 'all') return true;

@@ -296,9 +296,6 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
             <div className="text-center sm:text-left flex-1 space-y-1.5">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight">{fullName || 'Người Dùng QuickShop'}</h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white/25 backdrop-blur-md uppercase tracking-wider">
-                  {user?.role || 'ROLE_BUYER'}
-                </span>
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-400 text-slate-900 shadow-sm">
                   <Sparkles className="w-3 h-3" />
                   <span>Hội viên Vàng VIP</span>

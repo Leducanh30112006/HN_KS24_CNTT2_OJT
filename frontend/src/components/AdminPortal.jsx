@@ -7,7 +7,7 @@ import {
   Award, TrendingUp, AlertCircle, ShoppingBag, Phone, MapPin,
   UserCheck, UserX, CreditCard, ExternalLink, X, DollarSign,
   FileText, ArrowUpRight, Download, CheckCircle, LayoutDashboard,
-  LogOut, Menu
+  LogOut, Menu, Flame, Sliders, Bot, Zap, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -36,7 +36,14 @@ import {
   getAiModeratedProducts,
   syncAdminDecisionToAiStore,
   removeAiModeratedProduct,
+  isAiAutoApproveEnabled,
+  setAiAutoApproveEnabled,
 } from '../utils/aiModerationStore';
+import {
+  getFlashSaleConfig,
+  saveFlashSaleConfig,
+  analyzeAndSelectFlashSaleWithAI,
+} from '../utils/flashSaleStore';
 import { AnimatedPresence, AnimatedNumber, PageTransition } from './motion/MotionPrimitives';
 
 export default function AdminPortal({ categories = [], onCategoriesUpdated, onBackToStorefront }) {
@@ -86,6 +93,59 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   const [moderationCategoryFilter, setModerationCategoryFilter] = useState('ALL');
   const [moderationPage, setModerationPage] = useState(0);
   const [moderationPageSize, setModerationPageSize] = useState(6);
+
+  // Chế độ Tự Động Duyệt Sản Phẩm bằng AI (Bật = Tự động duyệt AI, Tắt = Phê duyệt thủ công)
+  const [aiAutoApproveOn, setAiAutoApproveOn] = useState(() => isAiAutoApproveEnabled());
+
+  // Quản lý cấu hình Flash Sale toàn sàn: Tự chọn hoặc AI chọn
+  const [flashSaleConfig, setFlashSaleConfigState] = useState(() => getFlashSaleConfig());
+  const [flashSaleSearchKw, setFlashSaleSearchKw] = useState('');
+  const [aiAnalyzingFlashSale, setAiAnalyzingFlashSale] = useState(false);
+
+  const handleToggleAiAutoApprove = (val) => {
+    setAiAutoApproveOn(val);
+    setAiAutoApproveEnabled(val);
+    showToast(
+      val
+        ? 'Đã bật chế độ Tự Động Duyệt AI: Sản phẩm hợp lệ sẽ được AI duyệt và mở bán ngay!'
+        : 'Đã chuyển sang chế độ Duyệt Thủ Công: Mọi sản phẩm mới sẽ vào hàng đợi chờ Admin duyệt.',
+      val ? 'success' : 'info'
+    );
+  };
+
+  const handleUpdateFlashSaleConfig = (partial) => {
+    const updated = saveFlashSaleConfig(partial);
+    setFlashSaleConfigState(updated);
+    showToast('Đã lưu cài đặt chiến dịch Flash Sale thành công!', 'success');
+  };
+
+  const handleRunAiFlashSaleAnalysis = () => {
+    setAiAnalyzingFlashSale(true);
+    setTimeout(() => {
+      const candidates = analyzeAndSelectFlashSaleWithAI(allProducts);
+      const aiIds = candidates.map((c) => c.product.id);
+      const updated = saveFlashSaleConfig({
+        mode: 'AI',
+        aiSelectedProductIds: aiIds,
+        lastAiAnalyzedAt: new Date().toISOString(),
+      });
+      setFlashSaleConfigState(updated);
+      setAiAnalyzingFlashSale(false);
+      showToast(`🤖 AI đã phân tích toàn sàn và tự động chọn ${aiIds.length} sản phẩm hot nhất cho Flash Sale!`, 'success');
+    }, 700);
+  };
+
+  const handleToggleManualFlashSaleProduct = (productId) => {
+    const currentList = Array.isArray(flashSaleConfig.selectedProductIds) ? [...flashSaleConfig.selectedProductIds] : [];
+    const index = currentList.findIndex((id) => String(id) === String(productId));
+    if (index >= 0) {
+      currentList.splice(index, 1);
+    } else {
+      currentList.push(productId);
+    }
+    const updated = saveFlashSaleConfig({ selectedProductIds: currentList });
+    setFlashSaleConfigState(updated);
+  };
 
   const defaultModerationProducts = [
     {
@@ -1554,6 +1614,22 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </span>
             </button>
             <button
+              onClick={() => { setActiveTab('flashsale'); setSidebarOpen(false); }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                activeTab === 'flashsale'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20 font-bold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Flame className={`w-4 h-4 ${activeTab === 'flashsale' ? 'text-white' : 'text-amber-400'}`} />
+                <span>Chiến dịch Flash Sale</span>
+              </div>
+              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                {flashSaleConfig.mode === 'AI' ? 'AI' : 'TỰ CHỌN'}
+              </span>
+            </button>
+            <button
               onClick={() => { setActiveTab('users'); setSidebarOpen(false); }}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
                 activeTab === 'users'
@@ -1680,6 +1756,7 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
                   {activeTab === 'moderation' && `Duyệt sản phẩm (${pendingModerationCount})`}
                   {activeTab === 'sellers' && `Người bán KYC (${pendingSellerCount})`}
                   {activeTab === 'vouchers' && `Voucher toàn sàn (${activeVoucherCount})`}
+                  {activeTab === 'flashsale' && 'Cấu hình Flash Sale Sàn'}
                   {activeTab === 'users' && `Người mua (${users.length})`}
                   {activeTab === 'categories' && `Danh mục (${categories.length})`}
                   {activeTab === 'notifications' && 'Thông báo & Mail'}
@@ -2279,6 +2356,63 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               onDismiss={() => setModerationError(null)}
             />
           )}
+
+          {/* Card Bật/Tắt Chế Độ Duyệt Tự Động AI vs Duyệt Thủ Công */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-5 border border-indigo-800/40 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
+            <div className="pointer-events-none absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-indigo-500/10 blur-2xl" />
+            
+            <div className="flex items-start gap-3.5 z-10">
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0 shadow-lg ${
+                aiAutoApproveOn 
+                  ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-indigo-500/30' 
+                  : 'bg-slate-800 text-slate-400 border border-slate-700'
+              }`}>
+                <Bot className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-white">Chế độ Kiểm Duyệt Sản Phẩm Đăng Bán</h3>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase ${
+                    aiAutoApproveOn 
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  }`}>
+                    {aiAutoApproveOn ? '🤖 TỰ ĐỘNG DUYỆT BẰNG AI' : '✍️ PHÊ DUYỆT THỦ CÔNG'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                  {aiAutoApproveOn
+                    ? 'AI Gemini tự động phân tích hình ảnh, kiểm tra vi phạm tiêu chuẩn cộng đồng, thương hiệu và duyệt ngay cho sản phẩm hợp lệ trong 0.5s.'
+                    : 'Mọi sản phẩm do người bán đăng mới sẽ chuyển vào hàng đợi CHỜ DUYỆT (PENDING). Quản trị viên phải kiểm tra và bấm duyệt thủ công từng sản phẩm.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0 z-10 self-end md:self-center bg-slate-800/70 p-2.5 rounded-2xl border border-slate-700/60">
+              <div className="text-right">
+                <div className="text-xs font-bold text-white">
+                  {aiAutoApproveOn ? 'BẬT Tự động AI' : 'TẮT Tự động (Thủ công)'}
+                </div>
+                <div className="text-[10px] text-slate-400">
+                  {aiAutoApproveOn ? 'Duyệt tức thì không cần can thiệp' : 'Cần Admin xét duyệt từng bài'}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggleAiAutoApprove(!aiAutoApproveOn)}
+                className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  aiAutoApproveOn ? 'bg-emerald-500' : 'bg-slate-600'
+                }`}
+                title={aiAutoApproveOn ? 'Bấm để chuyển sang Duyệt thủ công' : 'Bấm để bật Tự động duyệt AI'}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    aiAutoApproveOn ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
 
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 bg-slate-50/50">
@@ -3343,6 +3477,338 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
               </div>
             )}
           </AnimatedPresence>
+        </div>
+      )}
+
+      {/* ================= TAB: FLASH SALE CAMPAIGN MANAGEMENT ================= */}
+      {activeTab === 'flashsale' && (
+        <div className="space-y-6">
+          {/* Header Bento Card */}
+          <div className="bg-gradient-to-r from-slate-900 via-amber-950/80 to-slate-900 text-white rounded-3xl p-6 border border-amber-800/40 shadow-xl relative overflow-hidden">
+            <div className="pointer-events-none absolute -right-16 -bottom-16 w-64 h-64 rounded-full bg-orange-600/15 blur-3xl" />
+            
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-orange-600/30 shrink-0">
+                  <Flame className="w-7 h-7 fill-white" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h2 className="text-base sm:text-lg font-black text-white">Quản Lý Chiến Dịch Flash Sale Toàn Sàn</h2>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      flashSaleConfig.isEnabled
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                    }`}>
+                      {flashSaleConfig.isEnabled ? 'ĐANG BẬT CHIẾN DỊCH' : 'ĐANG TẠM DỪNG'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                    Điều phối các sản phẩm giảm giá sốc xuất hiện tại banner Bento Hero, mục Flash Deal Giờ Vàng và trang chuyên trang Flash Sale.
+                  </p>
+                </div>
+              </div>
+
+              {/* Bật / Tắt Flash Sale toàn sàn */}
+              <div className="flex items-center gap-3 bg-slate-800/80 p-3 rounded-2xl border border-slate-700/60 shrink-0 self-end md:self-center">
+                <div className="text-right">
+                  <div className="text-xs font-bold text-white">
+                    {flashSaleConfig.isEnabled ? 'Chiến dịch Hoạt động' : 'Tạm dừng Chiến dịch'}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    {flashSaleConfig.isEnabled ? 'Khách hàng thấy mục Flash Sale' : 'Ẩn Flash Sale trên toàn sàn'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateFlashSaleConfig({ isEnabled: !flashSaleConfig.isEnabled })}
+                  className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    flashSaleConfig.isEnabled ? 'bg-amber-500' : 'bg-slate-600'
+                  }`}
+                  title={flashSaleConfig.isEnabled ? 'Tắt Flash Sale' : 'Bật Flash Sale'}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      flashSaleConfig.isEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Mode Selector: AI Chọn vs Thủ Công */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-5 border-t border-slate-800/80 relative z-10">
+              {/* Option 1: AI Chọn */}
+              <div
+                onClick={() => handleUpdateFlashSaleConfig({ mode: 'AI' })}
+                className={`p-4 rounded-2xl border transition cursor-pointer flex flex-col justify-between space-y-3 ${
+                  flashSaleConfig.mode === 'AI'
+                    ? 'bg-amber-500/10 border-amber-500/60 ring-2 ring-amber-500/30'
+                    : 'bg-slate-800/40 border-slate-700/70 hover:bg-slate-800/70'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center font-bold">
+                      <Bot className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                        🤖 AI Tự Động Đề Xuất & Tuyển Chọn
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-400 text-slate-900">HOT</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-400">Thuật toán thông minh lọc sản phẩm rating cao, bán chạy & tồn kho tốt</p>
+                    </div>
+                  </div>
+                  <input
+                    type="radio"
+                    name="flashSaleMode"
+                    checked={flashSaleConfig.mode === 'AI'}
+                    onChange={() => handleUpdateFlashSaleConfig({ mode: 'AI' })}
+                    className="accent-amber-500 w-4 h-4"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] text-amber-300/90 font-medium">
+                    {flashSaleConfig.lastAiAnalyzedAt 
+                      ? `Lần phân tích gần nhất: ${new Date(flashSaleConfig.lastAiAnalyzedAt).toLocaleTimeString('vi-VN')}` 
+                      : 'Chưa có phân tích gần đây'}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={aiAnalyzingFlashSale}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRunAiFlashSaleAnalysis();
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition active:scale-95 shadow-sm disabled:opacity-50"
+                  >
+                    <Sparkles className={`w-3.5 h-3.5 ${aiAnalyzingFlashSale ? 'animate-spin' : ''}`} />
+                    <span>{aiAnalyzingFlashSale ? 'AI đang quét...' : '✨ AI Quét & Đề Xuất Ngay'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Option 2: Thủ công chọn */}
+              <div
+                onClick={() => handleUpdateFlashSaleConfig({ mode: 'MANUAL' })}
+                className={`p-4 rounded-2xl border transition cursor-pointer flex flex-col justify-between space-y-3 ${
+                  flashSaleConfig.mode === 'MANUAL'
+                    ? 'bg-orange-500/10 border-orange-500/60 ring-2 ring-orange-500/30'
+                    : 'bg-slate-800/40 border-slate-700/70 hover:bg-slate-800/70'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-orange-400/20 text-orange-300 flex items-center justify-center font-bold">
+                      <Sliders className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white">✍️ Quản Trị Viên Tự Chọn (Thủ Công)</h4>
+                      <p className="text-[11px] text-slate-400">Tích chọn các sản phẩm cụ thể theo chiến dịch marketing của sàn</p>
+                    </div>
+                  </div>
+                  <input
+                    type="radio"
+                    name="flashSaleMode"
+                    checked={flashSaleConfig.mode === 'MANUAL'}
+                    onChange={() => handleUpdateFlashSaleConfig({ mode: 'MANUAL' })}
+                    className="accent-orange-500 w-4 h-4"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] text-slate-300 font-medium">
+                    Đã chọn: <strong className="text-amber-400 font-black">{flashSaleConfig.selectedProductIds?.length || 0}</strong> sản phẩm
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    Tích ô checkbox ở bảng bên dưới để thêm/bớt
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Cài đặt phần trăm giảm giá mặc định */}
+            <div className="mt-4 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 relative z-10 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-300 font-medium">Mức giảm giá mặc định toàn chiến dịch:</span>
+                <div className="flex items-center gap-1.5">
+                  {[15, 20, 30, 40, 50].map((pct) => (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => handleUpdateFlashSaleConfig({ discountPercent: pct })}
+                      className={`px-2.5 py-1 rounded-lg font-bold text-xs transition ${
+                        Number(flashSaleConfig.discountPercent) === pct
+                          ? 'bg-amber-400 text-slate-900 shadow-md font-extrabold'
+                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      }`}
+                    >
+                      -{pct}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="text-[11px] text-slate-400">
+                Các khung giờ vàng tự động kích hoạt: <strong>09:00, 12:00, 15:00, 18:00, 21:00</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Table: Danh Sách Sản Phẩm Toàn Sàn Để Quản Lý Flash Sale */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50/50">
+              <div>
+                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                  <ShoppingBag className="w-4 h-4 text-orange-500" />
+                  Danh Sách Sản Phẩm Tuyển Chọn Flash Sale ({allProducts.length} sản phẩm)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {flashSaleConfig.mode === 'AI' 
+                    ? 'Chế độ AI đang tự động xếp hạng và tối ưu danh mục deal sốc' 
+                    : 'Bấm tích checkbox để thêm hoặc loại bỏ sản phẩm khỏi chiến dịch Flash Sale'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={flashSaleSearchKw}
+                    onChange={(e) => setFlashSaleSearchKw(e.target.value)}
+                    placeholder="Tìm tên sản phẩm, shop..."
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:outline-orange-500 bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-600">
+                <thead className="bg-slate-50/90 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
+                  <tr>
+                    <th className="py-3 px-4 w-12 text-center">Chọn</th>
+                    <th className="py-3 px-4">Sản Phẩm</th>
+                    <th className="py-3 px-4">Ngành Hàng</th>
+                    <th className="py-3 px-4 text-right">Giá Gốc</th>
+                    <th className="py-3 px-4 text-right">Giá Flash Sale</th>
+                    <th className="py-3 px-4 text-center">Đánh Giá & Đã Bán</th>
+                    <th className="py-3 px-4">Đề Xuất AI</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {allProducts
+                    .filter((p) => {
+                      if (!flashSaleSearchKw) return true;
+                      const q = flashSaleSearchKw.toLowerCase();
+                      return (
+                        p.name?.toLowerCase().includes(q) ||
+                        p.shopName?.toLowerCase().includes(q) ||
+                        p.categoryName?.toLowerCase().includes(q)
+                      );
+                    })
+                    .slice(0, 15)
+                    .map((p) => {
+                      const isManuallySelected = Array.isArray(flashSaleConfig.selectedProductIds) &&
+                        flashSaleConfig.selectedProductIds.some((id) => String(id) === String(p.id));
+                      
+                      const isAiSelected = Array.isArray(flashSaleConfig.aiSelectedProductIds) &&
+                        flashSaleConfig.aiSelectedProductIds.some((id) => String(id) === String(p.id));
+
+                      const isCurrentlyActiveInFlashSale = flashSaleConfig.mode === 'AI' ? isAiSelected : isManuallySelected;
+                      const originalPrice = Number(p.minPrice || p.price || 500000);
+                      const discountPct = Number(flashSaleConfig.discountPercent || 30);
+                      const flashPrice = Math.round(originalPrice * (1 - discountPct / 100));
+
+                      return (
+                        <tr
+                          key={p.id}
+                          className={`hover:bg-slate-50/80 transition cursor-pointer ${
+                            isCurrentlyActiveInFlashSale ? 'bg-amber-50/40' : ''
+                          }`}
+                          onClick={() => {
+                            if (flashSaleConfig.mode === 'MANUAL') {
+                              handleToggleManualFlashSaleProduct(p.id);
+                            }
+                          }}
+                        >
+                          <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isCurrentlyActiveInFlashSale}
+                              disabled={flashSaleConfig.mode === 'AI'}
+                              onChange={() => handleToggleManualFlashSaleProduct(p.id)}
+                              className="accent-amber-500 w-4 h-4 cursor-pointer disabled:cursor-not-allowed"
+                            />
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={p.mainImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100'}
+                                alt={p.name}
+                                className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
+                              />
+                              <div>
+                                <div className="font-bold text-slate-900 line-clamp-1 max-w-xs">{p.name}</div>
+                                <div className="text-[10px] text-slate-400">Shop: {p.shopName || 'QuickShop Mall'} • ID: #{p.id}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 font-medium text-[11px]">
+                              {p.categoryName || 'Sản phẩm sàn'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right font-medium text-slate-500 line-through">
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(originalPrice)}
+                          </td>
+                          <td className="py-3 px-4 text-right font-bold text-orange-600">
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(flashPrice)}
+                            <span className="ml-1 text-[10px] px-1.5 py-0.2 rounded bg-orange-100 text-orange-700 font-black">
+                              -{discountPct}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="font-bold text-amber-600">⭐ {p.rating || 4.8}</div>
+                            <div className="text-[10px] text-slate-400">{p.sold || p.totalSold || 35} đã bán</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            {isAiSelected ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                <Sparkles className="w-3 h-3 text-amber-600" />
+                                <span>AI Đề Xuất Hot</span>
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-slate-400 italic">Tiềm năng tiêu chuẩn</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-3 bg-slate-50/50">
+              <span className="text-xs text-slate-500">
+                Hiển thị các sản phẩm tiêu biểu của sàn • Trạng thái: <strong>{flashSaleConfig.mode === 'AI' ? 'AI Tự Động' : 'Thủ Công'}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  saveFlashSaleConfig(flashSaleConfig);
+                  showToast('Đã lưu và đồng bộ toàn bộ cấu hình Flash Sale lên toàn sàn!', 'success');
+                }}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition active:scale-95 cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                <span>Lưu & Kích Hoạt Chiến Dịch Toàn Sàn</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

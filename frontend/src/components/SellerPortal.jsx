@@ -26,6 +26,7 @@ import SellerCustomerChat from './SellerCustomerChat';
 import ProductRevenueStatsTable from './ProductRevenueStatsTable';
 import {
   evaluateProductWithAI,
+  isAiAutoApproveEnabled,
   saveAiModeratedProduct,
   getAiModeratedProducts,
 } from '../utils/aiModerationStore';
@@ -278,7 +279,15 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
         variants: sanitizedVariants,
       });
 
-      // 2. Gửi lên Backend Catalog Service (với cờ aiAutoApprove = true) để lưu DB & xuất bản lên sàn thật
+      // Kiểm tra cấu hình duyệt tự động của Admin
+      const isAutoApproveOn = isAiAutoApproveEnabled();
+      if (!isAutoApproveOn) {
+        aiReport.productStatus = 'PENDING';
+        aiReport.decision = 'MANUAL_PENDING';
+        aiReport.summary = 'Chế độ AI duyệt tự động đang TẮT bởi Admin — Sản phẩm đang chờ Quản trị viên duyệt thủ công.';
+      }
+
+      // 2. Gửi lên Backend Catalog Service (aiAutoApprove phụ thuộc cấu hình Admin)
       let backendId = null;
       let backendStatus = aiReport.productStatus;
       try {
@@ -291,7 +300,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
             ? 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&auto=format&fit=crop&q=80'
             : resolvedImage,
           isDraft: false,
-          aiAutoApprove: true,
+          aiAutoApprove: isAutoApproveOn,
           variants: sanitizedVariants,
         };
         const apiRes = await catalogApi.createProduct(apiPayload);
@@ -1013,7 +1022,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
               </div>
               <div className="text-left hidden sm:block">
                 <div className="text-xs font-bold text-slate-900 truncate max-w-[130px]">{user?.fullName || 'Chủ Gian Hàng'}</div>
-                <div className="text-[10px] text-emerald-600 font-semibold">{user?.role || 'ROLE_SELLER'}</div>
+                <div className="text-[10px] text-emerald-600 font-semibold">Chủ Gian Hàng</div>
               </div>
             </div>
 

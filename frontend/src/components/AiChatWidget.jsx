@@ -1,9 +1,69 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, X, Send, Sparkles, AlertCircle, Move } from 'lucide-react';
+import { Bot, X, Send, Sparkles, AlertCircle, Move, ShoppingBag } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { AnimatedPresence, useMagneticHover } from './motion/MotionPrimitives';
+import ProductChatCard from './ProductChatCard';
 
-export default function AiChatWidget() {
+function findRelevantProducts(queryText, replyText, allProducts = []) {
+  if (!Array.isArray(allProducts) || allProducts.length === 0) return [];
+
+  const combined = `${queryText || ''} ${replyText || ''}`.toLowerCase();
+
+  const keywords = [
+    { keys: ['điện thoại', 'iphone', 'smartphone', 'samsung', 'xiaomi', 'oppo', 'di động'], catKeys: ['điện thoại', 'phụ kiện'] },
+    { keys: ['laptop', 'macbook', 'máy tính', 'dell', 'asus', 'thinkpad', 'gaming'], catKeys: ['laptop', 'máy tính'] },
+    { keys: ['đồng hồ', 'watch', 'smartwatch', 'quickwatch', 'garmin', 'apple watch'], catKeys: ['đồng hồ', 'phụ kiện'] },
+    { keys: ['tai nghe', 'headphone', 'airpods', 'loa', 'âm thanh', 'earphone'], catKeys: ['âm thanh', 'phụ kiện', 'điện tử'] },
+    { keys: ['kính thực tế ảo', 'vr', 'vision', 'meta quest'], catKeys: ['điện tử', 'thiết bị'] },
+    { keys: ['giày', 'sneaker', 'thời trang', 'áo', 'quần', 'jacket', 'túi'], catKeys: ['thời trang', 'giày'] },
+  ];
+
+  // 1. Match theo tên sản phẩm cụ thể
+  const nameMatches = allProducts.filter((p) => {
+    if (!p.name) return false;
+    const nameLower = p.name.toLowerCase();
+    const words = combined.split(/\s+/).filter((w) => w.length >= 3);
+    return words.some((w) => nameLower.includes(w));
+  });
+
+  if (nameMatches.length > 0) {
+    return nameMatches.slice(0, 2);
+  }
+
+  // 2. Match theo danh mục / từ khóa ngành hàng
+  for (const group of keywords) {
+    if (group.keys.some((k) => combined.includes(k))) {
+      const catMatches = allProducts.filter((p) => {
+        const cat = (p.categoryName || '').toLowerCase();
+        const desc = (p.description || '').toLowerCase();
+        const name = (p.name || '').toLowerCase();
+        return (
+          group.catKeys.some((ck) => cat.includes(ck)) ||
+          group.keys.some((k) => name.includes(k) || desc.includes(k))
+        );
+      });
+      if (catMatches.length > 0) {
+        return catMatches.slice(0, 2);
+      }
+    }
+  }
+
+  // 3. Match khi hỏi mua sắm, gợi ý chung
+  if (
+    combined.includes('sản phẩm') ||
+    combined.includes('mua') ||
+    combined.includes('deal') ||
+    combined.includes('gợi ý') ||
+    combined.includes('tư vấn') ||
+    combined.includes('giá')
+  ) {
+    return allProducts.slice(0, 2);
+  }
+
+  return [];
+}
+
+export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow, onToast }) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,11 +100,28 @@ export default function AiChatWidget() {
       suggestions: [
         'Gợi ý điện thoại dưới 30 triệu',
         'Laptop cho sinh viên CNTT',
+        'Đồng hồ thông minh thể thao',
         'Mã giảm giá hôm nay',
-        'Chính sách đổi trả 7 ngày',
       ],
     },
   ]);
+
+  // Cập nhật sản phẩm tiêu biểu vào tin nhắn đầu tiên khi có products
+  useEffect(() => {
+    if (products && products.length > 0) {
+      setMessages((prev) => {
+        if (prev.length > 0 && prev[0].sender === 'ai' && (!prev[0].matchedProducts || prev[0].matchedProducts.length === 0)) {
+          const updated = [...prev];
+          updated[0] = {
+            ...updated[0],
+            matchedProducts: [products[0]],
+          };
+          return updated;
+        }
+        return prev;
+      });
+    }
+  }, [products]);
 
   // Open chat: keep buttonPos untouched, calculate initial chatPos if button was dragged
   const handleOpenChat = () => {
@@ -184,23 +261,34 @@ export default function AiChatWidget() {
 
     try {
       const res = await axiosClient.post('/api/ai/chat', { message: text }, { timeout: 35000 });
-      if (res.success && res.data) {
-        setMessages([
-          ...newThread,
-          {
-            sender: 'ai',
-            text: res.data.reply,
-            suggestions: res.data.suggestions || [],
-          },
-        ]);
-      }
-    } catch (err) {
+      const replyText = res?.data?.reply || 'Dưới đây là các gợi ý tốt nhất từ QuickShop AI dành cho bạn:';
+      const suggestions = res?.data?.suggestions || [
+        'Xem thêm chi tiết sản phẩm',
+        'Mã giảm giá hôm nay',
+        'Ưu đãi thanh toán 24/7',
+      ];
+      const matched = findRelevantProducts(text, replyText, products);
+
       setMessages([
         ...newThread,
         {
           sender: 'ai',
-          text: 'Rất tiếc, hiện tại kết nối đến hệ sinh thái Notification & AI Service (Port 8086) đang bị gián đoạn. Bạn vui lòng thử lại sau giây lát nhé!',
-          suggestions: ['Thử lại câu hỏi', 'Xem sản phẩm hot'],
+          text: replyText,
+          matchedProducts: matched,
+          suggestions,
+        },
+      ]);
+    } catch (err) {
+      const matched = findRelevantProducts(text, '', products);
+      setMessages([
+        ...newThread,
+        {
+          sender: 'ai',
+          text: matched.length > 0 
+            ? 'Dưới đây là một số sản phẩm phù hợp nhất trong kho hàng mà bạn có thể tham khảo ngay:'
+            : 'Rất tiếc, kết nối đến dịch vụ AI đang bị quá tải hoặc phản hồi chậm. Bạn có thể tham khảo các deal hot hôm nay nhé!',
+          matchedProducts: matched.length > 0 ? matched : (products && products.slice(0, 2)),
+          suggestions: ['Xem sản phẩm hot', 'Thử lại câu hỏi', 'Deal Flash Sale'],
         },
       ]);
     } finally {
@@ -315,6 +403,27 @@ export default function AiChatWidget() {
                   >
                     {m.text}
                   </div>
+
+                  {/* Khung sản phẩm thông minh trực tiếp trong chat (Thêm Giỏ, Mua Ngay, Xem Chi Tiết) */}
+                  {m.matchedProducts && m.matchedProducts.length > 0 && (
+                    <div className="w-full space-y-2 mt-2">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 px-0.5">
+                        <ShoppingBag className="w-3.5 h-3.5 text-orange-500" />
+                        <span>Sản phẩm gợi ý mua sắm:</span>
+                      </div>
+                      <div className="space-y-2">
+                        {m.matchedProducts.map((prod) => (
+                          <ProductChatCard
+                            key={prod.id}
+                            product={prod}
+                            onSelectProduct={onSelectProduct}
+                            onBuyNow={onBuyNow}
+                            onToast={onToast}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Suggestions Chips from AI */}
                   {m.suggestions && m.suggestions.length > 0 && (

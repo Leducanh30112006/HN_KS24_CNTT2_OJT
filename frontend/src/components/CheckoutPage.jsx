@@ -1630,34 +1630,34 @@ export default function CheckoutPage({
                 />
               </label>
 
-              {/* Option 3: Credit Card */}
-              <label
-                htmlFor="checkout-payment-credit"
-                className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
-                  paymentMethod === 'credit'
-                    ? 'border-orange-500 bg-orange-50/50 ring-2 ring-orange-500/20'
-                    : 'border-slate-200 hover:bg-slate-50'
-                }`}
+              {/* Option 3: Credit Card (Coming Soon) */}
+              <div
+                className="p-3.5 rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 opacity-60 cursor-not-allowed select-none flex items-center justify-between"
+                title="Phương thức Thẻ Quốc Tế (Visa, MasterCard, JCB) đang được hoàn thiện - Coming Soon"
               >
-                <span className="sr-only">Thẻ Quốc Tế (Visa, MasterCard, JCB)</span>
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs">
+                  <div className="w-9 h-9 rounded-xl bg-purple-100/70 text-purple-500 flex items-center justify-center font-bold text-xs">
                     <CreditCard className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-slate-900">Thẻ Quốc Tế (Visa, MasterCard, JCB)</div>
-                    <div className="text-[11px] text-slate-500">Bảo mật chuẩn quốc tế PCI-DSS 256-bit</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-700">Thẻ Quốc Tế (Visa, MasterCard, JCB)</span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300/80 shadow-xs">
+                        Coming Soon
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-400">Bảo mật chuẩn quốc tế PCI-DSS 256-bit (Đang tích hợp cổng)</div>
                   </div>
                 </div>
                 <input
-                  id="checkout-payment-credit"
                   type="radio"
                   name="payment"
-                  checked={paymentMethod === 'credit'}
-                  onChange={() => setPaymentMethod('credit')}
-                  className="accent-orange-600 w-4 h-4"
+                  disabled
+                  checked={false}
+                  readOnly
+                  className="accent-slate-400 w-4 h-4 cursor-not-allowed opacity-50"
                 />
-              </label>
+              </div>
             </div>
           </div>
 

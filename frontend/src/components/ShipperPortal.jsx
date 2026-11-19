@@ -255,7 +255,7 @@ export default function ShipperPortal({ onBackToHome }) {
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold text-white truncate max-w-[100px]">{user?.fullName || 'Shipper'}</div>
-                <div className="text-[9px] text-blue-400 font-medium">ROLE_SHIPPER</div>
+                <div className="text-[9px] text-blue-400 font-medium">Bưu tá QuickShip</div>
               </div>
             </div>
 

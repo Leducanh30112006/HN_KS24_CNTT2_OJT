@@ -3,11 +3,13 @@ import { Flame, ChevronRight, ChevronLeft } from 'lucide-react';
 import { gsap, useGSAP } from '../lib/gsap';
 import { fixMojibakeText } from '../utils/vietnameseEncoding';
 import { LucianButton } from './ui/LucianPrimitives';
+import { calculateSlotRemainingTime, getEffectiveFlashSaleProducts } from '../utils/flashSaleStore';
 
 export default function FlashSaleSection({ products = [], onSelectProduct, onViewAllDeals }) {
-  // Countdown Timer: 02:45:18
-  const [timeLeft, setTimeLeft] = useState({ hours: 2, minutes: 45, seconds: 18 });
+  // Countdown Timer đồng bộ chuẩn thời gian thực
+  const [timeLeft, setTimeLeft] = useState(() => calculateSlotRemainingTime());
   const [isPaused, setIsPaused] = useState(false);
+  const [flashSaleVersion, setFlashSaleVersion] = useState(0);
   const sectionRef = useRef(null);
   const secondsBadgeRef = useRef(null);
 
@@ -44,32 +46,36 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Countdown timer interval
+  // Countdown timer interval cập nhật thời gian thực
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: 59, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        }
-        return { hours: 2, minutes: 0, seconds: 0 };
-      });
-    }, 1000);
-    return () => clearInterval(timer);
+    const updateTime = () => setTimeLeft(calculateSlotRemainingTime());
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+
+    const handleConfigUpdate = () => setFlashSaleVersion((v) => v + 1);
+    window.addEventListener('quickshop_flash_sale_updated', handleConfigUpdate);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('quickshop_flash_sale_updated', handleConfigUpdate);
+    };
   }, []);
+
+  // Lấy danh sách sản phẩm Flash Sale hiệu lực (AI hoặc cấu hình Admin)
+  const flashSaleItems = useMemo(() => {
+    return getEffectiveFlashSaleProducts(products);
+  }, [products, flashSaleVersion]);
 
   // Ensure baseList has enough items (at least 8) for seamless infinite scrolling
   const baseList = useMemo(() => {
-    if (!products || products.length === 0) return [];
-    let list = [...products];
+    const source = flashSaleItems.length > 0 ? flashSaleItems : products;
+    if (!source || source.length === 0) return [];
+    let list = [...source];
     while (list.length < 8) {
-      list = [...list, ...products];
+      list = [...list, ...source];
     }
     return list;
-  }, [products]);
+  }, [flashSaleItems, products]);
 
   // Infinite loop buffer: [Copy 0 (Head), Copy 1 (Middle - Main viewport), Copy 2 (Tail)]
   const displayList = useMemo(() => {

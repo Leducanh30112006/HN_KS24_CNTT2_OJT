@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { gsap, useGSAP } from '../lib/gsap';
 import { LucianButton, SpotlightCard } from './ui/LucianPrimitives';
+import { calculateSlotRemainingTime } from '../utils/flashSaleStore';
 
 export default function HeroBanner({ 
   onSelectCategory, 
@@ -17,18 +18,13 @@ export default function HeroBanner({
   const secondsBadgeRef = useRef(null);
   const heroCtaRef = useRef(null);
 
-  // Live countdown timer for the Bento Flash Sale card
-  const [timeLeft, setTimeLeft] = useState({ hours: 2, minutes: 45, seconds: 18 });
+  // Live countdown timer đồng bộ chuẩn thời gian thực
+  const [timeLeft, setTimeLeft] = useState(() => calculateSlotRemainingTime());
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
-        if (prev.minutes > 0) return { ...prev, minutes: 59, seconds: 59 };
-        if (prev.hours > 0) return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        return { hours: 2, minutes: 0, seconds: 0 };
-      });
-    }, 1000);
+    const updateTime = () => setTimeLeft(calculateSlotRemainingTime());
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
   }, []);
 

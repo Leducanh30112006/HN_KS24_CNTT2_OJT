@@ -2,6 +2,34 @@ import { stripHtml } from './sanitizeHtml';
 
 const AI_MODERATION_STORAGE_KEY = 'quickshop_ai_moderated_products';
 const SELLER_PRODUCTS_STORAGE_KEY = 'quickshop_seller_products';
+const AI_AUTO_APPROVE_ENABLED_KEY = 'quickshop_ai_auto_approve_enabled';
+
+/**
+ * Kiểm tra xem chế độ AI tự động duyệt sản phẩm có đang bật hay không
+ * Mặc định: true (Bật AI tự động duyệt)
+ */
+export function isAiAutoApproveEnabled() {
+  try {
+    const val = localStorage.getItem(AI_AUTO_APPROVE_ENABLED_KEY);
+    if (val === null) return true; // Mặc định BẬT
+    return val === 'true';
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Bật/tắt chế độ AI tự động duyệt sản phẩm từ Admin
+ */
+export function setAiAutoApproveEnabled(enabled) {
+  try {
+    localStorage.setItem(AI_AUTO_APPROVE_ENABLED_KEY, String(Boolean(enabled)));
+    window.dispatchEvent(new CustomEvent('quickshop_ai_auto_approve_toggled', { detail: Boolean(enabled) }));
+  } catch (e) {
+    console.warn('Không thể lưu trạng thái AI Auto Approve vào localStorage:', e);
+  }
+  return Boolean(enabled);
+}
 
 const BANNED_KEYWORDS = [
   'hàng giả',
