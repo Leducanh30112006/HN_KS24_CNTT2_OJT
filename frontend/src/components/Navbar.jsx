@@ -161,10 +161,11 @@ export default function Navbar({
   const isShipper = user && (user.role === 'ROLE_SHIPPER' || user.role === 'SHIPPER');
 
   return (
-    <header ref={navContainerRef} className="sticky top-2 sm:top-3.5 z-40 px-2.5 sm:px-6 w-full pointer-events-none transition-all">
-      <div className="max-w-7xl mx-auto flex flex-col gap-1.5 pointer-events-auto">
-        {/* Floating Glass Main Navigation Bar */}
-        <nav className="rounded-2xl bg-white/85 backdrop-blur-xl border border-slate-200/80 shadow-lg shadow-slate-900/5 px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-3 lg:gap-5 transition-all max-w-full overflow-x-clip">
+    <>
+      <header ref={navContainerRef} className="fixed top-0 left-0 right-0 z-40 w-full bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-xs transition-colors pointer-events-auto">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 flex flex-col gap-1.5">
+          {/* Main Navigation Bar */}
+          <nav className="flex items-center justify-between gap-2 sm:gap-3 lg:gap-5 max-w-full">
           {/* Left: Brand Logo & Role Fast Switcher */}
           <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 flex-shrink-0 min-w-0">
             <button
@@ -580,7 +581,7 @@ export default function Navbar({
             onChange={(e) => setSearchKeyword(e.target.value)}
             onKeyDown={handleSearchKeyPress}
             placeholder="Tìm kiếm hơn 10.000+ sản phẩm chính hãng..."
-            className="w-full pl-10 pr-20 py-2 bg-white/95 backdrop-blur-md text-xs text-slate-900 rounded-xl border border-slate-200 shadow-md shadow-slate-900/5 focus:border-orange-500 focus:outline-none"
+            className="w-full pl-10 pr-20 py-2 bg-slate-100/90 text-xs text-slate-900 rounded-xl border border-slate-200 shadow-xs focus:border-orange-500 focus:outline-none"
           />
           <button
             onClick={() => onSearchSubmit && onSearchSubmit(searchKeyword)}
@@ -592,5 +593,9 @@ export default function Navbar({
       </div>
     </div>
   </header>
+
+  {/* Spacer giữ chỗ để nội dung trang không bị thanh điều hướng fixed che khuất */}
+  <div className="h-[104px] md:h-[64px] shrink-0 w-full pointer-events-none select-none" aria-hidden="true" />
+</>
   );
 }
