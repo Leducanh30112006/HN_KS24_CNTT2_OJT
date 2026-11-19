@@ -32,7 +32,7 @@ export default function ProductChatCard({ product, onSelectProduct, onBuyNow, on
         1
       );
       setIsAdded(true);
-      if (onToast) {
+      if (typeof onToast === 'function') {
         onToast(`Đã thêm "${product.name}" vào giỏ hàng thành công!`);
       }
       setTimeout(() => setIsAdded(false), 2000);

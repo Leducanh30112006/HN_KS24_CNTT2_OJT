@@ -245,6 +245,15 @@ export default function App() {
     } catch (e) {}
   };
 
+  // Toast thông báo toàn sàn (Global Toast Notification)
+  const [globalToast, setGlobalToast] = useState(null);
+  const showToast = (message, type = 'success') => {
+    setGlobalToast({ message, type });
+    setTimeout(() => {
+      setGlobalToast((prev) => (prev?.message === message ? null : prev));
+    }, 3500);
+  };
+
   // Điều hướng có tích hợp HTML5 History API (pushState/replaceState)
   const handleNavigateView = (view, options = {}) => {
     const { replace = false, extra = {}, skipPush = false, scroll = true } = options;
@@ -1933,6 +1942,16 @@ export default function App() {
           }
         }}
       />
+
+      {/* Global Toast Notification */}
+      {globalToast && (
+        <div className="fixed top-20 right-4 z-[9999] pointer-events-auto animate-in slide-in-from-top-2 duration-200">
+          <div className="bg-slate-900/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-slate-700/80 flex items-center gap-2.5 text-xs font-bold">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span>{globalToast.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
