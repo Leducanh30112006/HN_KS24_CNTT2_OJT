@@ -97,7 +97,7 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
         { opacity: 1, y: 0, duration: 0.45, stagger: 0.04, ease: 'power2.out' }
       );
     }
-  }, { scope: pageRef, dependencies: [products.length, selectedCategoryTab] });
+  }, { dependencies: [products.length, selectedCategoryTab] });
 
   return (
     <div ref={pageRef} className="space-y-6 pb-12 animate-in fade-in duration-300">

@@ -10,7 +10,7 @@ const axiosClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 45000,
+  timeout: 60000,
   withCredentials: true, // Hỗ trợ nhận và gửi HttpOnly Cookie JWT (Dual Auth)
 });
 

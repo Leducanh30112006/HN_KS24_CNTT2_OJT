@@ -62,7 +62,7 @@ export default function Navbar({
         { y: 0, opacity: 1, duration: 0.6, ease: 'expo.out', clearProps: 'transform' }
       );
     }
-  }, { scope: navContainerRef });
+  });
 
   // Subtle GSAP Magnetic Hover Pull on Cart Pill (±4px physics)
   useGSAP(() => {
@@ -90,7 +90,7 @@ export default function Navbar({
       el.removeEventListener('mousemove', onMouseMove);
       el.removeEventListener('mouseleave', onMouseLeave);
     };
-  }, { scope: cartButtonRef });
+  });
 
   // Cart Badge Tactile Feedback: scale pop on item count increase
   useEffect(() => {
@@ -162,10 +162,13 @@ export default function Navbar({
 
   return (
     <>
-      <header ref={navContainerRef} className="fixed top-0 left-0 right-0 z-40 w-full bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-xs transition-colors pointer-events-auto">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 flex flex-col gap-1.5">
-          {/* Main Navigation Bar */}
-          <nav className="flex items-center justify-between gap-2 sm:gap-3 lg:gap-5 max-w-full">
+      <header
+        ref={navContainerRef}
+        className="fixed top-2 sm:top-3.5 left-0 right-0 z-40 px-2.5 sm:px-6 w-full pointer-events-none transition-all"
+      >
+        <div className="max-w-7xl mx-auto flex flex-col gap-1.5 pointer-events-auto">
+          {/* Main Navigation Bar - Floating Rounded Capsule Pill */}
+          <nav className="rounded-2xl bg-white/85 backdrop-blur-xl border border-slate-200/80 shadow-lg shadow-slate-900/5 px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-3 lg:gap-5 transition-all max-w-full overflow-x-clip">
           {/* Left: Brand Logo & Role Fast Switcher */}
           <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 flex-shrink-0 min-w-0">
             <button
@@ -581,11 +584,11 @@ export default function Navbar({
             onChange={(e) => setSearchKeyword(e.target.value)}
             onKeyDown={handleSearchKeyPress}
             placeholder="Tìm kiếm hơn 10.000+ sản phẩm chính hãng..."
-            className="w-full pl-10 pr-20 py-2 bg-slate-100/90 text-xs text-slate-900 rounded-xl border border-slate-200 shadow-xs focus:border-orange-500 focus:outline-none"
+            className="w-full pl-10 pr-20 py-2 bg-white/95 backdrop-blur-md text-xs text-slate-900 rounded-2xl border border-slate-200/80 shadow-md focus:border-orange-500 focus:outline-none"
           />
           <button
             onClick={() => onSearchSubmit && onSearchSubmit(searchKeyword)}
-            className="absolute right-1 px-3 py-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg text-xs font-bold active:scale-95 transition"
+            className="absolute right-1 px-3 py-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl text-xs font-bold active:scale-95 transition"
           >
             Tìm
           </button>
@@ -595,7 +598,7 @@ export default function Navbar({
   </header>
 
   {/* Spacer giữ chỗ để nội dung trang không bị thanh điều hướng fixed che khuất */}
-  <div className="h-[104px] md:h-[64px] shrink-0 w-full pointer-events-none select-none" aria-hidden="true" />
+  <div className="h-[96px] md:h-[76px] shrink-0 w-full pointer-events-none select-none" aria-hidden="true" />
 </>
   );
 }

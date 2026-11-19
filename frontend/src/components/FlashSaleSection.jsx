@@ -97,7 +97,7 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
         }
       );
     }
-  }, { scope: sectionRef, dependencies: [products.length] });
+  }, { dependencies: [products.length] });
 
   // Current position starts at Copy 1 (index = baseList.length)
   const [currentIndex, setCurrentIndex] = useState(baseList.length || 0);
