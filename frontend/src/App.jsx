@@ -803,8 +803,10 @@ export default function App() {
     }
 
     // Re-sync ScrollTrigger after async products finish rendering
-    ScrollTrigger.refresh();
-  }, { scope: storefrontRef, dependencies: [currentView, showAllCategories, products.length, loadingProducts] });
+    if (typeof ScrollTrigger !== 'undefined' && ScrollTrigger.refresh && currentView === 'storefront') {
+      ScrollTrigger.refresh();
+    }
+  }, { dependencies: [currentView, showAllCategories, products.length, loadingProducts] });
 
   // GSAP Smooth View Transition across navigation changes (Apple/Linear-grade fluid curve)
   useGSAP(() => {
@@ -815,7 +817,7 @@ export default function App() {
         { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out', clearProps: 'transform' }
       );
     }
-  }, { scope: mainViewRef, dependencies: [currentView, selectedCategory] });
+  }, { dependencies: [currentView, selectedCategory] });
 
   // VIEW RIÊNG BIỆT 1: DEDICATED FULL-PAGE LOGIN VIEW
   if (currentView === 'login') {

@@ -41,6 +41,9 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
     shopName: user?.shopName || 'TechWorld Official Store',
     ownerName: user?.fullName || 'Lê Đức Anh',
   };
+  if (typeof window !== 'undefined') {
+    window.shopProfile = shopProfile;
+  }
 
   const handleLogout = () => {
     logout();
