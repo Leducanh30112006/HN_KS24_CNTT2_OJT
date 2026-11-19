@@ -401,7 +401,7 @@ export default function CheckoutPage({
             orderId: targetId,
             amount: targetAmount,
           },
-          { timeout: 45000 }
+          { timeout: 60000 }
         );
         const data = res?.data?.data || res?.data;
         if (data && (data.qrCode || data.checkoutUrl)) {
@@ -530,7 +530,7 @@ export default function CheckoutPage({
         headers: {
           'X-User-Id': userId,
         },
-        timeout: 45000,
+        timeout: 60000,
       });
 
       let createdOrderId = null;

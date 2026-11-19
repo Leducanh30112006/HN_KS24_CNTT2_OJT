@@ -551,7 +551,7 @@ export default function IntroPage({
       );
     });
 
-  }, { scope: containerRef });
+  });
 
   // Smooth scroll handler for HUD
   const handleScrollToSection = (sectionId) => {
@@ -795,7 +795,7 @@ export default function IntroPage({
           {/* Right Column: Hero Stage Preview & Cue */}
           <div className="lg:col-span-5 h-[380px] sm:h-[480px] lg:h-[560px] w-full relative flex items-center justify-center">
             <Intro3DErrorBoundary fallback={<Intro2DFallback />}>
-              {hasWebGL ? (
+              {hasWebGL && activeChapter === 0 ? (
                 <Suspense fallback={<Intro2DFallback />}>
                   <SingleIntroCanvas activeChapter={activeChapter} scrollProgress={scrollProgress} />
                 </Suspense>
@@ -1047,7 +1047,7 @@ export default function IntroPage({
           {/* Right Column: Sticky 3D Showcase Stage */}
           <div className="lg:col-span-5 sticky top-28 h-[480px] sm:h-[580px] w-full hidden lg:flex items-center justify-center rounded-3xl bg-slate-950/40 border border-slate-800/80 p-2 shadow-2xl backdrop-blur-md">
             <Intro3DErrorBoundary fallback={<Intro2DFallback />}>
-              {hasWebGL ? (
+              {hasWebGL && activeChapter > 0 ? (
                 <Suspense fallback={<Intro2DFallback />}>
                   <SingleIntroCanvas activeChapter={activeChapter} scrollProgress={scrollProgress} />
                 </Suspense>
