@@ -305,12 +305,23 @@ public class ProductService {
 
         Product savedProduct = productRepository.save(product);
 
-        // Lưu các biến thể SKU
+        // Lưu các biến thể SKU (tự động khử trùng lặp để không bao giờ vi phạm UNIQUE constraint)
         if (request.getVariants() != null && !request.getVariants().isEmpty()) {
-            for (VariantCreateRequest vReq : request.getVariants()) {
+            for (int i = 0; i < request.getVariants().size(); i++) {
+                VariantCreateRequest vReq = request.getVariants().get(i);
+                String requestedSku = (vReq.getSku() != null && !vReq.getSku().isBlank())
+                        ? vReq.getSku().trim()
+                        : ("SKU-" + savedProduct.getId() + "-" + (i + 1));
+
+                String finalSku = requestedSku;
+                if (variantRepository.existsBySku(finalSku)) {
+                    finalSku = requestedSku + "-" + savedProduct.getId() + "-" + (System.currentTimeMillis() % 10000);
+                    log.info("SKU '{}' đã tồn tại, tự động sinh SKU duy nhất '{}'", requestedSku, finalSku);
+                }
+
                 ProductVariant variant = ProductVariant.builder()
                         .productId(savedProduct.getId())
-                        .sku(vReq.getSku().trim())
+                        .sku(finalSku)
                         .color(vReq.getColor())
                         .size(vReq.getSize())
                         .price(vReq.getPrice())

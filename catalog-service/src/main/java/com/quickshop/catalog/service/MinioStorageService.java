@@ -274,10 +274,14 @@ public class MinioStorageService {
     }
 
     private String buildPublicUrl(String uniqueFileName) {
-        String baseUrl = minioPublicUrl != null && !minioPublicUrl.isBlank() ? minioPublicUrl : minioEndpoint;
-        while (baseUrl.endsWith("/")) {
-            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        if (minioPublicUrl != null && minioPublicUrl.startsWith("https://")) {
+            String baseUrl = minioPublicUrl;
+            while (baseUrl.endsWith("/")) {
+                baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+            }
+            return String.format("%s/%s/%s", baseUrl, bucketName, uniqueFileName);
         }
-        return String.format("%s/%s/%s", baseUrl, bucketName, uniqueFileName);
+        // Trả về streamUrl tương đối để client luôn load qua HTTPS cùng origin 'self', loại bỏ hoàn toàn Mixed Content & CSP
+        return "/api/catalog/media/" + uniqueFileName;
     }
 }

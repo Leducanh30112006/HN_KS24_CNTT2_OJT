@@ -93,7 +93,7 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
   ]);
   const [isDraft, setIsDraft] = useState(false);
   const [variants, setVariants] = useState([
-    { sku: 'SKU-01', color: 'Đen', size: 'Tiêu chuẩn', price: 299000, stock: 50 },
+    { sku: 'SKU-' + Date.now().toString().slice(-4), color: 'Đen', size: 'Tiêu chuẩn', price: 299000, stock: 50 },
   ]);
 
   // Form states for editing product
@@ -172,7 +172,19 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
     try {
       const res = await catalogApi.uploadProductImage(file);
       const data = res?.data?.data || res?.data || res;
-      const uploadedUrl = data?.url || data?.fileUrl || (data?.fileName ? `/api/catalog/media/${data.fileName}` : null);
+      let uploadedUrl = null;
+      if (data?.streamUrl && data.streamUrl.startsWith('/')) {
+        uploadedUrl = data.streamUrl;
+      } else if (data?.fileName) {
+        uploadedUrl = `/api/catalog/media/${data.fileName}`;
+      } else if (data?.url) {
+        if (data.url.startsWith('https://')) {
+          uploadedUrl = data.url;
+        } else {
+          const cleanName = data.url.split('/').pop();
+          uploadedUrl = cleanName ? `/api/catalog/media/${cleanName}` : data.url;
+        }
+      }
       if (uploadedUrl) {
         return uploadedUrl;
       }
@@ -234,13 +246,21 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
       return;
     }
 
-    const sanitizedVariants = variants.map((v, idx) => ({
-      sku: (v.sku && v.sku.trim()) || `SKU-${Date.now().toString().slice(-5)}-${idx + 1}`,
-      color: v.color || 'Mặc định',
-      size: v.size || 'Tiêu chuẩn',
-      price: Number(v.price) || 0,
-      stock: Number(v.stock) || 0,
-    }));
+    const usedSkus = new Set();
+    const sanitizedVariants = variants.map((v, idx) => {
+      let rawSku = (v.sku && v.sku.trim()) || '';
+      if (!rawSku || rawSku.toUpperCase() === 'SKU-01' || rawSku.toUpperCase() === 'SKU' || usedSkus.has(rawSku)) {
+        rawSku = `SKU-${Date.now().toString().slice(-6)}-${idx + 1}`;
+      }
+      usedSkus.add(rawSku);
+      return {
+        sku: rawSku,
+        color: v.color || 'Mặc định',
+        size: v.size || 'Tiêu chuẩn',
+        price: Number(v.price) || 0,
+        stock: Number(v.stock) != null ? Number(v.stock) : 50,
+      };
+    });
 
     const resolvedImage =
       mainImage.trim() ||
