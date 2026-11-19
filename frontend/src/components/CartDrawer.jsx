@@ -4,6 +4,7 @@ import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { AnimatedPresence, AnimatedNumber } from './motion/MotionPrimitives';
 import { fixMojibakeText } from '../utils/vietnameseEncoding';
+import { LucianButton } from './ui/LucianPrimitives';
 
 export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
   const { items, updateQuantity, removeFromCart, clearCart, getTotalAmount, getItemsByShop, fetchCart } = useCartStore();
@@ -218,13 +219,16 @@ export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
                 Đặt hàng thành công! Đang xử lý giữ kho Saga...
               </div>
             ) : (
-              <button
+              <LucianButton
                 onClick={handleCheckout}
-                className="w-full py-3 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-orange-500/30 active:scale-95 flex items-center justify-center gap-2 cursor-pointer btn-tactile"
+                magnetic
+                variant="primary"
+                size="lg"
+                className="w-full"
+                rightIcon={ArrowRight}
               >
-                Tiến hành Đặt hàng
-                <ArrowRight className="w-4 h-4" />
-              </button>
+                <span>Tiến hành Đặt hàng</span>
+              </LucianButton>
             )}
 
             <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400">

@@ -268,7 +268,7 @@ export default function MessengerPage({
     <div className="w-full h-full flex flex-col bg-slate-50 overflow-hidden">
       {/* Toast thông báo hành động */}
       {toastMessage && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 animate-bounce">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 animate-pulse">
           <CheckCircle2 className="w-4 h-4" />
           <span>{toastMessage}</span>
         </div>
@@ -365,7 +365,7 @@ export default function MessengerPage({
                     }}
                     className={`w-full text-left border-0 p-3.5 flex items-start gap-3 cursor-pointer transition ${
                       isActive
-                        ? 'bg-orange-50/70 border-l-4 border-orange-600'
+                        ? 'bg-orange-50/70 border-l-2 border-orange-600'
                         : 'bg-transparent hover:bg-slate-100/70'
                     }`}
                   >

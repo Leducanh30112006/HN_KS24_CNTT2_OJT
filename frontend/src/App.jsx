@@ -1340,7 +1340,7 @@ export default function App() {
                     <button
                       key={c.id}
                       onClick={() => setSelectedCategory(isSelected ? null : c.id)}
-                      className={`category-card-item p-3 sm:p-4 rounded-2xl border text-center transition-all duration-200 flex flex-col items-center justify-center space-y-2.5 group cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-orange-500/5 ${
+                      className={`category-card-item p-3 sm:p-4 rounded-2xl border text-center transition-all duration-200 flex flex-col items-center justify-center space-y-2.5 group cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-orange-500/5 active:scale-[0.96] select-none ${
                         isSelected
                           ? 'border-orange-500 bg-orange-50/90 text-orange-950 shadow-md shadow-orange-500/10 font-bold ring-4 ring-orange-400/20'
                           : `border-slate-200/70 ${borderHover} hover:shadow-md bg-white text-slate-700`

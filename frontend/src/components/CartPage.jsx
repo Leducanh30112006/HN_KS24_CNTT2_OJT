@@ -6,6 +6,7 @@ import {
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { fixMojibakeText } from '../utils/vietnameseEncoding';
+import { LucianButton } from './ui/LucianPrimitives';
 
 export default function CartPage({ 
   onProceedToCheckout, 
@@ -455,18 +456,17 @@ export default function CartPage({
               )}
             </div>
 
-            <button
+            <LucianButton
+              magnetic
+              variant="primary"
+              size="lg"
               onClick={handleCheckoutClick}
               disabled={selectedCount === 0 || hasStockConflict}
-              className={`px-8 sm:px-12 py-3.5 sm:py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wide transition shadow-xl active:scale-95 flex items-center gap-2 ${
-                selectedCount > 0 && !hasStockConflict
-                  ? 'bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 hover:from-orange-600 hover:to-rose-600 text-white shadow-orange-500/30 cursor-pointer'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-              }`}
+              className="px-8 sm:px-12 py-3.5 sm:py-4 uppercase tracking-wide text-xs sm:text-sm font-black"
+              rightIcon={ChevronRight}
             >
               <span>Mua Hàng ({selectedCount})</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            </LucianButton>
           </div>
         </div>
       </div>

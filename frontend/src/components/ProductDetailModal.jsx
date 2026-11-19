@@ -7,9 +7,11 @@ import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import axiosClient from '../api/axiosClient';
 import { renderSanitizedContent } from '../utils/sanitizeHtml';
-import { fixMojibakeText } from '../utils/vietnameseEncoding';
+import { normalizeProduct, fixMojibakeText, skuVariantMap } from '../utils/vietnameseEncoding';
+import { LucianButton } from './ui/LucianPrimitives';
 
-export default function ProductDetailModal({ product, onClose, onBuyNow, onRequireAuth }) {
+export default function ProductDetailModal({ product: rawProduct, onClose, onBuyNow, onRequireAuth }) {
+  const product = normalizeProduct(rawProduct);
   const addToCart = useCartStore((state) => state.addToCart);
   const { user, isAuthenticated } = useAuthStore();
 
@@ -25,12 +27,19 @@ export default function ProductDetailModal({ product, onClose, onBuyNow, onRequi
   const [reviewMsg, setReviewMsg] = useState('');
 
   const rawVariants = product?.variants || [];
-  const variants = rawVariants.map((v) => ({
-    ...v,
-    color: fixMojibakeText(v.color) || 'Tiêu chuẩn',
-    size: fixMojibakeText(v.size) || 'Tiêu chuẩn',
-    variantName: fixMojibakeText(v.variantName) || ([v.color, v.size].filter(Boolean).map(fixMojibakeText).join(' - ') || 'Mặc định'),
-  }));
+  const variants = rawVariants.map((v) => {
+    const skuKey = v.sku ? String(v.sku).trim().toUpperCase() : '';
+    const skuMatch = skuKey ? skuVariantMap.get(skuKey) : null;
+    const cleanColor = skuMatch?.color || fixMojibakeText(v.color) || 'Tiêu chuẩn';
+    const cleanSize = skuMatch?.size || fixMojibakeText(v.size) || 'Tiêu chuẩn';
+    const cleanVariantName = skuMatch ? `${cleanColor} - ${cleanSize}` : (fixMojibakeText(v.variantName) || ([cleanColor, cleanSize].filter(Boolean).map(fixMojibakeText).join(' - ') || 'Mặc định'));
+    return {
+      ...v,
+      color: cleanColor,
+      size: cleanSize,
+      variantName: cleanVariantName,
+    };
+  });
 
   // Group unique colors and sizes
   const colors = Array.from(new Set(variants.map((v) => v.color).filter(Boolean)));
@@ -338,7 +347,10 @@ export default function ProductDetailModal({ product, onClose, onBuyNow, onRequi
               {/* Color Selector */}
               {colors.length > 0 && (
                 <div className="space-y-2">
-                  <div className="text-xs font-semibold text-slate-700">Màu sắc:</div>
+                  <div className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                    <span>Màu sắc:</span>
+                    <span className="text-orange-600 font-semibold">{fixMojibakeText(selectedColor)}</span>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {colors.map((c) => (
                       <button
@@ -350,7 +362,7 @@ export default function ProductDetailModal({ product, onClose, onBuyNow, onRequi
                             : 'border-slate-300 hover:border-slate-400 text-slate-700'
                         }`}
                       >
-                        {c}
+                        {fixMojibakeText(c)}
                       </button>
                     ))}
                   </div>
@@ -360,7 +372,10 @@ export default function ProductDetailModal({ product, onClose, onBuyNow, onRequi
               {/* Size / Storage Selector */}
               {sizes.length > 0 && (
                 <div className="space-y-2">
-                  <div className="text-xs font-semibold text-slate-700">Phiên bản / Dung lượng:</div>
+                  <div className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                    <span>Phiên bản / Dung lượng:</span>
+                    <span className="text-orange-600 font-semibold">{fixMojibakeText(selectedSize)}</span>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {sizes.map((s) => (
                       <button
@@ -372,7 +387,7 @@ export default function ProductDetailModal({ product, onClose, onBuyNow, onRequi
                             : 'border-slate-300 hover:border-slate-400 text-slate-700'
                         }`}
                       >
-                        {s}
+                        {fixMojibakeText(s)}
                       </button>
                     ))}
                   </div>
@@ -409,20 +424,25 @@ export default function ProductDetailModal({ product, onClose, onBuyNow, onRequi
 
               {/* Action Buttons */}
               <div className="flex gap-3 pt-4">
-                <button
+                <LucianButton
                   onClick={handleAddToCart}
-                  className="flex-1 py-3 px-4 bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 border border-orange-300 active:scale-95"
+                  variant="secondary"
+                  size="md"
+                  className="flex-1 border-orange-300 text-orange-700 bg-orange-50 hover:bg-orange-100"
+                  icon={ShoppingCart}
                 >
-                  <ShoppingCart className="w-4 h-4" />
-                  Thêm vào giỏ hàng
-                </button>
+                  <span>Thêm vào giỏ hàng</span>
+                </LucianButton>
 
-                <button
+                <LucianButton
                   onClick={handleBuyNow}
-                  className="flex-1 py-3 px-4 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-orange-500/30 active:scale-95 flex items-center justify-center gap-1.5"
+                  magnetic
+                  variant="primary"
+                  size="md"
+                  className="flex-1"
                 >
-                  Mua ngay
-                </button>
+                  <span>Mua ngay</span>
+                </LucianButton>
               </div>
 
               {/* Toast Notification */}

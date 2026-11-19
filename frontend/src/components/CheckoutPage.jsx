@@ -13,6 +13,7 @@ import VoucherModal from './VoucherModal';
 import axiosClient from '../api/axiosClient';
 import { AnimatedNumber } from './motion/MotionPrimitives';
 import { fixMojibakeText } from '../utils/vietnameseEncoding';
+import { LucianButton, SpotlightCard } from './ui/LucianPrimitives';
 
 export const AVAILABLE_CARRIERS = [
   {
@@ -1867,36 +1868,27 @@ export default function CheckoutPage({
             )}
 
             {/* Place Order CTA Button */}
-            <button
+            <LucianButton
+              magnetic
+              variant="primary"
+              size="lg"
               onClick={handlePlaceOrder}
               disabled={isSubmitting}
-              className={`btn-shimmer btn-primary-cta cursor-pointer w-full py-4 text-white font-black text-sm rounded-2xl transition shadow-xl active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 ${
+              loading={isSubmitting}
+              className={`w-full py-4 text-sm font-black shadow-xl ${
                 (paymentMethod === 'payos' || paymentMethod === 'vnpay')
                   ? 'bg-gradient-to-r from-blue-600 via-sky-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-blue-500/25'
-                  : 'bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 hover:from-orange-600 hover:to-rose-600 shadow-orange-500/30'
+                  : ''
               }`}
+              icon={(paymentMethod === 'payos' || paymentMethod === 'vnpay') ? QrCode : undefined}
+              rightIcon={(paymentMethod === 'payos' || paymentMethod === 'vnpay') ? undefined : ChevronRight}
             >
-              {isSubmitting ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Đang xử lý đơn hàng...</span>
-                </>
-              ) : (
-                <>
-                  {(paymentMethod === 'payos' || paymentMethod === 'vnpay') ? (
-                    <>
-                      <QrCode className="w-4 h-4" />
-                      <span>Đặt Hàng & Thanh Toán Bằng MB Bank</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Tiến hành Đặt Hàng Ngay</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </>
-                  )}
-                </>
-              )}
-            </button>
+              <span>
+                {(paymentMethod === 'payos' || paymentMethod === 'vnpay')
+                  ? 'Đặt Hàng & Thanh Toán Bằng MB Bank'
+                  : 'Tiến hành Đặt Hàng Ngay'}
+              </span>
+            </LucianButton>
 
             {/* Security Guarantee */}
             <div className="pt-2 border-t border-slate-100 space-y-2 text-[10px] text-slate-500">

@@ -1,21 +1,63 @@
-import React from 'react';
-import { Star, ShoppingCart, MapPin, CheckCircle2 } from 'lucide-react';
+import React, { useRef, useEffect } from 'react';
+import { Star, ShoppingCart, MapPin, ShieldCheck } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { fixMojibakeText } from '../utils/vietnameseEncoding';
 import { FALLBACK_PRODUCT_IMAGE, handleImageError } from '../utils/imageFallback';
+import { gsap } from '../lib/gsap';
+import { LucianButton, formatVND } from './ui/LucianPrimitives';
 
 export default function ProductCard({ product, onSelect, onRequireAuth, onSelectShop }) {
   const addToCart = useCartStore((state) => state.addToCart);
   const { isAuthenticated } = useAuthStore();
+  const cardRef = useRef(null);
+  const sheenRef = useRef(null);
 
-  const formatVND = (price) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
-  };
+  // Hardware-accelerated 3D tilt with GSAP quickTo
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+
+    const rotXTo = gsap.quickTo(card, 'rotationX', { duration: 0.32, ease: 'power2.out' });
+    const rotYTo = gsap.quickTo(card, 'rotationY', { duration: 0.32, ease: 'power2.out' });
+
+    const handleMouseMove = (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
+      // Subtle +/- 3.5deg tilt
+      const rotX = -((y - centerY) / centerY) * 3.5;
+      const rotY = ((x - centerX) / centerX) * 3.5;
+
+      rotXTo(rotX);
+      rotYTo(rotY);
+
+      if (sheenRef.current) {
+        sheenRef.current.style.setProperty('--sheen-x', `${(x / rect.width) * 100}%`);
+        sheenRef.current.style.setProperty('--sheen-y', `${(y / rect.height) * 100}%`);
+      }
+    };
+
+    const handleMouseLeave = () => {
+      rotXTo(0);
+      rotYTo(0);
+    };
+
+    card.addEventListener('mousemove', handleMouseMove);
+    card.addEventListener('mouseleave', handleMouseLeave);
+    return () => {
+      card.removeEventListener('mousemove', handleMouseMove);
+      card.removeEventListener('mouseleave', handleMouseLeave);
+      rotXTo(0);
+      rotYTo(0);
+    };
+  }, []);
 
   const handleQuickAdd = (e) => {
     e.stopPropagation();
-    // Bắt buộc đăng nhập trước khi mua hàng hoặc thêm vào giỏ
     if (!isAuthenticated) {
       if (onRequireAuth) {
         onRequireAuth('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!');
@@ -33,8 +75,19 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
 
   return (
     <div
+      ref={cardRef}
+      style={{ transformStyle: 'preserve-3d', perspective: 1000 }}
       className="product-card-item bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-xl hover:border-orange-400/80 transition-shadow transition-colors duration-300 ease-out cursor-pointer flex flex-col justify-between group relative select-none"
     >
+      {/* Specular Glare Sheen Overlay */}
+      <div
+        ref={sheenRef}
+        className="pointer-events-none absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
+        style={{
+          background: 'radial-gradient(350px circle at var(--sheen-x, 50%) var(--sheen-y, 50%), rgba(255, 255, 255, 0.4), transparent 75%)',
+        }}
+      />
+
       <button
         type="button"
         onClick={() => onSelect(product)}
@@ -53,10 +106,11 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
           />
 
           {/* Badges Top Left: Mall or Yêu Thích */}
-          <div className="absolute top-2 left-2 flex flex-col gap-1 items-start pointer-events-none">
+          <div className="absolute top-2 left-2 flex flex-col gap-1 items-start pointer-events-none z-10">
             {isMall ? (
-              <span className="bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm tracking-wide uppercase">
-                MALL
+              <span className="bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm tracking-wide uppercase flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-amber-300" />
+                <span>MALL</span>
               </span>
             ) : (
               <span className="bg-orange-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm tracking-wide">
@@ -69,16 +123,17 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
           </div>
 
           {/* Floating 'Thêm vào giỏ' Quick-Action Pill that slides up smoothly on card hover */}
-          <div className="absolute inset-x-2 bottom-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out pointer-events-none z-10">
-            <button
-              type="button"
+          <div className="absolute inset-x-2 bottom-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out pointer-events-none z-20">
+            <LucianButton
+              size="sm"
+              variant="primary"
               onClick={handleQuickAdd}
-              className="btn-shimmer w-full py-2 bg-slate-900/90 hover:bg-orange-600 backdrop-blur-md text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-slate-950/20 active:scale-95 transition-colors duration-200 pointer-events-auto cursor-pointer"
+              className="w-full py-2 pointer-events-auto text-xs"
               title="Thêm nhanh vào giỏ hàng (Yêu cầu đăng nhập)"
             >
-              <ShoppingCart className="w-3.5 h-3.5 text-amber-400" />
+              <ShoppingCart className="w-3.5 h-3.5 text-white" />
               <span>Thêm vào giỏ</span>
-            </button>
+            </LucianButton>
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import {
   Flame, Clock, ChevronRight, Star, Tag, ShoppingBag 
 } from 'lucide-react';
 import { gsap, useGSAP } from '../lib/gsap';
+import { LucianButton, SpotlightCard } from './ui/LucianPrimitives';
 
 export default function HeroBanner({ 
   onSelectCategory, 
@@ -182,27 +183,31 @@ export default function HeroBanner({
 
           {/* Primary High-Contrast Conversion CTAs */}
           <div className="relative z-10 flex flex-wrap items-center gap-3 pt-2">
-            <button
+            <LucianButton
               ref={heroCtaRef}
+              magnetic
+              size="lg"
+              variant="primary"
               onClick={() => {
                 if (onNavigateFlashSale) onNavigateFlashSale();
                 else if (onSelectCategory) onSelectCategory(1);
               }}
-              className="btn-shimmer btn-primary-cta px-6 py-3.5 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-xl shadow-orange-500/25 flex items-center gap-2 group/btn cursor-pointer select-none"
+              rightIcon={ArrowRight}
             >
               <span>Khám Phá Siêu Deal Sốc</span>
-              <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-            </button>
+            </LucianButton>
 
-            <button
+            <LucianButton
+              size="lg"
+              variant="obsidian"
               onClick={() => {
                 const el = document.getElementById('catalog-product-grid');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="btn-tactile px-5 py-3.5 bg-white/10 hover:bg-white/15 text-white font-bold text-xs sm:text-sm rounded-2xl border border-white/10 backdrop-blur-md cursor-pointer select-none"
+              className="bg-white/10 hover:bg-white/15 text-white border-white/10 backdrop-blur-md"
             >
               Xem Toàn Bộ Sản Phẩm
-            </button>
+            </LucianButton>
           </div>
         </div>
 
@@ -319,13 +324,15 @@ export default function HeroBanner({
               <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full" style={{ width: '82%' }} />
               </div>
-              <button
+              <LucianButton
+                size="sm"
+                variant="obsidian"
                 onClick={onNavigateFlashSale}
-                className="w-full mt-2 py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-amber-200 border border-slate-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+                className="w-full mt-2 text-amber-300 hover:text-amber-200 border-slate-800"
+                rightIcon={ChevronRight}
               >
                 <span>Xem 50+ Deal Sốc Trong Ngày</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              </LucianButton>
             </div>
           </div>
 

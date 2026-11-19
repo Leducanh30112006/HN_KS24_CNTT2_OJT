@@ -293,7 +293,7 @@ export default function RegisterShipperPage({
             </div>
             <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
               Làm chủ thời gian, thu nhập <br className="hidden sm:inline" />
-              lên đến <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">15 - 20 Triệu/Tháng</span>
+              lên đến <span className="text-sky-400 font-black">15 - 20 Triệu/Tháng</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
               Hệ thống điều phối đơn hàng thông minh theo tọa độ GPS, hỗ trợ gom đơn tối ưu hóa tuyến đường di chuyển, thanh toán tiền công minh bạch mỗi ngày.

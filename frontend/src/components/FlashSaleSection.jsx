@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Flame, ChevronRight, ChevronLeft } from 'lucide-react';
 import { gsap, useGSAP } from '../lib/gsap';
 import { fixMojibakeText } from '../utils/vietnameseEncoding';
+import { LucianButton } from './ui/LucianPrimitives';
 
 export default function FlashSaleSection({ products = [], onSelectProduct, onViewAllDeals }) {
   // Countdown Timer: 02:45:18
@@ -279,40 +280,43 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
         </div>
 
         {/* Nút Xem tất cả deal sốc chuyển sang trang chuyên biệt */}
-        <button
-          type="button"
+        <LucianButton
+          size="sm"
+          variant="secondary"
           onClick={onViewAllDeals}
-          className="text-xs font-bold text-amber-300 hover:text-white transition flex items-center gap-1 bg-white/10 hover:bg-white/20 px-3.5 py-1.5 rounded-xl border border-white/10 backdrop-blur-sm cursor-pointer shadow-sm active:scale-95"
+          className="bg-white/10 hover:bg-white/20 text-amber-300 hover:text-white border-white/10 backdrop-blur-sm"
+          rightIcon={ChevronRight}
         >
           <span>Xem tất cả 50+ deal sốc</span>
-          <ChevronRight className="w-4 h-4" />
-        </button>
+        </LucianButton>
       </div>
 
       {/* Navigation Arrows */}
-      <button
-        type="button"
+      <LucianButton
+        size="icon"
+        variant="ghost"
         onClick={(e) => {
           e.stopPropagation();
           handlePrev();
         }}
-        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition opacity-0 group-hover:opacity-100 shadow-lg cursor-pointer active:scale-90"
+        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition opacity-0 group-hover:opacity-100 shadow-lg"
         title="Sản phẩm trước"
       >
         <ChevronLeft className="w-5 h-5" />
-      </button>
+      </LucianButton>
 
-      <button
-        type="button"
+      <LucianButton
+        size="icon"
+        variant="ghost"
         onClick={(e) => {
           e.stopPropagation();
           handleNext();
         }}
-        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition opacity-0 group-hover:opacity-100 shadow-lg cursor-pointer active:scale-90"
+        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition opacity-0 group-hover:opacity-100 shadow-lg"
         title="Sản phẩm tiếp theo"
       >
         <ChevronRight className="w-5 h-5" />
-      </button>
+      </LucianButton>
 
       {/* Continuous Infinite Loop Carousel */}
       <div className="overflow-hidden py-1">

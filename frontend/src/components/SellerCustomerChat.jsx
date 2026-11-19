@@ -170,7 +170,7 @@ export default function SellerCustomerChat({
                   key={thread.threadId}
                   onClick={() => setActiveThreadId(thread.threadId)}
                   className={`w-full text-left border-0 p-3.5 flex items-start gap-3 cursor-pointer transition ${
-                    isActive ? 'bg-orange-50/70 border-l-4 border-orange-600' : 'bg-transparent hover:bg-slate-100/70'
+                    isActive ? 'bg-orange-50/70 border-l-2 border-orange-600' : 'bg-transparent hover:bg-slate-100/70'
                   }`}
                 >
                   <div className="relative flex-shrink-0">

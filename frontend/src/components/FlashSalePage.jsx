@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Flame, Clock, ArrowLeft, Zap, Sparkles, Filter, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { gsap, useGSAP } from '../lib/gsap';
 import { fixMojibakeText } from '../utils/vietnameseEncoding';
+import { LucianButton } from './ui/LucianPrimitives';
 
 export default function FlashSalePage({ products = [], onBack, onSelectProduct }) {
   // Live Countdown Timer
@@ -293,17 +294,18 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
 
                 {/* Footer Action Button */}
                 <div className="p-4 pt-0 relative z-10">
-                  <button
-                    type="button"
+                  <LucianButton
+                    variant="primary"
+                    size="sm"
+                    className="w-full text-xs font-bold"
+                    rightIcon={ChevronRight}
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectProduct && onSelectProduct(deal);
                     }}
-                    className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white text-xs font-bold rounded-xl transition shadow-md shadow-orange-500/20 active:scale-95 flex items-center justify-center gap-1.5"
                   >
                     <span>Săn Ngay</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
+                  </LucianButton>
                 </div>
               </div>
             );

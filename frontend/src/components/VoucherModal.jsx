@@ -4,6 +4,7 @@ import {
   ChevronRight, Tag, Info, ShieldCheck, Clock 
 } from 'lucide-react';
 import { AnimatedPresence, AnimatedNumber } from './motion/MotionPrimitives';
+import { LucianButton } from './ui/LucianPrimitives';
 
 export default function VoucherModal({ 
   isOpen, 
@@ -560,20 +561,23 @@ export default function VoucherModal({
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              type="button"
+            <LucianButton
+              variant="secondary"
+              size="md"
               onClick={handleResetAll}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold transition active:scale-95 cursor-pointer"
+              className="flex-1 sm:flex-none"
             >
-              Bỏ chọn tất cả
-            </button>
-            <button
-              type="button"
+              <span>Bỏ chọn tất cả</span>
+            </LucianButton>
+            <LucianButton
+              magnetic
+              variant="primary"
+              size="md"
               onClick={handleConfirm}
-              className="btn-shimmer btn-primary-cta flex-1 sm:flex-none px-8 py-2.5 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white font-black text-xs sm:text-sm rounded-xl transition shadow-lg shadow-orange-500/25 active:scale-95 uppercase tracking-wide cursor-pointer"
+              className="flex-1 sm:flex-none uppercase tracking-wide font-black"
             >
-              Đồng Ý Áp Dụng
-            </button>
+              <span>Đồng Ý Áp Dụng</span>
+            </LucianButton>
           </div>
         </div>
 

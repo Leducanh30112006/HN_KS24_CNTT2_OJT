@@ -172,7 +172,7 @@ export default function BuyerSellerChatModal({
       <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-[600px] max-h-[92vh] relative">
         {/* Toast thông báo */}
         {toastMessage && (
-          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-pulse">
             <CheckCircle2 className="w-4 h-4" />
             <span>{toastMessage}</span>
           </div>

@@ -12,8 +12,9 @@ import ApiErrorBanner from './ApiErrorBanner';
 import { defaultProducts } from '../data/sampleProducts';
 import { renderSanitizedContent } from '../utils/sanitizeHtml';
 import { AnimatedNumber } from './motion/MotionPrimitives';
-import { normalizeProduct, fixMojibakeText } from '../utils/vietnameseEncoding';
+import { normalizeProduct, fixMojibakeText, skuVariantMap } from '../utils/vietnameseEncoding';
 import BuyerSellerChatModal from './BuyerSellerChatModal';
+import { LucianButton } from './ui/LucianPrimitives';
 
 export default function ProductDetailPage({ 
   product: initialProduct, 
@@ -51,12 +52,19 @@ export default function ProductDetailPage({
   const [reviewMsg, setReviewMsg] = useState('');
 
   const rawVariants = product?.variants || [];
-  const variants = rawVariants.map((v) => ({
-    ...v,
-    color: fixMojibakeText(v.color) || 'Tiêu chuẩn',
-    size: fixMojibakeText(v.size) || 'Tiêu chuẩn',
-    variantName: fixMojibakeText(v.variantName) || ([v.color, v.size].filter(Boolean).map(fixMojibakeText).join(' - ') || 'Mặc định'),
-  }));
+  const variants = rawVariants.map((v) => {
+    const skuKey = v.sku ? String(v.sku).trim().toUpperCase() : '';
+    const skuMatch = skuKey ? skuVariantMap.get(skuKey) : null;
+    const cleanColor = skuMatch?.color || fixMojibakeText(v.color) || 'Tiêu chuẩn';
+    const cleanSize = skuMatch?.size || fixMojibakeText(v.size) || 'Tiêu chuẩn';
+    const cleanVariantName = skuMatch ? `${cleanColor} - ${cleanSize}` : (fixMojibakeText(v.variantName) || ([cleanColor, cleanSize].filter(Boolean).map(fixMojibakeText).join(' - ') || 'Mặc định'));
+    return {
+      ...v,
+      color: cleanColor,
+      size: cleanSize,
+      variantName: cleanVariantName,
+    };
+  });
 
   // Group unique colors and sizes
   const colors = Array.from(new Set(variants.map((v) => v.color).filter(Boolean)));
@@ -658,22 +666,27 @@ export default function ProductDetailPage({
 
             {/* Action Buttons: Thêm Giỏ Hàng & Mua Ngay */}
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <button
+              <LucianButton
                 onClick={handleAddToCart}
                 disabled={isOutOfStock}
-                className="btn-tactile flex-1 py-3.5 px-6 bg-orange-50 hover:bg-orange-100 text-orange-600 font-bold text-sm rounded-2xl transition flex items-center justify-center gap-2 border border-orange-500 shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                variant="secondary"
+                size="lg"
+                className="flex-1 border-orange-500 text-orange-600 hover:bg-orange-50"
+                icon={ShoppingCart}
               >
-                <ShoppingCart className="w-4 h-4 text-orange-600" />
                 <span>{isOutOfStock ? 'Tạm Hết Hàng' : 'Thêm Vào Giỏ Hàng'}</span>
-              </button>
+              </LucianButton>
 
-              <button
+              <LucianButton
                 onClick={handleBuyNow}
                 disabled={isOutOfStock}
-                className="btn-shimmer btn-primary-cta flex-1 py-3.5 px-6 bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 hover:from-orange-600 hover:to-rose-600 text-white font-extrabold text-sm rounded-2xl transition shadow-lg shadow-orange-500/30 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                magnetic
+                variant="primary"
+                size="lg"
+                className="flex-1"
               >
                 <span>{isOutOfStock ? 'Hết Hàng' : 'Mua Ngay Với Giá Ưu Đãi'}</span>
-              </button>
+              </LucianButton>
             </div>
 
             {/* Action feedback banner */}

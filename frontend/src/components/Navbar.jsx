@@ -8,6 +8,7 @@ import { useCartStore } from '../stores/useCartStore';
 import { useNotificationStore } from '../stores/useNotificationStore';
 import { gsap, useGSAP } from '../lib/gsap';
 import { AnimatedPresence, AnimatedNumber } from './motion/MotionPrimitives';
+import { LucianButton } from './ui/LucianPrimitives';
 
 export default function Navbar({ 
   currentView, 
@@ -391,10 +392,13 @@ export default function Navbar({
           </div>
 
           {/* Shopping Cart Tactile Pill with Subtle Magnetic Pull & Shimmer */}
-          <button
+          <LucianButton
             ref={cartButtonRef}
+            magnetic
+            variant="obsidian"
+            size="sm"
             onClick={onOpenCart}
-            className="btn-shimmer btn-primary-cta flex items-center gap-2 px-3 sm:px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md shadow-slate-900/10 active:scale-95 group flex-shrink-0 cursor-pointer"
+            className="flex-shrink-0"
             title="Xem Giỏ hàng"
           >
             <div className="relative">
@@ -409,14 +413,14 @@ export default function Navbar({
               )}
             </div>
             <span className="hidden lg:inline text-xs font-bold tracking-tight">Giỏ hàng</span>
-          </button>
+          </LucianButton>
 
           {/* User Account / Auth Dropdown */}
           <div className="relative">
             {isAuthenticated && user ? (
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 p-1.5 pr-2.5 rounded-xl border border-slate-200 hover:border-orange-300 transition"
+                className="flex items-center gap-2 p-1.5 pr-2.5 rounded-xl border border-slate-200 hover:border-orange-300 transition active:scale-[0.96] cursor-pointer"
               >
                 <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-600 font-bold flex items-center justify-center text-xs overflow-hidden border border-orange-200/60 shadow-2xs">
                   {user.avatar || user.avatarUrl ? (
@@ -438,13 +442,14 @@ export default function Navbar({
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
             ) : (
-              <button
+              <LucianButton
+                variant="secondary"
+                size="sm"
                 onClick={handleGoToLogin}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition"
+                icon={User}
               >
-                <User className="w-4 h-4" />
                 <span>Đăng nhập</span>
-              </button>
+              </LucianButton>
             )}
 
             {/* User Dropdown Menu - Phân quyền và Tách biệt Cổng rõ ràng */}

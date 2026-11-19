@@ -252,7 +252,7 @@ export default function RegisterSellerPage({
             </div>
             <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
               Mở gian hàng kinh doanh <br className="hidden sm:inline" />
-              tiếp cận <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">5.000.000+ khách hàng</span> toàn quốc
+              tiếp cận <span className="text-orange-400 font-black">5.000.000+ khách hàng</span> toàn quốc
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
               Đăng ký hoàn toàn miễn phí chỉ trong 2 phút. Trải nghiệm hệ sinh thái vận hành đa kênh, in vận đơn tự động, quản lý kho hàng thời gian thực và nhận thanh toán an toàn qua Ví Escrow.
