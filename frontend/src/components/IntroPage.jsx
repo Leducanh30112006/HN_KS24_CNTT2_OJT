@@ -397,8 +397,19 @@ function SingleIntroCanvas({ activeChapter, scrollProgress }) {
       dpr={[1, 1.5]}
       gl={{
         antialias: true,
-        powerPreference: 'high-performance',
+        powerPreference: 'default',
         alpha: true,
+      }}
+      onCreated={({ gl }) => {
+        if (gl?.domElement) {
+          gl.domElement.addEventListener(
+            'webglcontextlost',
+            (e) => {
+              e.preventDefault();
+            },
+            false
+          );
+        }
       }}
       camera={{ position: [0, 0, 7.2], fov: 42 }}
       className="w-full h-full pointer-events-auto"
