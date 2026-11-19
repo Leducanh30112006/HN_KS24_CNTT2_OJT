@@ -9,6 +9,8 @@ import { useCartStore } from '../stores/useCartStore';
 import { generateValidSignedToken } from '../utils/tokenHelper';
 import { validateRegisterInput, validateLoginInput } from '../utils/authValidation';
 import axiosClient from '../api/axiosClient';
+import GoogleAuthButton from './auth/GoogleAuthButton';
+import ForgotPasswordModal from './auth/ForgotPasswordModal';
 
 export default function LoginPage({ 
   onBackToHome, 
@@ -28,6 +30,7 @@ export default function LoginPage({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   // Register form states & validations
   const [regUsername, setRegUsername] = useState('');
@@ -505,9 +508,16 @@ export default function LoginPage({
                         <label htmlFor="login-page-password" className="block text-xs font-bold text-slate-700">
                           Mật khẩu: <span className="text-red-500">*</span>
                         </label>
-                        <span className="text-[11px] text-orange-600 hover:underline cursor-pointer">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setErrorMsg('');
+                            setIsForgotPasswordOpen(true);
+                          }}
+                          className="text-[11px] font-semibold text-orange-600 hover:text-orange-700 hover:underline cursor-pointer"
+                        >
                           Quên mật khẩu?
-                        </span>
+                        </button>
                       </div>
                       <div className="relative">
                         <input
@@ -579,6 +589,32 @@ export default function LoginPage({
                         <span>ĐĂNG NHẬP NGAY</span>
                       )}
                     </button>
+
+                    {/* Google OAuth Login Action */}
+                    <div className="relative my-3 flex items-center justify-center">
+                      <div className="border-t border-slate-200 w-full" />
+                      <span className="bg-white px-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">hoặc</span>
+                    </div>
+
+                    <GoogleAuthButton
+                      action="LOGIN"
+                      onSuccess={async (userData) => {
+                        const userId = userData.userId ?? userData.id ?? 1001;
+                        const role = userData.role || 'ROLE_BUYER';
+                        login({ ...userData, userId, role });
+                        try {
+                          await syncCartOnLogin(userId, { dedupeRecent: true });
+                        } catch {}
+                        setSuccessMsg(`Đăng nhập Google thành công! Chào mừng ${userData.fullName || userData.username || 'Quý khách'}`);
+                        setTimeout(() => {
+                          if (role === 'ROLE_ADMIN' || role === 'ADMIN') onLoginSuccess('admin');
+                          else if (role === 'ROLE_SELLER' || role === 'SELLER') onLoginSuccess('seller');
+                          else if (role === 'ROLE_SHIPPER' || role === 'SHIPPER') onLoginSuccess('shipper');
+                          else onLoginSuccess('storefront');
+                        }, 800);
+                      }}
+                      onError={(err) => setErrorMsg(err)}
+                    />
                   </form>
                 )}
 
@@ -874,6 +910,30 @@ export default function LoginPage({
                         <span>ĐĂNG KÝ TÀI KHOẢN NGAY</span>
                       )}
                     </button>
+
+                    {/* Google OAuth Register Action */}
+                    <div className="relative my-3 flex items-center justify-center">
+                      <div className="border-t border-slate-200 w-full" />
+                      <span className="bg-white px-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">hoặc</span>
+                    </div>
+
+                    <GoogleAuthButton
+                      action="REGISTER"
+                      buttonText="Đăng ký tài khoản bằng Google"
+                      onSuccess={async (userData) => {
+                        const userId = userData.userId ?? userData.id ?? 1001;
+                        const role = userData.role || 'ROLE_BUYER';
+                        login({ ...userData, userId, role });
+                        try {
+                          await syncCartOnLogin(userId, { dedupeRecent: true });
+                        } catch {}
+                        setSuccessMsg(`Đăng ký Google thành công! Chào mừng ${userData.fullName || userData.username || 'Quý khách'}`);
+                        setTimeout(() => {
+                          onLoginSuccess('storefront');
+                        }, 800);
+                      }}
+                      onError={(err) => setErrorMsg(err)}
+                    />
                   </form>
                 )}
 
@@ -942,6 +1002,24 @@ export default function LoginPage({
           </div>
         </div>
       </main>
+
+      {/* Forgot Password / Account Recovery Modal */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        onRecoverySuccess={(userData) => {
+          setIsForgotPasswordOpen(false);
+          if (userData) {
+            const role = userData.role || 'ROLE_BUYER';
+            if (role === 'ROLE_ADMIN' || role === 'ADMIN') onLoginSuccess('admin');
+            else if (role === 'ROLE_SELLER' || role === 'SELLER') onLoginSuccess('seller');
+            else if (role === 'ROLE_SHIPPER' || role === 'SHIPPER') onLoginSuccess('shipper');
+            else onLoginSuccess('storefront');
+          } else {
+            setSuccessMsg('Đã đặt lại mật khẩu thành công! Vui lòng đăng nhập bằng mật khẩu mới.');
+          }
+        }}
+      />
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">

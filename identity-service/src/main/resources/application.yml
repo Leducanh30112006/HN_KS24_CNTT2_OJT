@@ -33,6 +33,10 @@ jwt:
   expiration-ms: 86400000 # 24 hours
   refresh-expiration-ms: 604800000 # 7 days
 
+google:
+  client-id: ${GOOGLE_CLIENT_ID:}
+  client-secret: ${GOOGLE_CLIENT_SECRET:}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

@@ -2358,13 +2358,13 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
           )}
 
           {/* Card Bật/Tắt Chế Độ Duyệt Tự Động AI vs Duyệt Thủ Công */}
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-5 border border-indigo-800/40 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
-            <div className="pointer-events-none absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-indigo-500/10 blur-2xl" />
+          <div className="bg-slate-900 text-white rounded-3xl p-5 border border-slate-800 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
+            <div className="pointer-events-none absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-orange-500/10 blur-2xl" />
             
             <div className="flex items-start gap-3.5 z-10">
               <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0 shadow-lg ${
                 aiAutoApproveOn 
-                  ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-indigo-500/30' 
+                  ? 'bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-orange-500/30' 
                   : 'bg-slate-800 text-slate-400 border border-slate-700'
               }`}>
                 <Bot className="w-6 h-6" />

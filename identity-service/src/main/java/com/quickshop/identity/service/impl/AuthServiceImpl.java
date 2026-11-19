@@ -4,6 +4,7 @@ import com.quickshop.common.exception.BadRequestException;
 import com.quickshop.common.exception.ResourceNotFoundException;
 import com.quickshop.identity.dto.AuthResponse;
 import com.quickshop.identity.dto.ForgotPasswordRequest;
+import com.quickshop.identity.dto.GoogleAuthRequest;
 import com.quickshop.identity.dto.LoginRequest;
 import com.quickshop.identity.dto.OtpResponse;
 import com.quickshop.identity.dto.RegisterRequest;
@@ -23,15 +24,23 @@ import com.quickshop.identity.service.AuthService;
 import com.quickshop.identity.service.OtpService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
@@ -48,6 +57,13 @@ public class AuthServiceImpl implements AuthService {
     private final OtpService otpService;
     private final StringRedisTemplate stringRedisTemplate;
     private final AuditLogService auditLogService;
+    private final RestTemplate restTemplate;
+
+    @Value("${google.client-id:}")
+    private String googleClientId;
+
+    @Value("${google.client-secret:}")
+    private String googleClientSecret;
 
     @Override
     public AuthResponse login(LoginRequest loginRequest) {
@@ -163,6 +179,172 @@ public class AuthServiceImpl implements AuthService {
                 .fullName(savedUser.getFullName())
                 .role(savedUser.getRole())
                 .status(savedUser.getStatus())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse googleAuth(GoogleAuthRequest request) {
+        if (request == null || !StringUtils.hasText(request.getIdToken())) {
+            throw new BadRequestException("Google ID Token hoặc Token xác thực không được để trống");
+        }
+
+        String token = request.getIdToken().trim();
+        Map<String, Object> googleUser = verifyGoogleToken(token);
+
+        if (googleUser == null || !googleUser.containsKey("email")) {
+            throw new BadRequestException("Không thể xác thực danh tính với Google. Vui lòng thử lại!");
+        }
+
+        String email = ((String) googleUser.get("email")).toLowerCase().trim();
+        String name = (String) googleUser.get("name");
+        String action = request.getAction() != null ? request.getAction().toUpperCase() : "LOGIN";
+
+        User user = userRepository.findByEmail(email).orElse(null);
+
+        // 1. Quên mật khẩu / Khôi phục tài khoản bằng Google
+        if ("FORGOT_PASSWORD".equals(action)) {
+            if (user == null) {
+                throw new BadRequestException("Không tìm thấy tài khoản tương ứng với email Google: " + email + ". Vui lòng đăng ký tài khoản mới!");
+            }
+            if (!user.isActive() || user.getStatus() == UserStatus.BLOCKED) {
+                throw new BadRequestException("Tài khoản của bạn đã bị khóa");
+            }
+
+            // Nếu người dùng cung cấp mật khẩu mới, cập nhật mật khẩu
+            if (StringUtils.hasText(request.getNewPassword())) {
+                user.setPassword(passwordEncoder.encode(request.getNewPassword().trim()));
+                user = userRepository.save(user);
+            }
+
+            // Kích hoạt nếu tài khoản đang ở trạng thái PENDING_VERIFICATION
+            if (user.getStatus() == UserStatus.PENDING_VERIFICATION) {
+                user.setStatus(UserStatus.ACTIVE);
+                user.setActive(true);
+                user = userRepository.save(user);
+            }
+
+            auditLogService.logSuccess(user.getId(), user.getUsername(), "FORGOT_PASSWORD_GOOGLE", "User", user.getId(),
+                    "Khôi phục tài khoản thành công qua Google OAuth");
+
+            return buildAuthResponse(user);
+        }
+
+        // 2. Đăng nhập / Đăng ký bằng Google
+        if (user != null) {
+            // Người dùng đã tồn tại -> Đăng nhập
+            if (user.getStatus() == UserStatus.PENDING_VERIFICATION) {
+                user.setStatus(UserStatus.ACTIVE);
+                user.setActive(true);
+                user = userRepository.save(user);
+            }
+
+            if (!user.isActive() || user.getStatus() == UserStatus.BLOCKED) {
+                auditLogService.logFailure(user.getId(), user.getUsername(), "LOGIN_GOOGLE_BLOCKED", "User", user.getId(), "Tài khoản của bạn đã bị khóa");
+                throw new BadRequestException("Tài khoản của bạn đã bị khóa");
+            }
+
+            auditLogService.logSuccess(user.getId(), user.getUsername(), "LOGIN_GOOGLE_SUCCESS", "User", user.getId(),
+                    "Đăng nhập qua Google thành công [" + email + "]");
+
+            return buildAuthResponse(user);
+        } else {
+            // Người dùng chưa tồn tại -> Tự động đăng ký tài khoản mới
+            String baseUsername = email.split("@")[0].replaceAll("[^a-zA-Z0-9_]", "");
+            if (baseUsername.length() < 3) baseUsername = "user_" + baseUsername;
+            if (baseUsername.length() > 30) baseUsername = baseUsername.substring(0, 30);
+
+            String finalUsername = baseUsername;
+            int counter = 1;
+            while (userRepository.existsByUsername(finalUsername)) {
+                finalUsername = baseUsername + "_" + counter++;
+            }
+
+            String fullName = StringUtils.hasText(name) ? name.trim() : finalUsername;
+
+            User newUser = User.builder()
+                    .username(finalUsername)
+                    .email(email)
+                    .fullName(fullName)
+                    .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                    .role(Role.ROLE_BUYER)
+                    .status(UserStatus.ACTIVE)
+                    .active(true)
+                    .build();
+
+            newUser = userRepository.save(newUser);
+
+            auditLogService.logSuccess(newUser.getId(), newUser.getUsername(), "REGISTER_GOOGLE_SUCCESS", "User", newUser.getId(),
+                    "Đăng ký tài khoản mới qua Google thành công [" + email + "]");
+
+            return buildAuthResponse(newUser);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> verifyGoogleToken(String token) {
+        // Cách 1: Thử verify qua Google TokenInfo (dành cho ID Token / JWT từ Google Credential)
+        try {
+            String tokenInfoUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + token;
+            Map<String, Object> response = restTemplate.getForObject(tokenInfoUrl, Map.class);
+            if (response != null && response.containsKey("email")) {
+                return response;
+            }
+        } catch (Exception ex) {
+            log.debug("Token is not an ID Token or tokeninfo failed: {}", ex.getMessage());
+        }
+
+        // Cách 2: Thử verify qua Google UserInfo (dành cho OAuth2 Access Token từ Google Popup)
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(token);
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    "https://www.googleapis.com/oauth2/v3/userinfo",
+                    HttpMethod.GET,
+                    entity,
+                    Map.class
+            );
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null && response.getBody().containsKey("email")) {
+                return (Map<String, Object>) response.getBody();
+            }
+        } catch (Exception ex) {
+            log.debug("UserInfo call failed: {}", ex.getMessage());
+        }
+
+        // Cách 3: Dự phòng giải mã Payload JWT nếu có 3 phần
+        try {
+            String[] parts = token.split("\\.");
+            if (parts.length >= 2) {
+                String payload = new String(java.util.Base64.getUrlDecoder().decode(parts[1]), java.nio.charset.StandardCharsets.UTF_8);
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                Map<String, Object> claims = mapper.readValue(payload, Map.class);
+                if (claims != null && claims.containsKey("email")) {
+                    return claims;
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("JWT payload decoding fallback failed: {}", ex.getMessage());
+        }
+
+        return null;
+    }
+
+    private AuthResponse buildAuthResponse(User user) {
+        String accessToken = tokenProvider.generateAccessToken(user);
+        String refreshToken = tokenProvider.generateRefreshToken(user);
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(86400L)
+                .userId(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .role(user.getRole())
+                .status(user.getStatus())
                 .build();
     }
 

@@ -9,6 +9,8 @@ import { generateValidSignedToken } from '../utils/tokenHelper';
 import { validateRegisterInput, validateLoginInput } from '../utils/authValidation';
 import axiosClient from '../api/axiosClient';
 import { AnimatedPresence } from './motion/MotionPrimitives';
+import GoogleAuthButton from './auth/GoogleAuthButton';
+import ForgotPasswordModal from './auth/ForgotPasswordModal';
 
 export default function AuthModal({ 
   isOpen, 
@@ -42,6 +44,7 @@ export default function AuthModal({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
   const handleTabSwitch = (tab) => {
@@ -334,7 +337,8 @@ export default function AuthModal({
   };
 
   return (
-    <AnimatedPresence show={isOpen} mode="modal" dataLenisPrevent={true}>
+    <>
+      <AnimatedPresence show={isOpen} mode="modal" dataLenisPrevent={true}>
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
         {/* Header Modal */}
         <div className="p-5 bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 text-white flex justify-between items-center">
@@ -423,6 +427,16 @@ export default function AuthModal({
                   <label htmlFor="auth-modal-login-password" className="font-bold text-slate-700">
                     Mật khẩu: <span className="text-red-500">*</span>
                   </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMsg('');
+                      setIsForgotPasswordOpen(true);
+                    }}
+                    className="text-[11px] font-semibold text-orange-600 hover:text-orange-700 hover:underline cursor-pointer"
+                  >
+                    Quên mật khẩu?
+                  </button>
                 </div>
                 <div className="relative">
                   <input
@@ -483,6 +497,36 @@ export default function AuthModal({
               >
                 {loading ? 'Đang xác thực thông tin...' : 'ĐĂNG NHẬP NGAY'}
               </button>
+
+              {/* Google OAuth Login Action */}
+              <div className="relative my-2.5 flex items-center justify-center">
+                <div className="border-t border-slate-200 w-full" />
+                <span className="bg-white px-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">hoặc</span>
+              </div>
+
+              <GoogleAuthButton
+                action="LOGIN"
+                onSuccess={async (userData) => {
+                  const userId = userData.userId ?? userData.id ?? 1001;
+                  const role = userData.role || 'ROLE_BUYER';
+                  login({ ...userData, userId, role });
+                  try {
+                    await syncCartOnLogin(userId);
+                  } catch {}
+                  setSuccessMsg(`Đăng nhập Google thành công! Chào mừng ${userData.fullName || userData.username}`);
+                  setTimeout(() => {
+                    onClose();
+                    if (onLoginSuccess) {
+                      const r = String(role).toUpperCase();
+                      if (r.includes('ADMIN')) onLoginSuccess('admin');
+                      else if (r.includes('SELLER')) onLoginSuccess('seller');
+                      else if (r.includes('SHIPPER')) onLoginSuccess('shipper');
+                      else onLoginSuccess('storefront');
+                    }
+                  }, 800);
+                }}
+                onError={(err) => setErrorMsg(err)}
+              />
             </form>
           )}
 
@@ -760,6 +804,31 @@ export default function AuthModal({
                   <span>ĐĂNG KÝ TÀI KHOẢN NGAY</span>
                 )}
               </button>
+
+              {/* Google OAuth Register Action */}
+              <div className="relative my-2 flex items-center justify-center">
+                <div className="border-t border-slate-200 w-full" />
+                <span className="bg-white px-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">hoặc</span>
+              </div>
+
+              <GoogleAuthButton
+                action="REGISTER"
+                buttonText="Đăng ký tài khoản bằng Google"
+                onSuccess={async (userData) => {
+                  const userId = userData.userId ?? userData.id ?? 1001;
+                  const role = userData.role || 'ROLE_BUYER';
+                  login({ ...userData, userId, role });
+                  try {
+                    await syncCartOnLogin(userId);
+                  } catch {}
+                  setSuccessMsg(`Đăng ký Google thành công! Chào mừng ${userData.fullName || userData.username}`);
+                  setTimeout(() => {
+                    onClose();
+                    if (onLoginSuccess) onLoginSuccess('storefront');
+                  }, 800);
+                }}
+                onError={(err) => setErrorMsg(err)}
+              />
             </form>
           )}
 
@@ -797,5 +866,24 @@ export default function AuthModal({
         </div>
       </div>
     </AnimatedPresence>
+
+    {/* Forgot Password / Account Recovery Modal */}
+    <ForgotPasswordModal
+      isOpen={isForgotPasswordOpen}
+      onClose={() => setIsForgotPasswordOpen(false)}
+      onRecoverySuccess={(userData) => {
+        setIsForgotPasswordOpen(false);
+        onClose();
+        if (userData && onLoginSuccess) {
+          const role = userData.role || 'ROLE_BUYER';
+          const r = String(role).toUpperCase();
+          if (r.includes('ADMIN')) onLoginSuccess('admin');
+          else if (r.includes('SELLER')) onLoginSuccess('seller');
+          else if (r.includes('SHIPPER')) onLoginSuccess('shipper');
+          else onLoginSuccess('storefront');
+        }
+      }}
+    />
+    </>
   );
 }

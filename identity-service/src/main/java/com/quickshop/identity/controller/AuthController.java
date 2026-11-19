@@ -3,6 +3,7 @@ package com.quickshop.identity.controller;
 import com.quickshop.common.dto.ApiResponse;
 import com.quickshop.identity.dto.AuthResponse;
 import com.quickshop.identity.dto.ForgotPasswordRequest;
+import com.quickshop.identity.dto.GoogleAuthRequest;
 import com.quickshop.identity.dto.LoginRequest;
 import com.quickshop.identity.dto.OtpResponse;
 import com.quickshop.identity.dto.RegisterRequest;
@@ -62,6 +63,26 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body(ApiResponse.created("Đăng ký tài khoản thành công", response));
+    }
+
+    @PostMapping("/google")
+    @Operation(summary = "Đăng nhập, đăng ký hoặc khôi phục tài khoản qua Google OAuth 2.0")
+    public ResponseEntity<ApiResponse<AuthResponse>> googleAuth(@Valid @RequestBody GoogleAuthRequest request) {
+        AuthResponse response = authService.googleAuth(request);
+
+        ResponseCookie accessCookie = createCookie("accessToken", response.getAccessToken(), 86400);
+        ResponseCookie refreshCookie = createCookie("refreshToken", response.getRefreshToken(), 604800);
+
+        String message = "FORGOT_PASSWORD".equalsIgnoreCase(request.getAction())
+                ? "Khôi phục tài khoản qua Google thành công"
+                : ("REGISTER".equalsIgnoreCase(request.getAction())
+                ? "Đăng ký tài khoản qua Google thành công"
+                : "Đăng nhập qua Google thành công");
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(ApiResponse.ok(message, response));
     }
 
     @PostMapping("/verify-otp")
@@ -200,5 +221,13 @@ public class AuthController {
     @Data
     public static class RefreshTokenRequest {
         private String refreshToken;
+
+        public String getRefreshToken() {
+            return refreshToken;
+        }
+
+        public void setRefreshToken(String refreshToken) {
+            this.refreshToken = refreshToken;
+        }
     }
 }
