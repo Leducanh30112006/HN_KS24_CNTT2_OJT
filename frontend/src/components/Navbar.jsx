@@ -150,9 +150,18 @@ export default function Navbar({
     }
   };
 
+  const handleTriggerSearch = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (onSearchSubmit) {
+      onSearchSubmit(searchKeyword);
+    } else if (setCurrentView) {
+      setCurrentView('search');
+    }
+  };
+
   const handleSearchKeyPress = (e) => {
     if (e.key === 'Enter') {
-      if (onSearchSubmit) onSearchSubmit(searchKeyword);
+      handleTriggerSearch(e);
     }
   };
 
@@ -304,8 +313,8 @@ export default function Navbar({
           </div>
 
           {/* Center: Command-Style Search Bar */}
-          <div className="flex-1 max-w-xl hidden lg:block min-w-0">
-            <div className="relative flex items-center">
+          <div className="flex-1 max-w-xl hidden md:block min-w-0">
+            <form onSubmit={handleTriggerSearch} className="relative flex items-center">
               <Search className="absolute left-3.5 w-4 h-4 text-slate-400 pointer-events-none" />
               <input
                 ref={searchInputRef}
@@ -315,17 +324,50 @@ export default function Navbar({
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 onKeyDown={handleSearchKeyPress}
                 placeholder="Tìm kiếm hơn 10.000+ sản phẩm chính hãng..."
-                className="w-full pl-10 pr-24 py-2 bg-slate-100/80 hover:bg-slate-100 focus:bg-white text-xs sm:text-sm text-slate-900 rounded-xl border border-transparent focus:border-orange-500 focus:ring-2 focus:ring-orange-500/15 outline-none transition-all placeholder:text-slate-400"
+                className="w-full pl-10 pr-28 py-2 bg-slate-100/80 hover:bg-slate-100 focus:bg-white text-xs sm:text-sm text-slate-900 rounded-xl border border-transparent focus:border-orange-500 focus:ring-2 focus:ring-orange-500/15 outline-none transition-all placeholder:text-slate-400"
               />
-              <div className="absolute right-2.5 flex items-center gap-1 select-none pointer-events-none">
-                <kbd className="px-1.5 py-0.5 text-[11px] font-mono text-slate-500 bg-white/90 rounded border border-slate-200 shadow-xs">Ctrl K</kbd>
-                <kbd className="px-1.5 py-0.5 text-[11px] font-mono text-slate-500 bg-white/90 rounded border border-slate-200 shadow-xs">/</kbd>
+              <div className="absolute right-1 flex items-center gap-1.5">
+                <span className="hidden xl:inline-flex items-center gap-0.5 select-none pointer-events-none mr-1">
+                  <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-white/90 rounded border border-slate-200 shadow-2xs">Ctrl K</kbd>
+                </span>
+                <button
+                  type="submit"
+                  aria-label="Tìm kiếm ngay"
+                  className="px-3.5 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs rounded-lg shadow-sm shadow-orange-500/25 active:scale-95 transition flex items-center gap-1 cursor-pointer select-none"
+                  title="Tìm kiếm"
+                >
+                  <Search className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Tìm</span>
+                </button>
               </div>
-            </div>
+            </form>
           </div>
 
-          {/* Right: Notification, Tactile Cart Pill, User Profile */}
+          {/* Right: Messenger, Notification, Tactile Cart Pill, User Profile */}
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {/* Messenger Chat Button (Hiển thị nổi bật, không bị ẩn) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenChatWithShop) onOpenChatWithShop();
+                else if (setCurrentView) setCurrentView('chat');
+              }}
+              aria-label="Mở tin nhắn Messenger với Người bán"
+              className={`btn-icon p-2 sm:p-2.5 rounded-xl transition relative cursor-pointer active:scale-90 flex items-center gap-1.5 ${
+                currentView === 'chat'
+                  ? 'bg-orange-50 text-orange-600 font-bold ring-2 ring-orange-500/20'
+                  : 'text-slate-600 hover:text-orange-600 hover:bg-orange-50'
+              }`}
+              title="Tin nhắn Messenger / Chat với Người bán"
+            >
+              <MessageSquare className="w-5 h-5 text-orange-600 stroke-[2.2]" />
+              {unreadChatCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-orange-600 text-white text-[10px] font-mono font-bold rounded-full flex items-center justify-center shadow-xs">
+                  <AnimatedNumber value={unreadChatCount} />
+                </span>
+              )}
+              <span className="hidden xl:inline text-xs font-bold text-slate-800">Mess</span>
+            </button>
           {/* Notifications Dropdown */}
           <div className="relative">
             <button
@@ -494,6 +536,29 @@ export default function Navbar({
                     <Package className="w-3.5 h-3.5 text-slate-400" />
                     <span>Đơn mua / Lịch sử đơn</span>
                   </button>
+
+                  <button
+                    onClick={() => {
+                      if (onOpenChatWithShop) onOpenChatWithShop();
+                      else setCurrentView('chat');
+                      setShowUserMenu(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs font-medium rounded-xl flex items-center justify-between transition cursor-pointer active:scale-95 ${
+                      currentView === 'chat'
+                        ? 'bg-orange-50 text-orange-600 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50 hover:text-orange-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-3.5 h-3.5 text-orange-600" />
+                      <span>Tin nhắn Messenger</span>
+                    </div>
+                    {unreadChatCount > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-orange-600 text-white text-[9px] font-black flex items-center justify-center">
+                        {unreadChatCount}
+                      </span>
+                    )}
+                  </button>
                 </div>
 
                 {/* Cổng chuyên dụng dành riêng cho vai trò công việc (Chỉ hiển thị Cổng tương ứng) */}
@@ -581,7 +646,7 @@ export default function Navbar({
 
       {/* Mobile Command Search Strip */}
       <div className="md:hidden w-full px-1">
-        <div className="relative flex items-center">
+        <form onSubmit={handleTriggerSearch} className="relative flex items-center">
           <Search className="absolute left-3.5 w-4 h-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
@@ -589,15 +654,17 @@ export default function Navbar({
             onChange={(e) => setSearchKeyword(e.target.value)}
             onKeyDown={handleSearchKeyPress}
             placeholder="Tìm kiếm hơn 10.000+ sản phẩm chính hãng..."
-            className="w-full pl-10 pr-20 py-2 bg-white/95 backdrop-blur-md text-xs text-slate-900 rounded-2xl border border-slate-200/80 shadow-md focus:border-orange-500 focus:outline-none"
+            className="w-full pl-10 pr-24 py-2 bg-white/95 backdrop-blur-md text-xs text-slate-900 rounded-2xl border border-slate-200/80 shadow-md focus:border-orange-500 focus:outline-none"
           />
           <button
-            onClick={() => onSearchSubmit && onSearchSubmit(searchKeyword)}
-            className="absolute right-1 px-3 py-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl text-xs font-bold active:scale-95 transition"
+            type="submit"
+            aria-label="Tìm kiếm sản phẩm"
+            className="absolute right-1 px-3.5 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl text-xs font-bold active:scale-95 transition flex items-center gap-1 shadow-sm cursor-pointer"
           >
-            Tìm
+            <Search className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Tìm</span>
           </button>
-        </div>
+        </form>
       </div>
     </div>
   </header>
