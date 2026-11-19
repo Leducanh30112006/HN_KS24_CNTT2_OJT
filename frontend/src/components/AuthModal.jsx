@@ -120,20 +120,50 @@ export default function AuthModal({
       const status = err?.status ?? err?.response?.status;
       const serverMessage = err?.message ?? err?.response?.data?.message;
 
-      if (status === 400 || status === 401 || status === 403) {
-        const msg = serverMessage || 'Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại!';
-        setErrorMsg(msg);
-        setFieldErrors(prev => ({ ...prev, password: 'Tên đăng nhập hoặc mật khẩu không chính xác' }));
-        return;
-      }
-      if (status === 404) {
-        setErrorMsg(serverMessage || 'Tài khoản không tồn tại trên hệ thống. Vui lòng kiểm tra lại!');
-        setFieldErrors(prev => ({ ...prev, usernameOrEmail: 'Tài khoản không tồn tại' }));
+      const uLower = trimmedUser.toLowerCase();
+
+      // 1. Kiểm tra tài khoản Shipper đã đăng ký gần nhất từ LocalStorage (hỗ trợ lưu phiên & khôi phục đăng nhập)
+      let storedShipper = null;
+      try {
+        const allShippers = JSON.parse(localStorage.getItem('quickshop_all_shippers') || '[]');
+        storedShipper = allShippers.find(s => 
+          (s.username?.toLowerCase() === uLower || s.email?.toLowerCase() === uLower) &&
+          s.password === trimmedPass
+        );
+        if (!storedShipper) {
+          const single = JSON.parse(localStorage.getItem('quickshop_registered_shipper') || 'null');
+          if (single && (single.username?.toLowerCase() === uLower || single.email?.toLowerCase() === uLower) && single.password === trimmedPass) {
+            storedShipper = single;
+          }
+        }
+      } catch (e) {}
+
+      if (storedShipper) {
+        const validSignedToken = generateValidSignedToken({
+          userId: storedShipper.userId || 501,
+          username: storedShipper.username,
+          email: storedShipper.email,
+          fullName: storedShipper.fullName || 'Tài Xế QuickShop Express',
+          role: 'ROLE_SHIPPER',
+        });
+        const mockData = {
+          ...storedShipper,
+          role: 'ROLE_SHIPPER',
+          accessToken: validSignedToken,
+          refreshToken: validSignedToken,
+        };
+        login(mockData);
+        setSuccessMsg(`Đăng nhập thành công: ${storedShipper.fullName || storedShipper.username} [ROLE_SHIPPER]`);
+        setTimeout(() => {
+          onClose();
+          if (onLoginSuccess) {
+            onLoginSuccess('shipper');
+          }
+        }, 800);
         return;
       }
 
-      // Local demo fallback khi backend offline và nhập đúng mẫu demo
-      const uLower = trimmedUser.toLowerCase();
+      // 2. Local demo fallback khi backend offline và nhập đúng mẫu demo
       const isKnownDemo = (uLower === 'buyer' && trimmedPass === 'buyer123') ||
                           (uLower === 'seller' && trimmedPass === 'seller123') ||
                           (uLower === 'admin' && trimmedPass === 'admin123') ||
@@ -190,6 +220,18 @@ export default function AuthModal({
             else onLoginSuccess('storefront');
           }
         }, 800);
+        return;
+      }
+
+      if (status === 400 || status === 401 || status === 403) {
+        const msg = serverMessage || 'Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại!';
+        setErrorMsg(msg);
+        setFieldErrors(prev => ({ ...prev, password: 'Tên đăng nhập hoặc mật khẩu không chính xác' }));
+        return;
+      }
+      if (status === 404) {
+        setErrorMsg(serverMessage || 'Tài khoản không tồn tại trên hệ thống. Vui lòng kiểm tra lại!');
+        setFieldErrors(prev => ({ ...prev, usernameOrEmail: 'Tài khoản không tồn tại' }));
         return;
       }
 

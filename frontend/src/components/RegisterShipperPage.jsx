@@ -147,6 +147,25 @@ export default function RegisterShipperPage({
           licensePlate: licensePlate.trim(),
         };
 
+        // Lưu bản sao tài khoản Shipper vào LocalStorage để tài xế có thể đăng nhập lại ngay lập tức
+        try {
+          const registeredShipperRecord = {
+            username: username.trim(),
+            email: email.trim(),
+            fullName: fullName.trim(),
+            password,
+            phoneNumber: phoneNumber.trim(),
+            licensePlate: licensePlate.trim(),
+            userId,
+            role: 'ROLE_SHIPPER',
+          };
+          localStorage.setItem('quickshop_registered_shipper', JSON.stringify(registeredShipperRecord));
+          const existingListRaw = localStorage.getItem('quickshop_all_shippers') || '[]';
+          const existingList = JSON.parse(existingListRaw);
+          existingList.push(registeredShipperRecord);
+          localStorage.setItem('quickshop_all_shippers', JSON.stringify(existingList));
+        } catch(e) {}
+
         login(authData);
         setSuccessMsg(`Đăng ký đối tác vận chuyển thành công! Chào mừng bác tài ${fullName.trim()}. Đang chuyển hướng sang Cổng Shipper...`);
 
@@ -160,9 +179,10 @@ export default function RegisterShipperPage({
 
       setErrorMsg(res?.message || 'Đăng ký tài xế thất bại. Vui lòng kiểm tra lại thông tin.');
     } catch (err) {
-      // Nếu server trả về lỗi nghiệp vụ
-      if (err?.response?.data?.message) {
-        setErrorMsg(err.response.data.message);
+      // Nếu server trả về lỗi nghiệp vụ rõ ràng (trùng username, email, phone)
+      const serverMessage = err?.message || err?.response?.data?.message;
+      if (serverMessage && typeof serverMessage === 'string' && !serverMessage.toLowerCase().includes('offline') && !serverMessage.toLowerCase().includes('network')) {
+        setErrorMsg(serverMessage);
         setLoading(false);
         return;
       }
@@ -187,6 +207,24 @@ export default function RegisterShipperPage({
         accessToken: validToken,
         refreshToken: validToken,
       };
+
+      try {
+        const registeredShipperRecord = {
+          username: username.trim(),
+          email: email.trim(),
+          fullName: fullName.trim(),
+          password,
+          phoneNumber: phoneNumber.trim(),
+          licensePlate: licensePlate.trim(),
+          userId: mockUserId,
+          role: 'ROLE_SHIPPER',
+        };
+        localStorage.setItem('quickshop_registered_shipper', JSON.stringify(registeredShipperRecord));
+        const existingListRaw = localStorage.getItem('quickshop_all_shippers') || '[]';
+        const existingList = JSON.parse(existingListRaw);
+        existingList.push(registeredShipperRecord);
+        localStorage.setItem('quickshop_all_shippers', JSON.stringify(existingList));
+      } catch(e) {}
 
       login(mockData);
       setSuccessMsg(`Chào mừng bác tài ${fullName.trim()} gia nhập QuickShop Express! Đang chuyển hướng vào Cổng Vận Chuyển...`);
