@@ -349,9 +349,9 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
                 <button
                   type="button"
                   onClick={() => onSelectProduct && onSelectProduct(p)}
-                  className="flash-sale-card w-full text-left border-0 bg-white rounded-2xl p-3 text-slate-900 shadow-sm hover:shadow-xl transition-shadow cursor-pointer group/card flex flex-col justify-between h-full"
+                  className="flash-sale-card w-full text-left border-0 bg-white dark:bg-[#13141C] rounded-2xl p-3 text-slate-900 dark:text-[#F4F0E8] shadow-sm hover:shadow-xl border border-transparent dark:border-white/10 transition-shadow cursor-pointer group/card flex flex-col justify-between h-full"
                 >
-                  <div className="relative aspect-square overflow-hidden rounded-xl mb-2 bg-slate-100">
+                  <div className="relative aspect-square overflow-hidden rounded-xl mb-2 bg-slate-100 dark:bg-slate-900">
                     <img
                       src={p.mainImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'}
                       alt={p.name}
@@ -372,23 +372,23 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
                   </div>
 
                   <div>
-                    <h4 className="text-xs font-semibold text-slate-800 line-clamp-1 group-hover/card:text-orange-600 transition" title={fixMojibakeText(p.name)}>
+                    <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-100 line-clamp-1 group-hover/card:text-orange-600 dark:group-hover/card:text-amber-400 transition" title={fixMojibakeText(p.name)}>
                       {fixMojibakeText(p.name)}
                     </h4>
 
                     {/* Price Display in JetBrains Mono */}
                     <div className="mt-1.5 flex items-baseline gap-1.5">
-                      <span className="text-sm font-black font-mono text-rose-600">
+                      <span className="text-sm font-black font-mono text-rose-600 dark:text-rose-400">
                         {formatVND(p.minPrice || 0)}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono line-through">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono line-through">
                         {formatVND(originalPrice)}
                       </span>
                     </div>
 
                     {/* Progress Bar (Đã bán) */}
                     <div className="mt-2">
-                      <div className="w-full bg-orange-100 rounded-full h-3 overflow-hidden relative">
+                      <div className="w-full bg-orange-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden relative">
                         <div 
                           className="bg-gradient-to-r from-orange-500 to-rose-500 h-full rounded-full transition-all duration-300"
                           style={{ width: `${soldPercent}%` }}

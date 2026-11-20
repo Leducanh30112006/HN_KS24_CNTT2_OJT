@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, createContext, useContext } from 'react';
 import { cn } from '../../utils/cn';
 import { gsap } from '../../lib/gsap';
 import { fixMojibakeText } from '../../utils/vietnameseEncoding';
@@ -68,123 +68,268 @@ export const LucianButton = React.forwardRef(function LucianButton({
     };
   }, [magnetic, disabled, loading, buttonRef]);
 
-  // Variant styling
+  // Variant styling with Dark Mode awareness
   const variantStyles = {
     primary:
       'bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 hover:from-orange-600 hover:to-rose-600 text-white shadow-md shadow-orange-500/20 border border-orange-500/20 btn-shimmer relative overflow-hidden',
     obsidian:
-      'bg-slate-900 text-white border border-slate-700/80 hover:bg-slate-800 hover:border-orange-500/40 shadow-sm',
+      'bg-slate-900 text-white border border-slate-700/80 hover:bg-slate-800 hover:border-orange-500/40 shadow-sm dark:bg-[#1A1B25] dark:border-white/10 dark:hover:border-amber-400/40',
     secondary:
-      'bg-white border border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 shadow-xs',
+      'bg-white dark:bg-[#1A1B25] border border-slate-200/90 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#252632] hover:border-slate-300 dark:hover:border-white/20 hover:text-slate-900 dark:hover:text-white shadow-xs',
     ghost:
-      'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 active:bg-slate-200/60 border border-transparent',
+      'bg-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-white/10 active:bg-slate-200/60 dark:active:bg-white/15 border border-transparent',
     icon:
-      'bg-white border border-slate-200/90 text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300 shadow-xs',
+      'p-2 bg-slate-100 dark:bg-white/10 hover:bg-slate-200/80 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200 active:bg-slate-300/80 dark:active:bg-white/20 border border-slate-200/80 dark:border-white/10 rounded-xl',
     danger:
-      'bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 hover:border-rose-300 shadow-xs',
+      'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-sm border border-rose-500',
   };
 
-  // Size styling
   const sizeStyles = {
-    xs: 'px-2.5 py-1 text-xs rounded-lg gap-1 font-semibold',
-    sm: 'px-3.5 py-1.5 text-xs font-semibold rounded-xl gap-1.5',
-    md: 'px-4 py-2 text-xs sm:text-sm font-bold rounded-xl gap-2',
-    lg: 'px-6 py-3 text-sm sm:text-base font-bold rounded-2xl gap-2.5',
+    xs: 'px-2.5 py-1 text-[11px] rounded-lg gap-1',
+    sm: 'px-3 py-1.5 text-xs rounded-xl gap-1.5',
+    md: 'px-4 py-2 text-xs sm:text-sm rounded-xl gap-2',
+    lg: 'px-6 py-3 text-sm sm:text-base rounded-2xl gap-2.5 font-bold',
     icon: 'p-2 rounded-xl',
     'icon-sm': 'p-1.5 rounded-lg',
-    'icon-lg': 'p-2.5 rounded-2xl',
+    'icon-lg': 'p-3 rounded-2xl',
   };
-
-  const isDisabled = disabled || loading;
 
   return (
     <button
       ref={buttonRef}
       type={type}
-      disabled={isDisabled}
-      onClick={isDisabled ? undefined : onClick}
+      disabled={disabled || loading}
+      onClick={onClick}
       className={cn(
-        'inline-flex items-center justify-center select-none cursor-pointer font-sans transition-colors duration-150 active:scale-[0.94] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50',
+        'inline-flex items-center justify-center font-bold tracking-tight select-none transition-all duration-150 active:scale-[0.94] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus:outline-none focus:ring-2 focus:ring-orange-500/30',
         variantStyles[variant] || variantStyles.primary,
         sizeStyles[size] || sizeStyles.md,
-        isDisabled && 'opacity-50 pointer-events-none cursor-not-allowed active:scale-100 shadow-none',
         className
       )}
       {...props}
     >
       {loading ? (
-        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-      ) : IconComponent ? (
-        <IconComponent className="w-4 h-4 shrink-0" />
-      ) : null}
-
-      {children}
-
-      {!loading && RightIconComponent && (
-        <RightIconComponent className="w-4 h-4 shrink-0" />
+        <>
+          <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+          {children && <span>{children}</span>}
+        </>
+      ) : (
+        <>
+          {IconComponent && <IconComponent className="w-4 h-4 flex-shrink-0" />}
+          {children}
+          {RightIconComponent && <RightIconComponent className="w-4 h-4 flex-shrink-0" />}
+        </>
       )}
     </button>
   );
 });
 
+// Context for multi-card proximity tracking (Lucian #228)
+const SpotlightGridContext = createContext(null);
+
+/**
+ * SpotlightGrid
+ * Container implementing Lucian Labs Prompt #228 multi-card proximity physics:
+ * Tracks cursor coordinates across the grid, updating per-card local offsets (--cx, --cy)
+ * and smoothly lerping opacity (--o via requestAnimationFrame) on all neighboring cards.
+ */
+export function SpotlightGrid({ children, className = '', proximity = 260, ...props }) {
+  const gridRef = useRef(null);
+  const cardsRef = useRef(new Set());
+  const rafRef = useRef(null);
+  const mousePosRef = useRef({ x: -1000, y: -1000, active: false });
+  const cardStatesRef = useRef(new Map());
+
+  const registerCard = (cardEl) => {
+    if (cardEl) {
+      cardsRef.current.add(cardEl);
+      cardStatesRef.current.set(cardEl, { currentO: 0, targetO: 0 });
+    }
+    return () => {
+      cardsRef.current.delete(cardEl);
+      cardStatesRef.current.delete(cardEl);
+    };
+  };
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+
+    let lastTime = performance.now();
+    const isReduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const tick = (now) => {
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+
+      const { x: mx, y: my, active } = mousePosRef.current;
+
+      cardsRef.current.forEach((card) => {
+        if (!card || !card.isConnected) return;
+        const rect = card.getBoundingClientRect();
+        const state = cardStatesRef.current.get(card) || { currentO: 0, targetO: 0 };
+
+        if (!active) {
+          state.targetO = 0;
+        } else {
+          // Distance from cursor to card bounding box
+          const dx = Math.max(rect.left - mx, 0, mx - rect.right);
+          const dy = Math.max(rect.top - my, 0, my - rect.bottom);
+          const dist = Math.hypot(dx, dy);
+
+          // Card local offsets
+          const cx = mx - rect.left;
+          const cy = my - rect.top;
+          card.style.setProperty('--cx', `${Math.round(cx)}px`);
+          card.style.setProperty('--cy', `${Math.round(cy)}px`);
+
+          if (dist === 0) {
+            // Cursor inside card
+            state.targetO = 1.0;
+          } else if (dist < proximity) {
+            // In neighboring proximity
+            state.targetO = Math.max(0, 1 - dist / proximity);
+          } else {
+            state.targetO = 0;
+          }
+        }
+
+        // Lerp opacity: dt * 8 on approach, dt * 2.5 on decay
+        if (isReduced) {
+          state.currentO = state.targetO;
+        } else {
+          const lerpRate = state.targetO > state.currentO ? 8 : 2.5;
+          state.currentO += (state.targetO - state.currentO) * Math.min(1, dt * lerpRate);
+        }
+
+        card.style.setProperty('--o', state.currentO.toFixed(3));
+        cardStatesRef.current.set(card, state);
+      });
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    const handlePointerMove = (e) => {
+      mousePosRef.current = { x: e.clientX, y: e.clientY, active: true };
+    };
+
+    const handlePointerLeave = () => {
+      mousePosRef.current = { x: -1000, y: -1000, active: false };
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    document.addEventListener('pointerleave', handlePointerLeave);
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerleave', handlePointerLeave);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [proximity]);
+
+  return (
+    <SpotlightGridContext.Provider value={{ registerCard }}>
+      <div ref={gridRef} className={className} {...props}>
+        {children}
+      </div>
+    </SpotlightGridContext.Provider>
+  );
+}
+
 /**
  * SpotlightCard
- * Interactive container that tracks cursor coordinates (--mouse-x, --mouse-y)
- * to project a subtle warm radial border and surface spotlight on hover.
+ * Lucian Labs Prompt #228 Proximity Border & Surface Glow Card
+ * - Works standalone or seamlessly within a <SpotlightGrid>
+ * - 1.5px glowing proximity border with warm amber gradient
+ * - Sleek dark obsidian surface (#13141C) with subtle radial sheen
  */
 export const SpotlightCard = React.forwardRef(function SpotlightCard({
   children,
-  variant = 'default', // 'default' (white) | 'obsidian' (dark) | 'subtle'
   className = '',
+  innerClassName = '',
+  variant = 'default', // 'default' | 'obsidian' | 'subtle'
   spotlightColor,
   onClick,
   ...props
 }, forwardedRef) {
   const localRef = useRef(null);
   const cardRef = forwardedRef || localRef;
+  const gridCtx = useContext(SpotlightGridContext);
 
-  const handleMouseMove = (e) => {
+  // Self-contained fallback when not inside a SpotlightGrid
+  useEffect(() => {
     const el = cardRef.current;
     if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    el.style.setProperty('--mouse-x', `${x}px`);
-    el.style.setProperty('--mouse-y', `${y}px`);
-  };
 
-  const defaultSpotlight = variant === 'obsidian'
-    ? 'rgba(249, 115, 22, 0.16)'
-    : 'rgba(249, 115, 22, 0.08)';
+    if (gridCtx && gridCtx.registerCard) {
+      return gridCtx.registerCard(el);
+    }
 
-  const activeSpotlightColor = spotlightColor || defaultSpotlight;
+    // Standalone hover handler
+    const handleMouseMove = (e) => {
+      const rect = el.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      el.style.setProperty('--cx', `${cx}px`);
+      el.style.setProperty('--cy', `${cy}px`);
+      el.style.setProperty('--o', '1');
+    };
+
+    const handleMouseLeave = () => {
+      el.style.setProperty('--o', '0');
+    };
+
+    el.addEventListener('mousemove', handleMouseMove);
+    el.addEventListener('mouseleave', handleMouseLeave);
+    return () => {
+      el.removeEventListener('mousemove', handleMouseMove);
+      el.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [cardRef, gridCtx]);
 
   return (
     <div
       ref={cardRef}
-      onMouseMove={handleMouseMove}
+      data-spotlight-card="true"
       onClick={onClick}
+      style={{
+        padding: '1.5px',
+        background:
+          'radial-gradient(180px circle at var(--cx, 50%) var(--cy, 50%), rgba(249,115,22, calc(var(--o, 0) * 0.95)), rgba(251,191,36, calc(var(--o, 0) * 0.45)) 42%, transparent 72%), var(--ux-line, rgba(226,232,240,0.8))',
+      }}
       className={cn(
-        'group relative overflow-hidden transition-all duration-300',
-        variant === 'obsidian'
-          ? 'bg-slate-900/90 text-white border border-slate-800 shadow-xl'
-          : variant === 'subtle'
-            ? 'bg-slate-50/70 border border-slate-200/70'
-            : 'bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-xs hover:shadow-md hover:border-slate-300/90',
-        'rounded-2xl',
+        'group relative rounded-3xl transition-shadow duration-300 shadow-xs hover:shadow-xl dark:shadow-black/40',
         className
       )}
       {...props}
     >
-      {/* Radial Spotlight Surface Overlay */}
+      {/* Inner Surface Card */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0"
-        style={{
-          background: `radial-gradient(420px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), ${activeSpotlightColor}, transparent 75%)`,
-        }}
-      />
-      <div className="relative z-10 w-full h-full">
-        {children}
+        className={cn(
+          'relative w-full h-full rounded-[calc(1.5rem-1.5px)] overflow-hidden transition-colors duration-300',
+          variant === 'obsidian'
+            ? 'bg-slate-900 text-white'
+            : variant === 'subtle'
+            ? 'bg-slate-50/90 dark:bg-[#1A1B25] text-slate-900 dark:text-[#F4F0E8]'
+            : 'bg-white dark:bg-[#13141C] text-slate-900 dark:text-[#F4F0E8]',
+          innerClassName
+        )}
+      >
+        {/* Subtle Radial Surface Sheen */}
+        <div
+          className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-300"
+          style={{
+            background:
+              'radial-gradient(240px circle at var(--cx, 50%) var(--cy, 50%), rgba(249,115,22, calc(var(--o, 0) * 0.14)), transparent 60%)',
+          }}
+        />
+        <div className="relative z-10 w-full h-full">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -194,6 +339,7 @@ export const SpotlightCard = React.forwardRef(function SpotlightCard({
  * TiltProductCard
  * Flagship product card with subtle hardware-accelerated 3D tilt (rotateX/rotateY +/- 3.5deg),
  * dynamic specular glass sheen, smooth zoom, and slide-up quick action bar without layout shift.
+ * Fully styled for Lucian Dark Mode (#13141C) & Proximity Border Glow.
  */
 export const TiltProductCard = React.forwardRef(function TiltProductCard({
   product,
@@ -252,101 +398,114 @@ export const TiltProductCard = React.forwardRef(function TiltProductCard({
     };
   }, [cardRef]);
 
-  // Normalize product fields
-  const cleanName = fixMojibakeText(product?.name || 'Sản phẩm QuickShop');
-  const cleanShopName = fixMojibakeText(product?.shopName || 'TechWorld Official Store');
-  const price = product?.minPrice || product?.price || 299000;
-  const originalPrice = Math.round(price * 1.25);
-  const image = product?.mainImage || product?.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80';
-  const rating = product?.averageRating || 5.0;
-  const soldCount = product?.soldCount || 120;
+  if (!product) return null;
+
+  const {
+    id,
+    name,
+    price = 0,
+    originalPrice = 0,
+    image,
+    imageUrl,
+    rating = 5.0,
+    soldCount = 0,
+    isMall = true,
+    shopName,
+    discountPercentage,
+  } = product;
+
+  const displayImage = image || imageUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80';
+  const cleanName = fixMojibakeText(name);
+  const discount = discountPercentage || (originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0);
 
   return (
     <div
       ref={cardRef}
-      style={{ transformStyle: 'preserve-3d', perspective: 1000 }}
+      style={{ perspective: '1000px', transformStyle: 'preserve-3d' }}
       className={cn(
-        'group relative flex flex-col rounded-2xl bg-white border border-slate-200/80 p-3 shadow-xs hover:shadow-lg hover:border-slate-300/90 transition-all duration-300 cursor-pointer overflow-hidden',
+        'group relative bg-white dark:bg-[#13141C] rounded-2xl border border-slate-200/90 dark:border-white/10 shadow-xs hover:shadow-xl hover:border-orange-500/50 dark:hover:border-amber-400/50 transition-all duration-300 flex flex-col justify-between overflow-hidden cursor-pointer select-none',
         className
       )}
       onClick={() => onSelect && onSelect(product)}
       {...props}
     >
-      {/* Specular Glare Sheen Overlay */}
+      {/* Specular glass sheen highlight */}
       <div
         ref={sheenRef}
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
+        className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
         style={{
-          background: 'radial-gradient(350px circle at var(--sheen-x, 50%) var(--sheen-y, 50%), rgba(255, 255, 255, 0.35), transparent 75%)',
+          background: 'radial-gradient(circle at var(--sheen-x, 50%) var(--sheen-y, 50%), rgba(255,255,255,0.18) 0%, transparent 60%)',
         }}
       />
 
-      {/* Image Container with Zoom & Slide-up Quick Actions */}
-      <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-slate-50 flex items-center justify-center">
+      {/* Top Media Container */}
+      <div className="relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-900 rounded-t-2xl">
         <img
-          src={image}
+          src={displayImage}
           alt={cleanName}
           loading={priority ? 'eager' : 'lazy'}
-          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80';
+          }}
         />
 
-        {/* Discount Badge */}
-        <div className="absolute top-2 left-2 z-20 px-2 py-0.5 rounded-lg bg-gradient-to-r from-orange-500 to-rose-500 text-[10px] font-black text-white shadow-sm tracking-tight">
-          -25%
+        {/* Mall & Discount Badges */}
+        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10 pointer-events-none">
+          {isMall && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-600 text-white font-extrabold text-[10px] tracking-wider shadow-sm">
+              <ShieldCheck className="w-3 h-3" />
+              MALL
+            </span>
+          )}
+          {discount > 0 && (
+            <span className="inline-block px-1.5 py-0.5 rounded-md bg-amber-500 text-white font-extrabold text-[10px] shadow-sm">
+              -{discount}%
+            </span>
+          )}
         </div>
 
-        {/* Mall Official Badge */}
-        <div className="absolute top-2 right-2 z-20 px-1.5 py-0.5 rounded-md bg-slate-900/85 backdrop-blur-md text-[9px] font-black text-white flex items-center gap-1 border border-slate-700/60 shadow-sm">
-          <ShieldCheck className="w-2.5 h-2.5 text-amber-400" />
-          <span>MALL</span>
-        </div>
-
-        {/* Quick Action Bar (Slide up on hover without layout shift) */}
-        <div className="absolute inset-x-2 bottom-2 z-20 translate-y-12 group-hover:translate-y-0 transition-transform duration-300 ease-out flex items-center gap-1.5 p-1.5 bg-white/90 backdrop-blur-md rounded-xl border border-slate-200/70 shadow-lg">
+        {/* Slide-Up Quick Action Bar */}
+        <div className="absolute inset-x-2 bottom-2 z-20 flex gap-1.5 translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-200 ease-out pointer-events-auto">
           <LucianButton
             size="xs"
             variant="primary"
-            className="flex-1 text-[11px] py-1.5"
+            className="flex-1 py-2 text-[11px] shadow-lg"
+            icon={ShoppingCart}
             onClick={(e) => {
               e.stopPropagation();
-              if (onAddToCart) onAddToCart(product, e);
+              if (onAddToCart) onAddToCart(product);
             }}
           >
-            <ShoppingCart className="w-3.5 h-3.5" />
-            <span>Thêm giỏ</span>
+            <span>Thêm vào giỏ</span>
           </LucianButton>
-          <LucianButton
-            size="icon-sm"
-            variant="secondary"
-            title="Xem chi tiết"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onQuickView) onQuickView(product, e);
-              else if (onSelect) onSelect(product);
-            }}
-          >
-            <Eye className="w-3.5 h-3.5 text-slate-600" />
-          </LucianButton>
+
+          {onQuickView && (
+            <LucianButton
+              size="xs"
+              variant="secondary"
+              className="px-2.5 py-2 shadow-lg"
+              icon={Eye}
+              onClick={(e) => {
+                e.stopPropagation();
+                onQuickView(product);
+              }}
+              title="Xem nhanh thông tin"
+            />
+          )}
         </div>
       </div>
 
-      {/* Product Information */}
-      <div className="flex-1 flex flex-col justify-between pt-3 space-y-2">
+      {/* Bottom Content Body */}
+      <div className="p-3.5 flex flex-col flex-1 justify-between gap-2.5">
         <div className="space-y-1">
           {/* Shop Name & Rating */}
-          <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
-            <span
-              className="hover:text-orange-600 transition-colors truncate max-w-[65%]"
-              onClick={(e) => {
-                if (onSelectShop) {
-                  e.stopPropagation();
-                  onSelectShop({ id: product.shopId || 1, name: cleanShopName });
-                }
-              }}
-            >
-              {cleanShopName}
+          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+            <span className="truncate font-medium max-w-[130px] hover:text-orange-600 dark:hover:text-amber-400">
+              {shopName || 'QuickShop Official'}
             </span>
-            <div className="flex items-center gap-0.5 text-amber-500 font-bold">
+            <div className="flex items-center gap-1 font-mono text-amber-500 dark:text-amber-400">
               <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
               <span>{rating.toFixed(1)}</span>
             </div>
@@ -354,7 +513,7 @@ export const TiltProductCard = React.forwardRef(function TiltProductCard({
 
           {/* Product Title */}
           <h3
-            className="text-xs sm:text-sm font-semibold text-slate-800 line-clamp-2 leading-snug group-hover:text-orange-600 transition-colors"
+            className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 line-clamp-2 leading-snug group-hover:text-orange-600 dark:group-hover:text-amber-400 transition-colors"
             title={cleanName}
           >
             {cleanName}
@@ -362,16 +521,16 @@ export const TiltProductCard = React.forwardRef(function TiltProductCard({
         </div>
 
         {/* Price & Sold Count */}
-        <div className="pt-1 flex items-baseline justify-between border-t border-slate-100">
+        <div className="pt-1 flex items-baseline justify-between border-t border-slate-100 dark:border-white/5">
           <div>
-            <div className="text-sm sm:text-base font-extrabold font-mono text-orange-600 tracking-tight">
+            <div className="text-sm sm:text-base font-extrabold font-mono text-orange-600 dark:text-orange-500 tracking-tight">
               {formatVND(price)}
             </div>
-            <div className="text-[10px] text-slate-400 line-through font-mono">
+            <div className="text-[10px] text-slate-400 dark:text-slate-500 line-through font-mono">
               {formatVND(originalPrice)}
             </div>
           </div>
-          <div className="text-[10px] text-slate-400 font-medium">
+          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
             Đã bán {soldCount}
           </div>
         </div>
@@ -397,7 +556,7 @@ export const LucianDock = React.forwardRef(function LucianDock({
     <div
       ref={forwardedRef}
       className={cn(
-        'relative rounded-2xl bg-white/85 backdrop-blur-xl border border-slate-200/80 p-2 shadow-xs',
+        'relative rounded-2xl bg-white/85 dark:bg-[#13141C]/85 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 p-2 shadow-xs',
         className
       )}
       {...props}
@@ -413,7 +572,7 @@ export const LucianDock = React.forwardRef(function LucianDock({
             'flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 select-none active:scale-[0.94] cursor-pointer',
             selectedCategory === null
               ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20 ring-1 ring-orange-500'
-              : 'bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/60'
+              : 'bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200/60 dark:border-white/10'
           )}
         >
           <Sparkles className={cn('w-3.5 h-3.5', selectedCategory === null ? 'text-amber-200' : 'text-slate-400')} />
@@ -431,7 +590,7 @@ export const LucianDock = React.forwardRef(function LucianDock({
                 'flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 select-none active:scale-[0.94] cursor-pointer',
                 isSelected
                   ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20 ring-1 ring-orange-500'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/60'
+                  : 'bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200/60 dark:border-white/10'
               )}
             >
               <span>{fixMojibakeText(cat.name)}</span>
@@ -445,6 +604,7 @@ export const LucianDock = React.forwardRef(function LucianDock({
 
 export default {
   LucianButton,
+  SpotlightGrid,
   SpotlightCard,
   TiltProductCard,
   LucianDock,

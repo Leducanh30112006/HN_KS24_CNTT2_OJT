@@ -339,13 +339,13 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left Navigation Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-2 shadow-sm space-y-1">
+            <div className="bg-white dark:bg-[#13141C] rounded-2xl border border-slate-200/80 dark:border-white/10 p-2 shadow-sm space-y-1">
               <button
                 onClick={() => setActiveTab('profile')}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition ${
                   activeTab === 'profile'
                     ? 'bg-orange-50 text-orange-600 shadow-sm'
-                    : 'text-slate-700 hover:bg-slate-50'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1A1B25]'
                 }`}
               >
                 <User className="w-4 h-4" />
@@ -357,7 +357,7 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition ${
                   activeTab === 'address'
                     ? 'bg-orange-50 text-orange-600 shadow-sm'
-                    : 'text-slate-700 hover:bg-slate-50'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1A1B25]'
                 }`}
               >
                 <MapPin className="w-4 h-4" />
@@ -369,7 +369,7 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition ${
                   activeTab === 'security'
                     ? 'bg-orange-50 text-orange-600 shadow-sm'
-                    : 'text-slate-700 hover:bg-slate-50'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1A1B25]'
                 }`}
               >
                 <Lock className="w-4 h-4" />
@@ -381,7 +381,7 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition ${
                   activeTab === 'stats'
                     ? 'bg-orange-50 text-orange-600 shadow-sm'
-                    : 'text-slate-700 hover:bg-slate-50'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1A1B25]'
                 }`}
               >
                 <Award className="w-4 h-4" />
@@ -407,10 +407,10 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
           <div className="lg:col-span-3">
             {/* 1. Profile Panel */}
             {activeTab === 'profile' && (
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-6">
+              <div className="bg-white dark:bg-[#13141C] rounded-2xl border border-slate-200/80 dark:border-white/10 p-6 shadow-sm space-y-6 text-slate-800 dark:text-[#F4F0E8]">
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Hồ Sơ Của Tôi</h2>
-                  <p className="text-xs text-slate-500">Quản lý thông tin hồ sơ để bảo mật tài khoản và đặt hàng thuận tiện</p>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-[#F4F0E8]">Hồ Sơ Của Tôi</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Quản lý thông tin hồ sơ để bảo mật tài khoản và đặt hàng thuận tiện</p>
                 </div>
 
                 {profileMessage && (
@@ -436,7 +436,7 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
 
                 <form onSubmit={handleSaveProfile} className="space-y-4">
                   {/* Khung đổi ảnh đại diện trực tiếp trong tab Hồ Sơ */}
-                  <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-[#1A1B25] rounded-2xl border border-slate-200 dark:border-white/10">
                     <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-orange-100 flex-shrink-0 border border-slate-200 shadow-2xs">
                       {avatar ? (
                         <img src={avatar} alt="" className="w-full h-full object-cover" />
@@ -445,7 +445,7 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold text-slate-800">Ảnh đại diện tài khoản</div>
+                      <div className="text-xs font-bold text-slate-800 dark:text-[#F4F0E8]">Ảnh đại diện tài khoản</div>
                       <div className="text-[11px] text-slate-500">Hỗ trợ tải file từ máy tính hoặc chọn mẫu phong cách</div>
                     </div>
                     <button
@@ -537,14 +537,14 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
 
             {/* 2. Addresses Panel */}
             {activeTab === 'address' && (
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-6">
+              <div className="bg-white dark:bg-[#13141C] rounded-2xl border border-slate-200/80 dark:border-white/10 p-6 shadow-sm space-y-6 text-slate-800 dark:text-[#F4F0E8]">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                   <div>
                     <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                       <MapPin className="w-5 h-5 text-orange-600" />
                       <span>Sổ Địa Chỉ Giao Hàng & Định Vị Bản Đồ</span>
                     </h2>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Tích hợp OpenStreetMap & GPS giúp bưu tá giao hàng chính xác tận cửa
                     </p>
                   </div>
@@ -668,10 +668,10 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
 
             {/* 3. Security Panel */}
             {activeTab === 'security' && (
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-6">
+              <div className="bg-white dark:bg-[#13141C] rounded-2xl border border-slate-200/80 dark:border-white/10 p-6 shadow-sm space-y-6 text-slate-800 dark:text-[#F4F0E8]">
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Bảo Mật & Mật Khẩu</h2>
-                  <p className="text-xs text-slate-500">Nên đổi mật khẩu định kỳ tối thiểu 3 tháng một lần để bảo vệ tài khoản</p>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-[#F4F0E8]">Bảo Mật & Mật Khẩu</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Nên đổi mật khẩu định kỳ tối thiểu 3 tháng một lần để bảo vệ tài khoản</p>
                 </div>
 
                 {securityMessage && (
@@ -754,10 +754,10 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
 
             {/* 4. Stats & VIP Panel */}
             {activeTab === 'stats' && (
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-6">
+              <div className="bg-white dark:bg-[#13141C] rounded-2xl border border-slate-200/80 dark:border-white/10 p-6 shadow-sm space-y-6 text-slate-800 dark:text-[#F4F0E8]">
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Thống Kê Hoạt Động & Ưu Đãi VIP</h2>
-                  <p className="text-xs text-slate-500">Chương trình tích lũy chi tiêu và thăng hạng thành viên QuickShop Club</p>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-[#F4F0E8]">Thống Kê Hoạt Động & Ưu Đãi VIP</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Chương trình tích lũy chi tiêu và thăng hạng thành viên QuickShop Club</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

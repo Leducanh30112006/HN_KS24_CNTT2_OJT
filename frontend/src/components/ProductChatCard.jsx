@@ -65,9 +65,9 @@ export default function ProductChatCard({ product, onSelectProduct, onBuyNow, on
   };
 
   return (
-    <div className="mt-2.5 p-3 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:border-orange-300 transition-all text-left max-w-xs sm:max-w-sm">
+    <div className="mt-2.5 p-3 rounded-2xl bg-white dark:bg-[#1A1B25] border border-slate-200/90 dark:border-white/10 shadow-sm hover:border-orange-300 dark:hover:border-amber-500/40 transition-all text-left max-w-xs sm:max-w-sm">
       <div className="flex gap-3 items-start">
-        <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200/80">
+        <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-100 dark:bg-[#252632] flex-shrink-0 border border-slate-200/80 dark:border-white/10">
           <img
             src={product.imageUrl || product.mainImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'}
             alt={product.name}
@@ -81,19 +81,19 @@ export default function ProductChatCard({ product, onSelectProduct, onBuyNow, on
         </div>
 
         <div className="flex-1 min-w-0 space-y-1">
-          <div className="flex items-center gap-1.5 text-[10px] text-orange-600 font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-1.5 text-[10px] text-orange-600 dark:text-amber-400 font-bold uppercase tracking-wider">
             <span>{product.shopName || 'Shop Chính Hãng'}</span>
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
           </div>
           <h4
             onClick={handleViewDetail}
-            className="text-xs font-bold text-slate-900 line-clamp-2 leading-tight hover:text-orange-600 cursor-pointer transition"
+            className="text-xs font-bold text-slate-900 dark:text-[#F4F0E8] line-clamp-2 leading-tight hover:text-orange-600 dark:hover:text-amber-400 cursor-pointer transition"
             title={product.name}
           >
             {product.name}
           </h4>
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-sm font-black text-orange-600 font-mono">
+            <span className="text-sm font-black text-orange-600 dark:text-amber-400 font-mono">
               {formatVND(product.price)}
             </span>
             {product.originalPrice && product.originalPrice > product.price && (
@@ -113,25 +113,25 @@ export default function ProductChatCard({ product, onSelectProduct, onBuyNow, on
       </div>
 
       {/* Action Buttons: Thêm vào giỏ, Xem chi tiết, Mua ngay */}
-      <div className="grid grid-cols-3 gap-1.5 mt-3 pt-2.5 border-t border-slate-100">
+      <div className="grid grid-cols-3 gap-1.5 mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10">
         <button
           type="button"
           onClick={handleAddToCart}
           className={`px-2 py-1.5 text-[11px] font-bold rounded-xl border transition active:scale-95 flex items-center justify-center gap-1 ${
             isAdded
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-              : 'bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200/80'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30'
+              : 'bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900/60 text-orange-700 dark:text-amber-300 border-orange-200/80 dark:border-orange-500/30'
           }`}
           title="Thêm vào giỏ hàng"
         >
           {isAdded ? (
             <>
-              <Check className="w-3 h-3 text-emerald-600" />
+              <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               <span>Đã thêm</span>
             </>
           ) : (
             <>
-              <ShoppingCart className="w-3 h-3 text-orange-600" />
+              <ShoppingCart className="w-3 h-3 text-orange-600 dark:text-amber-400" />
               <span>Thêm giỏ</span>
             </>
           )}
@@ -140,10 +140,10 @@ export default function ProductChatCard({ product, onSelectProduct, onBuyNow, on
         <button
           type="button"
           onClick={handleViewDetail}
-          className="px-2 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-[11px] font-bold rounded-xl border border-slate-200 transition active:scale-95 flex items-center justify-center gap-1"
+          className="px-2 py-1.5 bg-slate-50 dark:bg-[#252632] hover:bg-slate-100 dark:hover:bg-[#323342] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-[11px] font-bold rounded-xl border border-slate-200 dark:border-white/10 transition active:scale-95 flex items-center justify-center gap-1"
           title="Xem chi tiết sản phẩm"
         >
-          <Eye className="w-3 h-3 text-slate-500" />
+          <Eye className="w-3 h-3 text-slate-500 dark:text-slate-400" />
           <span>Chi tiết</span>
         </button>
 

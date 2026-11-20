@@ -355,11 +355,11 @@ export default function ProductDetailPage({
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-200">
       {/* 1. Breadcrumb & Navigation Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 px-4 py-3 flex items-center justify-between shadow-sm text-xs">
+      <div className="bg-white dark:bg-[#13141C] rounded-2xl border border-slate-200/90 dark:border-white/10 px-4 py-3 flex items-center justify-between shadow-sm text-xs text-slate-700 dark:text-slate-300">
         <div className="flex items-center space-x-2 text-slate-500 truncate">
           <button
             onClick={onBack}
-            className="flex items-center gap-1 font-bold text-slate-800 hover:text-orange-600 transition pr-2 border-r border-slate-200"
+            className="flex items-center gap-1 font-bold text-slate-800 dark:text-[#F4F0E8] hover:text-orange-600 dark:hover:text-amber-400 transition pr-2 border-r border-slate-200 dark:border-white/10"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Quay lại</span>
@@ -368,7 +368,7 @@ export default function ProductDetailPage({
           <span>&gt;</span>
           <span className="text-slate-700 font-medium">{product.categoryName || 'Danh mục sản phẩm'}</span>
           <span>&gt;</span>
-          <span className="text-slate-900 font-semibold truncate max-w-xs">{product.name}</span>
+          <span className="text-slate-900 dark:text-[#F4F0E8] font-semibold truncate max-w-xs">{product.name}</span>
           {loadingDetail && (
             <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-orange-600 bg-orange-50 border border-orange-200/60 px-2 py-0.5 rounded-full font-medium animate-pulse ml-2">
               <RefreshCw className="w-3 h-3 animate-spin text-orange-500" />
@@ -405,7 +405,7 @@ export default function ProductDetailPage({
       </div>
 
       {/* 2. Main Product Hero Section (Shopee/TikTok Shop Layout) */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-8 shadow-sm">
+      <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-5 sm:p-8 shadow-sm text-slate-800 dark:text-[#F4F0E8]">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Left Column: Product Gallery (5 cols) */}
@@ -475,8 +475,8 @@ export default function ProductDetailPage({
             )}
 
             {/* Commitments & Buyer Guarantees Box */}
-            <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-2.5 text-xs text-slate-700">
-              <div className="font-bold text-slate-900 flex items-center gap-1.5 uppercase text-[11px] tracking-wider pb-1 border-b border-slate-200/80">
+            <div className="bg-slate-50 dark:bg-[#1A1B25] border border-slate-200/90 dark:border-white/10 rounded-2xl p-4 space-y-2.5 text-xs text-slate-700 dark:text-slate-300">
+              <div className="font-bold text-slate-900 dark:text-[#F4F0E8] flex items-center gap-1.5 uppercase text-[11px] tracking-wider pb-1 border-b border-slate-200/80 dark:border-white/10">
                 <Shield className="w-4 h-4 text-emerald-600" />
                 <span>An tâm mua sắm cùng QuickShop</span>
               </div>
@@ -508,7 +508,7 @@ export default function ProductDetailPage({
                 </span>
               </div>
 
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-2 leading-snug">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-[#F4F0E8] mt-2 leading-snug">
                 {product.name}
               </h1>
 
@@ -536,7 +536,7 @@ export default function ProductDetailPage({
             </div>
 
             {/* Shopee Style Flash Price Banner */}
-            <div className="bg-gradient-to-r from-orange-50 via-amber-50/60 to-rose-50 border border-orange-200/80 rounded-2xl p-4 sm:p-5 space-y-2">
+            <div className="bg-gradient-to-r from-orange-50 dark:from-orange-950/40 via-amber-50/60 dark:via-amber-950/30 to-rose-50 dark:to-rose-950/40 border border-orange-200/80 dark:border-orange-500/30 rounded-2xl p-4 sm:p-5 space-y-2">
               <div className="flex items-baseline gap-3 sm:gap-4 flex-wrap">
                 <div className="text-2xl sm:text-3xl font-black font-mono text-orange-600">
                   <AnimatedNumber value={currentPrice} formatter={formatVND} />
@@ -556,11 +556,11 @@ export default function ProductDetailPage({
             </div>
 
             {/* Shipping & Delivery Box */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-2 text-xs">
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#1A1B25] border border-slate-200/90 dark:border-white/10 space-y-2 text-xs text-slate-700 dark:text-slate-300">
               <div className="flex items-start gap-2.5">
                 <Truck className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
                 <div className="space-y-1">
-                  <div className="font-bold text-slate-800 flex items-center gap-2">
+                  <div className="font-bold text-slate-800 dark:text-[#F4F0E8] flex items-center gap-2">
                     <span>Vận chuyển toàn quốc</span>
                     <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-bold">
                       Miễn phí vận chuyển
@@ -588,7 +588,7 @@ export default function ProductDetailPage({
                       className={`px-4 py-2 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 ${
                         selectedColor === c
                           ? 'border-orange-600 bg-orange-50 text-orange-700 shadow-sm ring-2 ring-orange-500/20'
-                          : 'border-slate-300 hover:border-slate-400 text-slate-700 bg-white'
+                          : 'border-slate-300 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/30 text-slate-700 dark:text-slate-300 bg-white dark:bg-[#1A1B25]'
                       }`}
                     >
                       {selectedColor === c && <Check className="w-3.5 h-3.5 text-orange-600" />}
@@ -614,7 +614,7 @@ export default function ProductDetailPage({
                       className={`px-4 py-2 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 ${
                         selectedSize === s
                           ? 'border-orange-600 bg-orange-50 text-orange-700 shadow-sm ring-2 ring-orange-500/20'
-                          : 'border-slate-300 hover:border-slate-400 text-slate-700 bg-white'
+                          : 'border-slate-300 dark:border-white/10 hover:border-slate-400 dark:hover:border-white/30 text-slate-700 dark:text-slate-300 bg-white dark:bg-[#1A1B25]'
                       }`}
                     >
                       {selectedSize === s && <Check className="w-3.5 h-3.5 text-orange-600" />}
@@ -626,7 +626,7 @@ export default function ProductDetailPage({
             )}
 
             {/* SKU and Live Stock Information */}
-            <div className="text-xs text-slate-500 flex items-center justify-between py-1 border-y border-slate-100">
+            <div className="text-xs text-slate-500 flex items-center justify-between py-1 border-y border-slate-100 dark:border-white/10">
               <div>
                 Mã biến thể SKU: <span className="font-mono font-bold text-slate-800">{selectedVariant?.sku || 'N/A'}</span>
               </div>
@@ -643,21 +643,21 @@ export default function ProductDetailPage({
             {/* Quantity Selector */}
             <div className="flex items-center space-x-4 pt-1">
               <span className="text-xs font-bold text-slate-700">Số lượng:</span>
-              <div className="flex items-center border border-slate-300 rounded-xl overflow-hidden shadow-inner bg-white">
+              <div className="flex items-center border border-slate-300 dark:border-white/10 rounded-xl overflow-hidden shadow-inner bg-white dark:bg-[#1A1B25]">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   disabled={isOutOfStock || quantity <= 1}
-                  className="btn-icon px-3.5 py-1.5 bg-slate-50 hover:bg-slate-200 text-slate-700 font-bold transition active:scale-90 disabled:opacity-40 cursor-pointer"
+                  className="btn-icon px-3.5 py-1.5 bg-slate-50 dark:bg-[#252632] hover:bg-slate-200 dark:hover:bg-[#323342] text-slate-700 dark:text-slate-300 font-bold transition active:scale-90 disabled:opacity-40 cursor-pointer"
                 >
                   -
                 </button>
-                <span className="px-5 py-1.5 text-xs font-mono font-bold text-slate-900 text-center min-w-[40px]">
+                <span className="px-5 py-1.5 text-xs font-mono font-bold text-slate-900 dark:text-[#F4F0E8] text-center min-w-[40px] bg-white dark:bg-[#1A1B25]">
                   <AnimatedNumber value={isOutOfStock ? 0 : quantity} />
                 </span>
                 <button
                   onClick={() => setQuantity(Math.min(Math.max(1, currentStock), quantity + 1))}
                   disabled={isOutOfStock || quantity >= currentStock}
-                  className="btn-icon px-3.5 py-1.5 bg-slate-50 hover:bg-slate-200 text-slate-700 font-bold transition active:scale-90 disabled:opacity-40 cursor-pointer"
+                  className="btn-icon px-3.5 py-1.5 bg-slate-50 dark:bg-[#252632] hover:bg-slate-200 dark:hover:bg-[#323342] text-slate-700 dark:text-slate-300 font-bold transition active:scale-90 disabled:opacity-40 cursor-pointer"
                 >
                   +
                 </button>
@@ -711,7 +711,7 @@ export default function ProductDetailPage({
       </div>
 
       {/* 3. Shop Marketplace Info Section (Chuẩn Shopee) */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm">
+      <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-5 sm:p-6 shadow-sm text-slate-800 dark:text-[#F4F0E8]">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           {/* Shop Profile Left */}
           <div className="flex items-center space-x-4">
@@ -733,7 +733,7 @@ export default function ProductDetailPage({
               <button
                 type="button"
                 onClick={() => onSelectShop && onSelectShop({ id: product.shopId || 1, name: product.shopName || 'TechWorld Official Store' })}
-                className="text-base font-bold text-slate-900 flex items-center gap-1.5 cursor-pointer hover:text-orange-600 transition bg-transparent border-0 p-0 text-left"
+                className="text-base font-bold text-slate-900 dark:text-[#F4F0E8] flex items-center gap-1.5 cursor-pointer hover:text-orange-600 dark:hover:text-amber-400 transition bg-transparent border-0 p-0 text-left"
                 title="Bấm để xem trang Shop"
               >
                 <span>{product.shopName || 'TechWorld Official Store'}</span>
@@ -758,7 +758,7 @@ export default function ProductDetailPage({
                 </button>
                 <button 
                   onClick={() => onSelectShop && onSelectShop({ id: product.shopId || 1, name: product.shopName || 'TechWorld Official Store' })}
-                  className="px-3 py-1 bg-slate-100 hover:bg-orange-600 hover:text-white text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition active:scale-95 shadow-sm"
+                  className="px-3 py-1 bg-slate-100 dark:bg-[#252632] hover:bg-orange-600 hover:text-white text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1 transition active:scale-95 shadow-sm"
                   title="Xem toàn bộ sản phẩm của gian hàng này"
                 >
                   <Store className="w-3 h-3" />
@@ -774,14 +774,14 @@ export default function ProductDetailPage({
           </div>
 
           {/* Shop Metrics Right */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-8 w-full md:w-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs border-t md:border-t-0 md:border-l border-slate-200 dark:border-white/10 pt-4 md:pt-0 md:pl-8 w-full md:w-auto">
             <div>
               <div className="text-slate-400">Đánh giá</div>
               <div className="font-bold text-orange-600 text-sm mt-0.5">4.9 / 5.0 ★</div>
             </div>
             <div>
               <div className="text-slate-400">Sản phẩm</div>
-              <div className="font-bold text-slate-900 text-sm mt-0.5">142 sản phẩm</div>
+              <div className="font-bold text-slate-900 dark:text-[#F4F0E8] text-sm mt-0.5">142 sản phẩm</div>
             </div>
             <div>
               <div className="text-slate-400">Tỉ lệ phản hồi</div>
@@ -789,14 +789,14 @@ export default function ProductDetailPage({
             </div>
             <div>
               <div className="text-slate-400">Tham gia sàn</div>
-              <div className="font-bold text-slate-900 text-sm mt-0.5">2 năm trước</div>
+              <div className="font-bold text-slate-900 dark:text-[#F4F0E8] text-sm mt-0.5">2 năm trước</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* 4. Product Specifications & Detailed Description */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-8 shadow-sm space-y-6">
+      <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-5 sm:p-8 shadow-sm space-y-6 text-slate-800 dark:text-[#F4F0E8]">
         {/* Điểm nhấn tính năng nổi bật (Highlights) */}
         {product.highlights && product.highlights.length > 0 && (
           <div className="bg-gradient-to-r from-orange-50/80 to-amber-50/50 border border-orange-200/70 rounded-2xl p-5">
@@ -816,7 +816,7 @@ export default function ProductDetailPage({
         )}
 
         <div>
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wider mb-4 pb-2 border-b border-slate-100 dark:border-white/10 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-orange-600" />
             Chi tiết thông số kỹ thuật sản phẩm
           </h3>
@@ -824,34 +824,34 @@ export default function ProductDetailPage({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             {product.specifications && Array.isArray(product.specifications) && product.specifications.length > 0 ? (
               product.specifications.map((spec, sIdx) => (
-                <div key={sIdx} className="flex p-2.5 bg-slate-50/80 hover:bg-slate-100/70 rounded-xl transition">
+                <div key={sIdx} className="flex p-2.5 bg-slate-50/80 dark:bg-[#1A1B25]/80 hover:bg-slate-100/70 dark:hover:bg-[#252632] rounded-xl transition">
                   <span className="w-40 text-slate-400 font-medium">{spec.label || spec.name}:</span>
-                  <span className="text-slate-800 font-semibold flex-1">{spec.value}</span>
+                  <span className="text-slate-800 dark:text-[#F4F0E8] font-semibold flex-1">{spec.value}</span>
                 </div>
               ))
             ) : (
               <>
-                <div className="flex p-2.5 bg-slate-50 rounded-xl">
+                <div className="flex p-2.5 bg-slate-50 dark:bg-[#1A1B25] rounded-xl">
                   <span className="w-36 text-slate-400 font-medium">Danh mục:</span>
-                  <span className="text-slate-800 font-semibold">{product.categoryName || 'Điện tử & Phụ kiện'}</span>
+                  <span className="text-slate-800 dark:text-[#F4F0E8] font-semibold">{product.categoryName || 'Điện tử & Phụ kiện'}</span>
                 </div>
-                <div className="flex p-2.5 bg-slate-50 rounded-xl">
+                <div className="flex p-2.5 bg-slate-50 dark:bg-[#1A1B25] rounded-xl">
                   <span className="w-36 text-slate-400 font-medium">Thương hiệu:</span>
-                  <span className="text-slate-800 font-semibold">{product.brand || 'Chính Hãng Phân Phối'}</span>
+                  <span className="text-slate-800 dark:text-[#F4F0E8] font-semibold">{product.brand || 'Chính Hãng Phân Phối'}</span>
                 </div>
-                <div className="flex p-2.5 bg-slate-50 rounded-xl">
+                <div className="flex p-2.5 bg-slate-50 dark:bg-[#1A1B25] rounded-xl">
                   <span className="w-36 text-slate-400 font-medium">Chính sách bảo hành:</span>
-                  <span className="text-slate-800 font-semibold">12 tháng toàn quốc</span>
+                  <span className="text-slate-800 dark:text-[#F4F0E8] font-semibold">12 tháng toàn quốc</span>
                 </div>
-                <div className="flex p-2.5 bg-slate-50 rounded-xl">
+                <div className="flex p-2.5 bg-slate-50 dark:bg-[#1A1B25] rounded-xl">
                   <span className="w-36 text-slate-400 font-medium">Địa chỉ gửi hàng:</span>
-                  <span className="text-slate-800 font-semibold">Kho Tổng QuickShop Mall, Hà Nội</span>
+                  <span className="text-slate-800 dark:text-[#F4F0E8] font-semibold">Kho Tổng QuickShop Mall, Hà Nội</span>
                 </div>
-                <div className="flex p-2.5 bg-slate-50 rounded-xl">
+                <div className="flex p-2.5 bg-slate-50 dark:bg-[#1A1B25] rounded-xl">
                   <span className="w-36 text-slate-400 font-medium">Mã quản lý kho:</span>
-                  <span className="text-slate-800 font-mono font-semibold">{selectedVariant?.sku || 'SKU-MASTER'}</span>
+                  <span className="text-slate-800 dark:text-[#F4F0E8] font-mono font-semibold">{selectedVariant?.sku || 'SKU-MASTER'}</span>
                 </div>
-                <div className="flex p-2.5 bg-slate-50 rounded-xl">
+                <div className="flex p-2.5 bg-slate-50 dark:bg-[#1A1B25] rounded-xl">
                   <span className="w-36 text-slate-400 font-medium">Số lượng tồn kho:</span>
                   <span className="text-emerald-600 font-semibold">{currentStock} cái sẵn sàng giao</span>
                 </div>
@@ -862,10 +862,10 @@ export default function ProductDetailPage({
 
         {/* Detailed Long Description with Rich Inline Images */}
         <div className="pt-2">
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wider mb-3 flex items-center gap-2">
             Mô tả chi tiết sản phẩm
           </h3>
-          <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 sm:p-6 text-xs sm:text-sm text-slate-700 leading-relaxed space-y-4">
+          <div className="bg-slate-50/70 dark:bg-[#1A1B25]/70 border border-slate-200/80 dark:border-white/10 rounded-2xl p-5 sm:p-6 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed space-y-4">
             <div 
               className="product-rich-text leading-relaxed"
               dangerouslySetInnerHTML={{
@@ -930,7 +930,7 @@ export default function ProductDetailPage({
       </div>
 
       {/* 5. Customer Reviews & Ratings Section (FR-04.1) */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-8 shadow-sm space-y-6">
+      <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-5 sm:p-8 shadow-sm space-y-6 text-slate-800 dark:text-[#F4F0E8]">
         <div className="flex justify-between items-center pb-2 border-b border-slate-100">
           <div>
             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">

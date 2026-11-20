@@ -14,8 +14,24 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Leaflet 1.9.4 Maps CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <!-- Lucian #219 Instant Theme Initialization (Prevent White Flash) -->
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('quickshop_theme');
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var theme = (saved === 'dark' || saved === 'light') ? saved : (prefersDark ? 'dark' : 'light');
+          document.documentElement.dataset.theme = theme;
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
-  <body class="bg-[#FAFAFA] text-slate-900 antialiased min-h-screen font-sans selection:bg-orange-500 selection:text-white">
+  <body class="bg-[#FAFAFA] dark:bg-[#07080D] text-slate-900 dark:text-[#F4F0E8] antialiased min-h-screen font-sans selection:bg-orange-500 selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

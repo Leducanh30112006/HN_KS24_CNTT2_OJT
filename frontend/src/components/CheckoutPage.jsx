@@ -983,11 +983,11 @@ export default function CheckoutPage({
               </div>
 
               <div className="text-xs text-slate-600 bg-white/80 p-3.5 rounded-xl border border-blue-100 text-left space-y-2">
-                <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                <div className="flex justify-between items-center py-1 border-b border-slate-100 dark:border-white/10">
                   <span className="text-slate-500">Ngân hàng:</span>
                   <span className="font-bold text-blue-900">MB Bank (Ngân hàng TMCP Quân Đội)</span>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                <div className="flex justify-between items-center py-1 border-b border-slate-100 dark:border-white/10">
                   <span className="text-slate-500">Số tài khoản:</span>
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-black text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded text-sm tracking-wider">
@@ -1005,11 +1005,11 @@ export default function CheckoutPage({
                     )}
                   </div>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                <div className="flex justify-between items-center py-1 border-b border-slate-100 dark:border-white/10">
                   <span className="text-slate-500">Chủ tài khoản:</span>
                   <span className="font-bold text-slate-900 uppercase">{payOsData?.accountName || 'NGUYỄN VĂN KIÊN'}</span>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                <div className="flex justify-between items-center py-1 border-b border-slate-100 dark:border-white/10">
                   <span className="text-slate-500">Số tiền:</span>
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-rose-600 text-sm">{formatVND(payOsData?.amount || finalTotal)}</span>
@@ -1282,10 +1282,10 @@ export default function CheckoutPage({
   return (
     <div className="space-y-6 pb-16 animate-in fade-in duration-300">
       {/* 1. Header Back Navigation & Breadcrumb */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-slate-800 dark:text-[#F4F0E8]">
         <button
           onClick={onBack}
-          className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-700 transition flex items-center gap-2 text-xs font-bold active:scale-95 shadow-sm"
+          className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-[#1A1B25] hover:bg-orange-50 dark:hover:bg-orange-950/40 hover:text-orange-600 dark:hover:text-amber-400 text-slate-700 dark:text-slate-300 transition flex items-center gap-2 text-xs font-bold active:scale-95 shadow-sm"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Quay lại Giỏ hàng</span>
@@ -1308,11 +1308,11 @@ export default function CheckoutPage({
         <div className="lg:col-span-2 space-y-6">
 
           {/* Section A: Shipping Address Card */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100 flex-wrap gap-2">
-              <div className="flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wide">
+          <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-5 sm:p-6 shadow-sm space-y-4 text-slate-800 dark:text-[#F4F0E8]">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-white/10 dark:border-white/10 flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-sm font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide">
                 <MapPin className="w-4 h-4 text-orange-600" />
-                <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">Địa Chỉ Nhận Hàng</h2>
+                <h2 className="text-sm font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide">Địa Chỉ Nhận Hàng</h2>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1417,18 +1417,18 @@ export default function CheckoutPage({
 
           {/* Section B: Cart Items Grouped by Shop */}
           <div className="space-y-4">
-            <div className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2 px-1">
+            <div className="text-sm font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide flex items-center gap-2 px-1">
               <ShoppingBag className="w-4 h-4 text-orange-600" />
-              <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">Sản Phẩm Trong Đơn Hàng</h2>
+              <h2 className="text-sm font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide">Sản Phẩm Trong Đơn Hàng</h2>
             </div>
 
             {shopGroups.map((group) => (
-              <div key={group.shopId} className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+              <div key={group.shopId} className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 shadow-sm overflow-hidden text-slate-800 dark:text-[#F4F0E8]">
                 {/* Shop Header */}
-                <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+                <div className="bg-slate-50 p-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Store className="w-4 h-4 text-orange-600" />
-                    <h3 className="font-bold text-xs sm:text-sm text-slate-900">{fixMojibakeText(group.shopName)}</h3>
+                    <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-[#F4F0E8]">{fixMojibakeText(group.shopName)}</h3>
                     <span className="bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
                       Mall
                     </span>
@@ -1439,7 +1439,7 @@ export default function CheckoutPage({
                 </div>
 
                 {/* Items in Shop */}
-                <div className="divide-y divide-slate-100 p-4">
+                <div className="divide-y divide-slate-100 dark:divide-white/10 p-4">
                   {group.items.map((item) => (
                     <div key={item.variantId} className="py-3.5 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                       {/* Product Thumbnail & Details */}
@@ -1487,7 +1487,7 @@ export default function CheckoutPage({
                           >
                             -
                           </button>
-                          <span className="px-3.5 py-1 text-xs font-bold text-slate-900 bg-white">
+                          <span className="px-3.5 py-1 text-xs font-bold text-slate-900 dark:text-[#F4F0E8] bg-white">
                             {item.quantity}
                           </span>
                           <button
@@ -1548,11 +1548,11 @@ export default function CheckoutPage({
                               className={`p-2.5 rounded-xl border text-left transition relative flex flex-col justify-between ${
                                 isSelected
                                   ? 'border-orange-500 bg-orange-50/60 ring-2 ring-orange-500/20 shadow-xs'
-                                  : 'border-slate-200 hover:border-slate-300 bg-white'
+                                  : 'border-slate-200 dark:border-white/10 hover:border-slate-300 bg-white dark:bg-[#1A1B25]'
                               }`}
                             >
                               <div className="flex items-center justify-between gap-1 mb-1">
-                                <span className="font-bold text-xs text-slate-900">{c.shortName}</span>
+                                <span className="font-bold text-xs text-slate-900 dark:text-[#F4F0E8]">{c.shortName}</span>
                                 <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${c.tagClass}`}>
                                   {c.tag}
                                 </span>
@@ -1583,11 +1583,11 @@ export default function CheckoutPage({
           </div>
 
           {/* Section C: Itemized Delivery Overview */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wide">
+          <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-5 sm:p-6 shadow-sm space-y-4 text-slate-800 dark:text-[#F4F0E8]">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/10">
+              <div className="flex items-center gap-2 text-sm font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide">
                 <Truck className="w-4 h-4 text-orange-600" />
-                <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">Tổng Hợp Giao Hàng & Đơn Vị Vận Chuyển</h2>
+                <h2 className="text-sm font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide">Tổng Hợp Giao Hàng & Đơn Vị Vận Chuyển</h2>
               </div>
               <span className="text-[11px] font-bold text-orange-700 bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200/60">
                 {shopGroups.length} kiện hàng từ {shopGroups.length} gian hàng
@@ -1598,7 +1598,7 @@ export default function CheckoutPage({
               {shopGroups.map((group, idx) => {
                 const c = getCarrierForShop(group.shopId);
                 return (
-                  <div key={group.shopId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-200/70 text-xs">
+                  <div key={group.shopId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-[#1A1B25] rounded-2xl border border-slate-200/70 dark:border-white/10 text-xs text-slate-700 dark:text-slate-300">
                     <div className="flex items-center gap-3">
                       <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-700 font-bold flex items-center justify-center text-xs flex-shrink-0">
                         #{idx + 1}
@@ -1637,10 +1637,10 @@ export default function CheckoutPage({
           </div>
 
           {/* Section D: Payment Method Selection */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wide pb-2 border-b border-slate-100">
+          <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-5 sm:p-6 shadow-sm space-y-4 text-slate-800 dark:text-[#F4F0E8]">
+            <div className="flex items-center gap-2 text-sm font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide pb-2 border-b border-slate-100 dark:border-white/10">
               <CreditCard className="w-4 h-4 text-orange-600" />
-              <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">Phương Thức Thanh Toán</h2>
+              <h2 className="text-sm font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide">Phương Thức Thanh Toán</h2>
             </div>
 
             <div className="space-y-2.5">
@@ -1650,7 +1650,7 @@ export default function CheckoutPage({
                 className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
                   paymentMethod === 'cod'
                     ? 'border-orange-500 bg-orange-50/50 ring-2 ring-orange-500/20'
-                    : 'border-slate-200 hover:bg-slate-50'
+                    : 'border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-[#1A1B25]'
                 }`}
               >
                 <span className="sr-only">Thanh toán khi nhận hàng (COD)</span>
@@ -1659,7 +1659,7 @@ export default function CheckoutPage({
                     <DollarSign className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-slate-900">Thanh toán khi nhận hàng (COD)</div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-[#F4F0E8]">Thanh toán khi nhận hàng (COD)</div>
                     <div className="text-[11px] text-slate-500">Được đồng kiểm và thử hàng trước khi thanh toán tiền mặt</div>
                   </div>
                 </div>
@@ -1679,7 +1679,7 @@ export default function CheckoutPage({
                 className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
                   paymentMethod === 'payos' || paymentMethod === 'vnpay'
                     ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-500/20'
-                    : 'border-slate-200 hover:bg-slate-50'
+                    : 'border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-[#1A1B25]'
                 }`}
               >
                 <span className="sr-only">Chuyển khoản QR Ngân Hàng (MB Bank / PayOS 24/7)</span>
@@ -1688,7 +1688,7 @@ export default function CheckoutPage({
                     <QrCode className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                    <div className="text-xs font-bold text-slate-900 dark:text-[#F4F0E8] flex items-center gap-2">
                       <span>Chuyển khoản QR Ngân Hàng (MB Bank / PayOS 24/7)</span>
                       <span className="px-1.5 py-0.5 bg-blue-600 text-white font-extrabold text-[9px] rounded-md tracking-wider">
                         MB Bank & PayOS
@@ -1739,8 +1739,8 @@ export default function CheckoutPage({
           </div>
 
           {/* Section E: Order Note */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-2">
-            <label htmlFor="checkout-order-note" className="block text-xs font-bold text-slate-800">
+          <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-5 sm:p-6 shadow-sm space-y-2 text-slate-800 dark:text-[#F4F0E8]">
+            <label htmlFor="checkout-order-note" className="block text-xs font-bold text-slate-800 dark:text-[#F4F0E8]">
               Ghi chú cho Người bán & Đơn vị vận chuyển:
             </label>
             <input
@@ -1749,7 +1749,7 @@ export default function CheckoutPage({
               value={orderNote}
               onChange={(e) => setOrderNote(e.target.value)}
               placeholder="Ví dụ: Giao vào giờ hành chính, gọi điện trước khi đến 15 phút..."
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-orange-500"
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#1A1B25] border border-slate-200 dark:border-white/10 rounded-xl text-xs text-slate-900 dark:text-[#F4F0E8] focus:outline-none focus:border-orange-500"
             />
           </div>
         </div>
@@ -1758,11 +1758,11 @@ export default function CheckoutPage({
         <div className="space-y-6 lg:sticky lg:top-24">
 
           {/* Vouchers & Coupons Card (Chuẩn Shopee: Phân chia rõ ràng Voucher Sàn & Voucher Shop) */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-3.5">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2 text-xs font-black text-slate-900 uppercase tracking-wide">
+          <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-5 sm:p-6 shadow-sm space-y-3.5 text-slate-800 dark:text-[#F4F0E8]">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/10">
+              <div className="flex items-center gap-2 text-xs font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide">
                 <Ticket className="w-4 h-4 text-orange-600" />
-                <h2 className="text-xs font-black text-slate-900 uppercase tracking-wide">Mã Giảm Giá & Voucher</h2>
+                <h2 className="text-xs font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide">Mã Giảm Giá & Voucher</h2>
               </div>
               <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
                 Chuẩn Shopee
@@ -1881,20 +1881,20 @@ export default function CheckoutPage({
           </div>
 
           {/* Checkout Breakdown Box */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-4">
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide pb-2 border-b border-slate-100">
+          <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-5 sm:p-6 shadow-sm space-y-4 text-slate-800 dark:text-[#F4F0E8]">
+            <h2 className="text-sm font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide pb-2 border-b border-slate-100 dark:border-white/10">
               Chi Tiết Thanh Toán
             </h2>
 
-            <div className="space-y-2.5 text-xs text-slate-600">
+            <div className="space-y-2.5 text-xs text-slate-600 dark:text-slate-300">
               <div className="flex justify-between">
                 <span>Tạm tính hàng hóa:</span>
-                <span className="font-bold font-mono text-slate-900"><AnimatedNumber value={subTotal} formatter={formatVND} /></span>
+                <span className="font-bold font-mono text-slate-900 dark:text-[#F4F0E8]"><AnimatedNumber value={subTotal} formatter={formatVND} /></span>
               </div>
 
               <div className="flex justify-between">
                 <span>Phí vận chuyển ({shopGroups.length} kiện hàng):</span>
-                <span className="font-semibold font-mono text-slate-900">
+                <span className="font-semibold font-mono text-slate-900 dark:text-[#F4F0E8]">
                   <AnimatedNumber value={baseShipping} formatter={formatVND} />
                 </span>
               </div>
@@ -1921,7 +1921,7 @@ export default function CheckoutPage({
               )}
 
               <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline">
-                <span className="text-sm font-bold text-slate-900">Tổng cộng thanh toán:</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-[#F4F0E8]">Tổng cộng thanh toán:</span>
                 <span className="text-xl font-black font-mono text-rose-600"><AnimatedNumber value={finalTotal} formatter={formatVND} /></span>
               </div>
 

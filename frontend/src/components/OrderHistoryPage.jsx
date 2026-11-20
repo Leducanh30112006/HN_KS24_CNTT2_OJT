@@ -560,7 +560,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/70 py-6 sm:py-8 px-3 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50/70 dark:bg-[#07080D] py-6 sm:py-8 px-3 sm:px-6 lg:px-8 transition-colors duration-300">
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Banner thông báo người dùng nổi bật khi hủy hoặc cập nhật */}
         {notificationAlert && (
@@ -610,16 +610,16 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
         </div>
 
         {/* Page Header */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="bg-white dark:bg-[#13141C] rounded-3xl p-5 sm:p-6 border border-slate-200/90 dark:border-white/10 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-800 dark:text-[#F4F0E8]">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center shadow-md shadow-orange-500/20">
               <Package className="w-6 h-6 stroke-[2.5]" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-[#F4F0E8] tracking-tight">
                 Đơn Mua Của Bạn
               </h1>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Hiển thị toàn bộ đơn hàng đã đặt, theo dõi tiến trình và hủy đơn linh hoạt
               </p>
             </div>
@@ -631,14 +631,14 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Tìm theo Mã đơn, Sản phẩm, Tên shop..."
-              className="w-full pl-9 pr-4 py-2 bg-slate-100 focus:bg-white text-xs rounded-xl border border-slate-200 focus:border-orange-500 outline-none transition"
+              className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-[#1A1B25] focus:bg-white dark:focus:bg-[#252632] text-xs text-slate-900 dark:text-[#F4F0E8] rounded-xl border border-slate-200 dark:border-white/10 focus:border-orange-500 outline-none transition"
             />
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           </div>
         </div>
 
         {/* Status Filter Tabs (Shopee Style) */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-x-auto no-scrollbar">
+        <div className="bg-white dark:bg-[#13141C] rounded-2xl border border-slate-200/90 dark:border-white/10 shadow-sm overflow-x-auto no-scrollbar">
           <div className="flex border-b border-slate-100 min-w-max">
             {[
               { id: 'ALL', label: 'Tất cả đơn', count: splitOrders.length },
@@ -674,7 +674,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                 className={`px-4 sm:px-5 py-3.5 text-xs font-bold transition border-b-2 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                   activeTab === tab.id
                     ? 'border-orange-600 text-orange-600 bg-orange-50/40'
-                    : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#1A1B25]'
                 }`}
               >
                 <span>{tab.label}</span>
@@ -694,12 +694,12 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
 
         {/* Orders List */}
         {loading ? (
-          <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/90 space-y-3">
+          <div className="bg-white dark:bg-[#13141C] rounded-3xl p-12 text-center border border-slate-200/90 dark:border-white/10 space-y-3 text-slate-800 dark:text-[#F4F0E8]">
             <RefreshCw className="w-8 h-8 text-orange-600 animate-spin mx-auto" />
             <p className="text-xs text-slate-500 font-semibold">Đang đồng bộ danh sách đơn hàng...</p>
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/90 space-y-3">
+          <div className="bg-white dark:bg-[#13141C] rounded-3xl p-12 text-center border border-slate-200/90 dark:border-white/10 space-y-3 text-slate-800 dark:text-[#F4F0E8]">
             <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
               <Package className="w-8 h-8" />
             </div>
@@ -722,12 +722,12 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
               return (
                 <div
                   key={order.cardKey || order.id || order.orderCode}
-                  className="bg-white rounded-3xl border border-slate-200/90 shadow-xs hover:border-orange-300 hover:shadow-md transition-all overflow-hidden"
+                  className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 shadow-xs hover:border-orange-300 dark:hover:border-amber-500/50 hover:shadow-md transition-all overflow-hidden text-slate-800 dark:text-[#F4F0E8]"
                 >
                   {/* Header card: Mã đơn riêng theo từng Shop, Thời gian, PTTT, Badge trạng thái */}
-                  <div className="p-4 sm:p-5 bg-slate-50/70 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                  <div className="p-4 sm:p-5 bg-slate-50/70 dark:bg-[#1A1B25]/70 border-b border-slate-100 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 flex-wrap">
-                      <span className="font-mono font-black text-xs sm:text-sm text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                      <span className="font-mono font-black text-xs sm:text-sm text-slate-900 dark:text-[#F4F0E8] bg-white dark:bg-[#13141C] px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10">
                         #{order.displayOrderCode}
                       </span>
                       <span className="text-slate-300">|</span>
@@ -1175,7 +1175,7 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
               </div>
               <div>
                 <h3 className="font-bold text-sm text-slate-900">Xác Nhận Hủy Đơn Hàng</h3>
-                <p className="text-xs text-slate-500">Mã đơn: #{orderToCancel.orderCode || orderToCancel.id}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Mã đơn: #{orderToCancel.orderCode || orderToCancel.id}</p>
               </div>
             </div>
 

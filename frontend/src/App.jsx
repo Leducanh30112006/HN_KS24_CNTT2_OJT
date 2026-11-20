@@ -31,6 +31,7 @@ import axiosClient from './api/axiosClient';
 import Lenis from 'lenis';
 import { gsap, ScrollTrigger, useGSAP } from './lib/gsap';
 import { PageTransition, StaggerReveal, AnimatedPresence, AnimatedNumber } from './components/motion/MotionPrimitives';
+import { SpotlightGrid } from './components/ui/LucianPrimitives';
 import {
   Filter, RotateCcw, Star, ChevronRight, ChevronDown, ShieldCheck,
   HelpCircle, Smartphone, Award, Truck, Sparkles, Lock, ShieldAlert, ArrowLeft, CheckCircle2,
@@ -877,19 +878,19 @@ export default function App() {
   if (currentView === 'admin') {
     if (!isAdmin) {
       return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
-          <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 text-center shadow-xl space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-rose-100 text-rose-600 mx-auto flex items-center justify-center">
+        <div className="min-h-screen bg-slate-100 dark:bg-[#07080D] flex items-center justify-center p-4 font-sans transition-colors duration-300">
+          <div className="max-w-md w-full bg-white dark:bg-[#13141C] rounded-3xl p-8 border border-slate-200 dark:border-white/10 text-center shadow-xl space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center">
               <ShieldAlert className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900">Từ chối truy cập (403 Forbidden)</h2>
-            <p className="text-xs text-slate-500 leading-relaxed">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-[#F4F0E8]">Từ chối truy cập (403 Forbidden)</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               Bạn cần đăng nhập bằng tài khoản có vai trò Quản Trị Viên (ROLE_ADMIN) để truy cập Cổng Quản Trị Hệ Thống.
             </p>
             <div className="pt-2 flex justify-center gap-3">
               <button
                 onClick={() => handleNavigateView('storefront')}
-                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md transition"
+                className="px-5 py-2.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-bold shadow-md transition"
               >
                 Quay lại Trang Mua Sắm
               </button>
@@ -917,19 +918,19 @@ export default function App() {
   if (currentView === 'seller') {
     if (!isSeller) {
       return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
-          <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 text-center shadow-xl space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 mx-auto flex items-center justify-center">
+        <div className="min-h-screen bg-slate-50 dark:bg-[#07080D] flex items-center justify-center p-4 font-sans transition-colors duration-300">
+          <div className="max-w-md w-full bg-white dark:bg-[#13141C] rounded-3xl p-8 border border-slate-200 dark:border-white/10 text-center shadow-xl space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
               <Store className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900">Yêu cầu quyền Người Bán</h2>
-            <p className="text-xs text-slate-500 leading-relaxed">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-[#F4F0E8]">Yêu cầu quyền Người Bán</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               Bạn cần đăng nhập bằng tài khoản Chủ Gian Hàng (ROLE_SELLER) để quản lý sản phẩm và gian hàng.
             </p>
             <div className="pt-2 flex justify-center gap-3">
               <button
                 onClick={() => handleNavigateView('storefront')}
-                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md transition"
+                className="px-5 py-2.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-bold shadow-md transition"
               >
                 Quay lại Trang Mua Sắm
               </button>
@@ -957,19 +958,19 @@ export default function App() {
   if (currentView === 'shipper') {
     if (!isShipper) {
       return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
-          <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 text-center shadow-xl space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-blue-100 text-blue-600 mx-auto flex items-center justify-center">
+        <div className="min-h-screen bg-slate-100 dark:bg-[#07080D] flex items-center justify-center p-4 font-sans transition-colors duration-300">
+          <div className="max-w-md w-full bg-white dark:bg-[#13141C] rounded-3xl p-8 border border-slate-200 dark:border-white/10 text-center shadow-xl space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 mx-auto flex items-center justify-center">
               <Truck className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900">Yêu cầu quyền Tài Xế Shipper</h2>
-            <p className="text-xs text-slate-500 leading-relaxed">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-[#F4F0E8]">Yêu cầu quyền Tài Xế Shipper</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               Bạn cần đăng nhập bằng tài khoản Bưu Tá / Giao Vận (ROLE_SHIPPER) để truy cập cổng điều phối giao hàng.
             </p>
             <div className="pt-2 flex justify-center gap-3">
               <button
                 onClick={() => handleNavigateView('storefront')}
-                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md transition"
+                className="px-5 py-2.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-bold shadow-md transition"
               >
                 Quay lại Trang Mua Sắm
               </button>
@@ -992,7 +993,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/70 text-slate-800 font-sans flex flex-col relative">
+    <div className="min-h-screen bg-slate-50/70 dark:bg-[#07080D] text-slate-800 dark:text-[#F4F0E8] font-sans flex flex-col relative transition-colors duration-300">
       {/* Sleek Top Brand Progress Bar on Page Mount */}
       <div className="fixed top-0 left-0 right-0 h-1 z-50 bg-gradient-to-r from-orange-500 via-amber-400 to-orange-600 animate-top-progress pointer-events-none" />
 
@@ -1159,11 +1160,11 @@ export default function App() {
         {currentView === 'search' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Search Header Banner */}
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => handleBackToStorefront({ shuffle: true })}
-                  className="p-2 sm:px-3.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-700 transition flex items-center gap-2 text-xs font-semibold shadow-sm active:scale-95"
+                  className="p-2 sm:px-3.5 sm:py-2 rounded-xl bg-slate-100 dark:bg-[#1A1B25] hover:bg-orange-50 dark:hover:bg-orange-950/40 hover:text-orange-600 dark:hover:text-amber-400 text-slate-700 dark:text-slate-300 transition flex items-center gap-2 text-xs font-semibold shadow-sm active:scale-95"
                   title="Quay lại Trang chủ"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -1171,9 +1172,9 @@ export default function App() {
                 </button>
 
                 <div>
-                  <h2 className="text-base sm:text-xl font-black text-slate-900 flex items-center gap-2">
+                  <h2 className="text-base sm:text-xl font-black text-slate-900 dark:text-[#F4F0E8] flex items-center gap-2">
                     <span>Kết quả tìm kiếm cho:</span>
-                    <span className="text-orange-600 font-bold italic">
+                    <span className="text-orange-600 dark:text-amber-400 font-bold italic">
                       "{searchKeyword || 'Tất cả sản phẩm'}"
                     </span>
                   </h2>
@@ -1183,12 +1184,12 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="text-xs font-semibold px-4 py-2 bg-orange-50 border border-orange-200 text-orange-700 rounded-full shadow-inner flex items-center gap-1.5">
+              <div className="text-xs font-semibold px-4 py-2 bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-500/30 text-orange-700 dark:text-amber-400 rounded-full shadow-inner flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-orange-500" />
                 <span>
-                  Tìm thấy <strong className="font-black text-orange-600">{totalElements}</strong> sản phẩm
+                  Tìm thấy <strong className="font-black text-orange-600 dark:text-amber-400">{totalElements}</strong> sản phẩm
                   {totalPages > 1 && (
-                    <span className="ml-1 text-slate-500 font-normal">
+                    <span className="ml-1 text-slate-500 dark:text-slate-400 font-normal">
                       (Trang {currentPage + 1}/{totalPages})
                     </span>
                   )}
@@ -1206,26 +1207,26 @@ export default function App() {
             />
 
             {/* Search Sort Toolbar */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 p-3 sm:px-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm text-xs">
+            <div className="bg-white dark:bg-[#13141C] rounded-2xl border border-slate-200/90 dark:border-white/10 p-3 sm:px-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm text-xs">
               <div className="flex items-center space-x-2">
-                <span className="text-slate-500 font-medium">Sắp xếp theo:</span>
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Sắp xếp theo:</span>
                 <button
                   onClick={() => setSortBy('newest')}
-                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'newest' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'newest' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-[#1A1B25] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#252632]'
                     }`}
                 >
                   Mới nhất
                 </button>
                 <button
                   onClick={() => setSortBy('priceAsc')}
-                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'priceAsc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'priceAsc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-[#1A1B25] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#252632]'
                     }`}
                 >
                   Giá thấp đến cao
                 </button>
                 <button
                   onClick={() => setSortBy('priceDesc')}
-                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'priceDesc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  className={`px-3 py-1.5 rounded-xl font-semibold transition ${sortBy === 'priceDesc' ? 'bg-orange-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-[#1A1B25] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#252632]'
                     }`}
                 >
                   Giá cao đến thấp
@@ -1234,7 +1235,7 @@ export default function App() {
 
               <button
                 onClick={() => handleBackToStorefront({ shuffle: true })}
-                className="text-xs text-orange-600 hover:underline flex items-center gap-1 font-semibold"
+                className="text-xs text-orange-600 dark:text-amber-400 hover:underline flex items-center gap-1 font-semibold"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Xóa tìm kiếm & về trang chủ
@@ -1243,19 +1244,19 @@ export default function App() {
 
             {/* Product Grid: Only Searched Products */}
             {loadingProducts ? (
-              <div className="py-24 text-center space-y-3 bg-white rounded-3xl border border-slate-200/80 shadow-sm">
+              <div className="py-24 text-center space-y-3 bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm">
                 <div className="w-9 h-9 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <div className="text-xs text-slate-500 font-medium">Đang tìm kiếm sản phẩm phù hợp...</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Đang tìm kiếm sản phẩm phù hợp...</div>
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm space-y-4">
-                <div className="w-16 h-16 rounded-full bg-orange-50 text-orange-400 mx-auto flex items-center justify-center">
+              <div className="bg-white dark:bg-[#13141C] rounded-3xl p-12 text-center border border-slate-200 dark:border-white/10 shadow-sm space-y-4">
+                <div className="w-16 h-16 rounded-full bg-orange-50 dark:bg-orange-950/40 text-orange-400 mx-auto flex items-center justify-center">
                   <Filter className="w-8 h-8" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-slate-800">Không tìm thấy sản phẩm nào</h3>
+                  <h3 className="font-bold text-base text-slate-800 dark:text-[#F4F0E8]">Không tìm thấy sản phẩm nào</h3>
                   <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                    Không có sản phẩm nào khớp với từ khóa <strong className="text-slate-700">"{searchKeyword}"</strong>. Vui lòng thử từ khóa khác hoặc quay lại trang chủ.
+                    Không có sản phẩm nào khớp với từ khóa <strong className="text-slate-700 dark:text-slate-300">"{searchKeyword}"</strong>. Vui lòng thử từ khóa khác hoặc quay lại trang chủ.
                   </p>
                 </div>
                 <button
@@ -1268,7 +1269,7 @@ export default function App() {
               </div>
             ) : (
               <div className="space-y-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                <SpotlightGrid proximity={260} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                   {filteredProducts.map((p) => (
                     <ProductCard
                       key={p.id}
@@ -1278,7 +1279,7 @@ export default function App() {
                       onRequireAuth={() => handleRequireAuth('search')}
                     />
                   ))}
-                </div>
+                </SpotlightGrid>
 
                 {/* Phân trang kết quả tìm kiếm */}
                 <Pagination
@@ -1325,11 +1326,11 @@ export default function App() {
             />
 
             {/* Architectural Category Dock (Thanh dock ngành hàng bo tròn, hover lift, active glow) */}
-            <div className="category-showcase-container bg-white/85 backdrop-blur-xl rounded-3xl p-5 border border-slate-200/80 shadow-sm space-y-3.5">
+            <div className="category-showcase-container bg-white/85 dark:bg-[#13141C]/85 backdrop-blur-xl rounded-3xl p-5 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-3.5">
               <div className="flex justify-between items-center">
                 <div className="space-y-0.5">
-                  <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-orange-600" />
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-orange-600 dark:text-amber-400" />
                     <span>Danh Mục Sàn Nổi Bật</span>
                   </h3>
                   <p className="text-[11px] text-slate-400">Chọn nhanh ngành hàng yêu thích với bộ lọc tức thì</p>
@@ -1337,7 +1338,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowAllCategories(!showAllCategories)}
-                  className="text-xs text-orange-600 font-bold cursor-pointer hover:underline flex items-center gap-1 transition active:scale-95 px-2.5 py-1 rounded-xl hover:bg-orange-50"
+                  className="text-xs text-orange-600 dark:text-amber-400 font-bold cursor-pointer hover:underline flex items-center gap-1 transition active:scale-95 px-2.5 py-1 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-950/40"
                 >
                   <span>{showAllCategories ? 'Thu gọn' : 'Xem tất cả ngành hàng'}</span>
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showAllCategories ? 'rotate-180' : ''}`} />
@@ -1354,8 +1355,8 @@ export default function App() {
                       onClick={() => setSelectedCategory(isSelected ? null : c.id)}
                       className={`category-card-item p-3 sm:p-4 rounded-2xl border text-center transition-all duration-200 flex flex-col items-center justify-center space-y-2.5 group cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-orange-500/5 active:scale-[0.96] select-none ${
                         isSelected
-                          ? 'border-orange-500 bg-orange-50/90 text-orange-950 shadow-md shadow-orange-500/10 font-bold ring-4 ring-orange-400/20'
-                          : `border-slate-200/70 ${borderHover} hover:shadow-md bg-white text-slate-700`
+                          ? 'border-orange-500 bg-orange-50/90 dark:bg-orange-950/40 text-orange-950 dark:text-amber-300 shadow-md shadow-orange-500/10 font-bold ring-4 ring-orange-400/20'
+                          : `border-slate-200/70 dark:border-white/10 ${borderHover} hover:shadow-md bg-white dark:bg-[#13141C] text-slate-700 dark:text-slate-300`
                       }`}
                     >
                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 shadow-sm ${
@@ -1364,7 +1365,7 @@ export default function App() {
                         <Icon className="w-6 h-6 stroke-[1.8] transition-transform duration-200 group-hover:scale-110" />
                       </div>
                       <span className={`text-xs font-semibold line-clamp-1 transition-colors ${
-                        isSelected ? 'text-orange-950 font-bold' : 'group-hover:text-orange-600'
+                        isSelected ? 'text-orange-950 dark:text-amber-300 font-bold' : 'group-hover:text-orange-600 dark:group-hover:text-amber-400'
                       }`}>
                         {c.name}
                       </span>
@@ -1386,7 +1387,7 @@ export default function App() {
               />
 
               {/* Sort & Filter Toolbar */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-3 sm:px-5 shadow-sm space-y-3">
+              <div className="bg-white dark:bg-[#13141C] rounded-2xl border border-slate-200/90 dark:border-white/10 p-3 sm:px-5 shadow-sm space-y-3">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 text-xs">
                   {/* Left: Nút Bộ lọc & Các nút sắp xếp */}
                   <div className="flex flex-wrap items-center gap-2">
@@ -1396,7 +1397,7 @@ export default function App() {
                       className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition shadow-sm ${
                         isFilterOpen || activeFilterCount > 0
                           ? 'bg-orange-600 text-white shadow-orange-200 hover:bg-orange-700'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          : 'bg-slate-100 dark:bg-[#1A1B25] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#252632]'
                       }`}
                       title="Mở bảng bộ lọc sản phẩm căn giữa màn hình"
                     >
@@ -1409,13 +1410,15 @@ export default function App() {
                       )}
                     </button>
 
-                    <div className="h-5 w-px bg-slate-200 hidden sm:block mx-1"></div>
+                    <div className="h-5 w-px bg-slate-200 dark:bg-white/10 hidden sm:block mx-1"></div>
 
-                    <span className="text-slate-500 font-medium hidden sm:inline">Sắp xếp:</span>
+                    <span className="text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">Sắp xếp:</span>
                     <button
                       onClick={() => setSortBy('newest')}
                       className={`px-3 py-1.5 rounded-xl font-semibold transition ${
-                        sortBy === 'newest' ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                        sortBy === 'newest'
+                          ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-amber-400 border border-orange-200 dark:border-orange-500/30'
+                          : 'bg-slate-50 dark:bg-[#1A1B25] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#252632]'
                       }`}
                     >
                       Mới nhất
@@ -1423,7 +1426,9 @@ export default function App() {
                     <button
                       onClick={() => setSortBy('priceAsc')}
                       className={`px-3 py-1.5 rounded-xl font-semibold transition ${
-                        sortBy === 'priceAsc' ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                        sortBy === 'priceAsc'
+                          ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-amber-400 border border-orange-200 dark:border-orange-500/30'
+                          : 'bg-slate-50 dark:bg-[#1A1B25] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#252632]'
                       }`}
                     >
                       Giá thấp đến cao
@@ -1431,7 +1436,9 @@ export default function App() {
                     <button
                       onClick={() => setSortBy('priceDesc')}
                       className={`px-3 py-1.5 rounded-xl font-semibold transition ${
-                        sortBy === 'priceDesc' ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                        sortBy === 'priceDesc'
+                          ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-amber-400 border border-orange-200 dark:border-orange-500/30'
+                          : 'bg-slate-50 dark:bg-[#1A1B25] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#252632]'
                       }`}
                     >
                       Giá cao đến thấp
@@ -1442,7 +1449,7 @@ export default function App() {
                         setCurrentPage(0);
                         void fetchProducts({ page: 0, shuffle: true });
                       }}
-                      className="px-3 py-1.5 rounded-xl font-semibold transition bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200/80 flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      className="px-3 py-1.5 rounded-xl font-semibold transition bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 text-orange-700 dark:text-amber-400 border border-orange-200/80 dark:border-orange-500/30 flex items-center gap-1.5 cursor-pointer active:scale-95"
                       title="Làm mới và khám phá các sản phẩm gợi ý ngẫu nhiên khác nhau"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
@@ -1451,11 +1458,11 @@ export default function App() {
                   </div>
 
                   {/* Right: Số lượng sản phẩm & Nút xóa lọc nhanh */}
-                  <div className="flex items-center gap-3 text-slate-500 font-medium text-[11px] self-end md:self-auto">
+                  <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 font-medium text-[11px] self-end md:self-auto">
                     {activeFilterCount > 0 && (
                       <button
                         onClick={handleResetFilters}
-                        className="text-orange-600 hover:text-orange-700 font-semibold flex items-center gap-1 transition"
+                        className="text-orange-600 dark:text-amber-400 hover:text-orange-700 dark:hover:text-amber-300 font-semibold flex items-center gap-1 transition"
                         title="Xóa tất cả bộ lọc đang chọn"
                       >
                         <RotateCcw className="w-3 h-3" />
@@ -1463,11 +1470,11 @@ export default function App() {
                       </button>
                     )}
                     <span>
-                      Tìm thấy <strong className="text-slate-800 font-bold">{totalElements}</strong> sản phẩm
+                      Tìm thấy <strong className="text-slate-800 dark:text-[#F4F0E8] font-bold">{totalElements}</strong> sản phẩm
                     </span>
                     {totalPages > 1 && (
                       <span className="text-slate-400">
-                        (Trang <strong className="text-orange-600 font-semibold">{currentPage + 1}</strong> / {totalPages})
+                        (Trang <strong className="text-orange-600 dark:text-amber-400 font-semibold">{currentPage + 1}</strong> / {totalPages})
                       </span>
                     )}
                   </div>
@@ -1475,10 +1482,10 @@ export default function App() {
 
                 {/* Hàng nhãn tiêu chí lọc đang hoạt động */}
                 {activeFilterCount > 0 && (
-                  <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
+                  <div className="pt-2 border-t border-slate-100 dark:border-white/10 flex flex-wrap items-center gap-2 text-xs">
                     <span className="text-slate-400 text-[11px]">Đang lọc:</span>
                     {Boolean(selectedCategory) && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 border border-orange-200/80 font-medium text-[11px]">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-amber-300 border border-orange-200/80 dark:border-orange-500/30 font-medium text-[11px]">
                         Danh mục: {categories.find((c) => c.id === selectedCategory)?.name || selectedCategory}
                         <button
                           onClick={() => setSelectedCategory(null)}
@@ -1490,7 +1497,7 @@ export default function App() {
                       </span>
                     )}
                     {priceRange !== 'all' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 border border-orange-200/80 font-medium text-[11px]">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-amber-300 border border-orange-200/80 dark:border-orange-500/30 font-medium text-[11px]">
                         Giá:{' '}
                         {priceRange === 'under1m'
                           ? 'Dưới 1 triệu'
@@ -1509,7 +1516,7 @@ export default function App() {
                       </span>
                     )}
                     {minRating > 0 && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 border border-orange-200/80 font-medium text-[11px]">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-amber-300 border border-orange-200/80 dark:border-orange-500/30 font-medium text-[11px]">
                         Đánh giá: Từ {minRating} sao
                         <button
                           onClick={() => setMinRating(0)}
@@ -1538,19 +1545,19 @@ export default function App() {
                     role="dialog"
                     aria-modal="true"
                     aria-label="Tùy chọn bộ lọc chi tiết"
-                    className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
+                    className="relative w-full max-w-4xl bg-white dark:bg-[#13141C] rounded-3xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col max-h-[90vh]"
                     data-lenis-prevent
                     onWheel={(e) => e.stopPropagation()}
                   >
                     {/* Modal Header */}
-                    <div className="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
-                      <div className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shadow-xs">
-                          <Filter className="w-4 h-4 text-orange-600" />
+                    <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-white/10 flex justify-between items-center bg-slate-50/70 dark:bg-[#1A1B25]/70">
+                      <div className="font-bold text-sm sm:text-base text-slate-900 dark:text-[#F4F0E8] flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-amber-400 flex items-center justify-center shadow-xs">
+                          <Filter className="w-4 h-4 text-orange-600 dark:text-amber-400" />
                         </div>
                         <span>Tùy chọn bộ lọc chi tiết</span>
                         {activeFilterCount > 0 && (
-                          <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-bold">
+                          <span className="px-2.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-amber-300 text-xs font-bold">
                             Đã chọn {activeFilterCount} tiêu chí
                           </span>
                         )}
@@ -1559,7 +1566,7 @@ export default function App() {
                         {activeFilterCount > 0 && (
                           <button
                             onClick={handleResetFilters}
-                            className="text-slate-500 hover:text-orange-600 flex items-center gap-1 transition text-xs font-semibold"
+                            className="text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-amber-400 flex items-center gap-1 transition text-xs font-semibold"
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
                             Xóa tất cả lọc
@@ -1567,7 +1574,7 @@ export default function App() {
                         )}
                         <button
                           onClick={() => setIsFilterOpen(false)}
-                          className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-200/60 transition"
+                          className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-xl hover:bg-slate-200/60 dark:hover:bg-[#252632] transition"
                           title="Đóng bảng lọc"
                         >
                           <X className="w-5 h-5" />
@@ -1579,7 +1586,7 @@ export default function App() {
                     <div data-lenis-prevent className="p-5 sm:p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
                       {/* Cột 1: Theo Danh Mục */}
                       <div className="space-y-3">
-                        <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                        <div className="font-bold text-slate-800 dark:text-[#F4F0E8] uppercase tracking-wider text-[11px] flex items-center gap-1.5 pb-1 border-b border-slate-100 dark:border-white/10">
                           <Store className="w-3.5 h-3.5 text-orange-500" />
                           Theo Danh Mục
                         </div>
@@ -1589,7 +1596,7 @@ export default function App() {
                             className={`w-full text-left px-3 py-2 rounded-xl transition flex justify-between items-center ${
                               selectedCategory === null
                                 ? 'bg-orange-600 text-white font-bold shadow-xs'
-                                : 'hover:bg-slate-100 text-slate-700 bg-slate-50/70'
+                                : 'hover:bg-slate-100 dark:hover:bg-[#252632] text-slate-700 dark:text-slate-300 bg-slate-50/70 dark:bg-[#1A1B25]'
                             }`}
                           >
                             <span>Tất cả danh mục</span>
@@ -1604,7 +1611,7 @@ export default function App() {
                               } ${
                                 selectedCategory === c.id
                                   ? 'bg-orange-600 text-white font-bold shadow-xs'
-                                  : 'hover:bg-slate-100 text-slate-700 bg-slate-50/70'
+                                  : 'hover:bg-slate-100 dark:hover:bg-[#252632] text-slate-700 dark:text-slate-300 bg-slate-50/70 dark:bg-[#1A1B25]'
                               }`}
                             >
                               <span className="truncate">{c.parentId ? `↳ ${c.name}` : c.name}</span>
@@ -1620,7 +1627,7 @@ export default function App() {
 
                       {/* Cột 2: Khoảng Giá */}
                       <div className="space-y-3">
-                        <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                        <div className="font-bold text-slate-800 dark:text-[#F4F0E8] uppercase tracking-wider text-[11px] flex items-center gap-1.5 pb-1 border-b border-slate-100 dark:border-white/10">
                           <Sparkles className="w-3.5 h-3.5 text-orange-500" />
                           Khoảng Giá (VND)
                         </div>
@@ -1640,7 +1647,7 @@ export default function App() {
                                 className={`w-full text-left px-3 py-2.5 rounded-xl transition flex justify-between items-center ${
                                   isSelected
                                     ? 'bg-orange-600 text-white font-bold shadow-xs'
-                                    : 'hover:bg-slate-100 text-slate-700 bg-slate-50/70'
+                                    : 'hover:bg-slate-100 dark:hover:bg-[#252632] text-slate-700 dark:text-slate-300 bg-slate-50/70 dark:bg-[#1A1B25]'
                                 }`}
                               >
                                 <span>{pr.label}</span>
@@ -1653,7 +1660,7 @@ export default function App() {
 
                       {/* Cột 3: Đánh Giá Sao */}
                       <div className="space-y-3">
-                        <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                        <div className="font-bold text-slate-800 dark:text-[#F4F0E8] uppercase tracking-wider text-[11px] flex items-center gap-1.5 pb-1 border-b border-slate-100 dark:border-white/10">
                           <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
                           Đánh Giá Sao
                         </div>
@@ -1672,7 +1679,7 @@ export default function App() {
                                 className={`w-full text-left px-3 py-2.5 rounded-xl transition flex justify-between items-center ${
                                   isSelected
                                     ? 'bg-orange-600 text-white font-bold shadow-xs'
-                                    : 'hover:bg-slate-100 text-slate-700 bg-slate-50/70'
+                                    : 'hover:bg-slate-100 dark:hover:bg-[#252632] text-slate-700 dark:text-slate-300 bg-slate-50/70 dark:bg-[#1A1B25]'
                                 }`}
                               >
                                 <div className="flex items-center gap-2">
@@ -1699,14 +1706,14 @@ export default function App() {
                     </div>
 
                     {/* Modal Footer */}
-                    <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row justify-between items-center gap-3">
-                      <div className="text-xs text-slate-500">
-                        Tìm thấy <strong className="text-slate-800 font-bold">{totalElements}</strong> sản phẩm phù hợp
+                    <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-white/10 bg-slate-50/70 dark:bg-[#1A1B25]/70 flex flex-col sm:flex-row justify-between items-center gap-3">
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        Tìm thấy <strong className="text-slate-800 dark:text-[#F4F0E8] font-bold">{totalElements}</strong> sản phẩm phù hợp
                       </div>
                       <div className="flex items-center gap-3 w-full sm:w-auto">
                         <button
                           onClick={() => setIsFilterOpen(false)}
-                          className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200/60 font-semibold text-xs transition"
+                          className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-[#252632] font-semibold text-xs transition"
                         >
                           Đóng
                         </button>
@@ -1726,27 +1733,27 @@ export default function App() {
               {/* Product Grid - Rộng full width 4 cột trên desktop */}
               {loadingProducts ? (
                 <div className="space-y-4">
-                  <div className="py-6 text-center space-y-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                  <div className="py-6 text-center space-y-2 bg-white dark:bg-[#13141C] rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm">
                     <div className="w-7 h-7 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                    <div className="text-xs text-slate-500 font-medium">Đang tải sản phẩm từ Catalog Service & Redis Cache...</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Đang tải sản phẩm từ Catalog Service & Redis Cache...</div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4">
                     {Array.from({ length: 8 }).map((_, i) => (
-                      <div key={i} className="bg-white rounded-2xl border border-slate-100 p-3 space-y-2.5 animate-pulse">
-                        <div className="aspect-square bg-slate-100 rounded-xl" />
-                        <div className="h-3 bg-slate-100 rounded w-1/3" />
-                        <div className="h-4 bg-slate-100 rounded w-full" />
-                        <div className="h-4 bg-slate-100 rounded w-1/2" />
+                      <div key={i} className="bg-white dark:bg-[#13141C] rounded-2xl border border-slate-100 dark:border-white/10 p-3 space-y-2.5 animate-pulse">
+                        <div className="aspect-square bg-slate-100 dark:bg-white/5 rounded-xl" />
+                        <div className="h-3 bg-slate-100 dark:bg-white/5 rounded w-1/3" />
+                        <div className="h-4 bg-slate-100 dark:bg-white/5 rounded w-full" />
+                        <div className="h-4 bg-slate-100 dark:bg-white/5 rounded w-1/2" />
                       </div>
                     ))}
                   </div>
                 </div>
               ) : filteredProducts.length === 0 ? (
-                <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-3 shadow-sm">
-                  <div className="w-16 h-16 rounded-full bg-orange-50 text-orange-400 mx-auto flex items-center justify-center">
+                <div className="bg-white dark:bg-[#13141C] rounded-3xl p-12 text-center border border-slate-200 dark:border-white/10 space-y-3 shadow-sm">
+                  <div className="w-16 h-16 rounded-full bg-orange-50 dark:bg-orange-950/40 text-orange-400 mx-auto flex items-center justify-center">
                     <Filter className="w-8 h-8" />
                   </div>
-                  <h3 className="font-bold text-sm text-slate-800">Không tìm thấy sản phẩm phù hợp</h3>
+                  <h3 className="font-bold text-sm text-slate-800 dark:text-[#F4F0E8]">Không tìm thấy sản phẩm phù hợp</h3>
                   <p className="text-xs text-slate-400 max-w-sm mx-auto">
                     Vui lòng thử điều chỉnh lại bộ lọc giá, từ khóa tìm kiếm hoặc chọn danh mục khác.
                   </p>
@@ -1759,18 +1766,20 @@ export default function App() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <StaggerReveal triggerKey={`${currentPage}_${selectedCategory}_${sortBy}_${filteredProducts.length}`} selector=".product-card-item" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4">
-                    {filteredProducts.map((p) => (
-                      <div key={p.id} className="product-card-item h-full">
-                        <ProductCard
-                          product={p}
-                          onSelect={handleSelectProduct}
-                          onSelectShop={handleSelectShop}
-                          onRequireAuth={() => handleRequireAuth('storefront')}
-                        />
-                      </div>
-                    ))}
-                  </StaggerReveal>
+                  <SpotlightGrid proximity={260} className="w-full">
+                    <StaggerReveal triggerKey={`${currentPage}_${selectedCategory}_${sortBy}_${filteredProducts.length}`} selector=".product-card-item" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4">
+                      {filteredProducts.map((p) => (
+                        <div key={p.id} className="product-card-item h-full">
+                          <ProductCard
+                            product={p}
+                            onSelect={handleSelectProduct}
+                            onSelectShop={handleSelectShop}
+                            onRequireAuth={() => handleRequireAuth('storefront')}
+                          />
+                        </div>
+                      ))}
+                    </StaggerReveal>
+                  </SpotlightGrid>
 
                   {/* Phân trang cho Storefront Catalog */}
                   <Pagination
@@ -1791,46 +1800,46 @@ export default function App() {
 
       {/* 3. Footer Chuẩn Sàn TMĐT Việt Nam - Ẩn khi đang chat để giao diện cố định chuẩn Messenger */}
       {currentView !== 'chat' && (
-        <footer className="bg-white border-t border-slate-200 mt-16 text-slate-600 text-xs">
+        <footer className="bg-white dark:bg-[#07080D] border-t border-slate-200 dark:border-white/10 mt-16 text-slate-600 dark:text-slate-400 text-xs">
           <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="space-y-3">
-              <div className="text-lg font-black text-slate-900 flex items-center">
+              <div className="text-lg font-black text-slate-900 dark:text-[#F4F0E8] flex items-center">
                 Quick<span className="text-orange-600">Shop</span>
               </div>
-              <p className="text-xs text-slate-500 leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                 Sàn Thương mại Điện tử Đa người bán (Multi-Vendor Marketplace) chuẩn Microservices & Cloud-Native.
               </p>
-              <div className="text-[11px] text-slate-400">
+              <div className="text-[11px] text-slate-400 dark:text-slate-500">
                 © 2026 QuickShop. Phát triển bởi Nhóm 06 (Lê Đức Anh, Triệu Quốc Bình, Nguyễn Văn Kiên).
               </div>
             </div>
 
             <div className="space-y-2">
-              <h4 className="font-bold text-slate-900 uppercase text-xs tracking-wider">Chăm sóc khách hàng</h4>
-              <ul className="space-y-1.5 text-slate-500 text-xs">
-                <li className="hover:text-orange-600 cursor-pointer">Trung tâm trợ giúp</li>
-                <li className="hover:text-orange-600 cursor-pointer">Hướng dẫn mua hàng</li>
-                <li className="hover:text-orange-600 cursor-pointer">Chính sách vận chuyển</li>
-                <li className="hover:text-orange-600 cursor-pointer">Chính sách bảo hành & đổi trả</li>
+              <h4 className="font-bold text-slate-900 dark:text-[#F4F0E8] uppercase text-xs tracking-wider">Chăm sóc khách hàng</h4>
+              <ul className="space-y-1.5 text-slate-500 dark:text-slate-400 text-xs">
+                <li className="hover:text-orange-600 dark:hover:text-amber-400 cursor-pointer">Trung tâm trợ giúp</li>
+                <li className="hover:text-orange-600 dark:hover:text-amber-400 cursor-pointer">Hướng dẫn mua hàng</li>
+                <li className="hover:text-orange-600 dark:hover:text-amber-400 cursor-pointer">Chính sách vận chuyển</li>
+                <li className="hover:text-orange-600 dark:hover:text-amber-400 cursor-pointer">Chính sách bảo hành & đổi trả</li>
               </ul>
             </div>
 
             <div className="space-y-2">
-              <h4 className="font-bold text-slate-900 uppercase text-xs tracking-wider">Về QuickShop</h4>
-              <ul className="space-y-1.5 text-slate-500 text-xs">
-                <li className="hover:text-orange-600 cursor-pointer">Giới thiệu sàn TMĐT</li>
-                <li className="hover:text-orange-600 cursor-pointer">Tuyển dụng đối tác</li>
-                <li className="hover:text-orange-600 cursor-pointer">Điều khoản dịch vụ</li>
-                <li className="hover:text-orange-600 cursor-pointer">Chính sách bảo mật</li>
+              <h4 className="font-bold text-slate-900 dark:text-[#F4F0E8] uppercase text-xs tracking-wider">Về QuickShop</h4>
+              <ul className="space-y-1.5 text-slate-500 dark:text-slate-400 text-xs">
+                <li className="hover:text-orange-600 dark:hover:text-amber-400 cursor-pointer">Giới thiệu sàn TMĐT</li>
+                <li className="hover:text-orange-600 dark:hover:text-amber-400 cursor-pointer">Tuyển dụng đối tác</li>
+                <li className="hover:text-orange-600 dark:hover:text-amber-400 cursor-pointer">Điều khoản dịch vụ</li>
+                <li className="hover:text-orange-600 dark:hover:text-amber-400 cursor-pointer">Chính sách bảo mật</li>
               </ul>
             </div>
 
             <div className="space-y-2">
-              <h4 className="font-bold text-slate-900 uppercase text-xs tracking-wider">Đơn vị Vận chuyển & Thanh toán</h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
+              <h4 className="font-bold text-slate-900 dark:text-[#F4F0E8] uppercase text-xs tracking-wider">Đơn vị Vận chuyển & Thanh toán</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                 Tích hợp đối tác vận chuyển GHN, GHTK, Viettel Post và cổng thanh toán VNPay Sandbox, Thẻ nội địa Napas, Ví điện tử Escrow.
               </p>
-              <div className="pt-2 text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+              <div className="pt-2 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
                 <ShieldCheck className="w-4 h-4" />
                 Đã đăng ký chứng nhận với Bộ Công Thương
               </div>

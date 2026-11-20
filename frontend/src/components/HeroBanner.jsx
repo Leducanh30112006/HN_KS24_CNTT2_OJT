@@ -209,12 +209,12 @@ export default function HeroBanner({
           <button
             type="button"
             onClick={() => onSelectProduct && onSelectProduct(spotlightProduct)}
-            className="bento-reveal-item w-full text-left flex-1 bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm hover:shadow-xl hover:border-orange-400/80 transition-all duration-300 flex flex-col justify-between cursor-pointer group relative overflow-hidden"
+            className="bento-reveal-item w-full text-left flex-1 bg-white dark:bg-[#13141C] rounded-3xl p-5 border border-slate-200/90 dark:border-white/10 shadow-sm hover:shadow-xl hover:border-orange-400/80 dark:hover:border-amber-400/80 transition-all duration-300 flex flex-col justify-between cursor-pointer group relative overflow-hidden"
           >
             <div>
               <div className="flex items-center justify-between gap-2 pb-2.5">
-                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-600 font-bold text-[10px] tracking-wide uppercase">
-                  <Sparkles className="w-3 h-3 text-orange-500" />
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-amber-400 font-bold text-[10px] tracking-wide uppercase">
+                  <Sparkles className="w-3 h-3 text-orange-500 dark:text-amber-400" />
                   <span>Sản Phẩm Nổi Bật Sàn</span>
                 </div>
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-600 text-white shadow-xs">
@@ -223,7 +223,7 @@ export default function HeroBanner({
               </div>
 
               <div className="flex gap-4 items-center pt-1">
-                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100/90 flex-shrink-0 border border-slate-100">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100/90 dark:bg-slate-900 flex-shrink-0 border border-slate-100 dark:border-white/5">
                   <img
                     src={spotlightProduct.mainImage}
                     alt={spotlightProduct.name}
@@ -233,17 +233,17 @@ export default function HeroBanner({
                 </div>
 
                 <div className="space-y-1.5 flex-1 min-w-0">
-                  <div className="text-[11px] font-semibold text-orange-600 truncate">
+                  <div className="text-[11px] font-semibold text-orange-600 dark:text-amber-400 truncate">
                     {spotlightProduct.categoryName || 'Flagship Chính Hãng'}
                   </div>
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-2 leading-snug group-hover:text-orange-600 transition">
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-[#F4F0E8] line-clamp-2 leading-snug group-hover:text-orange-600 dark:group-hover:text-amber-400 transition">
                     {spotlightProduct.name}
                   </h3>
                   <div className="flex items-baseline gap-2 pt-0.5">
-                    <span className="text-base sm:text-lg font-black font-mono text-orange-600">
+                    <span className="text-base sm:text-lg font-black font-mono text-orange-600 dark:text-orange-500">
                       {formatVND(spotlightProduct.minPrice || 0)}
                     </span>
-                    <span className="text-[11px] text-slate-400 font-mono line-through">
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono line-through">
                       {formatVND((spotlightProduct.minPrice || 0) * 1.28)}
                     </span>
                   </div>
@@ -251,12 +251,12 @@ export default function HeroBanner({
               </div>
             </div>
 
-            <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
-              <span className="text-slate-500 flex items-center gap-1">
+            <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px]">
+              <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
                 <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                <strong className="text-slate-800">5.0</strong> (1.2k+ đánh giá)
+                <strong className="text-slate-800 dark:text-slate-200">5.0</strong> (1.2k+ đánh giá)
               </span>
-              <span className="text-orange-600 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+              <span className="text-orange-600 dark:text-amber-400 font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
                 Xem chi tiết →
               </span>
             </div>
@@ -333,44 +333,44 @@ export default function HeroBanner({
       {/* ============================================================== */}
       {/* 4 GOLD TRUST COMMITMENTS BAR (BẢO CHỨNG VÀNG QUICKSHOP)         */}
       {/* ============================================================== */}
-      <div className="bento-reveal-item grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm">
+      <div className="bento-reveal-item grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white dark:bg-[#13141C] border border-slate-200/90 dark:border-white/10 rounded-2xl p-4 shadow-sm">
         <div className="flex items-center space-x-3 p-1">
-          <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
             <Award className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-bold text-slate-900">100% Chính Hãng</div>
-            <div className="text-[11px] text-slate-500">Hoàn tiền 200% nếu giả</div>
+            <div className="text-xs font-bold text-slate-900 dark:text-[#F4F0E8]">100% Chính Hãng</div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400">Hoàn tiền 200% nếu giả</div>
           </div>
         </div>
 
         <div className="flex items-center space-x-3 p-1">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
             <Truck className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-bold text-slate-900">Giao Nhanh 2H</div>
-            <div className="text-[11px] text-slate-500">FreeShip đơn từ 99K</div>
+            <div className="text-xs font-bold text-slate-900 dark:text-[#F4F0E8]">Giao Nhanh 2H</div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400">FreeShip đơn từ 99K</div>
           </div>
         </div>
 
         <div className="flex items-center space-x-3 p-1">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
             <RotateCcw className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-bold text-slate-900">Đổi Trả 7 Ngày</div>
-            <div className="text-[11px] text-slate-500">Miễn phí trả hàng tận nhà</div>
+            <div className="text-xs font-bold text-slate-900 dark:text-[#F4F0E8]">Đổi Trả 7 Ngày</div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400">Miễn phí trả hàng tận nhà</div>
           </div>
         </div>
 
         <div className="flex items-center space-x-3 p-1">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-bold text-slate-900">Bảo Vệ Người Mua</div>
-            <div className="text-[11px] text-slate-500">Thanh toán Escrow an toàn</div>
+            <div className="text-xs font-bold text-slate-900 dark:text-[#F4F0E8]">Bảo Vệ Người Mua</div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400">Thanh toán Escrow an toàn</div>
           </div>
         </div>
       </div>

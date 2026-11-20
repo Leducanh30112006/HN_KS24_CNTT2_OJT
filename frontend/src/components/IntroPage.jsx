@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { gsap, ScrollTrigger, useGSAP } from '../lib/gsap';
 import { AnimatedNumber, StaggerReveal } from './motion/MotionPrimitives';
+import ThemeToggle from './ui/ThemeToggle';
 
 /**
  * Check if WebGL context is available in the current browser/GPU environment
@@ -716,6 +717,10 @@ export default function IntroPage({
             </button>
           );
         })}
+
+        <div className="pt-1.5 mt-1 border-t border-slate-800/80 flex items-center justify-center">
+          <ThemeToggle size="sm" />
+        </div>
       </nav>
 
       {/* =========================================================================

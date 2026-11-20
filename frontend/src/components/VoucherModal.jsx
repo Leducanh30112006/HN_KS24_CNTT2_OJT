@@ -223,22 +223,22 @@ export default function VoucherModal({
 
   return (
     <AnimatedPresence show={isOpen} mode="modal" dataLenisPrevent={true} onClose={onClose}>
-      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden">
+      <div className="w-full max-w-2xl bg-white dark:bg-[#13141C] rounded-3xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col max-h-[90vh] overflow-hidden text-slate-800 dark:text-[#F4F0E8]">
         
         {/* 1. Modal Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-white/10 flex items-center justify-between bg-slate-50/70 dark:bg-[#1A1B25]/70">
           <div className="flex items-center space-x-2.5">
             <div className="w-9 h-9 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center shadow-inner">
               <Ticket className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-[#F4F0E8] flex items-center gap-2">
                 <span>Chọn QuickShop Voucher</span>
                 <span className="text-[10px] bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
                   Chuẩn Shopee
                 </span>
               </h2>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Áp dụng đồng thời mã Miễn Phí Vận Chuyển, Voucher Sàn & Voucher của từng Shop
               </p>
             </div>
@@ -253,7 +253,7 @@ export default function VoucherModal({
         </div>
 
         {/* 2. Voucher Code Input Bar */}
-        <div className="p-4 bg-slate-50 border-b border-slate-100">
+        <div className="p-4 bg-slate-50 dark:bg-[#1A1B25] border-b border-slate-100 dark:border-white/10">
           <form onSubmit={handleApplyInputCode} className="flex gap-2">
             <div className="relative flex-1">
               <input
@@ -261,14 +261,14 @@ export default function VoucherModal({
                 value={inputCode}
                 onChange={(e) => setInputCode(e.target.value)}
                 placeholder="Nhập mã voucher QuickShop hoặc mã Shop..."
-                className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs uppercase font-mono font-bold focus:outline-none focus:border-orange-500 shadow-inner"
+                className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-[#13141C] border border-slate-300 dark:border-white/10 rounded-xl text-xs uppercase font-mono font-bold text-slate-800 dark:text-[#F4F0E8] focus:outline-none focus:border-orange-500 shadow-inner"
               />
               <Tag className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
             </div>
             <button
               type="submit"
               disabled={!inputCode.trim()}
-              className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition active:scale-95 shadow-sm"
+              className="px-5 py-2.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition active:scale-95 shadow-sm"
             >
               Áp Dụng
             </button>
@@ -281,13 +281,13 @@ export default function VoucherModal({
         </div>
 
         {/* 3. Category Filter Tabs */}
-        <div className="flex border-b border-slate-200 bg-white px-4 pt-2 gap-2 overflow-x-auto text-xs font-bold scrollbar-none">
+        <div className="flex border-b border-slate-200 dark:border-white/10 bg-white dark:bg-[#13141C] px-4 pt-2 gap-2 overflow-x-auto text-xs font-bold scrollbar-none">
           <button
             onClick={() => setActiveTab('all')}
             className={`pb-2.5 px-3 border-b-2 whitespace-nowrap transition ${
               activeTab === 'all'
                 ? 'border-orange-600 text-orange-600 font-black'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             Tất cả Voucher
@@ -297,7 +297,7 @@ export default function VoucherModal({
             className={`pb-2.5 px-3 border-b-2 whitespace-nowrap transition flex items-center gap-1.5 ${
               activeTab === 'shipping'
                 ? 'border-orange-600 text-orange-600 font-black'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <Truck className="w-3.5 h-3.5" />
@@ -309,7 +309,7 @@ export default function VoucherModal({
             className={`pb-2.5 px-3 border-b-2 whitespace-nowrap transition flex items-center gap-1.5 ${
               activeTab === 'platform'
                 ? 'border-orange-600 text-orange-600 font-black'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -321,7 +321,7 @@ export default function VoucherModal({
             className={`pb-2.5 px-3 border-b-2 whitespace-nowrap transition flex items-center gap-1.5 ${
               activeTab === 'shop'
                 ? 'border-orange-600 text-orange-600 font-black'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <Store className="w-3.5 h-3.5" />
@@ -333,13 +333,13 @@ export default function VoucherModal({
         </div>
 
         {/* 4. Voucher List Content */}
-        <div data-lenis-prevent className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6 bg-slate-50/60">
+        <div data-lenis-prevent className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6 bg-slate-50/60 dark:bg-[#07080D]/60">
           
           {/* Section 1: Shipping Vouchers */}
           {(activeTab === 'all' || activeTab === 'shipping') && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-black text-slate-900 uppercase tracking-wide">
+                <div className="flex items-center gap-2 text-xs font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide">
                   <Truck className="w-4 h-4 text-emerald-600" />
                   <span>Mã Miễn Phí Vận Chuyển</span>
                   <span className="text-[10px] text-slate-400 font-normal lowercase">(Chọn tối đa 1 mã)</span>
@@ -362,7 +362,7 @@ export default function VoucherModal({
                           ? 'opacity-50 bg-slate-100 border-slate-200 cursor-not-allowed'
                           : isSelected
                             ? 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/20 cursor-pointer'
-                            : 'border-slate-200 hover:border-emerald-300 bg-white cursor-pointer'
+                            : 'border-slate-200 dark:border-white/10 hover:border-emerald-300 bg-white dark:bg-[#13141C] cursor-pointer'
                       }`}
                     >
                       {/* Left Ticket Stub */}
@@ -374,8 +374,8 @@ export default function VoucherModal({
 
                       {/* Middle Details */}
                       <div className="flex-1 p-3.5 space-y-1 min-w-0">
-                        <div className="text-xs sm:text-sm font-black text-slate-900">{v.title}</div>
-                        <div className="text-[11px] text-slate-600 font-medium">{v.minOrderText}</div>
+                        <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-[#F4F0E8]">{v.title}</div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">{v.minOrderText}</div>
                         <div className="text-[10px] text-slate-400 flex items-center gap-2">
                           <span>HSD: {v.exp}</span>
                           <span>• Đã dùng {v.usedPercent}%</span>
@@ -393,7 +393,7 @@ export default function VoucherModal({
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
                           isSelected
                             ? 'border-emerald-600 bg-emerald-600 text-white'
-                            : 'border-slate-300 bg-white'
+                            : 'border-slate-300 dark:border-white/20 bg-white dark:bg-[#1A1B25]'
                         }`}>
                           {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                         </div>
@@ -409,7 +409,7 @@ export default function VoucherModal({
           {(activeTab === 'all' || activeTab === 'platform') && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-black text-slate-900 uppercase tracking-wide">
+                <div className="flex items-center gap-2 text-xs font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide">
                   <Sparkles className="w-4 h-4 text-orange-600" />
                   <span>Voucher Giảm Giá Của Sàn</span>
                   <span className="text-[10px] text-slate-400 font-normal lowercase">(Chọn tối đa 1 mã)</span>
@@ -432,7 +432,7 @@ export default function VoucherModal({
                           ? 'opacity-50 bg-slate-100 border-slate-200 cursor-not-allowed'
                           : isSelected
                             ? 'border-orange-500 bg-orange-50/40 ring-2 ring-orange-500/20 cursor-pointer'
-                            : 'border-slate-200 hover:border-orange-300 bg-white cursor-pointer'
+                            : 'border-slate-200 dark:border-white/10 hover:border-orange-300 bg-white dark:bg-[#13141C] cursor-pointer'
                       }`}
                     >
                       {/* Left Ticket Stub */}
@@ -444,8 +444,8 @@ export default function VoucherModal({
 
                       {/* Middle Details */}
                       <div className="flex-1 p-3.5 space-y-1 min-w-0">
-                        <div className="text-xs sm:text-sm font-black text-slate-900">{v.title}</div>
-                        <div className="text-[11px] text-slate-600 font-medium">{v.minOrderText}</div>
+                        <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-[#F4F0E8]">{v.title}</div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">{v.minOrderText}</div>
                         <div className="text-[10px] text-slate-400 flex items-center gap-2">
                           <span>HSD: {v.exp}</span>
                           <span>• Đã dùng {v.usedPercent}%</span>
@@ -463,7 +463,7 @@ export default function VoucherModal({
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
                           isSelected
                             ? 'border-orange-600 bg-orange-600 text-white'
-                            : 'border-slate-300 bg-white'
+                            : 'border-slate-300 dark:border-white/20 bg-white dark:bg-[#1A1B25]'
                         }`}>
                           {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                         </div>
@@ -479,7 +479,7 @@ export default function VoucherModal({
           {(activeTab === 'all' || activeTab === 'shop') && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-black text-slate-900 uppercase tracking-wide">
+                <div className="flex items-center gap-2 text-xs font-black text-slate-900 dark:text-[#F4F0E8] uppercase tracking-wide">
                   <Store className="w-4 h-4 text-amber-600" />
                   <span>Voucher Của Nhà Bán Hàng (Shop)</span>
                   <span className="text-[10px] text-slate-400 font-normal lowercase">(Áp dụng riêng cho từng Shop)</span>
@@ -502,7 +502,7 @@ export default function VoucherModal({
                           ? 'opacity-50 bg-slate-100 border-slate-200 cursor-not-allowed'
                           : isSelected
                             ? 'border-amber-500 bg-amber-50/50 ring-2 ring-amber-500/20 cursor-pointer'
-                            : 'border-slate-200 hover:border-amber-300 bg-white cursor-pointer'
+                            : 'border-slate-200 dark:border-white/10 hover:border-amber-300 bg-white dark:bg-[#13141C] cursor-pointer'
                       }`}
                     >
                       {/* Left Ticket Stub */}
@@ -517,8 +517,8 @@ export default function VoucherModal({
                         <div className="text-xs font-bold text-amber-800 flex items-center gap-1">
                           <span>{v.shopName}</span>
                         </div>
-                        <div className="text-xs sm:text-sm font-black text-slate-900">{v.title}</div>
-                        <div className="text-[11px] text-slate-600 font-medium">{v.minOrderText}</div>
+                        <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-[#F4F0E8]">{v.title}</div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">{v.minOrderText}</div>
                         <div className="text-[10px] text-slate-400">
                           HSD: {v.exp}
                         </div>
@@ -529,7 +529,7 @@ export default function VoucherModal({
                         <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition ${
                           isSelected
                             ? 'border-amber-600 bg-amber-600 text-white'
-                            : 'border-slate-300 bg-white'
+                            : 'border-slate-300 dark:border-white/20 bg-white dark:bg-[#1A1B25]'
                         }`}>
                           {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                         </div>
@@ -544,9 +544,9 @@ export default function VoucherModal({
         </div>
 
         {/* 5. Modal Sticky Bottom Action Bar */}
-        <div className="p-4 sm:p-5 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+        <div className="p-4 sm:p-5 bg-white dark:bg-[#13141C] border-t border-slate-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
           <div className="space-y-0.5 text-center sm:text-left">
-            <div className="text-xs text-slate-500 font-medium">
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
               Ước tính tiết kiệm được: <strong className="text-sm font-black text-rose-600"><AnimatedNumber value={totalPotentialSavings} formatter={formatVND} /></strong>
             </div>
             <div className="flex flex-wrap gap-1 text-[11px] text-slate-600">

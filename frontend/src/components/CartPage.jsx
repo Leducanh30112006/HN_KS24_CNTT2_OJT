@@ -147,11 +147,11 @@ export default function CartPage({
   if (items.length === 0) {
     return (
       <div className="max-w-4xl mx-auto py-12 px-4 animate-in fade-in duration-300">
-        <div className="bg-white rounded-3xl border border-slate-200/90 p-10 sm:p-16 text-center space-y-4 shadow-sm">
+        <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-10 sm:p-16 text-center space-y-4 shadow-sm text-slate-800 dark:text-[#F4F0E8]">
           <div className="w-24 h-24 rounded-3xl bg-orange-50 text-orange-400 mx-auto flex items-center justify-center shadow-inner">
             <ShoppingBag className="w-12 h-12" />
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-800">Giỏ hàng của bạn còn trống</h2>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-[#F4F0E8]">Giỏ hàng của bạn còn trống</h2>
           <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
             Bạn chưa có sản phẩm nào trong giỏ hàng. Hãy khám phá hàng ngàn deal sốc công nghệ, thời trang và gia dụng ưu đãi hôm nay nhé!
           </p>
@@ -172,10 +172,10 @@ export default function CartPage({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* 1. Header Navigation & Breadcrumbs */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-slate-800 dark:text-[#F4F0E8]">
         <button
           onClick={onBack}
-          className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-700 transition flex items-center gap-2 text-xs font-bold active:scale-95 shadow-sm"
+          className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-[#1A1B25] hover:bg-orange-50 dark:hover:bg-orange-950/40 hover:text-orange-600 dark:hover:text-amber-400 text-slate-700 dark:text-slate-300 transition flex items-center gap-2 text-xs font-bold active:scale-95 shadow-sm"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Tiếp tục Mua sắm</span>
@@ -222,7 +222,7 @@ export default function CartPage({
       )}
 
       {/* 3. Table Header Bar (Chuẩn Shopee) */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-sm hidden md:grid grid-cols-12 gap-4 text-xs font-bold text-slate-600 items-center">
+      <div className="bg-white dark:bg-[#13141C] rounded-2xl border border-slate-200/90 dark:border-white/10 p-4 shadow-sm hidden md:grid grid-cols-12 gap-4 text-xs font-bold text-slate-600 dark:text-slate-300 items-center">
         <div className="col-span-5 flex items-center space-x-3">
           <input
             type="checkbox"
@@ -230,7 +230,7 @@ export default function CartPage({
             onChange={handleToggleAll}
             className="w-4 h-4 accent-orange-600 rounded cursor-pointer"
           />
-          <span className="text-slate-800">Sản Phẩm ({items.length})</span>
+          <span className="text-slate-800 dark:text-[#F4F0E8]">Sản Phẩm ({items.length})</span>
         </div>
         <div className="col-span-2 text-center">Đơn Giá</div>
         <div className="col-span-2 text-center">Số Lượng</div>
@@ -245,9 +245,9 @@ export default function CartPage({
           const isShopSelected = shopVariantIds.every((id) => selectedVariantIds.has(id));
 
           return (
-            <div key={group.shopId} className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+            <div key={group.shopId} className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 shadow-sm overflow-hidden text-slate-800 dark:text-[#F4F0E8]">
               {/* Shop Header */}
-              <div className="bg-slate-50/80 p-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="bg-slate-50/80 dark:bg-[#1A1B25]/80 p-4 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <input
                     type="checkbox"
@@ -256,7 +256,7 @@ export default function CartPage({
                     className="w-4 h-4 accent-orange-600 rounded cursor-pointer"
                   />
                   <Store className="w-4 h-4 text-orange-600" />
-                  <span className="font-bold text-xs sm:text-sm text-slate-900">{fixMojibakeText(group.shopName)}</span>
+                  <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-[#F4F0E8]">{fixMojibakeText(group.shopName)}</span>
                   <span className="bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
                     Mall
                   </span>
@@ -280,7 +280,7 @@ export default function CartPage({
               </div>
 
               {/* Items in this Shop */}
-              <div className="divide-y divide-slate-100 p-4">
+              <div className="divide-y divide-slate-100 dark:divide-white/10 p-4">
                 {group.items.map((item) => {
                   const isChecked = selectedVariantIds.has(item.variantId);
 
@@ -288,7 +288,7 @@ export default function CartPage({
                     <div 
                       key={item.variantId} 
                       className={`py-3.5 grid grid-cols-1 md:grid-cols-12 gap-4 items-center transition-colors rounded-xl px-2 ${
-                        isChecked ? 'bg-orange-50/20' : 'hover:bg-slate-50/50'
+                        isChecked ? 'bg-orange-50/20' : 'hover:bg-slate-50/50 dark:hover:bg-[#1A1B25]/50'
                       }`}
                     >
                       {/* Product Details & Checkbox (5 cols) */}
@@ -308,19 +308,19 @@ export default function CartPage({
                         <div className="space-y-1 min-w-0 flex-1">
                           <h4 
                             onClick={() => onSelectProduct && onSelectProduct({ id: item.productId, name: fixMojibakeText(item.productName) })}
-                            className="text-xs sm:text-sm font-bold text-slate-800 line-clamp-2 hover:text-orange-600 transition cursor-pointer"
+                            className="text-xs sm:text-sm font-bold text-slate-800 dark:text-[#F4F0E8] line-clamp-2 hover:text-orange-600 dark:hover:text-amber-400 transition cursor-pointer"
                             title={fixMojibakeText(item.productName)}
                           >
                             {fixMojibakeText(item.productName)}
                           </h4>
                           <div className="text-[11px] text-slate-500 flex flex-wrap gap-2">
                             {item.color && (
-                              <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium text-slate-700">
+                              <span className="bg-slate-100 dark:bg-[#252632] px-2 py-0.5 rounded-md font-medium text-slate-700 dark:text-slate-300">
                                 Phân loại: {fixMojibakeText(item.color)}
                               </span>
                             )}
                             {item.size && (
-                              <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium text-slate-700">
+                              <span className="bg-slate-100 dark:bg-[#252632] px-2 py-0.5 rounded-md font-medium text-slate-700 dark:text-slate-300">
                                 {fixMojibakeText(item.size)}
                               </span>
                             )}
@@ -343,26 +343,26 @@ export default function CartPage({
                       </div>
 
                       {/* Unit Price (2 cols) */}
-                      <div className="col-span-2 text-center text-xs font-semibold text-slate-600 hidden md:block">
+                      <div className="col-span-2 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 hidden md:block">
                         {formatVND(item.price)}
                       </div>
 
                       {/* Quantity Controls (2 cols) */}
                       <div className="col-span-2 flex justify-start md:justify-center items-center">
-                        <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden shadow-inner bg-slate-50">
+                        <div className="flex items-center border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden shadow-inner bg-slate-50 dark:bg-[#1A1B25]">
                           <button
                             onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
-                            className="px-3 py-1 bg-white hover:bg-slate-100 font-bold text-slate-700 transition active:scale-95"
+                            className="px-3 py-1 bg-white dark:bg-[#1A1B25] hover:bg-slate-100 dark:hover:bg-[#252632] font-bold text-slate-700 dark:text-slate-300 transition active:scale-95"
                             title="Giảm số lượng"
                           >
                             -
                           </button>
-                          <span className="px-3.5 py-1 text-xs font-bold text-slate-900 bg-white min-w-[36px] text-center">
+                          <span className="px-3.5 py-1 text-xs font-bold text-slate-900 dark:text-[#F4F0E8] bg-white dark:bg-[#1A1B25] min-w-[36px] text-center">
                             {item.quantity}
                           </span>
                           <button
                             onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
-                            className="px-3 py-1 bg-white hover:bg-slate-100 font-bold text-slate-700 transition active:scale-95"
+                            className="px-3 py-1 bg-white dark:bg-[#1A1B25] hover:bg-slate-100 dark:hover:bg-[#252632] font-bold text-slate-700 dark:text-slate-300 transition active:scale-95"
                             title="Tăng số lượng"
                           >
                             +
@@ -397,10 +397,10 @@ export default function CartPage({
       </div>
 
       {/* 5. Sticky Bottom Action Bar (Chuẩn Shopee - Tự động dừng phía trên Footer, không che Footer) */}
-      <div className="sticky bottom-4 z-30 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-3xl shadow-xl py-3.5 sm:py-4 px-4 sm:px-8 mt-6">
+      <div className="sticky bottom-4 z-30 bg-white/95 dark:bg-[#13141C]/95 backdrop-blur-md border border-slate-200/90 dark:border-white/10 rounded-3xl shadow-xl py-3.5 sm:py-4 px-4 sm:px-8 mt-6 text-slate-800 dark:text-[#F4F0E8]">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-6">
           {/* Left: Select all & Bulk delete */}
-          <div className="flex items-center gap-4 text-xs font-bold text-slate-700 w-full sm:w-auto justify-between sm:justify-start">
+          <div className="flex items-center gap-4 text-xs font-bold text-slate-700 dark:text-slate-300 w-full sm:w-auto justify-between sm:justify-start">
             <label className="flex items-center space-x-2 cursor-pointer select-none">
               <input
                 type="checkbox"

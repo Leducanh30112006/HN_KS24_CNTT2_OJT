@@ -77,7 +77,7 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
     <div
       ref={cardRef}
       style={{ transformStyle: 'preserve-3d', perspective: 1000 }}
-      className="product-card-item bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-xl hover:border-orange-400/80 transition-shadow transition-colors duration-300 ease-out cursor-pointer flex flex-col justify-between group relative select-none"
+      className="product-card-item bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/80 dark:border-white/10 overflow-hidden shadow-xs hover:shadow-xl hover:border-orange-400/80 dark:hover:border-amber-400/80 transition-shadow transition-colors duration-300 ease-out cursor-pointer flex flex-col justify-between group relative select-none"
     >
       {/* Specular Glare Sheen Overlay */}
       <div
@@ -96,7 +96,7 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
       />
       <div>
         {/* Product Image & Badges: Clean Aspect-[4/5] Rounded Framing */}
-        <div className="relative aspect-[4/5] overflow-hidden bg-slate-100/80 m-2 sm:m-2.5 rounded-2xl pointer-events-none">
+        <div className="relative aspect-[4/5] overflow-hidden bg-slate-100/80 dark:bg-slate-900 m-2 sm:m-2.5 rounded-2xl pointer-events-none">
           <img
             src={product.mainImage || FALLBACK_PRODUCT_IMAGE}
             alt={product.name}
@@ -161,7 +161,7 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
           </div>
 
           <h3 
-            className="text-xs sm:text-sm font-semibold text-slate-800 line-clamp-2 leading-relaxed group-hover:text-orange-600 transition-colors" 
+            className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-[#F4F0E8] line-clamp-2 leading-relaxed group-hover:text-orange-600 dark:group-hover:text-amber-400 transition-colors" 
             title={fixMojibakeText(product.name)}
           >
             {fixMojibakeText(product.name)}
@@ -170,11 +170,11 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
           {/* Bold JetBrains Mono Price Section */}
           <div className="pt-1">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-base sm:text-lg font-black font-mono text-orange-600 tracking-tight">
+              <span className="text-base sm:text-lg font-black font-mono text-orange-600 dark:text-orange-500 tracking-tight">
                 {formatVND(product.minPrice || 0)}
               </span>
               {originalPrice > 0 && (
-                <span className="text-[11px] text-slate-400 font-mono line-through">
+                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono line-through">
                   {formatVND(originalPrice)}
                 </span>
               )}
@@ -184,14 +184,14 @@ export default function ProductCard({ product, onSelect, onRequireAuth, onSelect
       </div>
 
       {/* Footer: Rating, Sold Count, Location */}
-      <div className="px-3.5 py-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+      <div className="px-3.5 py-2.5 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-1">
           <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-          <span className="font-bold text-slate-800">{rating}</span>
-          <span className="text-slate-300">|</span>
+          <span className="font-bold text-slate-800 dark:text-slate-200">{rating}</span>
+          <span className="text-slate-300 dark:text-slate-600">|</span>
           <span>Đã bán {soldCount}</span>
         </div>
-        <div className="flex items-center gap-0.5 text-slate-400 text-[10px]">
+        <div className="flex items-center gap-0.5 text-slate-400 dark:text-slate-500 text-[10px]">
           <MapPin className="w-3 h-3" />
           <span>Hà Nội</span>
         </div>

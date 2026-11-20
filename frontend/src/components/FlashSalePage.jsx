@@ -168,7 +168,7 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
       </div>
 
       {/* 3. Time Slots Selector */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-2 shadow-sm">
+      <div className="bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 p-2 shadow-sm">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {timeSlots.map((slot) => {
             const isSelected = selectedSlot === slot.id;
@@ -179,10 +179,10 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
                 className={`py-3 px-4 rounded-2xl transition flex flex-col items-center justify-center text-center ${
                   isSelected
                     ? 'bg-gradient-to-r from-orange-500 to-rose-600 text-white shadow-md font-bold'
-                    : 'hover:bg-slate-50 text-slate-700'
+                    : 'hover:bg-slate-50 dark:hover:bg-[#1A1B25] text-slate-700 dark:text-slate-300'
                 }`}
               >
-                <div className={`text-base sm:text-lg font-black ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                <div className={`text-base sm:text-lg font-black ${isSelected ? 'text-white' : 'text-slate-900 dark:text-[#F4F0E8]'}`}>
                   {slot.time}
                 </div>
                 <div className={`text-[11px] font-semibold mt-0.5 ${isSelected ? 'text-amber-100' : 'text-slate-400'}`}>
@@ -203,7 +203,7 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
             className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition shadow-sm ${
               selectedCategoryTab === cat.id
                 ? 'bg-orange-600 text-white shadow-orange-500/20'
-                : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                : 'bg-white dark:bg-[#13141C] hover:bg-slate-100 dark:hover:bg-[#1A1B25] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10'
             }`}
           >
             {cat.label}
@@ -213,7 +213,7 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
 
       {/* 5. Flash Sale Products Grid */}
       {filteredDeals.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/90 space-y-3">
+        <div className="bg-white dark:bg-[#13141C] rounded-3xl p-12 text-center border border-slate-200/90 dark:border-white/10 space-y-3 text-slate-800 dark:text-[#F4F0E8]">
           <div className="w-16 h-16 rounded-full bg-orange-50 text-orange-400 mx-auto flex items-center justify-center">
             <Zap className="w-8 h-8" />
           </div>
@@ -232,7 +232,7 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
             return (
               <div
                 key={deal.id}
-                className="flash-sale-grid-card relative bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-xl hover:border-orange-400 transition-shadow duration-300 cursor-pointer flex flex-col justify-between group"
+                className="flash-sale-grid-card relative bg-white dark:bg-[#13141C] rounded-3xl border border-slate-200/90 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-xl hover:border-orange-400 dark:hover:border-amber-500/50 transition-shadow duration-300 cursor-pointer flex flex-col justify-between group text-slate-800 dark:text-[#F4F0E8]"
               >
                 <button
                   type="button"
@@ -267,7 +267,7 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
                       {fixMojibakeText(deal.shopName) || 'TechWorld Official Store'}
                     </div>
 
-                    <h3 className="text-xs font-semibold text-slate-800 line-clamp-2 leading-relaxed group-hover/card:text-orange-600 transition" title={fixMojibakeText(deal.name)}>
+                    <h3 className="text-xs font-semibold text-slate-800 dark:text-[#F4F0E8] line-clamp-2 leading-relaxed group-hover/card:text-orange-600 transition" title={fixMojibakeText(deal.name)}>
                       {fixMojibakeText(deal.name)}
                     </h3>
 
@@ -283,7 +283,7 @@ export default function FlashSalePage({ products = [], onBack, onSelectProduct }
 
                     {/* Progress Bar (Đã bán) */}
                     <div className="pt-1">
-                      <div className="w-full bg-orange-100 rounded-full h-4 overflow-hidden relative shadow-inner">
+                      <div className="w-full bg-orange-100 dark:bg-white/10 rounded-full h-4 overflow-hidden relative shadow-inner">
                         <div
                           className="bg-gradient-to-r from-orange-500 to-rose-600 h-full rounded-full transition-all duration-500"
                           style={{ width: `${deal.soldPercent}%` }}

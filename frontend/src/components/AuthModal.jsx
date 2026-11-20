@@ -394,7 +394,7 @@ export default function AuthModal({
   return (
     <>
       <AnimatedPresence show={isOpen} mode="modal" dataLenisPrevent={true} onClose={onClose}>
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+      <div className="w-full max-w-md bg-white dark:bg-[#13141C] rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-white/10 text-slate-800 dark:text-[#F4F0E8]">
         {/* Header Modal */}
         <div className="p-5 bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 text-white flex justify-between items-center">
           <div className="flex items-center space-x-2.5">
@@ -414,14 +414,14 @@ export default function AuthModal({
         </div>
 
         {/* Tab Toggle: Đăng nhập / Đăng ký */}
-        <div className="grid grid-cols-2 border-b border-slate-100 text-center text-xs font-bold">
+        <div className="grid grid-cols-2 border-b border-slate-100 dark:border-white/10 text-center text-xs font-bold">
           <button
             type="button"
             onClick={() => handleTabSwitch('login')}
             className={`py-3 transition flex items-center justify-center gap-1.5 ${
               activeTab === 'login'
                 ? 'text-orange-600 border-b-2 border-orange-600 bg-orange-50/40'
-                : 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <User className="w-3.5 h-3.5" />
@@ -434,7 +434,7 @@ export default function AuthModal({
             className={`py-3 transition flex items-center justify-center gap-1.5 ${
               activeTab === 'register'
                 ? 'text-orange-600 border-b-2 border-orange-600 bg-orange-50/40'
-                : 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <KeyRound className="w-3.5 h-3.5" />
@@ -447,7 +447,7 @@ export default function AuthModal({
           {activeTab === 'login' && (
             <form onSubmit={handleLoginSubmit} className="space-y-3.5" noValidate>
               <div>
-                <label htmlFor="auth-modal-login-username" className="font-bold text-slate-700 block mb-1">
+                <label htmlFor="auth-modal-login-username" className="font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300 block mb-1">
                   Tên đăng nhập hoặc Email: <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -464,7 +464,7 @@ export default function AuthModal({
                     className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
                       fieldErrors.usernameOrEmail
                         ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
-                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                        : 'bg-slate-50 dark:bg-[#1A1B25] border border-slate-300 dark:border-white/10 text-slate-900 dark:text-[#F4F0E8] focus:border-orange-500 focus:bg-white dark:focus:bg-[#252632] focus:ring-4 focus:ring-orange-500/10'
                     }`}
                   />
                   <User className={`w-4 h-4 absolute left-3.5 top-3 ${fieldErrors.usernameOrEmail ? 'text-red-500' : 'text-slate-400'}`} />
@@ -479,7 +479,7 @@ export default function AuthModal({
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label htmlFor="auth-modal-login-password" className="font-bold text-slate-700">
+                  <label htmlFor="auth-modal-login-password" className="font-bold text-slate-700 dark:text-slate-300">
                     Mật khẩu: <span className="text-red-500">*</span>
                   </label>
                   <button
@@ -507,7 +507,7 @@ export default function AuthModal({
                     className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
                       fieldErrors.password
                         ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
-                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                        : 'bg-slate-50 dark:bg-[#1A1B25] border border-slate-300 dark:border-white/10 text-slate-900 dark:text-[#F4F0E8] focus:border-orange-500 focus:bg-white dark:focus:bg-[#252632] focus:ring-4 focus:ring-orange-500/10'
                     }`}
                   />
                   <Lock className={`w-4 h-4 absolute left-3.5 top-3 ${fieldErrors.password ? 'text-red-500' : 'text-slate-400'}`} />
@@ -555,8 +555,8 @@ export default function AuthModal({
 
               {/* Google OAuth Login Action */}
               <div className="relative my-2.5 flex items-center justify-center">
-                <div className="border-t border-slate-200 w-full" />
-                <span className="bg-white px-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">hoặc</span>
+                <div className="border-t border-slate-200 dark:border-white/10 w-full" />
+                <span className="bg-white dark:bg-[#13141C] px-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">hoặc</span>
               </div>
 
               <GoogleAuthButton
@@ -619,7 +619,7 @@ export default function AuthModal({
 
               {/* Họ và tên */}
               <div>
-                <label htmlFor="auth-modal-reg-fullname" className="font-bold text-slate-700 block mb-1">
+                <label htmlFor="auth-modal-reg-fullname" className="font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300 block mb-1">
                   Họ và tên: <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -636,7 +636,7 @@ export default function AuthModal({
                     className={`w-full pl-9 pr-3.5 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
                       fieldErrors.fullName
                         ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
-                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                        : 'bg-slate-50 dark:bg-[#1A1B25] border border-slate-300 dark:border-white/10 text-slate-900 dark:text-[#F4F0E8] focus:border-orange-500 focus:bg-white dark:focus:bg-[#252632] focus:ring-4 focus:ring-orange-500/10'
                     }`}
                   />
                   <User className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${fieldErrors.fullName ? 'text-red-500' : 'text-slate-400'}`} />
@@ -651,7 +651,7 @@ export default function AuthModal({
 
               {/* Tên đăng nhập */}
               <div>
-                <label htmlFor="auth-modal-reg-username" className="font-bold text-slate-700 block mb-1">
+                <label htmlFor="auth-modal-reg-username" className="font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300 block mb-1">
                   Tên đăng nhập (Username): <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -668,7 +668,7 @@ export default function AuthModal({
                     className={`w-full pl-9 pr-3.5 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
                       fieldErrors.username
                         ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
-                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                        : 'bg-slate-50 dark:bg-[#1A1B25] border border-slate-300 dark:border-white/10 text-slate-900 dark:text-[#F4F0E8] focus:border-orange-500 focus:bg-white dark:focus:bg-[#252632] focus:ring-4 focus:ring-orange-500/10'
                     }`}
                   />
                   <User className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${fieldErrors.username ? 'text-red-500' : 'text-slate-400'}`} />
@@ -683,7 +683,7 @@ export default function AuthModal({
 
               {/* Email */}
               <div>
-                <label htmlFor="auth-modal-reg-email" className="font-bold text-slate-700 block mb-1">
+                <label htmlFor="auth-modal-reg-email" className="font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300 block mb-1">
                   Email: <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -701,7 +701,7 @@ export default function AuthModal({
                     className={`w-full pl-9 pr-9 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
                       fieldErrors.email
                         ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
-                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                        : 'bg-slate-50 dark:bg-[#1A1B25] border border-slate-300 dark:border-white/10 text-slate-900 dark:text-[#F4F0E8] focus:border-orange-500 focus:bg-white dark:focus:bg-[#252632] focus:ring-4 focus:ring-orange-500/10'
                     }`}
                   />
                   <Mail className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${fieldErrors.email ? 'text-red-500' : 'text-slate-400'}`} />
@@ -720,7 +720,7 @@ export default function AuthModal({
               {/* Số điện thoại (tùy chọn) */}
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label htmlFor="auth-modal-reg-phone" className="font-bold text-slate-700">Số điện thoại:</label>
+                  <label htmlFor="auth-modal-reg-phone" className="font-bold text-slate-700 dark:text-slate-300">Số điện thoại:</label>
                   <span className="text-[10px] text-slate-400">(Tùy chọn)</span>
                 </div>
                 <div className="relative">
@@ -737,7 +737,7 @@ export default function AuthModal({
                     className={`w-full pl-9 pr-3.5 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
                       fieldErrors.phoneNumber
                         ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
-                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                        : 'bg-slate-50 dark:bg-[#1A1B25] border border-slate-300 dark:border-white/10 text-slate-900 dark:text-[#F4F0E8] focus:border-orange-500 focus:bg-white dark:focus:bg-[#252632] focus:ring-4 focus:ring-orange-500/10'
                     }`}
                   />
                   <Phone className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${fieldErrors.phoneNumber ? 'text-red-500' : 'text-slate-400'}`} />
@@ -752,7 +752,7 @@ export default function AuthModal({
 
               {/* Mật khẩu */}
               <div>
-                <label htmlFor="auth-modal-reg-password" className="font-bold text-slate-700 block mb-1">
+                <label htmlFor="auth-modal-reg-password" className="font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300 block mb-1">
                   Mật khẩu: <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -769,7 +769,7 @@ export default function AuthModal({
                     className={`w-full pl-9 pr-9 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
                       fieldErrors.password
                         ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
-                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                        : 'bg-slate-50 dark:bg-[#1A1B25] border border-slate-300 dark:border-white/10 text-slate-900 dark:text-[#F4F0E8] focus:border-orange-500 focus:bg-white dark:focus:bg-[#252632] focus:ring-4 focus:ring-orange-500/10'
                     }`}
                   />
                   <Lock className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${fieldErrors.password ? 'text-red-500' : 'text-slate-400'}`} />
@@ -791,7 +791,7 @@ export default function AuthModal({
 
               {/* Xác nhận mật khẩu */}
               <div>
-                <label htmlFor="auth-modal-reg-confirm-password" className="font-bold text-slate-700 block mb-1">
+                <label htmlFor="auth-modal-reg-confirm-password" className="font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300 block mb-1">
                   Xác nhận mật khẩu: <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -808,7 +808,7 @@ export default function AuthModal({
                     className={`w-full pl-9 pr-9 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
                       fieldErrors.confirmPassword
                         ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
-                        : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+                        : 'bg-slate-50 dark:bg-[#1A1B25] border border-slate-300 dark:border-white/10 text-slate-900 dark:text-[#F4F0E8] focus:border-orange-500 focus:bg-white dark:focus:bg-[#252632] focus:ring-4 focus:ring-orange-500/10'
                     }`}
                   />
                   <ShieldCheck className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${fieldErrors.confirmPassword ? 'text-red-500' : 'text-slate-400'}`} />
@@ -889,8 +889,8 @@ export default function AuthModal({
 
               {/* Google OAuth Register Action */}
               <div className="relative my-2 flex items-center justify-center">
-                <div className="border-t border-slate-200 w-full" />
-                <span className="bg-white px-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">hoặc</span>
+                <div className="border-t border-slate-200 dark:border-white/10 w-full" />
+                <span className="bg-white dark:bg-[#13141C] px-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">hoặc</span>
               </div>
 
               <GoogleAuthButton
@@ -921,7 +921,7 @@ export default function AuthModal({
           )}
 
           {/* Partner Onboarding Links */}
-          <div className="pt-3 border-t border-slate-100 space-y-2">
+          <div className="pt-3 border-t border-slate-100 dark:border-white/10 space-y-2">
             <div className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               Hợp tác cùng QuickShop
             </div>
@@ -932,7 +932,7 @@ export default function AuthModal({
                   onClose();
                   if (onNavigateToRegisterSeller) onNavigateToRegisterSeller();
                 }}
-                className="p-2 rounded-xl border border-slate-200 hover:border-orange-500 hover:bg-orange-50/50 text-slate-700 hover:text-orange-600 transition flex items-center justify-center gap-1.5 font-semibold cursor-pointer"
+                className="p-2 rounded-xl border border-slate-200 dark:border-white/10 hover:border-orange-500 dark:hover:border-amber-500/50 hover:bg-orange-50/50 dark:hover:bg-orange-950/30 text-slate-700 dark:text-slate-300 hover:text-orange-600 dark:hover:text-amber-400 transition flex items-center justify-center gap-1.5 font-semibold cursor-pointer"
               >
                 <Store className="w-3.5 h-3.5 text-orange-600" />
                 <span>Đăng ký Bán hàng</span>
@@ -944,7 +944,7 @@ export default function AuthModal({
                   onClose();
                   if (onNavigateToRegisterShipper) onNavigateToRegisterShipper();
                 }}
-                className="p-2 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 text-slate-700 hover:text-blue-600 transition flex items-center justify-center gap-1.5 font-semibold cursor-pointer"
+                className="p-2 rounded-xl border border-slate-200 dark:border-white/10 hover:border-blue-500 dark:hover:border-blue-500/50 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition flex items-center justify-center gap-1.5 font-semibold cursor-pointer"
               >
                 <Truck className="w-3.5 h-3.5 text-blue-600" />
                 <span>Đăng ký Shipper</span>

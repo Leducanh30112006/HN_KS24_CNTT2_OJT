@@ -3,26 +3,103 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --ux-page: #FAFAFA;
+    --ux-surface: #FFFFFF;
+    --ux-surface-2: #F8FAFC;
+    --ux-surface-3: #E2E8F0;
+    --ux-ink: #0F172A;
+    --ux-ink-2: rgba(15, 23, 42, 0.72);
+    --ux-ink-3: rgba(15, 23, 42, 0.45);
+    --ux-line: rgba(15, 23, 42, 0.08);
+    --ux-line-2: rgba(15, 23, 42, 0.16);
+    --ux-accent: #F97316;
+    --ux-accent-2: #FBBF24;
+  }
+
+  :root[data-theme="dark"],
+  .dark {
+    --ux-page: #07080D;
+    --ux-surface: #13141C;
+    --ux-surface-2: #1A1B25;
+    --ux-surface-3: #252632;
+    --ux-ink: #F4F0E8;
+    --ux-ink-2: rgba(244, 240, 232, 0.68);
+    --ux-ink-3: rgba(244, 240, 232, 0.42);
+    --ux-line: rgba(255, 255, 255, 0.08);
+    --ux-line-2: rgba(255, 255, 255, 0.16);
+    --ux-accent: #F97316;
+    --ux-accent-2: #FBBF24;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ux-page: #07080D;
+      --ux-surface: #13141C;
+      --ux-surface-2: #1A1B25;
+      --ux-surface-3: #252632;
+      --ux-ink: #F4F0E8;
+      --ux-ink-2: rgba(244, 240, 232, 0.68);
+      --ux-ink-3: rgba(244, 240, 232, 0.42);
+      --ux-line: rgba(255, 255, 255, 0.08);
+      --ux-line-2: rgba(255, 255, 255, 0.16);
+      --ux-accent: #F97316;
+      --ux-accent-2: #FBBF24;
+    }
+  }
+
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    color: #0f172a;
-    background-color: #FAFAFA;
+    color: var(--ux-ink);
+    background-color: var(--ux-page);
     overflow-x: clip;
+    transition: background-color 300ms cubic-bezier(0.16, 1, 0.3, 1), color 300ms ease;
+  }
+
+  html[data-theme="dark"],
+  html.dark {
+    color-scheme: dark;
   }
 
   body {
     margin: 0;
     min-height: 100vh;
-    background-color: #FAFAFA;
+    background-color: var(--ux-page);
+    color: var(--ux-ink);
     overflow-x: clip;
+    transition: background-color 300ms cubic-bezier(0.16, 1, 0.3, 1), color 300ms ease;
   }
 
   /* Monospace typography for prices, timers, codes and counters */
   .font-mono, [data-mono] {
     font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-feature-settings: 'tnum' on, 'zero' on;
+  }
+}
+
+/* ========================================================================= */
+/* LUCIAN #219 CIRCULAR CLIP-PATH VIEW TRANSITIONS                           */
+/* ========================================================================= */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 99999;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
   }
 }
 

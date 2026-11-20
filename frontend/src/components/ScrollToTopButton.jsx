@@ -55,7 +55,7 @@ export default function ScrollToTopButton({ threshold = 280 }) {
         type="button"
         onClick={scrollToTop}
         aria-label="Cuộn lên đầu trang"
-        className="relative group w-12 h-12 rounded-full bg-white/95 hover:bg-white text-slate-700 hover:text-orange-600 border border-slate-200/90 shadow-lg hover:shadow-xl hover:shadow-orange-500/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-90 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500/30 select-none"
+        className="relative group w-12 h-12 rounded-full bg-white/95 dark:bg-[#13141C]/95 hover:bg-white dark:hover:bg-[#1A1B25] text-slate-700 dark:text-slate-200 hover:text-orange-600 dark:hover:text-amber-400 border border-slate-200/90 dark:border-white/10 shadow-lg hover:shadow-xl hover:shadow-orange-500/20 backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-90 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500/30 select-none"
       >
         {/* Circular SVG Scroll Progress Ring */}
         <svg
@@ -70,7 +70,7 @@ export default function ScrollToTopButton({ threshold = 280 }) {
             fill="none"
             stroke="currentColor"
             strokeWidth="2.5"
-            className="text-slate-100"
+            className="text-slate-100 dark:text-white/10"
           />
           {/* Active progress stroke with orange-amber gradient */}
           <circle
@@ -95,7 +95,7 @@ export default function ScrollToTopButton({ threshold = 280 }) {
         </svg>
 
         {/* Center Icon with Lift Motion on Hover */}
-        <ArrowUp className="w-5 h-5 stroke-[2.5] text-slate-700 group-hover:text-orange-600 group-hover:-translate-y-0.5 transition-all duration-200 relative z-10" />
+        <ArrowUp className="w-5 h-5 stroke-[2.5] text-slate-700 dark:text-slate-200 group-hover:text-orange-600 dark:group-hover:text-amber-400 group-hover:-translate-y-0.5 transition-all duration-200 relative z-10" />
 
         {/* Floating Tooltip on Hover */}
         <div className="absolute right-full mr-2.5 top-1/2 -translate-y-1/2 bg-slate-900/95 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg shadow-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex items-center gap-1">
