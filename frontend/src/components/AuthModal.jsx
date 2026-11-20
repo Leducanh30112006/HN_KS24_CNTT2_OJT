@@ -393,7 +393,7 @@ export default function AuthModal({
 
   return (
     <>
-      <AnimatedPresence show={isOpen} mode="modal" dataLenisPrevent={true}>
+      <AnimatedPresence show={isOpen} mode="modal" dataLenisPrevent={true} onClose={onClose}>
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
         {/* Header Modal */}
         <div className="p-5 bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 text-white flex justify-between items-center">

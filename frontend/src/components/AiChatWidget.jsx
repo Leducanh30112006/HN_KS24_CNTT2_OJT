@@ -145,6 +145,16 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
     setIsOpen(false);
   };
 
+  // Đóng cửa sổ Chat AI khi nhấn phím Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') handleCloseChat();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
+
   // Drag logic for the circular button (when closed)
   const handleButtonPointerDown = (e) => {
     if (e.button !== undefined && e.button !== 0) return;

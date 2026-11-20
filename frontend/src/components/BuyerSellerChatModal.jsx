@@ -31,6 +31,19 @@ export default function BuyerSellerChatModal({
   const [toastMessage, setToastMessage] = useState('');
   const messagesEndRef = useRef(null);
 
+  // Đóng popover chọn sản phẩm khi bấm phím Escape (trước khi đóng cả modal)
+  useEffect(() => {
+    if (!showProductPicker) return;
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setShowProductPicker(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscape, true);
+    return () => window.removeEventListener('keydown', handleEscape, true);
+  }, [showProductPicker]);
+
   const userId = user?.userId || 2;
   const userName = user?.fullName || user?.username || 'Khách Hàng QuickShop';
 
@@ -168,7 +181,7 @@ export default function BuyerSellerChatModal({
   if (!isOpen) return null;
 
   return (
-    <AnimatedPresence show={isOpen} mode="modal" dataLenisPrevent={true} className="p-2 sm:p-4">
+    <AnimatedPresence show={isOpen} mode="modal" dataLenisPrevent={true} className="p-2 sm:p-4" onClose={onClose}>
       <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-[600px] max-h-[92vh] relative">
         {/* Toast thông báo */}
         {toastMessage && (

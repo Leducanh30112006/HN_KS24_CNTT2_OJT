@@ -222,7 +222,7 @@ export default function VoucherModal({
   const totalPotentialSavings = (selectedShipping?.discount || 0) + (selectedPlatform?.discount || 0) + totalShopDiscount;
 
   return (
-    <AnimatedPresence show={isOpen} mode="modal" dataLenisPrevent={true}>
+    <AnimatedPresence show={isOpen} mode="modal" dataLenisPrevent={true} onClose={onClose}>
       <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden">
         
         {/* 1. Modal Header */}

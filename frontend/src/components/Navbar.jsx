@@ -9,6 +9,7 @@ import { useNotificationStore } from '../stores/useNotificationStore';
 import { gsap, useGSAP } from '../lib/gsap';
 import { AnimatedPresence, AnimatedNumber } from './motion/MotionPrimitives';
 import { LucianButton } from './ui/LucianPrimitives';
+import { useClickOutside } from '../hooks/useClickOutside';
 
 export default function Navbar({ 
   currentView, 
@@ -53,6 +54,24 @@ export default function Navbar({
   const cartButtonRef = useRef(null);
   const navContainerRef = useRef(null);
   const prevCountRef = useRef(totalCartCount);
+
+  // Refs for click outside handling on notifications and user menus
+  const notifContainerRef = useRef(null);
+  const notifButtonRef = useRef(null);
+  const userContainerRef = useRef(null);
+  const userButtonRef = useRef(null);
+
+  useClickOutside(notifContainerRef, () => setShowNotifMenu(false), {
+    enabled: showNotifMenu,
+    ignoreRefs: [notifButtonRef],
+    listenEscape: true,
+  });
+
+  useClickOutside(userContainerRef, () => setShowUserMenu(false), {
+    enabled: showUserMenu,
+    ignoreRefs: [userButtonRef],
+    listenEscape: true,
+  });
 
   // Initial Page-Load Reveal: Animate Navbar down with expo.out
   useGSAP(() => {
@@ -369,8 +388,9 @@ export default function Navbar({
               <span className="hidden xl:inline text-xs font-bold text-slate-800">Mess</span>
             </button>
           {/* Notifications Dropdown */}
-          <div className="relative">
+          <div className="relative" ref={notifContainerRef}>
             <button
+              ref={notifButtonRef}
               onClick={() => setShowNotifMenu(!showNotifMenu)}
               aria-label="Mở thông báo"
               className="btn-icon p-2 sm:p-2.5 text-slate-600 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition relative cursor-pointer active:scale-90"
@@ -458,9 +478,10 @@ export default function Navbar({
           </LucianButton>
 
           {/* User Account / Auth Dropdown */}
-          <div className="relative">
+          <div className="relative" ref={userContainerRef}>
             {isAuthenticated && user ? (
               <button
+                ref={userButtonRef}
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center gap-2 p-1.5 pr-2.5 rounded-xl border border-slate-200 hover:border-orange-300 transition active:scale-[0.96] cursor-pointer"
               >

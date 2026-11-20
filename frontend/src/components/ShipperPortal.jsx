@@ -25,6 +25,16 @@ export default function ShipperPortal({ onBackToHome }) {
   };
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Đóng Mobile Sidebar khi bấm phím Escape
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [sidebarOpen]);
   const [shipments, setShipments] = useState([]);
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'READY_TO_PICK' | 'DELIVERING' | 'DELIVERED' | 'DELIVERY_FAILED' | 'COD_REPORT'
   const [searchQuery, setSearchQuery] = useState('');
@@ -714,7 +724,13 @@ export default function ShipperPortal({ onBackToHome }) {
       </div>
 
       {/* MODAL 1: Báo giao hàng thất bại */}
-      <AnimatedPresence show={Boolean(failureTarget)} mode="modal" dataLenisPrevent={true} className="p-4">
+      <AnimatedPresence
+        show={Boolean(failureTarget)}
+        mode="modal"
+        onClose={() => setFailureTarget(null)}
+        dataLenisPrevent={true}
+        className="p-4"
+      >
         {failureTarget && (
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
@@ -765,7 +781,13 @@ export default function ShipperPortal({ onBackToHome }) {
       </AnimatedPresence>
 
       {/* MODAL 2: Xem chi tiết vận đơn & Timeline */}
-      <AnimatedPresence show={Boolean(selectedShipment)} mode="modal" dataLenisPrevent={true} className="p-4">
+      <AnimatedPresence
+        show={Boolean(selectedShipment)}
+        mode="modal"
+        onClose={() => setSelectedShipment(null)}
+        dataLenisPrevent={true}
+        className="p-4"
+      >
         {selectedShipment && (
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">

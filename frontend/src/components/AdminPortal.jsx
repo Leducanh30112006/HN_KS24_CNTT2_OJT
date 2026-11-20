@@ -249,6 +249,18 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
   const [sellerPage, setSellerPage] = useState(0);
   const [sellerPageSize, setSellerPageSize] = useState(5);
 
+  // Đóng Modal KYC hoặc Mobile Sidebar khi bấm phím Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (selectedKycShop) setSelectedKycShop(null);
+        if (sidebarOpen) setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedKycShop, sidebarOpen]);
+
   const defaultShops = [
     {
       id: 1,
@@ -2993,8 +3005,16 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
 
           {/* KYC Detail Modal */}
           {selectedKycShop && (
-            <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div
+              className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setSelectedKycShop(null);
+              }}
+            >
+              <div
+                className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-200 cursor-default"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex justify-between items-start border-b border-slate-100 pb-3">
                   <div>
                     <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
@@ -3317,7 +3337,12 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
           </div>
 
           {/* Modal Tạo Voucher Mới */}
-          <AnimatedPresence show={showCreateVoucherModal} mode="modal" dataLenisPrevent={true}>
+          <AnimatedPresence
+            show={showCreateVoucherModal}
+            mode="modal"
+            onClose={() => setShowCreateVoucherModal(false)}
+            dataLenisPrevent={true}
+          >
             {showCreateVoucherModal && (
               <div role="dialog" aria-modal="true" aria-label="Phát Hành Mã Voucher Toàn Sàn Mới" className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
                 <div className="flex justify-between items-start border-b border-slate-100 pb-3">
@@ -4841,7 +4866,12 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       </PageTransition>
 
       {/* ================= MODAL: XÁC NHẬN THAO TÁC QUẢN TRỊ (Duyệt / Xóa / Khóa Shop) ================= */}
-      <AnimatedPresence show={Boolean(confirmDialog)} mode="modal" dataLenisPrevent={true}>
+      <AnimatedPresence
+        show={Boolean(confirmDialog)}
+        mode="modal"
+        onClose={() => setConfirmDialog(null)}
+        dataLenisPrevent={true}
+      >
         {confirmDialog && (
           <div role="dialog" aria-modal="true" aria-label={confirmDialog.title} className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
@@ -4946,7 +4976,17 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       </AnimatedPresence>
 
       {/* ================= MODAL: TỪ CHỐI DUYỆT SẢN PHẨM ================= */}
-      <AnimatedPresence show={Boolean(rejectingProduct)} mode="modal" dataLenisPrevent={true}>
+      <AnimatedPresence
+        show={Boolean(rejectingProduct)}
+        mode="modal"
+        onClose={() => {
+          if (!submittingModalAction) {
+            setRejectingProduct(null);
+            setRejectModalError(null);
+          }
+        }}
+        dataLenisPrevent={true}
+      >
         {rejectingProduct && (
           <div role="dialog" aria-modal="true" aria-label="Từ Chối Duyệt Sản Phẩm" className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
@@ -5044,7 +5084,17 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       </AnimatedPresence>
 
       {/* ================= MODAL: TỪ CHỐI DUYỆT GIAN HÀNG KYC ================= */}
-      <AnimatedPresence show={Boolean(rejectingShop)} mode="modal" dataLenisPrevent={true}>
+      <AnimatedPresence
+        show={Boolean(rejectingShop)}
+        mode="modal"
+        onClose={() => {
+          if (!submittingShopAction) {
+            setRejectingShop(null);
+            setRejectShopError(null);
+          }
+        }}
+        dataLenisPrevent={true}
+      >
         {rejectingShop && (
           <div role="dialog" aria-modal="true" aria-label="Từ Chối Hồ Sơ KYC Gian Hàng" className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
@@ -5142,7 +5192,12 @@ export default function AdminPortal({ categories = [], onCategoriesUpdated, onBa
       </AnimatedPresence>
 
       {/* ================= MODAL: CHI TIẾT NHẬT KÝ KIỂM TOÁN (AUDIT LOG) ================= */}
-      <AnimatedPresence show={Boolean(selectedAuditLog)} mode="modal" dataLenisPrevent={true}>
+      <AnimatedPresence
+        show={Boolean(selectedAuditLog)}
+        mode="modal"
+        onClose={() => setSelectedAuditLog(null)}
+        dataLenisPrevent={true}
+      >
         {selectedAuditLog && (
           <div role="dialog" aria-modal="true" aria-label="Chi Tiết Nhật Ký Kiểm Toán" className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">

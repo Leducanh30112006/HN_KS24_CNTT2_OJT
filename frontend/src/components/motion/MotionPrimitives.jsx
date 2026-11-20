@@ -15,12 +15,48 @@ export function AnimatedPresence({
   style = {},
   onExitComplete,
   dataLenisPrevent = true,
+  onClose,
+  closeOnClickOutside = true,
+  closeOnEscape = true,
 }) {
   const [shouldRender, setShouldRender] = useState(show);
   const containerRef = useRef(null);
   const backdropRef = useRef(null);
   const contentRef = useRef(null);
   const isFirstRender = useRef(true);
+
+  // Lắng nghe phím Escape để đóng modal/drawer/dropdown
+  useEffect(() => {
+    if (!show || !shouldRender || !closeOnEscape || !onClose) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose(e);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [show, shouldRender, closeOnEscape, onClose]);
+
+  // Lắng nghe click outside cho mode dropdown
+  useEffect(() => {
+    if (mode !== 'dropdown' || !show || !shouldRender || !closeOnClickOutside || !onClose) return;
+
+    const handlePointerDown = (e) => {
+      if (contentRef.current && !contentRef.current.contains(e.target)) {
+        onClose(e);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+    };
+  }, [mode, show, shouldRender, closeOnClickOutside, onClose]);
 
   useEffect(() => {
     if (show) {
@@ -183,21 +219,36 @@ export function AnimatedPresence({
 
   if (!shouldRender) return null;
 
+  const handleContainerClick = (e) => {
+    if (closeOnClickOutside && onClose && contentRef.current && !contentRef.current.contains(e.target)) {
+      onClose(e);
+    }
+  };
+
+  const handleBackdropClick = (e) => {
+    if (closeOnClickOutside && onClose) {
+      onClose(e);
+    }
+  };
+
   // For modal / drawer with backdrop
   if (mode === 'modal' || mode === 'drawer') {
     return (
       <div
         ref={containerRef}
+        onClick={handleContainerClick}
         {...(dataLenisPrevent ? { 'data-lenis-prevent': '' } : {})}
         className={`fixed inset-0 z-50 flex items-center justify-center ${className}`}
       >
         <div
           ref={backdropRef}
-          className={`fixed inset-0 bg-black/60 backdrop-blur-xs ${backdropClassName}`}
+          onClick={handleBackdropClick}
+          className={`fixed inset-0 bg-black/60 backdrop-blur-xs cursor-pointer ${backdropClassName}`}
           aria-hidden="true"
         />
         <div
           ref={contentRef}
+          onClick={(e) => e.stopPropagation()}
           className="relative z-10 w-full flex flex-col items-center justify-center max-h-screen"
         >
           {children}

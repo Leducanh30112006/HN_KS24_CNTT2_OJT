@@ -912,7 +912,13 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       {/* ========================================================================= */}
       {/* MODAL 1: XEM CHI TIẾT ĐƠN HÀNG TOÀN DIỆN (ORDER DETAILS MODAL) */}
       {/* ========================================================================= */}
-      <AnimatedPresence show={Boolean(selectedOrderDetails)} mode="modal" dataLenisPrevent={true} className="p-3 sm:p-6 no-scrollbar">
+      <AnimatedPresence
+        show={Boolean(selectedOrderDetails)}
+        mode="modal"
+        onClose={() => setSelectedOrderDetails(null)}
+        dataLenisPrevent={true}
+        className="p-3 sm:p-6 no-scrollbar"
+      >
         {selectedOrderDetails && (
           <div
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -1154,7 +1160,13 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       {/* ========================================================================= */}
       {/* MODAL 2: XÁC NHẬN HỦY ĐƠN HÀNG (CANCEL ORDER MODAL) */}
       {/* ========================================================================= */}
-      <AnimatedPresence show={Boolean(orderToCancel)} mode="modal" dataLenisPrevent={true} className="p-4">
+      <AnimatedPresence
+        show={Boolean(orderToCancel)}
+        mode="modal"
+        onClose={() => setOrderToCancel(null)}
+        dataLenisPrevent={true}
+        className="p-4"
+      >
         {orderToCancel && (
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5">
             <div className="flex items-center gap-3 text-rose-600">
@@ -1212,7 +1224,16 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       {/* ========================================================================= */}
       {/* MODAL 3: THEO DÕI ĐƠN HÀNG & TIẾN TRÌNH SHIPPER */}
       {/* ========================================================================= */}
-      <AnimatedPresence show={Boolean(trackingModalOpen && selectedShipment)} mode="modal" dataLenisPrevent={true} className="p-4">
+      <AnimatedPresence
+        show={Boolean(trackingModalOpen && selectedShipment)}
+        mode="modal"
+        onClose={() => {
+          setTrackingModalOpen(false);
+          setSelectedShipment(null);
+        }}
+        dataLenisPrevent={true}
+        className="p-4"
+      >
         {selectedShipment && (
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1305,7 +1326,16 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       {/* ========================================================================= */}
       {/* MODAL 4: ĐÁNH GIÁ SẢN PHẨM (REVIEW MODAL) */}
       {/* ========================================================================= */}
-      <AnimatedPresence show={reviewModalOpen} mode="modal" dataLenisPrevent={true} className="p-4">
+      <AnimatedPresence
+        show={reviewModalOpen}
+        mode="modal"
+        onClose={() => {
+          setReviewModalOpen(false);
+          setReviewTargetItem(null);
+        }}
+        dataLenisPrevent={true}
+        className="p-4"
+      >
         <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="font-bold text-sm text-slate-900">Đánh Giá Sản Phẩm</h3>
@@ -1370,7 +1400,16 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       {/* ========================================================================= */}
       {/* MODAL 5: TRẢ HÀNG & HOÀN TIỀN (REFUND MODAL) */}
       {/* ========================================================================= */}
-      <AnimatedPresence show={refundModalOpen} mode="modal" dataLenisPrevent={true} className="p-4">
+      <AnimatedPresence
+        show={refundModalOpen}
+        mode="modal"
+        onClose={() => {
+          setRefundModalOpen(false);
+          setRefundTargetOrder(null);
+        }}
+        dataLenisPrevent={true}
+        className="p-4"
+      >
         <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="font-bold text-sm text-slate-900">Yêu Cầu Trả Hàng / Hoàn Tiền</h3>

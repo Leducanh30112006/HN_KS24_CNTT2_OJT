@@ -39,6 +39,16 @@ export default function MessengerPage({
   const [showRightInfo, setShowRightInfo] = useState(true);
   const [pinnedProduct, setPinnedProduct] = useState(initialProduct);
   const [toastMessage, setToastMessage] = useState('');
+
+  // Đóng popover chọn sản phẩm khi bấm phím Escape
+  useEffect(() => {
+    if (!showProductPicker) return;
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setShowProductPicker(false);
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showProductPicker]);
   
   // Mobile responsive view: 'list' (danh sách đoạn chat) | 'chat' (khung chat chính)
   const [mobileView, setMobileView] = useState('list');

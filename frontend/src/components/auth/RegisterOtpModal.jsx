@@ -194,15 +194,30 @@ export default function RegisterOtpModal({
     }
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   return (
-    <AnimatedPresence show={isOpen}>
+    <AnimatedPresence show={isOpen} onClose={onClose}>
       <div 
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md cursor-pointer"
         role="dialog"
         aria-modal="true"
         aria-labelledby="otp-modal-title"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
       >
-        <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200/90 overflow-hidden relative animate-in fade-in zoom-in-95 duration-200">
+        <div 
+          className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200/90 overflow-hidden relative animate-in fade-in zoom-in-95 duration-200 cursor-default"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header Bar */}
           <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-2.5">

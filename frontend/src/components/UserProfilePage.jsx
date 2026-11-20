@@ -46,6 +46,16 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
   const [customAvatarUrl, setCustomAvatarUrl] = useState('');
   const fileInputRef = useRef(null);
 
+  // Đóng modal Avatar khi bấm phím Escape
+  useEffect(() => {
+    if (!showAvatarModal) return;
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setShowAvatarModal(false);
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showAvatarModal]);
+
   const PRESET_AVATARS = [
     { label: 'Thanh lịch', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80' },
     { label: 'Doanh nhân', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80' },
@@ -788,8 +798,16 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
 
       {/* MODAL ĐỔI ẢNH ĐẠI DIỆN ĐA NĂNG */}
       {showAvatarModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl p-6 border border-slate-200 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAvatarModal(false);
+          }}
+        >
+          <div
+            className="bg-white w-full max-w-md rounded-3xl p-6 border border-slate-200 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
                 <Camera className="w-4 h-4 text-orange-600" />

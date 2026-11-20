@@ -1526,6 +1526,7 @@ export default function App() {
                 <AnimatedPresence
                   show={isFilterOpen}
                   mode="modal"
+                  onClose={() => setIsFilterOpen(false)}
                   dataLenisPrevent={true}
                   className="z-[9999]"
                 >
@@ -1857,7 +1858,13 @@ export default function App() {
       />
 
       {/* 5. Modal Kết quả Thanh toán VNPay Sandbox */}
-      <AnimatedPresence show={Boolean(vnpayResult?.isOpen)} mode="modal" dataLenisPrevent={true} className="p-4">
+      <AnimatedPresence
+        show={Boolean(vnpayResult?.isOpen)}
+        mode="modal"
+        onClose={() => setVnpayResult(prev => (prev ? { ...prev, isOpen: false } : null))}
+        dataLenisPrevent={true}
+        className="p-4"
+      >
         {vnpayResult && (
           <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 text-center space-y-5 shadow-2xl border border-slate-100">
             <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${vnpayResult.success ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>

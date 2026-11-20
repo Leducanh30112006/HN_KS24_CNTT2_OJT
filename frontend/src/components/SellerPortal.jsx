@@ -57,6 +57,16 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
   const [activeTab, setActiveTab] = useState('products');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Đóng Mobile Sidebar khi bấm phím Escape
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [sidebarOpen]);
+
   // Toast notification
   const [toast, setToast] = useState(null);
   const showToast = (message, type = 'success') => {
@@ -1883,7 +1893,13 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
       {/* ========================================================== */}
       {/* MODAL: TẠO SẢN PHẨM MỚI (CÓ THÊM ẢNH MÔ TẢ & AI GEMINI) */}
       {/* ========================================================== */}
-      <AnimatedPresence show={showCreateModal} mode="modal" dataLenisPrevent={true} className="p-4 overflow-y-auto">
+      <AnimatedPresence
+        show={showCreateModal}
+        mode="modal"
+        onClose={() => setShowCreateModal(false)}
+        dataLenisPrevent={true}
+        className="p-4 overflow-y-auto"
+      >
         <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
@@ -2255,7 +2271,13 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
       {/* ========================================================== */}
       {/* MODAL: CHỈNH SỬA SẢN PHẨM */}
       {/* ========================================================== */}
-      <AnimatedPresence show={Boolean(showEditModal && editingProduct)} mode="modal" dataLenisPrevent={true} className="p-4 overflow-y-auto">
+      <AnimatedPresence
+        show={Boolean(showEditModal && editingProduct)}
+        mode="modal"
+        onClose={() => setShowEditModal(false)}
+        dataLenisPrevent={true}
+        className="p-4 overflow-y-auto"
+      >
         {editingProduct && (
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -2504,7 +2526,13 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
       {/* ========================================================== */}
       {/* MODAL: IN PHIẾU ĐÓNG GÓI & GIAO HÀNG (PACKING SLIP) */}
       {/* ========================================================== */}
-      <AnimatedPresence show={Boolean(selectedOrderForSlip)} mode="modal" dataLenisPrevent={true} className="p-4">
+      <AnimatedPresence
+        show={Boolean(selectedOrderForSlip)}
+        mode="modal"
+        onClose={() => setSelectedOrderForSlip(null)}
+        dataLenisPrevent={true}
+        className="p-4"
+      >
         {selectedOrderForSlip && (
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -2594,7 +2622,13 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
       {/* ========================================================== */}
       {/* MODAL: RÚT TIỀN VỀ NGÂN HÀNG */}
       {/* ========================================================== */}
-      <AnimatedPresence show={showWithdrawModal} mode="modal" dataLenisPrevent={true} className="p-4">
+      <AnimatedPresence
+        show={showWithdrawModal}
+        mode="modal"
+        onClose={() => setShowWithdrawModal(false)}
+        dataLenisPrevent={true}
+        className="p-4"
+      >
         <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">

@@ -59,7 +59,7 @@ export default function CartDrawer({ isOpen, onClose, onRequireAuth }) {
   };
 
   return (
-    <AnimatedPresence show={isOpen} mode="drawer" dataLenisPrevent={true} className="justify-end">
+    <AnimatedPresence show={isOpen} mode="drawer" dataLenisPrevent={true} className="justify-end" onClose={onClose}>
       <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col justify-between">
         {/* Drawer Header */}
         <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/70">

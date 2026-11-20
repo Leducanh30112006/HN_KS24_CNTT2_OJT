@@ -24,6 +24,16 @@ export default function SellerCustomerChat({
   const [showProductPicker, setShowProductPicker] = useState(false);
   const messagesEndRef = useRef(null);
 
+  // Đóng popover chọn sản phẩm khi bấm phím Escape
+  useEffect(() => {
+    if (!showProductPicker) return;
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setShowProductPicker(false);
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showProductPicker]);
+
   // Lấy danh sách cuộc hội thoại của shop
   const loadThreads = () => {
     const all = getStoredThreads();
