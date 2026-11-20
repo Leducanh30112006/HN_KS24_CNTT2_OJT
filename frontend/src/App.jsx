@@ -11,6 +11,7 @@ import CartPage from './components/CartPage';
 import CheckoutPage from './components/CheckoutPage';
 import CartDrawer from './components/CartDrawer';
 import AiChatWidget from './components/AiChatWidget';
+import ScrollToTopButton from './components/ScrollToTopButton';
 import BuyerSellerChatModal from './components/BuyerSellerChatModal';
 import MessengerPage from './components/MessengerPage';
 import SellerPortal from './components/SellerPortal';
@@ -201,6 +202,7 @@ export default function App() {
       touchMultiplier: 1.5,
     });
     lenisRef.current = lenis;
+    window.__lenis = lenis;
 
     lenis.on('scroll', ScrollTrigger.update);
 
@@ -215,6 +217,7 @@ export default function App() {
       gsap.ticker.remove(updateTicker);
       lenis.destroy();
       lenisRef.current = null;
+      window.__lenis = null;
     };
   }, []);
 
@@ -1922,6 +1925,9 @@ export default function App() {
           </div>
         )}
       </AnimatedPresence>
+
+      {/* Floating Scroll to Top & Quick Actions */}
+      <ScrollToTopButton />
 
       <AiChatWidget
         products={products}
