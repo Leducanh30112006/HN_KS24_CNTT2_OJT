@@ -29,8 +29,24 @@ public class PromptGuardServiceImpl implements PromptGuardService {
                     "Jailbreak Attempt: Thử nghiệm chuyển đổi chế độ nhà phát triển (DAN/Developer Mode)"
             ),
             new ThreatPattern(
+                    Pattern.compile("(?i)(you are now|pretend you are|act as|enter|play the role of|roleplay as)\\s+.*(hacker|blackhat|attacker|criminal|jailbreak|dan|unrestricted)", Pattern.CASE_INSENSITIVE),
+                    "Jailbreak Attempt: Role-play / Persona bypass attack (Hacker/Unrestricted)"
+            ),
+            new ThreatPattern(
+                    Pattern.compile("(?i)(từ\\s+bây\\s+giờ|kể\\s+từ\\s+bây\\s+giờ|từ\\s+nay|bây\\s+giờ)?\\s*(hãy|bạn\\s+hãy|ngươi\\s+hãy)?\\s*(đóng\\s+vai|nhập\\s+vai|giả\\s+vờ|giả\\s+làm|hóa\\s+thân\\s+thành|xem\\s+như\\s+bạn\\s+là|xem\\s+mình\\s+là|coi\\s+mình\\s+là|hãy\\s+là|bạn\\s+là)\\s+.*(hacker|tin\\s+tặc|mũ\\s+đen|mũ\\s+trắng|tội\\s+phạm|bẻ\\s+khóa|chuyên\\s+gia\\s+bảo\\s+mật|người\\s+bẻ\\s+khóa|kẻ\\s+tấn\\s+công|jailbreak|unrestricted|không\\s+giới\\s+hạn)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE),
+                    "Jailbreak Attempt: Thử nghiệm đóng vai / Persona bypass tiếng Việt (Hacker/DAN/Jailbreak)"
+            ),
+            new ThreatPattern(
+                    Pattern.compile("(?i)(chuyển\\s+sang|kích\\s+hoạt|bật|vào)\\s+(chế\\s+độ\\s+)?(nhà\\s+phát\\s+triển|không\\s+giới\\s+hạn|bẻ\\s+khóa|dan|jailbreak|không\\s+kiểm\\s+duyệt|vô\\s+hạn)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE),
+                    "Jailbreak Attempt: Chuyển đổi chế độ nhà phát triển hoặc không kiểm duyệt tiếng Việt"
+            ),
+            new ThreatPattern(
                     Pattern.compile("(?i)(bypass|disable|turn off)\\s+(all\\s+)?(safety|security|content|guardrail)\\s+(filters?|rules?|restrictions?)", Pattern.CASE_INSENSITIVE),
                     "Bypass Attempt: Cố tình yêu cầu tắt bộ lọc an toàn"
+            ),
+            new ThreatPattern(
+                    Pattern.compile("(?i)(bỏ\\s+qua|hủy\\s+bỏ|tắt|vô\\s+hiệu\\s+hóa|không\\s+tuân\\s+thủ|vượt\\s+qua)\\s+(tất\\s+cả|mọi)?\\s*(quy\\s+tắc|luật|bộ\\s+lọc|giới\\s+hạn|rào\\s+cản|hạn\\s+chế|chính\\s+sách)\\s*(an\\s+toàn|bảo\\s+mật|hệ\\s+thống|của\\s+bạn|kiểm\\s+duyệt)?", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE),
+                    "Bypass Attempt: Yêu cầu vô hiệu hóa bộ lọc an toàn tiếng Việt"
             ),
             new ThreatPattern(
                     Pattern.compile("(<script\\b|</script>|javascript:|onerror\\s*=|onload\\s*=)", Pattern.CASE_INSENSITIVE),
@@ -48,8 +64,8 @@ public class PromptGuardServiceImpl implements PromptGuardService {
 
     // Danh sách mẫu Prompt Injection mức độ trung bình (được lọc sạch chuỗi vi phạm -> [FILTERED])
     private static final Pattern FILTER_INJECTION_REGEX = Pattern.compile(
-            "(ignore\\s+(all\\s+)?previous\\s+instructions|drop\\s+database|drop\\s+table|system\\s+prompt|reveal\\s+secrets|disregard\\s+previous\\s+instructions)",
-            Pattern.CASE_INSENSITIVE
+            "(ignore\\s+(all\\s+)?previous\\s+instructions|drop\\s+database|drop\\s+table|system\\s+prompt|reveal\\s+secrets|disregard\\s+previous\\s+instructions|quên\\s+(hết\\s+)?chỉ\\s+thị\\s+trước|bỏ\\s+qua\\s+hướng\\s+dẫn\\s+trước|tiết\\s+lộ\\s+prompt\\s+hệ\\s+thống)",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
     );
 
     // Danh sách từ khóa ngoài phạm vi thương mại điện tử (Off-topic check)

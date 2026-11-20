@@ -3,6 +3,7 @@ package com.quickshop.identity.dto;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,6 +23,10 @@ public class AddressRequest {
     private String recipientName;
 
     @NotBlank(message = "Số điện thoại không được để trống")
+    @Pattern(
+            regexp = "^(0|\\+84)[35789][0-9]{8}$",
+            message = "Số điện thoại phải đúng định dạng 10 số điện thoại Việt Nam (ví dụ: 0912345678 hoặc +84912345678)"
+    )
     @Size(max = 20, message = "Số điện thoại tối đa 20 ký tự")
     private String phoneNumber;
 

@@ -250,8 +250,8 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
     }
   };
 
-  // Đăng bán sản phẩm mới kèm AI Auto-Moderation + đồng bộ sang Admin Portal để quản lý & theo dõi
-  const handleCreateProductWithAi = async () => {
+  // Đăng bán sản phẩm mới kèm AI Auto-Moderation hoặc Lưu bản nháp (DRAFT) siêu tốc
+  const handleCreateProductWithAi = async (asDraft = false) => {
     if (!name.trim()) {
       showToast('Vui lòng nhập tên sản phẩm!', 'error');
       return;
@@ -281,25 +281,35 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
 
     setIsSubmittingProduct(true);
     try {
-      // 1. Chạy bộ máy AI Auto-Moderation chấm điểm & kiểm duyệt tự động
-      const aiReport = evaluateProductWithAI({
-        name: name.trim(),
-        description,
-        mainImage: resolvedImage,
-        variants: sanitizedVariants,
-      });
+      // 1. Chạy bộ máy AI Auto-Moderation nếu đăng bán (bản nháp bỏ qua kiểm duyệt AI)
+      let aiReport = {
+        decision: asDraft ? 'DRAFT_SAVED' : 'AI_APPROVED',
+        productStatus: asDraft ? 'DRAFT' : 'APPROVED',
+        score: 100,
+        flaggedReasons: [],
+        summary: asDraft ? 'Sản phẩm đang được lưu ở trạng thái Bản Nháp (DRAFT).' : 'Sản phẩm hợp lệ.',
+      };
 
-      // Kiểm tra cấu hình duyệt tự động của Admin
-      const isAutoApproveOn = isAiAutoApproveEnabled();
-      if (!isAutoApproveOn) {
-        aiReport.productStatus = 'PENDING';
-        aiReport.decision = 'MANUAL_PENDING';
-        aiReport.summary = 'Chế độ AI duyệt tự động đang TẮT bởi Admin — Sản phẩm đang chờ Quản trị viên duyệt thủ công.';
+      if (!asDraft) {
+        aiReport = evaluateProductWithAI({
+          name: name.trim(),
+          description,
+          mainImage: resolvedImage,
+          variants: sanitizedVariants,
+        });
+
+        // Kiểm tra cấu hình duyệt tự động của Admin
+        const isAutoApproveOn = isAiAutoApproveEnabled();
+        if (!isAutoApproveOn) {
+          aiReport.productStatus = 'PENDING';
+          aiReport.decision = 'MANUAL_PENDING';
+          aiReport.summary = 'Chế độ AI duyệt tự động đang TẮT bởi Admin — Sản phẩm đang chờ Quản trị viên duyệt thủ công.';
+        }
       }
 
-      // 2. Gửi lên Backend Catalog Service (aiAutoApprove phụ thuộc cấu hình Admin)
+      // 2. Gửi lên Backend Catalog Service (nhẹ gọn, không nghẽn đồng bộ)
       let backendId = null;
-      let backendStatus = aiReport.productStatus;
+      let backendStatus = asDraft ? 'DRAFT' : aiReport.productStatus;
       try {
         const apiPayload = {
           shopId: shopProfile.shopId,
@@ -309,8 +319,9 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
           mainImage: resolvedImage.startsWith('data:image/')
             ? 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&auto=format&fit=crop&q=80'
             : resolvedImage,
-          isDraft: false,
-          aiAutoApprove: isAutoApproveOn,
+          isDraft: asDraft,
+          status: asDraft ? 'DRAFT' : (aiReport.productStatus === 'APPROVED' ? 'APPROVED' : 'PENDING'),
+          aiAutoApprove: asDraft ? false : isAiAutoApproveEnabled(),
           variants: sanitizedVariants,
         };
         const apiRes = await catalogApi.createProduct(apiPayload);
@@ -364,7 +375,9 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
       setDescriptionImages([]);
       setVariants([{ sku: `SKU-${Date.now().toString().slice(-4)}`, color: 'Đen', size: 'Tiêu chuẩn', price: 299000, stock: 50 }]);
 
-      if (aiReport.decision === 'AI_APPROVED') {
+      if (asDraft) {
+        showToast(`📝 Đã lưu sản phẩm "${newProduct.name}" vào danh sách Bản Nháp (DRAFT) thành công!`);
+      } else if (aiReport.decision === 'AI_APPROVED') {
         showToast(`✨ AI đã tự động phê duyệt "${newProduct.name}" (${aiReport.score}/100 điểm) lên sàn & lưu nhật ký bên Admin!`);
       } else {
         showToast(`⚠️ AI gắn cờ cảnh báo "${newProduct.name}" (${aiReport.score}/100 điểm) — Đã chuyển Admin hậu kiểm!`, 'error');
@@ -2253,7 +2266,17 @@ export default function SellerPortal({ categories = [], onProductCreated, onBack
                 <button
                   type="button"
                   disabled={isSubmittingProduct}
-                  onClick={handleCreateProductWithAi}
+                  onClick={() => handleCreateProductWithAi(true)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer active:scale-95 border border-slate-200"
+                  title="Lưu sản phẩm ở trạng thái Bản Nháp (DRAFT) để chỉnh sửa sau"
+                >
+                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Lưu Bản Nháp</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmittingProduct}
+                  onClick={() => handleCreateProductWithAi(false)}
                   className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 disabled:opacity-60 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
                 >
                   {isSubmittingProduct ? (

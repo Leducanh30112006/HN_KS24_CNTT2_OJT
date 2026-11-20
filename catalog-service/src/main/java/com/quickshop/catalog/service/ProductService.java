@@ -293,20 +293,26 @@ public class ProductService {
             }
         }
 
+        String safeMainImage = request.getMainImage();
+        if (safeMainImage != null && (safeMainImage.startsWith("data:image/") || safeMainImage.length() > 500)) {
+            safeMainImage = "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&auto=format&fit=crop&q=80";
+        }
+
         Product product = Product.builder()
                 .shopId(finalShopId)
                 .categoryId(request.getCategoryId())
                 .name(request.getName().trim())
                 .description(request.getDescription())
-                .mainImage(request.getMainImage())
+                .mainImage(safeMainImage)
                 .status(initialStatus)
                 .rejectionReason(aiNote)
                 .build();
 
         Product savedProduct = productRepository.save(product);
 
-        // Lưu các biến thể SKU (tự động khử trùng lặp để không bao giờ vi phạm UNIQUE constraint)
+        // Lưu các biến thể SKU (tự động khử trùng lặp và lưu theo batch tối ưu tải cao)
         if (request.getVariants() != null && !request.getVariants().isEmpty()) {
+            List<ProductVariant> variantsToSave = new ArrayList<>(request.getVariants().size());
             for (int i = 0; i < request.getVariants().size(); i++) {
                 VariantCreateRequest vReq = request.getVariants().get(i);
                 String requestedSku = (vReq.getSku() != null && !vReq.getSku().isBlank())
@@ -315,11 +321,11 @@ public class ProductService {
 
                 String finalSku = requestedSku;
                 if (variantRepository.existsBySku(finalSku)) {
-                    finalSku = requestedSku + "-" + savedProduct.getId() + "-" + (System.currentTimeMillis() % 10000);
+                    finalSku = requestedSku + "-" + savedProduct.getId() + "-" + (System.currentTimeMillis() % 10000) + "-" + (i + 1);
                     log.info("SKU '{}' đã tồn tại, tự động sinh SKU duy nhất '{}'", requestedSku, finalSku);
                 }
 
-                ProductVariant variant = ProductVariant.builder()
+                variantsToSave.add(ProductVariant.builder()
                         .productId(savedProduct.getId())
                         .sku(finalSku)
                         .color(vReq.getColor())
@@ -327,9 +333,9 @@ public class ProductService {
                         .price(vReq.getPrice())
                         .stock(vReq.getStock() != null ? vReq.getStock() : 0)
                         .reservedStock(0)
-                        .build();
-                variantRepository.save(variant);
+                        .build());
             }
+            variantRepository.saveAll(variantsToSave);
         }
 
         // Bỏ qua quét xóa Redis cache khi chỉ lưu bản nháp DRAFT (bản nháp không nằm trong cache storefront)

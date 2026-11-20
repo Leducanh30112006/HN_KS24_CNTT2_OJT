@@ -107,8 +107,8 @@ public class UserAddressController {
         return ResponseEntity.ok(ApiResponse.ok("Cập nhật địa chỉ thành công", updated));
     }
 
-    @PatchMapping("/{id}/default")
-    @Operation(summary = "Đặt địa chỉ làm mặc định")
+    @RequestMapping(value = "/{id}/default", method = {RequestMethod.PATCH, RequestMethod.PUT})
+    @Operation(summary = "Đặt địa chỉ làm mặc định (hỗ trợ cả PATCH và PUT)")
     public ResponseEntity<ApiResponse<AddressResponse>> setDefaultAddress(
             @PathVariable Long id,
             @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
