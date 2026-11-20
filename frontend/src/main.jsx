@@ -31,7 +31,15 @@ if (typeof window !== 'undefined') {
     'error',
     (event) => {
       const target = event?.target;
-      if (target && target.tagName === 'IMG' && target.dataset?.fallbackApplied !== '1') {
+      // Không bao giờ can thiệp vào các tile của bản đồ Leaflet (tránh biến tile bản đồ thành ảnh QuickShop Mall)
+      if (
+        target &&
+        target.tagName === 'IMG' &&
+        target.dataset?.fallbackApplied !== '1' &&
+        !target.classList?.contains('leaflet-tile') &&
+        !target.closest?.('.leaflet-pane') &&
+        !target.closest?.('.leaflet-container')
+      ) {
         target.dataset.fallbackApplied = '1';
         target.src = FALLBACK_PRODUCT_IMAGE;
       }

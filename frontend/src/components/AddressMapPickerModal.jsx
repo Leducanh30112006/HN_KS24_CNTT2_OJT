@@ -122,12 +122,21 @@ export default function AddressMapPickerModal({
     setIsReverseGeocoding(true);
     reverseDebounceTimerRef.current = setTimeout(async () => {
       try {
-        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&accept-language=vi`;
-        const res = await fetch(url, {
-          headers: {
-            'User-Agent': 'QuickShop-ECommerce-Platform/1.0',
-          },
-        });
+        let res;
+        // Ưu tiên gọi qua proxy Nginx nội bộ /nominatim/ (tránh bị chặn User-Agent & rate-limit)
+        try {
+          res = await fetch(`/nominatim/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&accept-language=vi`);
+        } catch {
+          res = null;
+        }
+
+        if (!res || !res.ok) {
+          // Fallback gọi trực tiếp Nominatim OpenStreetMap
+          res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&accept-language=vi`
+          );
+        }
+
         if (!res.ok) throw new Error('Không thể tải dữ liệu địa chỉ');
         const data = await res.json();
 
@@ -184,12 +193,20 @@ export default function AddressMapPickerModal({
     setIsSearching(true);
     searchDebounceTimerRef.current = setTimeout(async () => {
       try {
-        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=vn&limit=5&accept-language=vi&q=${encodeURIComponent(query.trim())}`;
-        const res = await fetch(url, {
-          headers: {
-            'User-Agent': 'QuickShop-ECommerce-Platform/1.0',
-          },
-        });
+        const q = encodeURIComponent(query.trim());
+        let res;
+        try {
+          res = await fetch(`/nominatim/search?format=jsonv2&countrycodes=vn&limit=5&accept-language=vi&q=${q}`);
+        } catch {
+          res = null;
+        }
+
+        if (!res || !res.ok) {
+          res = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=vn&limit=5&accept-language=vi&q=${q}`
+          );
+        }
+
         if (!res.ok) throw new Error('Lỗi tìm kiếm');
         const list = await res.json();
         setSearchResults(list || []);
@@ -287,11 +304,30 @@ export default function AddressMapPickerModal({
         // Thêm zoom control ở góc phải dưới
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        // Tile layer chuẩn OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // Cấu hình Tile Layer OpenStreetMap + Nginx Tile Proxy + Error Fallback
+        // Ưu tiên /tiles/{z}/{x}/{y}.png qua Nginx proxy để tránh bị OSM chặn Referer/User-Agent
+        const isBrowserHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+        const primaryTileUrl = isBrowserHttps
+          ? '/tiles/{z}/{x}/{y}.png'
+          : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+        const fallbackTileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+        const tileLayer = L.tileLayer(primaryTileUrl, {
           maxZoom: 19,
-          attribution: '&copy; OpenStreetMap contributors',
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
+          errorTileUrl: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/></svg>'
+          ),
         }).addTo(map);
+
+        // Tự động chuyển sang CartoDB Voyager nếu proxy gặp lỗi
+        let tileErrorCounter = 0;
+        tileLayer.on('tileerror', () => {
+          tileErrorCounter++;
+          if (tileErrorCounter >= 3) {
+            tileLayer.setUrl(fallbackTileUrl);
+          }
+        });
 
         // Marker có thể kéo thả draggable: true
         const marker = L.marker([lat, lng], {

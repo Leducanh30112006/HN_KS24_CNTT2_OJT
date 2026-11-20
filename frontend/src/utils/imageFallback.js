@@ -21,7 +21,13 @@ export const FALLBACK_PRODUCT_IMAGE =
 
 export const handleImageError = (e) => {
   const img = e?.currentTarget;
-  if (!img || img.dataset.fallbackApplied === '1') return;
+  if (
+    !img ||
+    img.dataset.fallbackApplied === '1' ||
+    img.classList?.contains('leaflet-tile') ||
+    img.closest?.('.leaflet-pane') ||
+    img.closest?.('.leaflet-container')
+  ) return;
   img.dataset.fallbackApplied = '1';
   img.src = FALLBACK_PRODUCT_IMAGE;
 };
