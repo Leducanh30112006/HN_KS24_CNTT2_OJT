@@ -23,10 +23,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -310,6 +312,56 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/login - Validate Login bỏ trống toàn bộ dữ liệu {} trả về 400 Bad Request")
+    void login_EmptyBody_ValidationFailed() throws Exception {
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.data.usernameOrEmail").value("Username hoặc Email không được để trống"))
+                .andExpect(jsonPath("$.data.password").value("Password không được để trống"));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/refresh & /api/auth/refresh-token - Hỗ trợ cả 2 endpoint và alias token field")
+    void refreshToken_Success_BothEndpoints() throws Exception {
+        AuthResponse authResponse = AuthResponse.builder()
+                .accessToken("new_access_token")
+                .refreshToken("new_refresh_token")
+                .tokenType("Bearer")
+                .expiresIn(86400L)
+                .userId(1L)
+                .username("testuser")
+                .build();
+
+        when(authService.refreshToken(eq("valid_refresh_token"))).thenReturn(authResponse);
+
+        // Test 1: POST /api/auth/refresh với {"refreshToken": "valid_refresh_token"}
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"valid_refresh_token\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("new_access_token"));
+
+        // Test 2: POST /api/auth/refresh-token với alias {"token": "valid_refresh_token"}
+        mockMvc.perform(post("/api/auth/refresh-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"valid_refresh_token\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("new_access_token"));
+
+        // Test 3: POST /api/auth/refresh với Authorization: Bearer valid_refresh_token
+        mockMvc.perform(post("/api/auth/refresh")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer valid_refresh_token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("new_access_token"));
     }
 
     @Test

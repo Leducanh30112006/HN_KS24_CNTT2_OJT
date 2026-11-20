@@ -10,9 +10,26 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      connect-timeout: 1500ms
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 20
+          min-idle: 5
+          max-wait: 1000ms
 
   cloud:
     gateway:
+      httpclient:
+        connect-timeout: 3000
+        response-timeout: 30s
+        pool:
+          type: ELASTIC
+          max-idle-time: 10000
+          max-life-time: 60000
+          eviction-interval: 5000
+
       globalcors:
         cors-configurations:
           '[/**]':
@@ -36,8 +53,8 @@ spring:
       default-filters:
         - name: RequestRateLimiter
           args:
-            redis-rate-limiter.replenishRate: 20
-            redis-rate-limiter.burstCapacity: 40
+            redis-rate-limiter.replenishRate: 100
+            redis-rate-limiter.burstCapacity: 200
             key-resolver: "#{@ipKeyResolver}"
 
       routes:

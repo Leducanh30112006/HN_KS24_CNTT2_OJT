@@ -158,7 +158,7 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
                 if (reactiveStringRedisTemplate != null) {
                     String revokedKey = REVOKED_TOKEN_PREFIX + token.trim();
                     return reactiveStringRedisTemplate.hasKey(revokedKey)
-                            .timeout(Duration.ofSeconds(2))
+                            .timeout(Duration.ofMillis(1000))
                             .onErrorResume(ex -> {
                                 log.warn("Redis blacklist check failed/timed out, continuing: {}", ex.getMessage());
                                 return Mono.just(false);

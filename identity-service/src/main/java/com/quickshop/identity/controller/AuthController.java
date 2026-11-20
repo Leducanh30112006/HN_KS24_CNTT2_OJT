@@ -15,8 +15,11 @@ import com.quickshop.identity.entity.User;
 import com.quickshop.identity.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.Valid;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
@@ -122,15 +125,21 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok("Gửi lại mã OTP thành công", response));
     }
 
-    @PostMapping("/refresh-token")
-    @Operation(summary = "Làm mới Access Token qua Refresh Token (Body hoặc Cookie)")
+    @PostMapping({"/refresh-token", "/refresh"})
+    @Operation(summary = "Làm mới Access Token qua Refresh Token (Body, Cookie hoặc Authorization header)")
     public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(
             @RequestBody(required = false) RefreshTokenRequest request,
-            @CookieValue(name = "refreshToken", required = false) String cookieRefreshToken
+            @CookieValue(name = "refreshToken", required = false) String cookieRefreshToken,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader
     ) {
-        String token = (request != null && StringUtils.hasText(request.getRefreshToken()))
-                ? request.getRefreshToken()
-                : cookieRefreshToken;
+        String token = null;
+        if (request != null && StringUtils.hasText(request.getRefreshToken())) {
+            token = request.getRefreshToken().trim();
+        } else if (StringUtils.hasText(cookieRefreshToken)) {
+            token = cookieRefreshToken.trim();
+        } else if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7).trim();
+        }
 
         if (!StringUtils.hasText(token)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -235,7 +244,10 @@ public class AuthController {
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RefreshTokenRequest {
+        @JsonAlias({"token", "refresh_token"})
         private String refreshToken;
 
         public String getRefreshToken() {

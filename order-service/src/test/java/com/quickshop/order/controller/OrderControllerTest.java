@@ -217,6 +217,21 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.data.masterOrder.id").value(101))
                 .andExpect(jsonPath("$.data.subOrders[0].subOrder.id").value(501))
                 .andExpect(jsonPath("$.data.subOrders[0].items[0].sku").value("JACKET-01"));
+
+        // Kiểm tra truy vấn với order ID offset (100101 -> 101)
+        mockMvc.perform(get("/api/orders/100101")
+                        .header("X-User-Id", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.masterOrder.id").value(101));
+
+        // Kiểm tra fallback qua SubOrder ID (501 -> MasterOrder 101)
+        when(subOrderRepository.findById(501L)).thenReturn(Optional.of(subOrder));
+        mockMvc.perform(get("/api/orders/501")
+                        .header("X-User-Id", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.masterOrder.id").value(101));
     }
 
     @Test

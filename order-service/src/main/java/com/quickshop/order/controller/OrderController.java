@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -184,11 +185,17 @@ public class OrderController {
 
     @Operation(summary = "Lấy chi tiết đơn hàng tổng kèm các SubOrder và OrderItems snapshot")
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<Map<String, Object>>> getOrderDetails(
             @PathVariable Long id,
             @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String userRole) {
-        MasterOrder masterOrder = masterOrderRepository.findById(id)
+        final Long effectiveRawId = (id != null && id >= 100000) ? (id - 100000) : id;
+
+        MasterOrder masterOrder = masterOrderRepository.findById(effectiveRawId)
+                .or(() -> (effectiveRawId.equals(id) ? Optional.empty() : masterOrderRepository.findById(id)))
+                .or(() -> subOrderRepository.findById(effectiveRawId).flatMap(so -> masterOrderRepository.findById(so.getMasterOrderId())))
+                .or(() -> (effectiveRawId.equals(id) ? Optional.empty() : subOrderRepository.findById(id).flatMap(so -> masterOrderRepository.findById(so.getMasterOrderId()))))
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với mã ID #" + id));
 
         // Chống lỗ hổng IDOR: Buyer chỉ được xem đơn hàng thuộc quyền sở hữu của mình (Admin/Seller/Shipper được phép theo nghiệp vụ)
@@ -201,7 +208,7 @@ public class OrderController {
                     .body(ApiResponse.error("Bạn không có quyền xem chi tiết đơn hàng của người dùng khác"));
         }
 
-        List<SubOrder> subOrders = subOrderRepository.findByMasterOrderId(id);
+        List<SubOrder> subOrders = subOrderRepository.findByMasterOrderId(masterOrder.getId());
         List<Map<String, Object>> subOrderDetailsList = new ArrayList<>();
 
         for (SubOrder subOrder : subOrders) {
