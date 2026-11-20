@@ -1,67 +1,87 @@
 # TÀI LIỆU HƯỚNG DẪN SỬ DỤNG HỆ THỐNG QUICKSHOP (USER GUIDE)
 
-**Dự án:** Sàn Thương Mại Điện Tử Đa Người Bán QuickShop  
-**Phiên bản:** Release 1.0  
-**Tác giả:** Triệu Quốc Bình (Frontend Specialist)  
-**Ngày cập nhật:** 16/11/2026  
+**Dự án:** Sàn Thương Mại Điện Tử Đa Người Bán QuickShop (Marketplace Edition)  
+**Phiên bản:** Release 1.0 (Production Final)  
+**Tác giả:** Triệu Quốc Bình (Frontend Specialist & UI/UX Lead)  
+**Ngày cập nhật:** **20/11/2026** (Kết thúc Sprint 4)  
 
 ---
 
 ## 1. Dành cho Người Mua (Buyer Guide)
 
-### 1.1. Tìm kiếm và chọn mua sản phẩm
-1. **Tìm kiếm:** Nhập từ khóa sản phẩm trên thanh tìm kiếm của Header (hoặc dùng gợi ý tìm kiếm thông minh).
-2. **Bộ lọc:** Sử dụng thanh lọc bên trái để lọc theo danh mục, khoảng giá (Dưới 1 triệu, 1-5 triệu, 5-20 triệu, Trên 20 triệu) và đánh giá sao (1★ - 5★).
-3. **Xem chi tiết:** Bấm vào thẻ sản phẩm để mở trang chi tiết, lựa chọn Màu sắc và Kích thước/Dung lượng mong muốn.
-4. **Thêm vào giỏ hàng:** Nhấn **"Thêm vào giỏ hàng"** hoặc **"Mua ngay"**.
+### 1.1. Khám phá & Chọn mua sản phẩm
+1. **Trải nghiệm Flagship:** Truy cập trang chủ với bố cục Bento Grid hiện đại hoặc khám phá trang tương tác 3D Scrollytelling tại `/intro`.
+2. **Tìm kiếm & Bộ lọc:**
+   - Tìm kiếm từ khóa sản phẩm trên thanh Header (hoặc nhận gợi ý thông minh từ AI).
+   - Nhấn nút "Bộ lọc" để mở Modal Dialog căn giữa màn hình: Lọc theo danh mục, khoảng giá, và số sao đánh giá (1★ - 5★).
+3. **Xem chi tiết & Bản đồ định vị:**
+   - Chọn biến thể sản phẩm (Màu sắc, Dung lượng/Kích thước), giá và tồn kho SKU sẽ cập nhật tức thì.
+   - Nhấn **"Thêm vào giỏ hàng"** hoặc **"Mua ngay"**.
 
 ### 1.2. Quản lý giỏ hàng & Thanh toán
-1. **Giỏ hàng Shopee Style:** Bấm vào biểu tượng Giỏ hàng trên thanh điều hướng hoặc truy cập trang `/cart`.
-2. **Chọn sản phẩm thanh toán:** Tích chọn từng sản phẩm hoặc bấm **"Chọn tất cả"**. Chỉ những sản phẩm được tick mới được chuyển sang trang thanh toán.
-3. **Áp dụng Mã giảm giá (Vouchers):**
-   - **Voucher Sàn QuickShop:** Nhập mã (ví dụ `QUICKSHOP50K`, `FREESHIPMAX`) hoặc chọn nhanh từ danh sách mã ưu đãi có sẵn.
+1. **Giỏ hàng Shopee Style:** Truy cập `/cart` hoặc mở Drawer giỏ hàng nhanh. Tick chọn sản phẩm theo từng Shop hoặc nhấn **"Chọn tất cả"**.
+2. **Áp dụng Mã giảm giá 2 tầng (Vouchers):**
+   - **Voucher Sàn QuickShop:** Chọn mã freeship hoặc mã giảm giá phần trăm toàn sàn.
    - **Voucher Riêng của Shop:** Áp dụng ưu đãi từ chính gian hàng bán sản phẩm.
-4. **Thanh toán:**
-   - Điền thông tin giao hàng: Họ tên, Số điện thoại, Địa chỉ nhận hàng.
-   - Chọn phương thức vận chuyển: Tiêu chuẩn (GHN/GHTK) hoặc Hỏa tốc 24h.
-   - Chọn phương thức thanh toán: COD (Thanh toán khi nhận hàng), VNPay Sandbox, hoặc Ví ký quỹ Escrow.
-   - Nhấn **"Đặt hàng"** để hoàn tất đơn mua.
+3. **Bản đồ chọn địa chỉ giao hàng:**
+   - Khi điền địa chỉ giao hàng, nhấp vào bản đồ số tương tác **Leaflet OpenStreetMap** để ghim vị trí chính xác; hệ thống tự động điền tọa độ GPS qua công cụ Nominatim Geocoding.
+4. **Phương thức thanh toán đa dạng:**
+   - **COD:** Thanh toán tiền mặt khi nhận hàng.
+   - **VNPay Sandbox:** Chuyển hướng tới cổng thanh toán VNPay.
+   - **PayOS VietQR:** Sinh mã QR VietQR EMVCo động chứa số tiền và nội dung chuyển khoản chính xác, quét mã bằng ứng dụng ngân hàng và hệ thống tự động xác nhận sau khi nhận tiền.
+
+### 1.3. Trò chuyện thời gian thực (Full-page Messenger)
+- Nhấn biểu tượng Messenger ở góc dưới hoặc truy cập `/messenger` để chat trực tiếp với chủ gian hàng; tự động gửi kèm Thẻ sản phẩm thông minh đang xem để hỏi tư vấn.
 
 ---
 
 ## 2. Dành cho Người Bán (Seller Center Guide)
 
 ### 2.1. Đăng ký gian hàng & Phê duyệt KYC
-1. Truy cập Kênh Người Bán từ thanh điều hướng trên cùng (cần tài khoản có vai trò `ROLE_SELLER` hoặc đăng nhập `seller@techworld.vn`).
-2. Điền đầy đủ thông tin định danh: Mã số thuế, Số CCCD/Hộ chiếu, Địa chỉ kho lấy hàng, Thông tin tài khoản ngân hàng thụ hưởng.
-3. Chờ Quản trị viên duyệt hồ sơ gian hàng sang trạng thái `ACTIVE`.
+1. Nhấp chọn "Kênh Người Bán" trên Header (hoặc đăng nhập tài khoản: `seller@techworld.vn` / `123456`).
+2. Điền thông tin định danh: Tên shop, Mã số thuế, Số CCCD, Địa chỉ kho lấy hàng, Tài khoản ngân hàng thụ hưởng.
+3. Chờ Quản trị viên duyệt hồ sơ KYC sang trạng thái `ACTIVE`.
 
-### 2.2. Đăng tải sản phẩm mới
-1. Vào tab **"Quản lý sản phẩm"** -> Bấm **"Thêm sản phẩm mới"**.
-2. Nhập Tên sản phẩm, Danh mục, Mô tả chi tiết, Đường dẫn ảnh chính.
-3. Thiết lập các biến thể SKU: Màu sắc, Kích cỡ, Giá bán niêm yết, Số lượng tồn kho.
-4. Nhấn **"Gửi duyệt sản phẩm"**. Sản phẩm sẽ vào hàng đợi kiểm duyệt của Admin.
+### 2.2. Đăng tải sản phẩm với Trình soạn thảo phong phú & AI
+1. Vào mục **"Quản lý sản phẩm"** -> Bấm **"Thêm sản phẩm mới"**.
+2. **Bộ soạn thảo CKEditor 5:** Soạn thảo mô tả sản phẩm chi tiết, định dạng văn bản chuyên nghiệp và chèn ảnh nội tuyến trực tiếp lên kho lưu trữ MinIO.
+3. **Sinh mô tả bằng Trí tuệ nhân tạo (AI SEO Generator):** Nhấn nút "Tạo mô tả bằng AI" để Gemini AI tự động tạo bài viết chuẩn SEO dựa trên thông số kỹ thuật.
+4. Thiết lập ma trận biến thể SKU: Màu sắc, Kích cỡ, Giá niêm yết, Số lượng tồn kho và nhấn **"Gửi duyệt sản phẩm"**.
 
-### 2.3. Xử lý đơn hàng & Rút tiền doanh thu
-1. **Đơn hàng:** Theo dõi các Sub-Orders phát sinh, bấm **"Xác nhận đơn"** và chuẩn bị bàn giao cho shipper.
-2. **Rút tiền:** Vào tab **"Doanh thu & Ví tiền"** -> Nhập số tiền muốn rút về tài khoản ngân hàng -> Nhấn **"Gửi yêu cầu rút tiền"**.
+### 2.3. Quản lý đơn hàng & Thống kê tài chính
+1. **Quản lý Sub-Orders:** Tiếp nhận đơn hàng mới theo shop, bấm **"Xác nhận đơn"** để chuẩn bị hàng cho Shipper lấy.
+2. **Thống kê doanh thu theo từng mã SKU:** Xem bảng phân tích chi tiết doanh số từng sản phẩm để tối ưu kế hoạch nhập hàng.
+3. **Rút tiền ví:** Tiền bán hàng sẽ tự động giải phóng từ tài khoản ký quỹ Escrow vào số dư khả dụng sau 72h đơn hoàn tất giao. Người bán có thể gửi yêu cầu rút tiền về ngân hàng bất kỳ lúc nào.
 
 ---
 
 ## 3. Dành cho Quản trị viên (Admin Portal Guide)
 
 ### 3.1. Truy cập Cổng Quản trị
-- Đăng nhập với tài khoản Quản trị viên (`admin@quickshop.vn` / mật khẩu quản trị).
-- Truy cập vào mục **"Quản trị hệ thống (Admin Portal)"**.
+- Đăng nhập với tài khoản Quản trị viên: `admin@quickshop.vn` / `admin123`.
+- Truy cập vào mục **"Cổng Quản Trị Hệ Thống"**.
 
 ### 3.2. Các phân hệ quản trị chính
-1. **Duyệt sản phẩm:** Xem danh sách sản phẩm `PENDING`, duyệt phát hành lên sàn hoặc từ chối kèm lý do phản hồi rõ ràng.
-2. **Quản lý Người bán:** Duyệt gian hàng mới đăng ký, xem chi tiết hồ sơ KYC (CCCD, Thuế, Kho, Ngân hàng), khóa/mở khóa gian hàng vi phạm.
-3. **Quản lý Voucher Sàn:** Tạo các chiến dịch khuyến mãi, mã giảm giá toàn sàn, giới hạn số lượt và ngày hết hạn.
-4. **Quản lý Danh mục:** Quản lý cây danh mục đa cấp, thêm danh mục mới, chỉnh sửa slug và icon hiển thị.
-5. **GMV & Tài chính:**
-   - Theo dõi chỉ số GMV toàn sàn, doanh thu hoa hồng 5%, số dư tiền ký quỹ Escrow đang bảo vệ giao dịch.
-   - Quản lý danh sách yêu cầu rút tiền của Người bán: Nhấn **"Duyệt chi"** để xác nhận chuyển khoản ngân hàng hoặc **"Từ chối"** để hoàn lại tiền vào ví người bán.
-   - Tra cứu sổ cái kế toán kép (Double-entry Ledger) ghi nhận đầy đủ bút toán Nợ/Có.
-6. **Nhật ký kiểm toán (Audit Logs):** Tra cứu lịch sử thao tác của các thành viên quản trị, sự kiện webhook từ đối tác vận chuyển theo bộ lọc và từ khóa.
-7. **Hạ tầng & Hệ thống:** Theo dõi tình trạng kết nối và uptime của 6 microservices (Gateway 8080, Identity 8081, Catalog 8082, Order 8083, Payment 8084, Shipping 8085, Notification AI 8086).
+1. **Kiểm duyệt sản phẩm:** Duyệt hoặc từ chối sản phẩm đăng bán của Seller kèm lý do phản hồi rõ ràng.
+2. **Phê duyệt gian hàng KYC:** Rà soát thông tin pháp lý của các Shop mới đăng ký và cấp quyền `ROLE_SELLER`.
+3. **Quản trị Chiến dịch Flash Sale:**
+   - Thiết lập khung giờ Flash Sale và mức chiết khấu sốc.
+   - Lựa chọn 2 chế độ: Chọn sản phẩm thủ công (Manual) hoặc kích hoạt Trí tuệ nhân tạo (AI Mode) kèm công tắc **AI Auto-Approve** tự động duyệt sản phẩm đáp ứng tiêu chí.
+4. **Giám sát Tài chính & Sổ cái kép:**
+   - Theo dõi GMV toàn sàn, doanh thu hoa hồng 5%, tài khoản ký quỹ Escrow Holding.
+   - Duyệt hoặc từ chối các yêu cầu rút tiền của Người bán.
+   - Tra cứu Sổ cái kế toán kép (Double-entry Ledger) bảo đảm cân bằng thu chi.
+5. **Giám sát Hệ thống:** Theo dõi uptime và trạng thái hoạt động của 7 Microservices backend qua Spring Actuator.
+
+---
+
+## 4. Dành cho Nhân viên Giao Hàng (Shipper Portal Guide)
+
+### 4.1. Đăng nhập Kênh Giao Vận
+- Truy cập vào mục **"Kênh Giao Hàng (Shipper)"** trên hệ thống.
+- Đăng nhập với tài khoản bưu tá: `shipper@quickshop.vn` / `123456` (hoặc đăng ký tài khoản bưu tá mới).
+
+### 4.2. Quy trình xử lý đơn giao hàng
+1. **Tiếp nhận đơn hàng cần lấy (`READY_TO_PICK`):** Xem danh sách kiện hàng của các Shop đã chuẩn bị xong, nhấn nút **"Nhận đơn lấy hàng"**.
+2. **Cập nhật đang giao (`DELIVERING`):** Khi đã nhận hàng từ kho người bán, nhấn **"Bắt đầu giao hàng"** để hệ thống gửi thông báo cho người mua.
+3. **Xác nhận giao thành công (`DELIVERED`):** Khi người mua nhận hàng thành công (và thanh toán COD nếu có), nhấn **"Xác nhận đã giao thành công"**. Hệ thống sẽ tự động kích hoạt đếm ngược 72h giải phóng tiền ký quỹ Escrow cho gian hàng.

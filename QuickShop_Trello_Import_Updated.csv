@@ -1,859 +1,903 @@
 List,Name,Description,Start Date,Due Date
-Đã xong,"[Quản lý & kiến trúc] Kick-off; rà soát mục tiêu MVP, FR-01–FR-11, NFR; lập danh sách phạm vi và tiêu chí nghiệm thu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+Đã xong,"[Quản lý & Kiến trúc] Kick-off dự án; rà soát mục tiêu MVP, FR-01–FR-11, NFR; lập backlog phạm vi và tiêu chí nghiệm thu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Hai, 2026-10-26
-**Phân hệ:** Quản lý & kiến trúc
+**Phân hệ:** Quản lý & Kiến trúc
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Kick-off; rà soát mục tiêu MVP, FR-01–FR-11, NFR; lập danh sách phạm vi và tiêu chí nghiệm thu
+Kick-off dự án; rà soát tài liệu đặc tả yêu cầu phần mềm (SRS QuickShop Marketplace), xác định phạm vi hệ thống phân tán, kiến trúc microservices và các tiêu chí chất lượng phi chức năng NFR.
 
 ### 📦 Đầu ra cần bàn giao:
-- Biên bản kick-off; backlog phạm vi; tiêu chí nghiệm thu
+- Biên bản họp kick-off dự án
+- Backlog phạm vi công việc 4 Sprint
+- Bộ tiêu chí nghiệm thu Acceptance Criteria
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Project Charter, SRS",2026-10-26,2026-10-26
-Đã xong,"[Frontend & Catalog] Khảo sát yêu cầu Buyer/Seller/Admin; liệt kê màn hình, luồng điều hướng và dữ liệu Catalog cần hiển thị: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+- Project Charter, SRS QuickShop",2026-10-26,2026-10-26
+Đã xong,[Frontend & Phân tích] Khảo sát yêu cầu người dùng 4 phân hệ; xây dựng sơ đồ luồng điều hướng và wireframe UI/UX: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Hai, 2026-10-26
-**Phân hệ:** Frontend & Catalog
+**Phân hệ:** Frontend & Phân tích
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Khảo sát yêu cầu Buyer/Seller/Admin; liệt kê màn hình, luồng điều hướng và dữ liệu Catalog cần hiển thị
+Khảo sát chi tiết hành trình người dùng 4 phân hệ (Buyer, Seller, Admin, Shipper); thiết lập sơ đồ luồng điều hướng UI, danh mục các màn hình cần xây dựng và cấu trúc trải nghiệm khách hàng.
 
 ### 📦 Đầu ra cần bàn giao:
-- Danh sách màn hình; sơ đồ luồng UI
+- Sơ đồ luồng người dùng (User Journey Map)
+- Danh sách màn hình và wireframe UI 4 phân hệ
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- SRS, vai trò người dùng",2026-10-26,2026-10-26
-Đã xong,"[Data & Order] Rà soát nghiệp vụ giỏ hàng, checkout, đơn đa shop, thanh toán, vận chuyển; liệt kê trạng thái và quy tắc nghiệp vụ: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+- SRS, Phân quyền vai trò người dùng (Roles)",2026-10-26,2026-10-26
+Đã xong,"[Data & Order] Phân tích nghiệp vụ cốt lõi: Giỏ hàng phân tán, Checkout đa gian hàng, Sổ cái kép và Vận chuyển: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Hai, 2026-10-26
 **Phân hệ:** Data & Order
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Rà soát nghiệp vụ giỏ hàng, checkout, đơn đa shop, thanh toán, vận chuyển; liệt kê trạng thái và quy tắc nghiệp vụ
+Rà soát phân tích nghiệp vụ mua sắm đa người bán: Lưu trữ giỏ hàng, quy trình Checkout phân tách Sub-Orders theo Shop, cơ chế thanh toán giữ tiền ký quỹ Escrow và quy tắc vận chuyển.
 
 ### 📦 Đầu ra cần bàn giao:
-- Bảng nghiệp vụ và trạng thái Order/Payment/Shipping
+- Tài liệu phân tích nghiệp vụ Checkout đa shop
+- Bảng quy tắc trạng thái đơn hàng và chuyển đổi trạng thái (State Machine)
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- SRS",2026-10-26,2026-10-26
-Đã xong,[Kiến trúc & DevOps] Chốt sơ đồ 1 API Gateway + 6 backend services; xác định giao tiếp đồng bộ/bất đồng bộ và ranh giới trách nhiệm: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
+- SRS QuickShop",2026-10-26,2026-10-26
+Đã xong,[Kiến trúc & Hạ tầng] Thiết kế sơ đồ kiến trúc tổng thể 1 API Gateway + 6 Backend Services và phân vùng mạng: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Ba, 2026-10-27
-**Phân hệ:** Kiến trúc & DevOps
+**Phân hệ:** Kiến trúc & Hạ tầng
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Chốt sơ đồ 1 API Gateway + 6 backend services; xác định giao tiếp đồng bộ/bất đồng bộ và ranh giới trách nhiệm
+Chốt sơ đồ kiến trúc hệ thống gồm Edge Nginx Reverse Proxy, Spring Cloud API Gateway (Port 8080) và 6 Microservices backend; định hình giao tiếp REST đồng bộ và Message Broker bất đồng bộ.
 
 ### 📦 Đầu ra cần bàn giao:
-- Sơ đồ kiến trúc tổng thể v1
+- Sơ đồ kiến trúc microservices tổng thể v1
+- Ma trận cổng kết nối (Port Matrix) và tài liệu ranh giới trách nhiệm
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Kết quả rà soát SRS",2026-10-27,2026-10-27
-Đã xong,"[Frontend & Catalog] Thiết kế cấu trúc React/Vite; phân chia layout Buyer, Seller Center, Admin; thống nhất routing và component nền: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+- Kết quả Kick-off và SRS",2026-10-27,2026-10-27
+Đã xong,"[Frontend Core] Khởi tạo kiến trúc dự án React 18, Vite, Tailwind CSS và thiết lập Routing cơ bản: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Ba, 2026-10-27
-**Phân hệ:** Frontend & Catalog
+**Phân hệ:** Frontend Core
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Thiết kế cấu trúc React/Vite; phân chia layout Buyer, Seller Center, Admin; thống nhất routing và component nền
+Khởi tạo source code frontend với React 18 + Vite + Tailwind CSS; cấu hình alias đường dẫn, quản lý trạng thái tập trung với Zustand (Auth, Cart, UI) và dựng layout khung cho các phân hệ.
 
 ### 📦 Đầu ra cần bàn giao:
-- Cấu trúc frontend; danh sách route/component
+- Mã nguồn khởi tạo Frontend chạy dev local
+- Cấu trúc thư mục chuẩn và danh sách route / layout
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Danh sách màn hình",2026-10-27,2026-10-27
-Đã xong,"[Database & Order] Phác thảo ERD cho Order, Payment, Shipping, Notification; xác định khóa, quan hệ và dữ liệu snapshot: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+- Danh sách màn hình UI",2026-10-27,2026-10-27
+Đã xong,"[Database Design] Thiết kế mô hình dữ liệu quan hệ ERD cho các phân hệ Order, Payment, Shipping và Notification: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Ba, 2026-10-27
-**Phân hệ:** Database & Order
+**Phân hệ:** Database Design
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Phác thảo ERD cho Order, Payment, Shipping, Notification; xác định khóa, quan hệ và dữ liệu snapshot
+Thiết kế lược đồ thực thể quan hệ (ERD) cho từng microservice theo nguyên tắc Database-per-service; xác định các khóa chính, khóa ngoại logic, chỉ mục đánh index và snapshot dữ liệu giá/tên hàng.
 
 ### 📦 Đầu ra cần bàn giao:
-- ERD nhóm DB nghiệp vụ v1
+- Sơ đồ ERD nhóm dịch vụ Order, Payment, Shipping, Notification
+- Tài liệu từ điển dữ liệu (Data Dictionary)
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Bảng nghiệp vụ",2026-10-27,2026-10-27
-Đã xong,[Infrastructure] Tạo repository/branch convention; dựng Docker Compose nền cho MySQL và cấu hình biến môi trường mẫu: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
+- Bảng nghiệp vụ Checkout & Tài chính",2026-10-27,2026-10-27
+Đã xong,"[DevOps & Hạ tầng] Thiết lập quy chuẩn Git, Branch Convention và Docker Compose cơ sở cho cơ sở dữ liệu MySQL 8.0: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Tư, 2026-10-28
-**Phân hệ:** Infrastructure
+**Phân hệ:** DevOps & Hạ tầng
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Tạo repository/branch convention; dựng Docker Compose nền cho MySQL và cấu hình biến môi trường mẫu
+Khởi tạo repository Git, cấu hình branch protection và các nhánh làm việc (dev/ducanh, dev/kien, quocbinh, main); viết docker-compose nền khởi chạy MySQL 8.0 phân vùng schema.
 
 ### 📦 Đầu ra cần bàn giao:
-- Repo chuẩn; compose MySQL chạy được
+- Git repository chuẩn hóa
+- Script Docker Compose MySQL chạy ổn định
+- File mẫu .env.example chuẩn
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Kiến trúc tổng thể",2026-10-28,2026-10-28
-Đã xong,"[Catalog] Thiết kế schema Category, Product, SKU, ProductImage, Review; xác định trạng thái kiểm duyệt và ràng buộc: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+- Sơ đồ kiến trúc tổng thể",2026-10-28,2026-10-28
+Đã xong,"[Catalog & Database] Thiết kế Schema Catalog DB: Category, Product, SKU, Image và Review: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Tư, 2026-10-28
-**Phân hệ:** Catalog
+**Phân hệ:** Catalog & Database
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Thiết kế schema Category, Product, SKU, ProductImage, Review; xác định trạng thái kiểm duyệt và ràng buộc
+Thiết kế lược đồ dữ liệu dịch vụ Catalog: Bảng Category phân cấp cha-con, Product, ProductSku lưu trữ biến thể, ProductImage và ProductReview; xác định enum trạng thái và ràng buộc toàn vẹn.
 
 ### 📦 Đầu ra cần bàn giao:
-- ERD/schema Catalog v1
+- Bản vẽ ERD Catalog DB
+- Script DDL khởi tạo bảng Catalog v1
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - SRS Catalog",2026-10-28,2026-10-28
-Đã xong,"[Database] Hoàn thiện schema Order DB: MasterOrder, SubOrder, OrderItem, VoucherUsage; định nghĩa enum trạng thái: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,"[Order DB & Entities] Hoàn thiện DDL Schema Order DB: MasterOrder, SubOrder, OrderItem và VoucherUsage: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Tư, 2026-10-28
-**Phân hệ:** Database
+**Phân hệ:** Order DB & Entities
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Hoàn thiện schema Order DB: MasterOrder, SubOrder, OrderItem, VoucherUsage; định nghĩa enum trạng thái
+Xây dựng chi tiết script tạo bảng Order DB: master_orders, sub_orders, order_items, voucher_usages; cấu hình enum trạng thái OrderStatus và các trường audit log.
 
 ### 📦 Đầu ra cần bàn giao:
-- DDL Order DB v1
+- Script DDL order_service_init.sql
+- Lớp thực thể Entity và Repository JPA Order
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- ERD nghiệp vụ",2026-10-28,2026-10-28
-Đã xong,"[Infrastructure] Bổ sung Redis, RabbitMQ, MinIO vào Docker Compose; cấu hình healthcheck, volume và network: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+- Sơ đồ ERD Order",2026-10-28,2026-10-28
+Đã xong,"[Hạ tầng Phân tán] Mở rộng Docker Compose: Tích hợp Redis 7, RabbitMQ 3.13 và MinIO S3 Object Storage: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Năm, 2026-10-29
-**Phân hệ:** Infrastructure
+**Phân hệ:** Hạ tầng Phân tán
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Bổ sung Redis, RabbitMQ, MinIO vào Docker Compose; cấu hình healthcheck, volume và network
+Bổ sung container Redis 7 (lưu giỏ hàng & cache), RabbitMQ 3.13 Management (Message Broker cho Saga) và MinIO (lưu ảnh sản phẩm/KYC cổng 9010/9011) vào Docker Compose; cấu hình network và healthcheck.
 
 ### 📦 Đầu ra cần bàn giao:
-- Compose đủ MySQL/Redis/RabbitMQ/MinIO
+- Cụm hạ tầng Docker Compose hoàn chỉnh chạy ổn định
+- Dashboard RabbitMQ và MinIO sẵn sàng kết nối
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Compose MySQL",2026-10-29,2026-10-29
-Đã xong,"[Frontend] Khởi tạo Vite + React 18 + Tailwind; tạo layout, header/footer, route khung cho Buyer/Seller/Admin: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+- Docker Compose MySQL",2026-10-29,2026-10-29
+Đã xong,"[Frontend Storefront] Xây dựng Storefront Layout: Header Shopee-style, Drawer giỏ hàng và Footer: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Năm, 2026-10-29
-**Phân hệ:** Frontend
+**Phân hệ:** Frontend Storefront
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Khởi tạo Vite + React 18 + Tailwind; tạo layout, header/footer, route khung cho Buyer/Seller/Admin
+Phát triển giao diện khung trang chủ mua sắm: Thanh điều hướng Header với ô tìm kiếm nhanh, icon giỏ hàng động hiển thị badge số lượng, menu điều hướng danh mục và footer liên hệ.
 
 ### 📦 Đầu ra cần bàn giao:
-- Frontend chạy local; layout và route khung
+- Giao diện Layout Storefront chuẩn responsive
+- Component Drawer giỏ hàng trượt mượt mà
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Cấu trúc frontend",2026-10-29,2026-10-29
-Đã xong,"[Database] Thiết kế schema Payment/Wallet/Shipping/Notification; bổ sung ledger, webhook event và email log: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+- Thiết lập Frontend Core",2026-10-29,2026-10-29
+Đã xong,[Common Library] Xây dựng thư viện dùng chung common-library cho toàn bộ các microservices backend: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Năm, 2026-10-29
-**Phân hệ:** Database
+**Phân hệ:** Common Library
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Thiết kế schema Payment/Wallet/Shipping/Notification; bổ sung ledger, webhook event và email log
+Xây dựng module dùng chung common-library: Định nghĩa chuẩn ApiResponse<T>, bộ mã lỗi nghiệp vụ chuẩn, GlobalExceptionHandler, base Entity có auditing và các DTO chuyển giao dữ liệu.
 
 ### 📦 Đầu ra cần bàn giao:
-- DDL các DB còn lại v1
+- Thư viện common-library build thành công
+- Tích hợp dependency vào cấu hình root build.gradle
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Schema Order",2026-10-29,2026-10-29
-Đã xong,[DevOps & Gateway] Viết README chạy local; kiểm tra kết nối service tới MySQL/Redis/RabbitMQ/MinIO; chuẩn hóa .env.example: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
+- DDL và Entity models",2026-10-29,2026-10-29
+Đã xong,"[API Gateway] Khởi tạo Spring Cloud Gateway (Port 8080); cấu hình định tuyến cơ bản, CORS và Correlation ID: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Sáu, 2026-10-30
-**Phân hệ:** DevOps & Gateway
-
----
-### 📌 Chi tiết công việc:
-Viết README chạy local; kiểm tra kết nối service tới MySQL/Redis/RabbitMQ/MinIO; chuẩn hóa .env.example
-
-### 📦 Đầu ra cần bàn giao:
-- Hướng dẫn chạy local; checklist hạ tầng
-
-### 🔗 Phụ thuộc / Phối hợp:
-- Compose đầy đủ",2026-10-30,2026-10-30
-Đã xong,"[Catalog] Khởi tạo Product Service; cấu hình Spring Boot, kết nối Catalog DB, migration và health endpoint: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
-**Thời gian:** Thứ Sáu, 2026-10-30
-**Phân hệ:** Catalog
-
----
-### 📌 Chi tiết công việc:
-Khởi tạo Product Service; cấu hình Spring Boot, kết nối Catalog DB, migration và health endpoint
-
-### 📦 Đầu ra cần bàn giao:
-- Product Service khởi động; migration chạy
-
-### 🔗 Phụ thuộc / Phối hợp:
-- DDL Catalog",2026-10-30,2026-10-30
-Đã xong,"[Order] Khởi tạo Order Service; cấu hình Spring Boot, kết nối Order DB, migration và health endpoint: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
-**Thời gian:** Thứ Sáu, 2026-10-30
-**Phân hệ:** Order
-
----
-### 📌 Chi tiết công việc:
-Khởi tạo Order Service; cấu hình Spring Boot, kết nối Order DB, migration và health endpoint
-
-### 📦 Đầu ra cần bàn giao:
-- Order Service khởi động
-
-### 🔗 Phụ thuộc / Phối hợp:
-- DDL Order",2026-10-30,2026-10-30
-Đã xong,"[API Gateway] Tạo project Gateway; cấu hình route tới Identity, Catalog, Order; xử lý CORS và request correlation id: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
-**Thời gian:** Thứ Bảy, 2026-10-31
 **Phân hệ:** API Gateway
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Tạo project Gateway; cấu hình route tới Identity, Catalog, Order; xử lý CORS và request correlation id
+Tạo module API Gateway với Spring Cloud Gateway; cấu hình route ánh xạ tới Identity, Catalog, Order; thiết lập bộ lọc xử lý CORS toàn hệ thống và sinh X-Correlation-Id truy vết request.
 
 ### 📦 Đầu ra cần bàn giao:
-- Gateway route cơ bản hoạt động
+- Gateway Service khởi động trên cổng 8080
+- Chuyển tiếp request tới các service trơn tru kèm log tracing
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Hạ tầng local",2026-10-31,2026-10-31
-Đã xong,[Frontend] Tạo trang danh sách sản phẩm và trang chi tiết sản phẩm bằng dữ liệu mock; xử lý loading/empty/error: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
-**Thời gian:** Thứ Bảy, 2026-10-31
-**Phân hệ:** Frontend
+- Cụm hạ tầng Docker",2026-10-30,2026-10-30
+Đã xong,"[Catalog Service] Khởi tạo Catalog Service (Port 8082); cấu hình kết nối DB, migration và API Category CRUD: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+**Thời gian:** Thứ Sáu, 2026-10-30
+**Phân hệ:** Catalog Service
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Tạo trang danh sách sản phẩm và trang chi tiết sản phẩm bằng dữ liệu mock; xử lý loading/empty/error
+Khởi tạo Catalog Service bằng Spring Boot 3.3; cấu hình kết nối MySQL Catalog DB; hiện thực tầng Controller, Service và Repository cho danh mục hàng hóa (Category CRUD) có kiểm tra hợp lệ.
 
 ### 📦 Đầu ra cần bàn giao:
-- Hai màn Buyer kết nối mock data
+- Catalog Service chạy trên cổng 8082
+- Bộ API Category CRUD hoạt động kèm kiểm thử unit test
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Frontend layout",2026-10-31,2026-10-31
-Đã xong,"[Order & Cart] Thiết kế API contract cho Cart, Checkout, Master/Sub-Order; thống nhất request/response và lỗi nghiệp vụ: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
-**Thời gian:** Thứ Bảy, 2026-10-31
-**Phân hệ:** Order & Cart
+- DDL Catalog, common-library",2026-10-30,2026-10-30
+Đã xong,"[Order Service] Khởi tạo Order Service (Port 8083); thiết lập kết nối MySQL, Redis và contract API giỏ hàng: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+**Thời gian:** Thứ Sáu, 2026-10-30
+**Phân hệ:** Order Service
+**Sprint:** Sprint 1 (26/10/2026 - 30/10/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Thiết kế API contract cho Cart, Checkout, Master/Sub-Order; thống nhất request/response và lỗi nghiệp vụ
+Khởi tạo Order Service; cấu hình kết nối cơ sở dữ liệu Order DB và Redis; thiết lập API contract cho giỏ hàng phân tán (Cart DTO) và bộ xử lý ngoại lệ giỏ hàng.
 
 ### 📦 Đầu ra cần bàn giao:
-- OpenAPI/API contract Cart-Order
+- Order Service khởi động thành công trên cổng 8083
+- API contract giỏ hàng chuẩn OpenAPI
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Schema Order",2026-10-31,2026-10-31
-Đã xong,"[Identity] Khởi tạo Identity & Shop Service; cấu hình Identity DB, migration, cấu trúc module User/Auth/Shop: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
-**Thời gian:** Chủ Nhật, 2026-11-01
-**Phân hệ:** Identity
-
----
-### 📌 Chi tiết công việc:
-Khởi tạo Identity & Shop Service; cấu hình Identity DB, migration, cấu trúc module User/Auth/Shop
-
-### 📦 Đầu ra cần bàn giao:
-- Identity Service chạy và kết nối DB
-
-### 🔗 Phụ thuộc / Phối hợp:
-- Hạ tầng local",2026-11-01,2026-11-01
-Đã xong,[Catalog] Triển khai Category CRUD và phân trang/lọc cơ bản; viết kiểm tra validation đầu vào: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
-**Thời gian:** Chủ Nhật, 2026-11-01
-**Phân hệ:** Catalog
-
----
-### 📌 Chi tiết công việc:
-Triển khai Category CRUD và phân trang/lọc cơ bản; viết kiểm tra validation đầu vào
-
-### 📦 Đầu ra cần bàn giao:
-- API Category CRUD + test cơ bản
-
-### 🔗 Phụ thuộc / Phối hợp:
-- Product Service",2026-11-01,2026-11-01
-Đã xong,[Payment & Shipping] Khởi tạo Payment/Shipping service skeleton; kết nối DB và tạo health endpoint cho từng service: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
-**Thời gian:** Chủ Nhật, 2026-11-01
-**Phân hệ:** Payment & Shipping
-
----
-### 📌 Chi tiết công việc:
-Khởi tạo Payment/Shipping service skeleton; kết nối DB và tạo health endpoint cho từng service
-
-### 📦 Đầu ra cần bàn giao:
-- Hai service khởi động được
-
-### 🔗 Phụ thuộc / Phối hợp:
-- DDL Payment/Shipping",2026-11-01,2026-11-01
-Đã xong,"[Identity] Triển khai đăng ký tài khoản, BCrypt password, kiểm tra email/phone trùng và validate dữ liệu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+- DDL Order, common-library",2026-10-30,2026-10-30
+Đã xong,[Identity & Auth] Khởi tạo Identity Service (Port 8081); hiện thực API đăng ký tài khoản và mã hóa BCrypt: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Hai, 2026-11-02
-**Phân hệ:** Identity
+**Phân hệ:** Identity & Auth
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Triển khai đăng ký tài khoản, BCrypt password, kiểm tra email/phone trùng và validate dữ liệu
+Khởi tạo Identity Service; xây dựng thực thể User, Role, ShopProfile; triển khai API đăng ký tài khoản với mã hóa mật khẩu BCrypt, kiểm tra trùng lặp Email và Số điện thoại.
 
 ### 📦 Đầu ra cần bàn giao:
-- API đăng ký + unit tests
+- Identity Service chạy trên cổng 8081
+- API đăng ký hoạt động có kiểm tra tính hợp lệ dữ liệu đầu vào
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Identity Service",2026-11-02,2026-11-02
-Đã xong,[Catalog] Triển khai Product CRUD theo Shop; trạng thái DRAFT/PENDING/APPROVED/REJECTED và phân quyền cơ bản: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
+- API Gateway, common-library",2026-11-02,2026-11-02
+Đã xong,[Catalog Management] Triển khai API quản lý Sản phẩm theo Shop và vòng đời phê duyệt sản phẩm: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Hai, 2026-11-02
-**Phân hệ:** Catalog
+**Phân hệ:** Catalog Management
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Triển khai Product CRUD theo Shop; trạng thái DRAFT/PENDING/APPROVED/REJECTED và phân quyền cơ bản
+Phát triển Product REST API: Thêm, sửa, xóa sản phẩm theo Shop; cài đặt máy trạng thái sản phẩm (DRAFT -> PENDING_APPROVAL -> APPROVED / REJECTED) và phân quyền thao tác.
 
 ### 📦 Đầu ra cần bàn giao:
-- API Product CRUD + trạng thái
+- Bộ API Product CRUD hoàn chỉnh
+- Kiểm thử đơn vị kiểm tra quyền truy cập theo từng gian hàng
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Category CRUD",2026-11-02,2026-11-02
-Đã xong,"[Cart] Xây dựng Cart model/API; thêm, sửa số lượng, xóa sản phẩm; kiểm tra SKU và số lượng hợp lệ: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,[Redis Cart] Triển khai lưu trữ giỏ hàng phân tán trên Redis: Guest Cart và User Cart: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Hai, 2026-11-02
-**Phân hệ:** Cart
+**Phân hệ:** Redis Cart
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Xây dựng Cart model/API; thêm, sửa số lượng, xóa sản phẩm; kiểm tra SKU và số lượng hợp lệ
+Xây dựng CartService trên Redis: Sử dụng Redis Hash lưu trữ mặt hàng trong giỏ; cài đặt cơ chế TTL 7 ngày cho giỏ hàng khách và vô hạn cho người dùng đăng nhập; hỗ trợ thao tác thêm/sửa/xóa SKU.
 
 ### 📦 Đầu ra cần bàn giao:
-- Cart API cơ bản + test
+- API Giỏ hàng trên Redis với độ trễ phản hồi < 5ms
+- Kiểm thử hiệu năng đọc/ghi giỏ hàng
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Order Service",2026-11-02,2026-11-02
-Đã xong,[Identity] Triển khai OTP qua Redis TTL 5 phút; API xác thực OTP và giới hạn gửi lại OTP: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
+- Order Service khởi tạo",2026-11-02,2026-11-02
+Đã xong,[Auth & OTP] Hiện thực cơ chế xác thực OTP qua Email với Redis TTL 5 phút và Rate-Limiting gửi mã: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Ba, 2026-11-03
-**Phân hệ:** Identity
+**Phân hệ:** Auth & OTP
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Triển khai OTP qua Redis TTL 5 phút; API xác thực OTP và giới hạn gửi lại OTP
+Tích hợp Redis lưu trữ mã OTP kích hoạt tài khoản với thời gian hết hạn TTL 5 phút; xây dựng API gửi lại OTP có cơ chế Rate Limiting chống spam (tối thiểu 60s giữa 2 lần gửi).
 
 ### 📦 Đầu ra cần bàn giao:
-- OTP flow + test TTL/expiry
+- Luồng xác thực OTP hoàn chỉnh
+- Bộ test kiểm tra TTL hết hạn và xử lý nhập sai mã quá 5 lần
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Đăng ký",2026-11-03,2026-11-03
-Đã xong,"[Catalog] Triển khai SKU/variant, giá, tồn kho và reserved_stock; kiểm tra không cho tồn kho âm: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+- API đăng ký tài khoản",2026-11-03,2026-11-03
+Đã xong,"[Catalog Variants] Hiện thực quản lý biến thể SKU: Màu sắc, kích thước, định giá và kiểm soát tồn kho: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Ba, 2026-11-03
-**Phân hệ:** Catalog
+**Phân hệ:** Catalog Variants
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Triển khai SKU/variant, giá, tồn kho và reserved_stock; kiểm tra không cho tồn kho âm
+Hiện thực thực thể ProductSku: Quản lý biến thể đa thuộc tính, giá niêm yết, giá khuyến mãi, tồn kho thực tế (stock) và tồn kho đang giữ (reserved_stock); cài đặt khóa lạc quan @Version.
 
 ### 📦 Đầu ra cần bàn giao:
-- SKU API + migration + test
+- API quản lý SKU đa biến thể
+- Ngăn chặn triệt để tình trạng âm kho (Negative Stock)
 
 ### 🔗 Phụ thuộc / Phối hợp:
 - Product CRUD",2026-11-03,2026-11-03
-Đã xong,[Cart] Triển khai Guest Cart và User Cart trên Redis; định nghĩa key/TTL và cấu trúc cart item: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
+Đã xong,[Cart Merging] Hiện thực thuật toán hợp nhất giỏ hàng (Guest Cart -> User Cart) khi đăng nhập: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Ba, 2026-11-03
-**Phân hệ:** Cart
+**Phân hệ:** Cart Merging
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Triển khai Guest Cart và User Cart trên Redis; định nghĩa key/TTL và cấu trúc cart item
+Xây dựng logic tự động gộp giỏ hàng tạm của khách vãng lai vào giỏ hàng tài khoản khi người dùng đăng nhập; xử lý cộng dồn số lượng trùng SKU và giới hạn tồn kho khả dụng.
 
 ### 📦 Đầu ra cần bàn giao:
-- Redis Cart hoạt động
+- Luồng merge cart trơn tru không mất dữ liệu
+- Bộ integration test kiểm tra logic gộp giỏ hàng
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Cart API",2026-11-03,2026-11-03
-Đã xong,"[Identity & Gateway] Triển khai login, access/refresh token; xác thực JWT ở Gateway và chuẩn hóa lỗi 401/403: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+- Redis Cart, SKU API",2026-11-03,2026-11-03
+Đã xong,"[Security & JWT] Triển khai JWT Dual Auth (Cookie & Bearer), Refresh Token Rotation và Redis Blacklist: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Tư, 2026-11-04
-**Phân hệ:** Identity & Gateway
+**Phân hệ:** Security & JWT
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Triển khai login, access/refresh token; xác thực JWT ở Gateway và chuẩn hóa lỗi 401/403
+Xây dựng hệ thống sinh Access Token (15 phút) và Refresh Token (7 ngày); hỗ trợ lấy token đồng thời qua HttpOnly Cookie và Authorization Bearer header; lưu token bị thu hồi trên Redis Blacklist.
 
 ### 📦 Đầu ra cần bàn giao:
-- Login/refresh API; Gateway JWT middleware
+- API Đăng nhập, Làm mới Token và Đăng xuất an toàn
+- Middleware JWT Filter bảo vệ toàn diện
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- OTP flow",2026-11-04,2026-11-04
-Đã xong,[Catalog & Storage] Tích hợp MinIO upload ảnh sản phẩm; kiểm tra loại file/kích thước và trả public URL: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
+- Identity Service, Redis",2026-11-04,2026-11-04
+Đã xong,[MinIO Storage] Tích hợp MinIO S3 lưu trữ hình ảnh sản phẩm và xử lý chuẩn hóa tệp tin đa phương tiện: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Tư, 2026-11-04
-**Phân hệ:** Catalog & Storage
+**Phân hệ:** MinIO Storage
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Tích hợp MinIO upload ảnh sản phẩm; kiểm tra loại file/kích thước và trả public URL
+Tích hợp SDK MinIO vào Catalog Service; hiện thực API tải lên hình ảnh sản phẩm (hỗ trợ PNG, JPG, WebP), kiểm tra dung lượng tối đa 5MB và sinh đường dẫn HTTPS stream URL công khai.
 
 ### 📦 Đầu ra cần bàn giao:
-- Upload ảnh MinIO + test
+- API upload ảnh hoạt động ổn định
+- Lưu trữ và truy xuất ảnh sản phẩm mượt mà qua Nginx proxy
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- SKU API; MinIO",2026-11-04,2026-11-04
-Đã xong,[Cart & Checkout] Triển khai merge Guest Cart sang User Cart khi đăng nhập; kiểm tra trùng SKU và giới hạn tồn kho: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
+- MinIO container",2026-11-04,2026-11-04
+Đã xong,[Checkout Core] Xây dựng công cụ tính toán Checkout đa shop: Tách Sub-Orders và lưu trữ snapshot: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Tư, 2026-11-04
-**Phân hệ:** Cart & Checkout
+**Phân hệ:** Checkout Core
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Triển khai merge Guest Cart sang User Cart khi đăng nhập; kiểm tra trùng SKU và giới hạn tồn kho
+Phát triển logic Checkout đa shop: Nhận danh sách SKU được tick chọn từ giỏ hàng, nhóm theo shop_id để tạo 1 Master Order và các Sub-Orders tương ứng; lưu trữ snapshot tên sản phẩm, giá bán tại thời điểm mua.
 
 ### 📦 Đầu ra cần bàn giao:
-- Cart merge flow + test
+- API Checkout tạo Master/Sub-Orders thành công
+- Đảm bảo tính toàn vẹn dữ liệu đơn hàng
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Guest/User Cart",2026-11-04,2026-11-04
-Đã xong,"[Gateway & Security] Triển khai JWT Dual Auth Cookie/Bearer, RBAC Buyer/Seller/Admin và route protection: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+- Cart Service, Order DB",2026-11-04,2026-11-04
+Đã xong,"[Gateway RBAC] Thiết lập bộ lọc phân quyền Gateway: Kiểm soát truy cập BUYER, SELLER và ADMIN: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Năm, 2026-11-05
-**Phân hệ:** Gateway & Security
+**Phân hệ:** Gateway RBAC
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Triển khai JWT Dual Auth Cookie/Bearer, RBAC Buyer/Seller/Admin và route protection
+Cấu hình ma trận phân quyền RBAC tại Gateway: Chặn truy cập trái phép vào các endpoint /api/seller/** và /api/admin/**; chuẩn hóa phản hồi lỗi 401 Unauthorized và 403 Forbidden.
 
 ### 📦 Đầu ra cần bàn giao:
-- Ma trận quyền + integration tests
+- Bộ lọc Gateway RBAC chuẩn hóa
+- Bộ integration test kiểm tra 10 kịch bản truy cập trái quyền
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- JWT middleware",2026-11-05,2026-11-05
-Đã xong,[Catalog] Tích hợp Redis cache danh sách/chi tiết sản phẩm; cấu hình TTL và cơ chế invalidate khi cập nhật: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
+- JWT Authentication",2026-11-05,2026-11-05
+Đã xong,[Catalog Cache] Tích hợp Redis Caching cho Catalog Service và cơ chế Invalidate Cache khi cập nhật kho: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Năm, 2026-11-05
-**Phân hệ:** Catalog
+**Phân hệ:** Catalog Cache
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Tích hợp Redis cache danh sách/chi tiết sản phẩm; cấu hình TTL và cơ chế invalidate khi cập nhật
+Cấu hình Spring Cache với Redis cho các truy vấn xem danh mục, danh sách sản phẩm trang chủ và chi tiết sản phẩm; cài đặt cơ chế tự động xóa/cập nhật cache khi Seller chỉnh sửa sản phẩm hoặc khi đơn hàng trừ kho.
 
 ### 📦 Đầu ra cần bàn giao:
-- Catalog cache + test invalidation
+- Tốc độ phản hồi API Catalog giảm xuống < 10ms
+- Cache Invalidation hoạt động chính xác
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Product API",2026-11-05,2026-11-05
-Đã xong,[Checkout] Triển khai checkout tạo MasterOrder và SubOrder theo từng Shop; lưu snapshot tên/giá/SKU: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
+- Catalog API, Redis",2026-11-05,2026-11-05
+Đã xong,[Voucher Engine] Hiện thực công cụ tính toán Voucher 2 tầng: Áp dụng đồng thời Voucher Sàn và Voucher Shop: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Năm, 2026-11-05
-**Phân hệ:** Checkout
+**Phân hệ:** Voucher Engine
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Triển khai checkout tạo MasterOrder và SubOrder theo từng Shop; lưu snapshot tên/giá/SKU
+Xây dựng VoucherService: Hỗ trợ mã giảm giá theo tỷ lệ phần trăm (%), giảm tiền cố định và mã Freeship; cho phép áp dụng đồng thời 1 voucher sàn QuickShop và 1 voucher riêng của Shop; kiểm tra giá trị đơn tối thiểu.
 
 ### 📦 Đầu ra cần bàn giao:
-- Checkout multi-shop + test
+- Engine tính toán giảm giá kép chuẩn xác
+- Bộ unit test kiểm tra điều kiện áp dụng và giới hạn số tiền giảm
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Cart merge; Order schema",2026-11-05,2026-11-05
-Đã xong,"[Shop onboarding] Triển khai tạo hồ sơ Shop, thông tin pháp lý/KYC và trạng thái PENDING_APPROVAL: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+- Checkout Core",2026-11-05,2026-11-05
+Đã xong,[Shop Onboarding] Xây dựng quy trình đăng ký gian hàng KYC và tạo hồ sơ Shop trạng thái PENDING_APPROVAL: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Sáu, 2026-11-06
-**Phân hệ:** Shop onboarding
+**Phân hệ:** Shop Onboarding
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Triển khai tạo hồ sơ Shop, thông tin pháp lý/KYC và trạng thái PENDING_APPROVAL
+Triển khai API đăng ký gian hàng bán hàng: Tiếp nhận thông tin định danh (Tên Shop, Mã số thuế, CCCD, địa chỉ kho lấy hàng, tài khoản ngân hàng thụ hưởng); lưu trữ với trạng thái chờ duyệt PENDING_APPROVAL.
 
 ### 📦 Đầu ra cần bàn giao:
-- API tạo/cập nhật hồ sơ Shop
+- Bộ API đăng ký gian hàng và cập nhật hồ sơ Shop
+- Kiểm tra tính hợp lệ định dạng số giấy tờ pháp lý
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Identity/Shop schema",2026-11-06,2026-11-06
-Đã xong,"[Frontend Catalog] Kết nối màn danh sách/chi tiết sản phẩm với Product API; xử lý lọc, phân trang và lỗi API: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+- Identity Service",2026-11-06,2026-11-06
+Đã xong,"[Buyer Storefront UI] Kết nối giao diện Buyer Catalog với API thật: Tìm kiếm, lọc giá và phân trang dữ liệu: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Sáu, 2026-11-06
-**Phân hệ:** Frontend Catalog
+**Phân hệ:** Buyer Storefront UI
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Kết nối màn danh sách/chi tiết sản phẩm với Product API; xử lý lọc, phân trang và lỗi API
+Thay thế toàn bộ dữ liệu mock trên giao diện Buyer bằng API Catalog thật: Hoàn thiện thanh tìm kiếm tức thì, bộ lọc khoảng giá đa cấp, lọc theo danh mục con và thanh phân trang 12 sản phẩm/trang.
 
 ### 📦 Đầu ra cần bàn giao:
-- Buyer Catalog chạy với API thật
+- Giao diện duyệt sản phẩm hoạt động mượt mà với dữ liệu thật từ cơ sở dữ liệu
+- Xử lý trạng thái loading/empty/error chuẩn chỉ
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Product/Category API",2026-11-06,2026-11-06
-Đã xong,"[Voucher & Inventory] Triển khai áp dụng voucher sàn và voucher Shop; kiểm tra điều kiện, hạn dùng, mức giảm: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+- Catalog API & Cache",2026-11-06,2026-11-06
+Đã xong,[Shipping Calculator] Khởi tạo Shipping Service (Port 8085); thuật toán tính cước vận chuyển GHN/GHTK linh hoạt: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Sáu, 2026-11-06
-**Phân hệ:** Voucher & Inventory
+**Phân hệ:** Shipping Calculator
+**Sprint:** Sprint 2 (02/11/2026 - 06/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Triển khai áp dụng voucher sàn và voucher Shop; kiểm tra điều kiện, hạn dùng, mức giảm
+Khởi tạo Shipping Service; xây dựng công thức tính phí giao hàng dựa trên địa giới hành chính (nội tỉnh / liên tỉnh), trọng lượng kiện hàng (> 1000g) và hình thức giao hàng (Tiêu chuẩn / Hỏa tốc).
 
 ### 📦 Đầu ra cần bàn giao:
-- Voucher calculation + unit tests
+- Shipping Service chạy cổng 8085
+- API tính cước vận chuyển trả về kết quả chính xác theo đối tác vận chuyển
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Checkout multi-shop",2026-11-06,2026-11-06
-Đã xong,[Shop & Admin] Triển khai luồng Admin duyệt/từ chối Shop; sau duyệt gán ROLE_SELLER và phát sự kiện ShopApproved: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
-**Thời gian:** Thứ Bảy, 2026-11-07
-**Phân hệ:** Shop & Admin
-
----
-### 📌 Chi tiết công việc:
-Triển khai luồng Admin duyệt/từ chối Shop; sau duyệt gán ROLE_SELLER và phát sự kiện ShopApproved
-
-### 📦 Đầu ra cần bàn giao:
-- Shop approval API + audit event
-
-### 🔗 Phụ thuộc / Phối hợp:
-- Shop onboarding",2026-11-07,2026-11-07
-Đã xong,"[Frontend Seller] Dựng Seller Center: dashboard khung, quản lý sản phẩm, form tạo/sửa sản phẩm và upload ảnh: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
-**Thời gian:** Thứ Bảy, 2026-11-07
-**Phân hệ:** Frontend Seller
-
----
-### 📌 Chi tiết công việc:
-Dựng Seller Center: dashboard khung, quản lý sản phẩm, form tạo/sửa sản phẩm và upload ảnh
-
-### 📦 Đầu ra cần bàn giao:
-- Seller Center UI bản đầu
-
-### 🔗 Phụ thuộc / Phối hợp:
-- Frontend/API Catalog",2026-11-07,2026-11-07
-Đã xong,"[Saga & Messaging] Thiết kế Saga checkout; định nghĩa event reserve-stock, payment-request, order-confirmed và compensation: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
-**Thời gian:** Thứ Bảy, 2026-11-07
-**Phân hệ:** Saga & Messaging
-
----
-### 📌 Chi tiết công việc:
-Thiết kế Saga checkout; định nghĩa event reserve-stock, payment-request, order-confirmed và compensation
-
-### 📦 Đầu ra cần bàn giao:
-- Saga sequence diagram; event contract
-
-### 🔗 Phụ thuộc / Phối hợp:
-- Checkout/Voucher",2026-11-07,2026-11-07
-Đã xong,"[Identity & Shop] Hoàn thiện reset password, refresh/revoke token; bổ sung audit log cho thao tác xác thực và duyệt Shop: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
-**Thời gian:** Chủ Nhật, 2026-11-08
-**Phân hệ:** Identity & Shop
-
----
-### 📌 Chi tiết công việc:
-Hoàn thiện reset password, refresh/revoke token; bổ sung audit log cho thao tác xác thực và duyệt Shop
-
-### 📦 Đầu ra cần bàn giao:
-- Auth flow hoàn chỉnh; test bảo mật cơ bản
-
-### 🔗 Phụ thuộc / Phối hợp:
-- Identity APIs",2026-11-08,2026-11-08
-Đã xong,[Catalog & Reviews] Triển khai đánh giá 1–5 sao chỉ sau đơn COMPLETED; tính rating trung bình và validate một đánh giá/đơn: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
-**Thời gian:** Chủ Nhật, 2026-11-08
-**Phân hệ:** Catalog & Reviews
-
----
-### 📌 Chi tiết công việc:
-Triển khai đánh giá 1–5 sao chỉ sau đơn COMPLETED; tính rating trung bình và validate một đánh giá/đơn
-
-### 📦 Đầu ra cần bàn giao:
-- Review API + test điều kiện
-
-### 🔗 Phụ thuộc / Phối hợp:
-- Order status contract",2026-11-08,2026-11-08
-Đã xong,[Saga & Inventory] Triển khai reserve stock có TTL 15 phút; xử lý timeout và giải phóng tồn kho khi checkout thất bại: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
-**Thời gian:** Chủ Nhật, 2026-11-08
-**Phân hệ:** Saga & Inventory
-
----
-### 📌 Chi tiết công việc:
-Triển khai reserve stock có TTL 15 phút; xử lý timeout và giải phóng tồn kho khi checkout thất bại
-
-### 📦 Đầu ra cần bàn giao:
-- Reserve/release stock flow
-
-### 🔗 Phụ thuộc / Phối hợp:
-- Saga contract; SKU API",2026-11-08,2026-11-08
-Đã xong,"[Notification] Tạo Notification Service; cấu hình RabbitMQ listener, retry cơ bản và cấu trúc email_logs: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+- Order Service, common-library",2026-11-06,2026-11-06
+Đã xong,"[Admin Approval] Hiện thực quy trình Admin phê duyệt gian hàng KYC, cấp quyền ROLE_SELLER và phát sự kiện: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Hai, 2026-11-09
-**Phân hệ:** Notification
+**Phân hệ:** Admin Approval
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Tạo Notification Service; cấu hình RabbitMQ listener, retry cơ bản và cấu trúc email_logs
+Xây dựng API dành cho Quản trị viên: Duyệt hoặc từ chối hồ sơ Shop kèm lý do; khi duyệt, tự động nâng cấp vai trò người dùng sang ROLE_SELLER và phát sự kiện ShopApprovedEvent qua RabbitMQ.
 
 ### 📦 Đầu ra cần bàn giao:
-- Notification consumer chạy
+- API phê duyệt Shop hoàn chỉnh
+- Ghi nhận audit log lịch sử duyệt của Admin
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- RabbitMQ; event contract",2026-11-09,2026-11-09
-Đã xong,[Frontend Seller] Kết nối Seller Center với Product API; hoàn thiện trạng thái duyệt sản phẩm và thông báo kết quả: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
+- Shop Onboarding, RabbitMQ",2026-11-09,2026-11-09
+Đã xong,[Seller Center UI] Xây dựng Kênh Người Bán (Seller Center): Dashboard tổng quan và quản lý sản phẩm: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Hai, 2026-11-09
-**Phân hệ:** Frontend Seller
+**Phân hệ:** Seller Center UI
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Kết nối Seller Center với Product API; hoàn thiện trạng thái duyệt sản phẩm và thông báo kết quả
+Phát triển giao diện Seller Center: Dashboard thống kê doanh số sơ bộ, bảng danh sách sản phẩm của gian hàng, bộ lọc trạng thái duyệt, form tạo mới/chỉnh sửa sản phẩm và tải ảnh lên MinIO.
 
 ### 📦 Đầu ra cần bàn giao:
-- Seller quản lý sản phẩm qua API
+- Giao diện Kênh Người Bán hoạt động hoàn chỉnh, liên kết dữ liệu với Catalog API
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Seller Center UI; Catalog API",2026-11-09,2026-11-09
-Đã xong,"[Saga & DLQ] Triển khai retry tối đa 3 lần, dead-letter queue order.dlq và log lỗi xử lý sự kiện: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+- Product SKU API, MinIO Upload",2026-11-09,2026-11-09
+Đã xong,[Saga Orchestrator] Thiết kế kiến trúc Saga Orchestration điều phối giao dịch phân tán qua RabbitMQ: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Hai, 2026-11-09
-**Phân hệ:** Saga & DLQ
+**Phân hệ:** Saga Orchestrator
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Triển khai retry tối đa 3 lần, dead-letter queue order.dlq và log lỗi xử lý sự kiện
+Thiết kế và triển khai Saga Orchestrator trong Order Service: Điều phối luồng đặt hàng phân tán qua RabbitMQ Exchange order.events: Khóa tồn kho (Reserve Stock) -> Khóa voucher -> Khởi tạo thanh toán -> Xác nhận đơn hàng.
 
 ### 📦 Đầu ra cần bàn giao:
-- Retry/DLQ demo + tests
+- Sơ đồ trình tự Sequence Diagram luồng Saga
+- Module Saga Orchestrator xử lý chuỗi sự kiện không phong tỏa DB
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- RabbitMQ; Saga",2026-11-09,2026-11-09
-Đã xong,"[AI Assistant] Tạo AI Assistant module; thiết kế system prompt an toàn, giới hạn phạm vi dữ liệu và chống prompt injection cơ bản: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+- Checkout Core, RabbitMQ",2026-11-09,2026-11-09
+Đã xong,[Notification Service] Khởi tạo Notification AI Service (Port 8086); lắng nghe sự kiện đơn hàng và gửi Email tự động: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Ba, 2026-11-10
-**Phân hệ:** AI Assistant
+**Phân hệ:** Notification Service
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Tạo AI Assistant module; thiết kế system prompt an toàn, giới hạn phạm vi dữ liệu và chống prompt injection cơ bản
+Khởi tạo Notification AI Service; cấu hình RabbitMQ Consumer đón nhận sự kiện OrderConfirmedEvent; tích hợp JavaMailSender gửi email xác nhận chi tiết đơn hàng đến hộp thư của người mua.
 
 ### 📦 Đầu ra cần bàn giao:
-- AI module skeleton; bộ test prompt
+- Notification Service chạy cổng 8086
+- Template email HTML hóa đơn đặt hàng gửi tự động và ghi nhật ký email_logs
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Catalog API",2026-11-10,2026-11-10
-Đã xong,"[Frontend Admin] Dựng Admin Dashboard khung; bảng quản lý Shop/sản phẩm chờ duyệt, bộ lọc và phân trang: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+- RabbitMQ, Saga Orchestrator",2026-11-10,2026-11-10
+Đã xong,[Product Reviews] Hiện thực hệ thống đánh giá sản phẩm 1-5 sao và tính điểm uy tín gian hàng: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Ba, 2026-11-10
-**Phân hệ:** Frontend Admin
+**Phân hệ:** Product Reviews
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Dựng Admin Dashboard khung; bảng quản lý Shop/sản phẩm chờ duyệt, bộ lọc và phân trang
+Phát triển phân hệ Đánh giá sản phẩm: Kiểm tra chặt chẽ điều kiện chỉ người mua có đơn hàng trạng thái COMPLETED mới được đánh giá, mỗi sản phẩm trong đơn chỉ đánh giá 1 lần; tự động tính điểm rating trung bình.
 
 ### 📦 Đầu ra cần bàn giao:
-- Admin UI khung
+- API và giao diện đánh giá sản phẩm kèm ảnh và bình luận
+- Bộ lọc sản phẩm theo số sao
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Shop/Product APIs",2026-11-10,2026-11-10
-Đã xong,"[Payment] Tích hợp VNPay Sandbox: tạo payment URL, ký checksum/HMAC theo tài liệu tích hợp và lưu giao dịch: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+- Catalog Service, Order status contract",2026-11-10,2026-11-10
+Đã xong,[Saga Compensation & DLQ] Triển khai luồng bù trừ Saga Rollback và Dead Letter Queue (order.dlq): Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Ba, 2026-11-10
-**Phân hệ:** Payment
+**Phân hệ:** Saga Compensation & DLQ
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Tích hợp VNPay Sandbox: tạo payment URL, ký checksum/HMAC theo tài liệu tích hợp và lưu giao dịch
+Hiện thực cơ chế bù trừ khi phát sinh sự cố trong chuỗi Saga: Tự động hoàn lại hàng tồn kho (Release Stock), mở lại lượt dùng voucher và hủy đơn nếu thanh toán lỗi; cấu hình retry tối đa 3 lần và đẩy tin nhắn lỗi vào order.dlq.
 
 ### 📦 Đầu ra cần bàn giao:
-- VNPay create payment flow
+- Luồng bồi hoàn Saga Rollback hoạt động hoàn hảo dưới 200ms
+- Cơ chế Dead Letter Queue giám sát lỗi tin nhắn
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Payment DB; Order events",2026-11-10,2026-11-10
-Đã xong,"[AI Assistant & Gateway] Tạo function gọi tìm kiếm Catalog; thêm timeout, circuit breaker/fallback và kiểm tra quyền truy cập dữ liệu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+- Saga Orchestrator",2026-11-10,2026-11-10
+Đã xong,[AI Assistant Core] Xây dựng Trợ lý ảo tư vấn mua sắm thông minh tích hợp Google Gemini API: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Tư, 2026-11-11
-**Phân hệ:** AI Assistant & Gateway
+**Phân hệ:** AI Assistant Core
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Tạo function gọi tìm kiếm Catalog; thêm timeout, circuit breaker/fallback và kiểm tra quyền truy cập dữ liệu
+Tích hợp Google Gemini API vào Notification AI Service; thiết kế System Prompt đóng vai trợ lý mua sắm QuickShop am hiểu sản phẩm, kiểm soát độ an toàn nội dung, chống Prompt Injection và lọc đầu ra độc hại.
 
 ### 📦 Đầu ra cần bàn giao:
-- AI catalog function + test fallback
+- Endpoint Trợ lý AI chat thông minh
+- Bộ test kiểm thử tính an toàn của prompt và độ chính xác tư vấn
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- AI module; Catalog API",2026-11-11,2026-11-11
-Đã xong,"[Frontend Admin] Kết nối API duyệt Shop và sản phẩm; hiển thị trạng thái, xác nhận thao tác và lỗi: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+- Notification Service",2026-11-11,2026-11-11
+Đã xong,[Admin Portal UI] Xây dựng Cổng Quản Trị Hệ Thống (Admin Portal): Kiểm duyệt sản phẩm và quản lý người dùng: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Tư, 2026-11-11
-**Phân hệ:** Frontend Admin
+**Phân hệ:** Admin Portal UI
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Kết nối API duyệt Shop và sản phẩm; hiển thị trạng thái, xác nhận thao tác và lỗi
+Xây dựng các màn hình quản trị cốt lõi: Bảng kiểm duyệt sản phẩm của người bán (Duyệt/Từ chối kèm lý do), bảng quản lý hồ sơ Shop KYC chờ duyệt, danh sách quản lý tài khoản người dùng và khóa tài khoản vi phạm.
 
 ### 📦 Đầu ra cần bàn giao:
-- Admin approval flow
+- Giao diện Cổng Quản Trị Admin chuẩn responsive
+- Tích hợp đầy đủ các API phê duyệt của backend
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Admin UI; Identity/Catalog APIs",2026-11-11,2026-11-11
-Đã xong,"[Payment] Xử lý VNPay IPN, xác minh chữ ký, chống xử lý giao dịch trùng và cập nhật trạng thái thanh toán: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+- Admin Approval API, Product API",2026-11-11,2026-11-11
+Đã xong,[VNPay Payment] Tích hợp Cổng thanh toán trực tuyến VNPay Sandbox và xử lý VNPay IPN Idempotent: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Tư, 2026-11-11
-**Phân hệ:** Payment
+**Phân hệ:** VNPay Payment
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Xử lý VNPay IPN, xác minh chữ ký, chống xử lý giao dịch trùng và cập nhật trạng thái thanh toán
+Tích hợp Payment Service (Port 8084) với VNPay: Sinh URL thanh toán có chữ ký HMAC-SHA512 theo tiêu chuẩn tài liệu kỹ thuật VNPay; xử lý callback IPN bất đồng bộ, xác minh chữ ký số và chống xử lý trùng lặp giao dịch.
 
 ### 📦 Đầu ra cần bàn giao:
-- VNPay IPN idempotent + tests
+- Luồng thanh toán VNPay Sandbox hoàn chỉnh
+- Xử lý IPN Idempotent đảm bảo cập nhật trạng thái đơn chính xác tuyệt đối
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- VNPay create flow",2026-11-11,2026-11-11
-Đã xong,"[AI & Identity] Hoàn thiện AI SEO description từ thông số sản phẩm; kiểm tra đầu ra, lọc HTML/Markdown và giới hạn prompt: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+- Payment Service khởi tạo, Order Service",2026-11-11,2026-11-11
+Đã xong,[AI Function Calling] Tích hợp Gemini Function Calling tra cứu sản phẩm trực tiếp và Circuit Breaker chống cạn Quota: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Năm, 2026-11-12
-**Phân hệ:** AI & Identity
+**Phân hệ:** AI Function Calling
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Hoàn thiện AI SEO description từ thông số sản phẩm; kiểm tra đầu ra, lọc HTML/Markdown và giới hạn prompt
+Mở rộng khả năng AI với Function Calling: Trợ lý bot tự động gọi API tìm kiếm sản phẩm của Catalog Service dựa trên yêu cầu của khách; trang bị Resilience4j Circuit Breaker và cơ chế fallback trả về danh mục bán chạy khi hết quota API.
 
 ### 📦 Đầu ra cần bàn giao:
-- AI SEO endpoint + test
+- Chatbot AI tư vấn kèm danh thiếp sản phẩm liên quan thực tế
+- Cơ chế Fallback hoạt động bền bỉ khi mất kết nối ngoài
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- AI module",2026-11-12,2026-11-12
-Đã xong,"[Frontend] Hoàn thiện trang chi tiết, giỏ hàng và luồng hiển thị checkout; đồng bộ trạng thái đăng nhập/giỏ hàng: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+- AI Assistant Core, Catalog API",2026-11-12,2026-11-12
+Đã xong,[Buyer Flow Integration] Hoàn thiện trải nghiệm giỏ hàng phân tách theo shop và quy trình Checkout: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Năm, 2026-11-12
-**Phân hệ:** Frontend
+**Phân hệ:** Buyer Flow Integration
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Hoàn thiện trang chi tiết, giỏ hàng và luồng hiển thị checkout; đồng bộ trạng thái đăng nhập/giỏ hàng
+Tinh chỉnh giao diện giỏ hàng phong cách Shopee: Cho phép tick chọn sản phẩm theo từng Shop hoặc chọn tất cả, tự động tính tổng tiền và phí ship; hoàn thiện trang Checkout chọn địa chỉ nhận hàng và phương thức thanh toán.
 
 ### 📦 Đầu ra cần bàn giao:
-- Buyer flow UI tích hợp
+- Luồng Mua sắm từ Giỏ hàng -> Checkout -> Thanh toán hoạt động trơn tru
+- Đồng bộ trạng thái giỏ hàng tức thì
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Auth/Cart APIs",2026-11-12,2026-11-12
-Đã xong,"[Wallet & Escrow] Triển khai double-entry ledger; ghi Nợ/Có cân bằng, commission và escrow cho giao dịch thành công: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+- Cart API, Checkout API",2026-11-12,2026-11-12
+Đã xong,[Ledger & Escrow] Xây dựng Sổ cái kế toán kép (Double-entry Ledger) và Tài khoản ký quỹ trung gian Escrow: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Năm, 2026-11-12
-**Phân hệ:** Wallet & Escrow
+**Phân hệ:** Ledger & Escrow
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Triển khai double-entry ledger; ghi Nợ/Có cân bằng, commission và escrow cho giao dịch thành công
+Triển khai mô hình tài chính kế toán kép trong Payment Service: Quản lý tài khoản ký quỹ trung gian ESCROW_HOLDING; khi khách thanh toán thành công, đóng băng tiền hàng; bảo đảm mọi bút toán luôn cân bằng: Tổng Nợ (Debit) = Tổng Có (Credit).
 
 ### 📦 Đầu ra cần bàn giao:
-- Ledger posting + invariant tests
+- Module Sổ cái kép và Ký quỹ Escrow
+- Bộ unit test kiểm tra bất biến cân bằng kế toán (Accounting Invariant)
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Payment IPN",2026-11-12,2026-11-12
-Đã xong,"[DevOps & Monitoring] Bổ sung GitHub Actions build/test; cấu hình Docker image, Nginx reverse proxy và secrets mẫu: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+- VNPay Payment, Order DB",2026-11-12,2026-11-12
+Đã xong,[AI SEO Generator] Phát triển tính năng Trí tuệ nhân tạo tự động viết mô tả sản phẩm chuẩn SEO cho Kênh Người Bán: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Sáu, 2026-11-13
-**Phân hệ:** DevOps & Monitoring
+**Phân hệ:** AI SEO Generator
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Bổ sung GitHub Actions build/test; cấu hình Docker image, Nginx reverse proxy và secrets mẫu
+Xây dựng endpoint AI trong Notification AI Service: Tiếp nhận thông số kỹ thuật, thương hiệu, tính năng sản phẩm từ Seller và sử dụng Gemini API tạo bài viết mô tả sản phẩm hấp dẫn, chuẩn cấu trúc SEO thương mại điện tử.
 
 ### 📦 Đầu ra cần bàn giao:
-- CI pipeline chạy (deploy.yml hỗ trợ SSH Key/Password); Nginx reverse proxy SSL; script khởi tạo VPS tự động (setup-vps.sh); hướng dẫn triển khai DEPLOYMENT_GUIDE.md
+- Nút bấm ""Tạo mô tả bằng AI"" trong Seller Center hoạt động ấn tượng
+- Giảm 80% thời gian đăng bài cho người bán
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Các service build được",2026-11-13,2026-11-13
-Đã xong,"[Frontend Admin] Bổ sung màn GMV/commission và audit log cơ bản; hoàn thiện responsive, loading/error states: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+- AI Assistant Core, Seller Center",2026-11-13,2026-11-13
+Đã xong,"[Admin Finance UI] Xây dựng Dashboard Tài chính Quản trị viên: GMV, Doanh thu hoa hồng sàn và Quản lý rút tiền: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Sáu, 2026-11-13
-**Phân hệ:** Frontend Admin
+**Phân hệ:** Admin Finance UI
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Bổ sung màn GMV/commission và audit log cơ bản; hoàn thiện responsive, loading/error states
+Xây dựng màn hình tài chính cho Admin: Bảng biểu trực quan hiển thị tổng giá trị giao dịch (GMV), doanh thu hoa hồng sàn (Commission 5%), số dư tài khoản ký quỹ Escrow và danh sách các yêu cầu rút tiền của Seller chờ phê duyệt.
 
 ### 📦 Đầu ra cần bàn giao:
-- Admin dashboard dữ liệu cơ bản
+- Giao diện Quản trị Tài chính Admin sắc nét
+- Thao tác duyệt yêu cầu rút tiền của người bán cập nhật số dư tức thì
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- API báo cáo/audit",2026-11-13,2026-11-13
-Đã xong,"[Shipping] Tích hợp GHN/GHTK hoặc Mock Simulator; tạo vận đơn, phí ship, tracking code và trạng thái giao hàng: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+- Ledger & Escrow, Admin Portal UI",2026-11-13,2026-11-13
+Đã xong,[Shipping Webhooks] Hoàn thiện tích hợp Shipping Service: Sinh mã vận đơn và xử lý Webhook Idempotent theo event_id: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Sáu, 2026-11-13
-**Phân hệ:** Shipping
+**Phân hệ:** Shipping Webhooks
+**Sprint:** Sprint 3 (09/11/2026 - 13/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Tích hợp GHN/GHTK hoặc Mock Simulator; tạo vận đơn, phí ship, tracking code và trạng thái giao hàng
+Hoàn thiện luồng giao vận: Tạo mã vận đơn chuẩn hóa (GHN-XXXX, GHTK-XXXX), cung cấp endpoint Simulator cập nhật lộ trình; xử lý Webhook từ đối tác giao vận đảm bảo tính Idempotency dựa trên event_id chống xử lý lặp sự kiện.
 
 ### 📦 Đầu ra cần bàn giao:
-- Shipping create/tracking API
+- Bộ API vận chuyển hoàn thiện
+- Kiểm thử nhận lặp 5 lần cùng 1 webhook vẫn bảo đảm dữ liệu đơn hàng chính xác
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Order/Shipping service",2026-11-13,2026-11-13
-Đã xong,"[Security & Observability] Cấu hình Prometheus/Grafana/Loki/Zipkin theo khả năng MVP; rà soát secrets, CORS, rate limit và log nhạy cảm: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
-**Thời gian:** Thứ Bảy, 2026-11-14
-**Phân hệ:** Security & Observability
-
----
-### 📌 Chi tiết công việc:
-Cấu hình Prometheus/Grafana/Loki/Zipkin theo khả năng MVP; rà soát secrets, CORS, rate limit và log nhạy cảm
-
-### 📦 Đầu ra cần bàn giao:
-- Dashboard/log/tracing; security checklist
-
-### 🔗 Phụ thuộc / Phối hợp:
-- CI/Nginx",2026-11-14,2026-11-14
-Đã xong,"[Frontend Integration] Tích hợp toàn bộ Buyer/Seller/Admin; sửa lỗi điều hướng, form validation, phân quyền hiển thị và responsive: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
-**Thời gian:** Thứ Bảy, 2026-11-14
-**Phân hệ:** Frontend Integration
-
----
-### 📌 Chi tiết công việc:
-Tích hợp toàn bộ Buyer/Seller/Admin; sửa lỗi điều hướng, form validation, phân quyền hiển thị và responsive
-
-### 📦 Đầu ra cần bàn giao:
-- Frontend tích hợp end-to-end
-
-### 🔗 Phụ thuộc / Phối hợp:
-- Các API chính",2026-11-14,2026-11-14
-Đã xong,[Shipping & Wallet] Xử lý webhook shipping idempotent theo event_id; hoàn thiện withdrawal/refund và đóng băng escrow: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
-**Thời gian:** Thứ Bảy, 2026-11-14
-**Phân hệ:** Shipping & Wallet
-
----
-### 📌 Chi tiết công việc:
-Xử lý webhook shipping idempotent theo event_id; hoàn thiện withdrawal/refund và đóng băng escrow
-
-### 📦 Đầu ra cần bàn giao:
-- Webhook idempotency + withdrawal/refund tests
-
-### 🔗 Phụ thuộc / Phối hợp:
-- Shipping; Ledger",2026-11-14,2026-11-14
-Đã xong,"[Release & Documentation] Chuẩn hóa README, .env.example, hướng dẫn chạy toàn hệ thống; chạy thử deploy từ pipeline: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
-**Thời gian:** Chủ Nhật, 2026-11-15
-**Phân hệ:** Release & Documentation
-
----
-### 📌 Chi tiết công việc:
-Chuẩn hóa README, .env.example, hướng dẫn chạy toàn hệ thống; chạy thử deploy từ pipeline
-
-### 📦 Đầu ra cần bàn giao:
-- Tài liệu cài đặt/vận hành; bản deploy thử
-
-### 🔗 Phụ thuộc / Phối hợp:
-- CI/CD; monitoring",2026-11-15,2026-11-15
-Đã xong,"[QA Frontend] Kiểm thử luồng Buyer/Seller/Admin; sửa lỗi UI/API; kiểm tra hiển thị trạng thái đơn, thanh toán và vận chuyển: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
-**Thời gian:** Chủ Nhật, 2026-11-15
-**Phân hệ:** QA Frontend
-
----
-### 📌 Chi tiết công việc:
-Kiểm thử luồng Buyer/Seller/Admin; sửa lỗi UI/API; kiểm tra hiển thị trạng thái đơn, thanh toán và vận chuyển
-
-### 📦 Đầu ra cần bàn giao:
-- Danh sách test UI; bug fixes
-
-### 🔗 Phụ thuộc / Phối hợp:
-- Frontend tích hợp",2026-11-15,2026-11-15
-Đã xong,"[QA Backend] Viết/chạy integration test cho checkout, Saga compensation, VNPay/COD, ledger, shipping webhook và scheduled tasks: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
-**Thời gian:** Chủ Nhật, 2026-11-15
-**Phân hệ:** QA Backend
-
----
-### 📌 Chi tiết công việc:
-Viết/chạy integration test cho checkout, Saga compensation, VNPay/COD, ledger, shipping webhook và scheduled tasks
-
-### 📦 Đầu ra cần bàn giao:
-- Báo cáo integration test; bug fixes
-
-### 🔗 Phụ thuộc / Phối hợp:
-- Các service nghiệp vụ",2026-11-15,2026-11-15
-Đã xong,"[Release & Handover] Điều phối regression; rà soát cấu hình bảo mật, pipeline, monitoring; chốt checklist bàn giao và phân công xử lý lỗi tồn: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+- Shipping Calculator, Order Service",2026-11-13,2026-11-13
+Đã xong,[UI Hardening & Motion] Nâng cấp giao diện theo chuẩn Impeccable: Cuộn mượt Lenis và chuyển động chuyên nghiệp GSAP: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
 **Thời gian:** Thứ Hai, 2026-11-16
-**Phân hệ:** Release & Handover
+**Phân hệ:** UI Hardening & Motion
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Điều phối regression; rà soát cấu hình bảo mật, pipeline, monitoring; chốt checklist bàn giao và phân công xử lý lỗi tồn
+Nâng cấp toàn diện trải nghiệm thị giác giao diện Storefront: Tích hợp thư viện cuộn mượt Lenis; cấu hình kiến trúc chuyển động GSAP (AnimatedPresence, PageTransition, StaggerReveal); tối ưu hiệu năng tránh giật lag khung hình.
 
 ### 📦 Đầu ra cần bàn giao:
-- Release checklist; biên bản bàn giao
+- Trải nghiệm lướt web mượt mà 60fps
+- Triệt tiêu cảnh báo GSAP Scope và tối ưu hóa vòng đời canvas
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Kết quả QA",2026-11-16,2026-11-16
-Đã xong,[Release & Handover] Chạy regression frontend; xác nhận các màn Buyer/Seller/Admin; cập nhật hướng dẫn sử dụng và ảnh minh họa: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
+- Buyer Storefront UI",2026-11-16,2026-11-16
+Đã xong,"[Redesign Flagship] Thiết kế lại giao diện Flagship: Bento Hero Grid, Floating Navbar và Modal bộ lọc trung tâm: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
 **Thời gian:** Thứ Hai, 2026-11-16
-**Phân hệ:** Release & Handover
+**Phân hệ:** Redesign Flagship
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Chạy regression frontend; xác nhận các màn Buyer/Seller/Admin; cập nhật hướng dẫn sử dụng và ảnh minh họa
+Tái thiết kế giao diện theo phong cách Flagship hiện đại: Bố cục Bento Hero Grid giới thiệu bộ sưu tập nổi bật, thanh điều hướng ghim nổi Glassmorphism (Floating Navbar) và chuyển bảng bộ lọc thành Modal Dialog căn giữa màn hình.
 
 ### 📦 Đầu ra cần bàn giao:
-- Frontend nghiệm thu; user guide
+- Giao diện Storefront đẳng cấp, hiện đại, thân thiện với người dùng
+- Tương thích hoàn hảo mọi độ phân giải
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Kết quả QA",2026-11-16,2026-11-16
-Đã xong,"[Release & Handover] Chạy regression backend; kiểm tra dữ liệu/luồng lỗi, tổng hợp test report và danh sách known issues: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+- UI Hardening & Motion",2026-11-16,2026-11-16
+Đã xong,[Rich Text Editor] Tích hợp CKEditor 5 và tải ảnh nội tuyến trực tiếp lên MinIO cho mô tả sản phẩm: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
 **Thời gian:** Thứ Hai, 2026-11-16
-**Phân hệ:** Release & Handover
+**Phân hệ:** Rich Text Editor
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
 
 ---
 ### 📌 Chi tiết công việc:
-Chạy regression backend; kiểm tra dữ liệu/luồng lỗi, tổng hợp test report và danh sách known issues
+Tích hợp trình soạn thảo văn bản giàu tính năng CKEditor 5 vào Kênh Người Bán; xây dựng adapter upload ảnh nội tuyến trực tiếp lên bucket MinIO, tự động sinh thẻ ảnh trong nội dung mô tả HTML sản phẩm.
 
 ### 📦 Đầu ra cần bàn giao:
-- Backend test report; known issues
+- Trình soạn thảo mô tả sản phẩm chuyên nghiệp cho Seller
+- Ảnh mô tả được lưu trữ an toàn và hiển thị đẹp mắt
 
 ### 🔗 Phụ thuộc / Phối hợp:
-- Kết quả QA",2026-11-16,2026-11-16
+- MinIO Storage, Seller Center UI",2026-11-16,2026-11-16
+Đã xong,[3D Showcase] Xây dựng trang giới thiệu tương tác 3D Scrollytelling 6 phân hệ (WebGL/Canvas) và triệt tiêu lỗi phông chữ tiếng Việt: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
+**Thời gian:** Thứ Ba, 2026-11-17
+**Phân hệ:** 3D Showcase
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
+
+---
+### 📌 Chi tiết công việc:
+Phát triển trang giới thiệu IntroPage dạng Scrollytelling 3D trình diễn 6 phân hệ của QuickShop bằng Three.js/WebGL; kiểm tra toàn bộ bảng mã cơ sở dữ liệu và xử lý triệt để lỗi hiển thị font tiếng Việt Mojibake UTF-8.
+
+### 📦 Đầu ra cần bàn giao:
+- Trang giới thiệu 3D ấn tượng đạt chuẩn công nghệ cao
+- Toàn bộ tên sản phẩm, biến thể và mô tả hiển thị tiếng Việt chuẩn 100%
+
+### 🔗 Phụ thuộc / Phối hợp:
+- UI Hardening & Motion",2026-11-17,2026-11-17
+Đã xong,[Real-time Messenger] Xây dựng giao diện Chat toàn màn hình (Full-page Messenger) giữa Người mua và Người bán: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
+**Thời gian:** Thứ Ba, 2026-11-17
+**Phân hệ:** Real-time Messenger
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
+
+---
+### 📌 Chi tiết công việc:
+Phát triển phân hệ Chat thời gian thực Buyer - Seller phong cách Shopee Chat / Facebook Messenger: Giao diện danh sách cuộc trò chuyện bên trái, khung hội thoại bên phải, nhúng thẻ sản phẩm thông minh đang xem và gửi tin nhắn tức thì.
+
+### 📦 Đầu ra cần bàn giao:
+- Hệ thống Messenger trực tuyến đầy đủ tính năng
+- Hỗ trợ người mua chat trực tiếp với gian hàng để thương lượng và tư vấn
+
+### 🔗 Phụ thuộc / Phối hợp:
+- Storefront Layout, Auth Store",2026-11-17,2026-11-17
+Đã xong,[PayOS VietQR] Tích hợp Cổng thanh toán chuyển khoản ngân hàng tự động PayOS chuẩn EMVCo VietQR Code: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
+**Thời gian:** Thứ Ba, 2026-11-17
+**Phân hệ:** PayOS VietQR
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
+
+---
+### 📌 Chi tiết công việc:
+Tích hợp cổng PayOS vào Payment Service: Tự động sinh mã VietQR chuẩn EMVCo động chứa số tiền và nội dung chuyển khoản theo mã đơn hàng; xử lý webhook thanh toán thành công và cung cấp nút bấm đối soát thanh toán thủ công.
+
+### 📦 Đầu ra cần bàn giao:
+- Phương thức thanh toán chuyển khoản ngân hàng qua quét mã QR hoạt động tức thì
+- Trải nghiệm thanh toán không tiền mặt tiện lợi
+
+### 🔗 Phụ thuộc / Phối hợp:
+- Payment Service, VNPay Payment",2026-11-17,2026-11-17
+Đã xong,"[Security & QA Hardening] Khắc phục toàn diện 18 lỗi kiểm thử bảo mật QA, gia cố chữ ký JWT Base64URL và Nginx Headers: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+**Thời gian:** Thứ Tư, 2026-11-18
+**Phân hệ:** Security & QA Hardening
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
+
+---
+### 📌 Chi tiết công việc:
+Rà soát và vá triệt để 18 lỗi ma trận QA: Kiểm tra chữ ký Base64URL canonical của JWT, chống tấn công SQLi/IDOR, bật bảo vệ Nginx Security Headers (CSP, X-Frame-Options, HSTS), loại bỏ thông tin nhạy cảm và tối ưu bộ nhớ JVM trên VPS 1GB RAM.
+
+### 📦 Đầu ra cần bàn giao:
+- Toàn bộ 18 tiêu chí an ninh QA Passed 100%
+- Hệ thống vận hành an toàn, tiết kiệm tài nguyên
+
+### 🔗 Phụ thuộc / Phối hợp:
+- API Gateway, Deployment configs",2026-11-18,2026-11-18
+Đã xong,"[Order Cards & Avatar] Nâng cấp hiển thị Sub-Orders tách biệt, cập nhật ảnh đại diện Avatar và lịch sử đơn hàng: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+**Thời gian:** Thứ Tư, 2026-11-18
+**Phân hệ:** Order Cards & Avatar
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
+
+---
+### 📌 Chi tiết công việc:
+Nâng cấp trang Lịch sử đơn hàng: Tách biệt các đơn hàng con (Sub-Orders) theo từng thẻ riêng biệt kèm logo shop; bổ sung Modal xem chi tiết lộ trình vận chuyển; hoàn thiện tính năng người dùng cập nhật ảnh đại diện (Avatar).
+
+### 📦 Đầu ra cần bàn giao:
+- Giao diện quản lý đơn hàng minh bạch, trực quan
+- Người dùng dễ dàng theo dõi từng gói hàng của các shop khác nhau
+
+### 🔗 Phụ thuộc / Phối hợp:
+- Buyer Flow Integration, MinIO Storage",2026-11-18,2026-11-18
+Đã xong,[Escrow Auto-Release & Stats] Triển khai tự động giải phóng tiền Escrow sau 72h và Bảng thống kê doanh thu theo SKU: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
+**Thời gian:** Thứ Tư, 2026-11-18
+**Phân hệ:** Escrow Auto-Release & Stats
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
+
+---
+### 📌 Chi tiết công việc:
+Xây dựng Scheduled Task tự động chuyển trạng thái tiền ký quỹ sang ví khả dụng của Người bán sau 72 giờ kể từ khi đơn hàng giao thành công; bổ sung API thống kê doanh thu chi tiết theo từng mã sản phẩm SKU cho Kênh Người Bán.
+
+### 📦 Đầu ra cần bàn giao:
+- Quy trình thanh toán tự động hóa hoàn toàn
+- Bảng báo cáo doanh thu theo SKU giúp người bán nắm rõ mặt hàng sinh lời
+
+### 🔗 Phụ thuộc / Phối hợp:
+- Ledger & Escrow, Shipping Webhooks",2026-11-18,2026-11-18
+Đã xong,[Shipper Module] Triển khai phân hệ Nhân viên giao hàng (ROLE_SHIPPER): Mở rộng Identity và API vận chuyển bưu tá: Lê Đức Anh,"**Người phụ trách:** Lê Đức Anh
+**Thời gian:** Thứ Năm, 2026-11-19
+**Phân hệ:** Shipper Module
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
+
+---
+### 📌 Chi tiết công việc:
+Mở rộng Identity Service hỗ trợ vai trò ROLE_SHIPPER: Khởi tạo tài khoản bưu tá mặc định (shipper@quickshop.vn), xây dựng trang đăng ký và đăng nhập dành riêng cho bưu tá; liên kết quyền hạn với hệ thống vận chuyển.
+
+### 📦 Đầu ra cần bàn giao:
+- Tài khoản và quyền hạn Shipper sẵn sàng
+- Bộ API phục vụ tiếp nhận đơn và cập nhật trạng thái kiện hàng cho bưu tá
+
+### 🔗 Phụ thuộc / Phối hợp:
+- Identity Service, Shipping Service",2026-11-19,2026-11-19
+Đã xong,[Shipper Portal UI] Xây dựng Cổng thông tin Nhân viên giao hàng (Shipper Portal) và Thẻ sản phẩm Chatbot AI: Triệu Quốc Bình,"**Người phụ trách:** Triệu Quốc Bình
+**Thời gian:** Thứ Năm, 2026-11-19
+**Phân hệ:** Shipper Portal UI
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
+
+---
+### 📌 Chi tiết công việc:
+Phát triển giao diện Kênh Giao Hàng dành cho Shipper: Danh sách đơn hàng cần lấy (READY_TO_PICK), danh sách đang giao (DELIVERING), nút bấm xác nhận đã giao thành công; đồng thời bổ sung thẻ sản phẩm tương tác vào Chatbot AI.
+
+### 📦 Đầu ra cần bàn giao:
+- Cổng Shipper Portal hoạt động trên di động và máy tính
+- Chatbot AI hiển thị thẻ sản phẩm trực quan có thể click xem ngay
+
+### 🔗 Phụ thuộc / Phối hợp:
+- Shipper Module, AI Assistant Core",2026-11-19,2026-11-19
+Đã xong,[Flash Sale Manager] Xây dựng Cổng quản trị Flash Sale đa chế độ (Manual & AI Mode) kèm bộ đếm ngược đồng bộ: Nguyễn Văn Kiên,"**Người phụ trách:** Nguyễn Văn Kiên
+**Thời gian:** Thứ Năm, 2026-11-19
+**Phân hệ:** Flash Sale Manager
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
+
+---
+### 📌 Chi tiết công việc:
+Phát triển hệ thống Flash Sale toàn diện: Cho phép Admin thiết lập khung giờ giảm giá sốc, hỗ trợ chọn sản phẩm thủ công hoặc kích hoạt chế độ AI tự động phân tích và duyệt sản phẩm; tích hợp bộ đếm ngược thời gian thực trên Storefront.
+
+### 📦 Đầu ra cần bàn giao:
+- Phân hệ Flash Sale hoạt động sống động trên trang chủ
+- Kích thích chuyển đổi mua hàng với đồng hồ đếm ngược
+
+### 🔗 Phụ thuộc / Phối hợp:
+- Catalog Service, Order Service",2026-11-19,2026-11-19
+Đã xong,"[Google OAuth & Map Proxy] Tích hợp Đăng nhập Google OAuth, Bản đồ số Leaflet OpenStreetMap và CI/CD hoàn tất: Lê Đức Anh","**Người phụ trách:** Lê Đức Anh
+**Thời gian:** Thứ Sáu, 2026-11-20
+**Phân hệ:** Google OAuth & Map Proxy
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
+
+---
+### 📌 Chi tiết công việc:
+Hoàn tất tích hợp Google OAuth 2.0 (đăng ký/đăng nhập/khôi phục mật khẩu); tích hợp bản đồ Leaflet OpenStreetMap và cấu hình Nginx Tile Cache & Nominatim Geocoding proxy tránh Mixed Content; đóng gói Docker Compose và deploy VPS thành công.
+
+### 📦 Đầu ra cần bàn giao:
+- Đăng nhập Google một chạm mượt mà
+- Bản đồ chọn địa chỉ giao hàng trực quan có định vị GPS
+- Hệ thống sẵn sàng trên production
+
+### 🔗 Phụ thuộc / Phối hợp:
+- Identity Service, Nginx, DevOps",2026-11-20,2026-11-20
+Đã xong,"[QA Frontend & Handover] Tổng duyệt kiểm thử giao diện E2E 4 phân hệ, tối ưu Responsive và hoàn thiện User Guide: Triệu Quốc Bình","**Người phụ trách:** Triệu Quốc Bình
+**Thời gian:** Thứ Sáu, 2026-11-20
+**Phân hệ:** QA Frontend & Handover
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
+
+---
+### 📌 Chi tiết công việc:
+Kiểm thử hồi quy toàn diện giao diện trên các thiết bị (Desktop, Laptop, Tablet iPad, Mobile iOS/Android); nghiệm thu 4 phân hệ (Buyer, Seller, Admin, Shipper); cập nhật tài liệu Hướng dẫn sử dụng USER_GUIDE.md đầy đủ hình ảnh và tính năng mới.
+
+### 📦 Đầu ra cần bàn giao:
+- Giao diện đạt chuẩn 100% không lỗi hiển thị hay vỡ khung
+- Tài liệu Hướng dẫn sử dụng hoàn thiện bàn giao cho khách hàng
+
+### 🔗 Phụ thuộc / Phối hợp:
+- Toàn bộ các phân hệ Frontend",2026-11-20,2026-11-20
+Đã xong,"[QA Backend & Regression] Tổng duyệt kiểm thử hồi quy Backend, kiểm tra Sổ cái kép và ký Biên bản bàn giao kỹ thuật: Nguyễn Văn Kiên","**Người phụ trách:** Nguyễn Văn Kiên
+**Thời gian:** Thứ Sáu, 2026-11-20
+**Phân hệ:** QA Backend & Regression
+**Sprint:** Sprint 4 (16/11/2026 - 20/11/2026)
+
+---
+### 📌 Chi tiết công việc:
+Chạy toàn bộ test suites của 7 microservices (./gradlew test đạt 100%); kiểm tra luồng Saga Rollback, đối soát số dư ví ký quỹ Escrow, tính chính xác của thanh toán PayOS/VNPay và chốt Báo cáo kiểm thử hồi quy BACKEND_REGRESSION_REPORT.md.
+
+### 📦 Đầu ra cần bàn giao:
+- Báo cáo kiểm thử Backend hoàn chỉnh (100% Passed)
+- Biên bản nghiệm thu kỹ thuật và phân công bảo hành dự án
+
+### 🔗 Phụ thuộc / Phối hợp:
+- Toàn bộ các phân hệ Backend",2026-11-20,2026-11-20
