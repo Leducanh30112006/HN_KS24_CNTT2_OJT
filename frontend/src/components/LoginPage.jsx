@@ -11,6 +11,7 @@ import { validateRegisterInput, validateLoginInput } from '../utils/authValidati
 import axiosClient from '../api/axiosClient';
 import GoogleAuthButton from './auth/GoogleAuthButton';
 import ForgotPasswordModal from './auth/ForgotPasswordModal';
+import RegisterOtpModal from './auth/RegisterOtpModal';
 
 export default function LoginPage({ 
   onBackToHome, 
@@ -43,6 +44,38 @@ export default function LoginPage({
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+  const [pendingRegData, setPendingRegData] = useState(null);
+  const [emailChecking, setEmailChecking] = useState(false);
+
+  const checkEmailDuplicate = async (emailToCheck) => {
+    const email = (emailToCheck !== undefined ? emailToCheck : regEmail).trim();
+    if (!email || !/\S+@\S+\.\S+/.test(email)) return true;
+    try {
+      setEmailChecking(true);
+      const res = await axiosClient.get(`/api/auth/check-email?email=${encodeURIComponent(email)}`);
+      if (res?.data?.exists) {
+        setFieldErrors(prev => ({
+          ...prev,
+          email: 'Email đã được đăng ký trên hệ thống. Vui lòng đăng nhập hoặc sử dụng email khác.',
+        }));
+        return false;
+      } else {
+        setFieldErrors(prev => {
+          const next = { ...prev };
+          if (next.email?.includes('đã được đăng ký')) {
+            delete next.email;
+          }
+          return next;
+        });
+        return true;
+      }
+    } catch {
+      return true;
+    } finally {
+      setEmailChecking(false);
+    }
+  };
 
   const handleLoginSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -283,6 +316,14 @@ export default function LoginPage({
       return;
     }
 
+    // Kiểm tra trùng email trước khi gửi request
+    const isAvailable = await checkEmailDuplicate(regEmail);
+    if (!isAvailable) {
+      setErrorMsg('Email đã được đăng ký trên hệ thống. Vui lòng đăng nhập hoặc sử dụng email khác.');
+      setFieldErrors(prev => ({ ...prev, email: 'Email đã được đăng ký trên hệ thống' }));
+      return;
+    }
+
     setFieldErrors({});
     setLoading(true);
 
@@ -298,18 +339,30 @@ export default function LoginPage({
       const res = await axiosClient.post('/api/auth/register', payload);
 
       if (res && (res.success || res.data)) {
-        setSuccessMsg('Đăng ký tài khoản thành công! Tài khoản của bạn đã được kích hoạt trực tiếp, không cần xác nhận qua email.');
-        
-        const registeredUser = regUsername.trim();
-        const registeredPass = regPassword;
+        const data = res.data || {};
+        if (data.status === 'PENDING_VERIFICATION' || !data.accessToken) {
+          setPendingRegData({
+            email: regEmail.trim(),
+            fullName: regFullName.trim(),
+            username: regUsername.trim(),
+          });
+          setIsOtpModalOpen(true);
+          setSuccessMsg('Mã OTP 6 chữ số đã được gửi tới email ' + regEmail.trim() + '. Vui lòng nhập mã để kích hoạt tài khoản.');
+          return;
+        }
 
-        // Tự động chuyển về Tab Đăng nhập và điền sẵn thông tin
+        // Trường hợp backend cấp token ngay
+        const userId = data.userId ?? data.id ?? 1001;
+        const role = data.role || 'ROLE_BUYER';
+        login({ ...data, userId, role });
+        try {
+          await syncCartOnLogin(userId, { dedupeRecent: true });
+        } catch {}
+
+        setSuccessMsg('Đăng ký tài khoản thành công! Đang chuyển hướng...');
         setTimeout(() => {
-          setActiveTab('login');
-          setLoginUsername(registeredUser);
-          setLoginPassword(registeredPass);
-          setSuccessMsg('Tài khoản đã sẵn sàng! Nhấn "ĐĂNG NHẬP NGAY" để bắt đầu trải nghiệm mua sắm.');
-        }, 1500);
+          onLoginSuccess('storefront');
+        }, 800);
         return;
       }
 
@@ -621,11 +674,11 @@ export default function LoginPage({
                 {/* TAB 2: REGISTER FORM - ĐẦY ĐỦ VALIDATE & THÔNG BÁO ĐỎ & BỎ XÁC NHẬN MAIL */}
                 {activeTab === 'register' && (
                   <form onSubmit={handleRegisterSubmit} className="space-y-3.5 pt-1" noValidate>
-                    {/* Banner thông báo trực quan: Đăng ký kích hoạt ngay, bỏ xác nhận email */}
-                    <div className="p-3 bg-emerald-50/90 border border-emerald-200 text-emerald-900 rounded-xl text-xs flex items-center gap-2.5">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    {/* Banner thông báo trực quan: Xác thực email OTP */}
+                    <div className="p-3 bg-orange-50/80 border border-orange-200 text-orange-950 rounded-xl text-xs flex items-center gap-2.5">
+                      <ShieldCheck className="w-4 h-4 text-orange-600 flex-shrink-0" />
                       <div className="text-[11px] leading-relaxed">
-                        Tài khoản được <strong>kích hoạt trực tiếp</strong> ngay sau khi đăng ký, không cần chờ xác thực qua email.
+                        QuickShop bảo vệ tài khoản bằng <strong>mã xác thực OTP 6 số gửi qua email</strong>. Vui lòng sử dụng email chính xác của bạn.
                       </div>
                     </div>
 
@@ -708,14 +761,18 @@ export default function LoginPage({
                             setFieldErrors(prev => ({ ...prev, email: '' }));
                             setErrorMsg('');
                           }}
+                          onBlur={() => checkEmailDuplicate()}
                           placeholder="buyer@example.com"
-                          className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                          className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
                             fieldErrors.email
                               ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
                               : 'bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10'
                           }`}
                         />
                         <Mail className={`w-4 h-4 absolute left-3.5 top-3 ${fieldErrors.email ? 'text-red-500' : 'text-slate-400'}`} />
+                        {emailChecking && (
+                          <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin absolute right-3.5 top-3" />
+                        )}
                       </div>
                       {fieldErrors.email && (
                         <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
@@ -1018,6 +1075,32 @@ export default function LoginPage({
           } else {
             setSuccessMsg('Đã đặt lại mật khẩu thành công! Vui lòng đăng nhập bằng mật khẩu mới.');
           }
+        }}
+      />
+
+      {/* Register OTP Verification Modal */}
+      <RegisterOtpModal
+        isOpen={isOtpModalOpen}
+        onClose={() => setIsOtpModalOpen(false)}
+        email={pendingRegData?.email || regEmail.trim()}
+        fullName={pendingRegData?.fullName || regFullName.trim()}
+        username={pendingRegData?.username || regUsername.trim()}
+        onBackToEdit={() => setIsOtpModalOpen(false)}
+        onVerificationSuccess={async (authData) => {
+          setIsOtpModalOpen(false);
+          const userId = authData.userId ?? authData.id ?? 1001;
+          const role = authData.role || 'ROLE_BUYER';
+          login({ ...authData, userId, role });
+          try {
+            await syncCartOnLogin(userId, { dedupeRecent: true });
+          } catch {}
+          setSuccessMsg(`Kích hoạt tài khoản thành công! Chào mừng ${authData.fullName || authData.username}`);
+          setTimeout(() => {
+            if (role === 'ROLE_ADMIN' || role === 'ADMIN') onLoginSuccess('admin');
+            else if (role === 'ROLE_SELLER' || role === 'SELLER') onLoginSuccess('seller');
+            else if (role === 'ROLE_SHIPPER' || role === 'SHIPPER') onLoginSuccess('shipper');
+            else onLoginSuccess('storefront');
+          }, 600);
         }}
       />
 

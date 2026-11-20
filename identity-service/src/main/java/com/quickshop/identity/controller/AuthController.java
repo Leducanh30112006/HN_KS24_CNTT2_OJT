@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -52,17 +53,32 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    @Operation(summary = "Đăng ký tài khoản mới & tự động cấp JWT")
+    @Operation(summary = "Đăng ký tài khoản mới & gửi mã OTP xác thực qua email")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest registerRequest) {
         AuthResponse response = authService.register(registerRequest);
 
-        ResponseCookie accessCookie = createCookie("accessToken", response.getAccessToken(), 86400);
-        ResponseCookie refreshCookie = createCookie("refreshToken", response.getRefreshToken(), 604800);
+        if (response.getAccessToken() != null) {
+            ResponseCookie accessCookie = createCookie("accessToken", response.getAccessToken(), 86400);
+            ResponseCookie refreshCookie = createCookie("refreshToken", response.getRefreshToken(), 604800);
+
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                    .body(ApiResponse.created("Đăng ký tài khoản thành công", response));
+        }
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
-                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(ApiResponse.created("Đăng ký tài khoản thành công", response));
+                .body(ApiResponse.created("Đăng ký tài khoản thành công! Vui lòng kiểm tra email và nhập mã OTP 6 chữ số để kích hoạt tài khoản.", response));
+    }
+
+    @GetMapping("/check-email")
+    @Operation(summary = "Kiểm tra địa chỉ email đã được đăng ký trên hệ thống hay chưa")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkEmail(@RequestParam("email") String email) {
+        boolean exists = authService.checkEmailExists(email);
+        return ResponseEntity.ok(ApiResponse.ok(
+                exists ? "Email đã được sử dụng" : "Email khả dụng",
+                Map.of("email", email != null ? email.trim() : "", "exists", exists)
+        ));
     }
 
     @PostMapping("/google")

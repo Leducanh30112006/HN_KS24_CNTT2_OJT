@@ -62,6 +62,9 @@ class AuthServiceTest {
     @Mock
     private AuditLogService auditLogService;
 
+    @Mock
+    private EmailService emailService;
+
     @InjectMocks
     private AuthServiceImpl authService;
 
@@ -103,42 +106,58 @@ class AuthServiceTest {
     class RegisterTests {
 
         @Test
-        @DisplayName("Đăng ký thành công - hợp lệ username, email, phone và kích hoạt trực tiếp")
+        @DisplayName("Đăng ký thành công - hợp lệ username, email, phone, khởi tạo PENDING_VERIFICATION và gửi OTP")
         void register_Success() {
             when(userRepository.existsByUsername("testbuyer")).thenReturn(false);
             when(userRepository.existsByEmail("buyer@quickshop.vn")).thenReturn(false);
             when(userRepository.existsByPhoneNumber("0987654321")).thenReturn(false);
             when(passwordEncoder.encode("raw_password")).thenReturn("encoded_pass");
             when(userRepository.save(any(User.class))).thenReturn(sampleUser);
-            when(tokenProvider.generateAccessToken(sampleUser)).thenReturn("mock_access_token");
-            when(tokenProvider.generateRefreshToken(sampleUser)).thenReturn("mock_refresh_token");
+            when(otpService.generateAndSaveOtp("buyer@quickshop.vn")).thenReturn("123456");
 
             AuthResponse response = authService.register(registerRequest);
 
             assertThat(response).isNotNull();
-            assertThat(response.getAccessToken()).isEqualTo("mock_access_token");
-            assertThat(response.getRefreshToken()).isEqualTo("mock_refresh_token");
             assertThat(response.getUsername()).isEqualTo("testbuyer");
             assertThat(response.getRole()).isEqualTo(Role.ROLE_BUYER);
             verify(userRepository, times(1)).save(any(User.class));
+            verify(otpService, times(1)).generateAndSaveOtp("buyer@quickshop.vn");
+            verify(emailService, times(1)).sendOtpEmail(eq("buyer@quickshop.vn"), any(), eq("123456"), any());
         }
 
         @Test
-        @DisplayName("Đăng ký lưu user ở trạng thái ACTIVE và active=true (bỏ xác nhận mail)")
-        void register_CreatesActiveUser() {
+        @DisplayName("Đăng ký lưu user ở trạng thái PENDING_VERIFICATION, active=false và gửi email OTP")
+        void register_CreatesPendingUserAndSendsOtp() {
             when(userRepository.existsByUsername("testbuyer")).thenReturn(false);
             when(userRepository.existsByEmail("buyer@quickshop.vn")).thenReturn(false);
             when(passwordEncoder.encode("raw_password")).thenReturn("encoded_pass");
             when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(otpService.generateAndSaveOtp("buyer@quickshop.vn")).thenReturn("123456");
 
-            authService.register(registerRequest);
+            AuthResponse response = authService.register(registerRequest);
 
             ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
             verify(userRepository).save(captor.capture());
             User saved = captor.getValue();
 
-            assertThat(saved.getStatus()).isEqualTo(UserStatus.ACTIVE);
-            assertThat(saved.isActive()).isTrue();
+            assertThat(saved.getStatus()).isEqualTo(UserStatus.PENDING_VERIFICATION);
+            assertThat(saved.isActive()).isFalse();
+            assertThat(response.getStatus()).isEqualTo(UserStatus.PENDING_VERIFICATION);
+            assertThat(response.getAccessToken()).isNull();
+            verify(otpService).generateAndSaveOtp("buyer@quickshop.vn");
+            verify(emailService).sendOtpEmail(eq("buyer@quickshop.vn"), any(), eq("123456"), any());
+        }
+
+        @Test
+        @DisplayName("Kiểm tra email trùng - trả về true nếu đã tồn tại, false nếu chưa")
+        void checkEmailExists_WorksCorrectly() {
+            when(userRepository.existsByEmail("existing@quickshop.vn")).thenReturn(true);
+            when(userRepository.existsByEmail("available@quickshop.vn")).thenReturn(false);
+
+            assertThat(authService.checkEmailExists("existing@quickshop.vn")).isTrue();
+            assertThat(authService.checkEmailExists("available@quickshop.vn")).isFalse();
+            assertThat(authService.checkEmailExists("")).isFalse();
+            assertThat(authService.checkEmailExists(null)).isFalse();
         }
 
         @Test
@@ -316,6 +335,7 @@ class AuthServiceTest {
             assertThat(response.getTtlSeconds()).isEqualTo(300L);
             assertThat(response.getCooldownSeconds()).isEqualTo(60L);
             verify(otpService, times(1)).resendOtp("new@quickshop.vn");
+            verify(emailService, times(1)).sendOtpEmail(eq("new@quickshop.vn"), any(), eq("654321"), any());
         }
 
         @Test
@@ -371,22 +391,18 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("Đăng nhập với tài khoản PENDING_VERIFICATION sẽ tự động kích hoạt thành ACTIVE (bỏ xác nhận mail)")
-        void login_PendingVerificationUser_AutoActivates() {
+        @DisplayName("Đăng nhập thất bại khi tài khoản PENDING_VERIFICATION chưa xác thực OTP")
+        void login_PendingVerificationUser_ThrowsBadRequest() {
             sampleUser.setStatus(UserStatus.PENDING_VERIFICATION);
             sampleUser.setActive(false);
             when(userRepository.findByUsernameOrEmail("testbuyer", "testbuyer")).thenReturn(Optional.of(sampleUser));
             when(passwordEncoder.matches("raw_password", "encoded_pass")).thenReturn(true);
-            when(userRepository.save(any(User.class))).thenReturn(sampleUser);
-            when(tokenProvider.generateAccessToken(sampleUser)).thenReturn("mock_access_token");
-            when(tokenProvider.generateRefreshToken(sampleUser)).thenReturn("mock_refresh_token");
 
-            AuthResponse response = authService.login(loginRequest);
+            assertThatThrownBy(() -> authService.login(loginRequest))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("Tài khoản chưa được kích hoạt. Vui lòng xác thực mã OTP");
 
-            assertThat(response).isNotNull();
-            assertThat(sampleUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
-            assertThat(sampleUser.isActive()).isTrue();
-            verify(userRepository).save(sampleUser);
+            verify(tokenProvider, never()).generateAccessToken(any());
         }
 
         @Test
@@ -491,6 +507,7 @@ class AuthServiceTest {
             assertThat(response.getEmail()).isEqualTo("buyer@quickshop.vn");
             assertThat(response.getTtlSeconds()).isEqualTo(900L);
             verify(otpService, times(1)).generateAndSaveResetOtp("buyer@quickshop.vn");
+            verify(emailService, times(1)).sendOtpEmail(eq("buyer@quickshop.vn"), any(), eq("654321"), any());
             verify(auditLogService, times(1)).logSuccess(eq(1L), eq("testbuyer"), eq("PASSWORD_RESET_REQUEST"), any(), any(), any());
         }
 

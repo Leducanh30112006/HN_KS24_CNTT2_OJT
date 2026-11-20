@@ -137,6 +137,10 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       JAVA_OPTS: "-XX:+UseContainerSupport -Xms24m -Xmx112m -XX:ReservedCodeCacheSize=32m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Dserver.tomcat.threads.max=20 -Dserver.tomcat.threads.min-spare=2 -Dspring.jpa.show-sql=false -Djava.security.egd=file:/dev/./urandom -Djava.net.preferIPv4Stack=true"
     depends_on:
       mysql:

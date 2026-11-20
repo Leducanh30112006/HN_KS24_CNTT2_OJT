@@ -58,6 +58,7 @@ public class AuthServiceImpl implements AuthService {
     private final StringRedisTemplate stringRedisTemplate;
     private final AuditLogService auditLogService;
     private final RestTemplate restTemplate;
+    private final com.quickshop.identity.service.EmailService emailService;
 
     @Value("${google.client-id:}")
     private String googleClientId;
@@ -97,17 +98,13 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Tên đăng nhập hoặc mật khẩu không chính xác");
         }
 
-        if (user.getStatus() == UserStatus.PENDING_VERIFICATION) {
-            // Tự động kích hoạt tài khoản đăng ký (bỏ xác nhận mail theo yêu cầu)
-            user.setStatus(UserStatus.ACTIVE);
-            user.setActive(true);
-            user = userRepository.save(user);
-            auditLogService.logSuccess(user.getId(), user.getUsername(), "AUTO_ACTIVATE", "User", user.getId(), "Tự động kích hoạt tài khoản không cần xác thực mail");
-        }
-
-        if (!user.isActive() || user.getStatus() == UserStatus.BLOCKED) {
+        if (user.getStatus() == UserStatus.BLOCKED) {
             auditLogService.logFailure(user.getId(), user.getUsername(), "LOGIN_BLOCKED", "User", user.getId(), "Tài khoản của bạn đã bị khóa");
             throw new BadRequestException("Tài khoản của bạn đã bị khóa");
+        }
+
+        if (user.getStatus() == UserStatus.PENDING_VERIFICATION || !user.isActive()) {
+            throw new BadRequestException("Tài khoản chưa được kích hoạt. Vui lòng xác thực mã OTP đã gửi tới email: " + user.getEmail());
         }
 
         String accessToken = tokenProvider.generateAccessToken(user);
@@ -133,16 +130,19 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest registerRequest) {
-        if (userRepository.existsByUsername(registerRequest.getUsername())) {
+        String normalizedUsername = registerRequest.getUsername() != null ? registerRequest.getUsername().trim() : "";
+        String normalizedEmail = registerRequest.getEmail() != null ? registerRequest.getEmail().trim().toLowerCase() : "";
+
+        if (userRepository.existsByUsername(normalizedUsername)) {
             throw new BadRequestException("Username đã tồn tại trên hệ thống");
         }
 
-        if (userRepository.existsByEmail(registerRequest.getEmail())) {
-            throw new BadRequestException("Email đã được đăng ký trên hệ thống");
+        if (userRepository.existsByEmail(normalizedEmail)) {
+            throw new BadRequestException("Email đã được đăng ký trên hệ thống. Vui lòng đăng nhập hoặc sử dụng email khác.");
         }
 
         if (registerRequest.getPhoneNumber() != null && !registerRequest.getPhoneNumber().isBlank()) {
-            if (userRepository.existsByPhoneNumber(registerRequest.getPhoneNumber())) {
+            if (userRepository.existsByPhoneNumber(registerRequest.getPhoneNumber().trim())) {
                 throw new BadRequestException("Số điện thoại đã được đăng ký trên hệ thống");
             }
         }
@@ -150,35 +150,36 @@ public class AuthServiceImpl implements AuthService {
         Role role = registerRequest.getRole() != null ? registerRequest.getRole() : Role.ROLE_BUYER;
 
         User user = User.builder()
-                .username(registerRequest.getUsername())
-                .email(registerRequest.getEmail())
-                .phoneNumber(registerRequest.getPhoneNumber())
+                .username(normalizedUsername)
+                .email(normalizedEmail)
+                .phoneNumber(registerRequest.getPhoneNumber() != null ? registerRequest.getPhoneNumber().trim() : null)
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
-                .fullName(registerRequest.getFullName())
+                .fullName(registerRequest.getFullName() != null ? registerRequest.getFullName().trim() : normalizedUsername)
                 .role(role)
-                .status(UserStatus.ACTIVE)
-                .active(true)
+                .status(UserStatus.PENDING_VERIFICATION)
+                .active(false)
                 .build();
 
         User savedUser = userRepository.save(user);
 
-        auditLogService.logSuccess(savedUser.getId(), savedUser.getUsername(), "REGISTER", "User", savedUser.getId(),
-                "Đăng ký tài khoản mới thành công (kích hoạt trực tiếp không cần xác nhận mail): " + savedUser.getUsername());
+        // Sinh mã OTP 6 chữ số lưu vào Redis (TTL 5 phút, cooldown 60s)
+        String otpCode = otpService.generateAndSaveOtp(savedUser.getEmail());
 
-        String accessToken = tokenProvider.generateAccessToken(savedUser);
-        String refreshToken = tokenProvider.generateRefreshToken(savedUser);
+        // Gửi email chứa mã OTP xác thực
+        emailService.sendOtpEmail(savedUser.getEmail(), savedUser.getFullName(), otpCode, "Xác thực đăng ký tài khoản");
+
+        auditLogService.logSuccess(savedUser.getId(), savedUser.getUsername(), "REGISTER_PENDING_OTP", "User", savedUser.getId(),
+                "Khởi tạo tài khoản thành công. Đã gửi mã xác thực OTP tới email: " + savedUser.getEmail());
 
         return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .tokenType("Bearer")
-                .expiresIn(86400L)
                 .userId(savedUser.getId())
                 .username(savedUser.getUsername())
                 .email(savedUser.getEmail())
                 .fullName(savedUser.getFullName())
                 .role(savedUser.getRole())
                 .status(savedUser.getStatus())
+                .tokenType("Bearer")
+                .expiresIn(300L)
                 .build();
     }
 
@@ -478,7 +479,8 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Tài khoản này đã được kích hoạt thành công, không cần gửi lại OTP");
         }
 
-        otpService.resendOtp(user.getEmail());
+        String otp = otpService.resendOtp(user.getEmail());
+        emailService.sendOtpEmail(user.getEmail(), user.getFullName(), otp, "Mã xác thực OTP mới");
 
         return OtpResponse.builder()
                 .email(user.getEmail())
@@ -498,7 +500,8 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Tài khoản của bạn đã bị khóa");
         }
 
-        otpService.generateAndSaveResetOtp(user.getEmail());
+        String resetOtp = otpService.generateAndSaveResetOtp(user.getEmail());
+        emailService.sendOtpEmail(user.getEmail(), user.getFullName(), resetOtp, "Đặt lại mật khẩu");
         auditLogService.logSuccess(user.getId(), user.getUsername(), "PASSWORD_RESET_REQUEST", "User", user.getId(),
                 "Yêu cầu cấp mã OTP đặt lại mật khẩu cho email: " + user.getEmail());
 
@@ -536,6 +539,15 @@ public class AuthServiceImpl implements AuthService {
                 "Đặt lại mật khẩu thành công qua mã OTP");
 
         log.info("Reset password successful for user: {} [{}]", user.getUsername(), user.getEmail());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean checkEmailExists(String email) {
+        if (!StringUtils.hasText(email)) {
+            return false;
+        }
+        return userRepository.existsByEmail(email.trim().toLowerCase());
     }
 
     @Override

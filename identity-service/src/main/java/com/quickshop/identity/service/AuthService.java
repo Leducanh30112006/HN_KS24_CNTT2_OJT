@@ -22,6 +22,7 @@ public interface AuthService {
     OtpResponse resendOtp(ResendOtpRequest resendOtpRequest);
     OtpResponse forgotPassword(ForgotPasswordRequest request);
     void resetPassword(ResetPasswordRequest request);
+    boolean checkEmailExists(String email);
     void revokeToken(String token, Long userId);
     void logout(String token, Long userId);
 }

@@ -11,6 +11,7 @@ import axiosClient from '../api/axiosClient';
 import { AnimatedPresence } from './motion/MotionPrimitives';
 import GoogleAuthButton from './auth/GoogleAuthButton';
 import ForgotPasswordModal from './auth/ForgotPasswordModal';
+import RegisterOtpModal from './auth/RegisterOtpModal';
 
 export default function AuthModal({ 
   isOpen, 
@@ -46,6 +47,38 @@ export default function AuthModal({
   const [successMsg, setSuccessMsg] = useState('');
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+  const [pendingRegData, setPendingRegData] = useState(null);
+  const [emailChecking, setEmailChecking] = useState(false);
+
+  const checkEmailDuplicate = async (emailToCheck) => {
+    const email = (emailToCheck !== undefined ? emailToCheck : regEmail).trim();
+    if (!email || !/\S+@\S+\.\S+/.test(email)) return true;
+    try {
+      setEmailChecking(true);
+      const res = await axiosClient.get(`/api/auth/check-email?email=${encodeURIComponent(email)}`);
+      if (res?.data?.exists) {
+        setFieldErrors(prev => ({
+          ...prev,
+          email: 'Email đã được đăng ký trên hệ thống. Vui lòng đăng nhập hoặc sử dụng email khác.',
+        }));
+        return false;
+      } else {
+        setFieldErrors(prev => {
+          const next = { ...prev };
+          if (next.email?.includes('đã được đăng ký')) {
+            delete next.email;
+          }
+          return next;
+        });
+        return true;
+      }
+    } catch {
+      return true;
+    } finally {
+      setEmailChecking(false);
+    }
+  };
 
   const handleTabSwitch = (tab) => {
     setActiveTab(tab);
@@ -267,6 +300,14 @@ export default function AuthModal({
       return;
     }
 
+    // Kiểm tra trùng email trước khi gửi
+    const isAvailable = await checkEmailDuplicate(regEmail);
+    if (!isAvailable) {
+      setErrorMsg('Email đã được đăng ký trên hệ thống. Vui lòng đăng nhập hoặc sử dụng email khác.');
+      setFieldErrors(prev => ({ ...prev, email: 'Email đã được đăng ký trên hệ thống' }));
+      return;
+    }
+
     setFieldErrors({});
     setLoading(true);
 
@@ -282,18 +323,31 @@ export default function AuthModal({
       const res = await axiosClient.post('/api/auth/register', payload);
 
       if (res && (res.success || res.data)) {
-        setSuccessMsg('Đăng ký tài khoản thành công! Tài khoản của bạn đã được kích hoạt trực tiếp không cần xác nhận email.');
-        
-        const registeredUser = regUsername.trim();
-        const registeredPass = regPassword;
+        const data = res.data || {};
+        if (data.status === 'PENDING_VERIFICATION' || !data.accessToken) {
+          setPendingRegData({
+            email: regEmail.trim(),
+            fullName: regFullName.trim(),
+            username: regUsername.trim(),
+          });
+          setIsOtpModalOpen(true);
+          setSuccessMsg('Mã OTP 6 chữ số đã được gửi tới email ' + regEmail.trim() + '. Vui lòng nhập mã để kích hoạt tài khoản.');
+          return;
+        }
 
-        // Tự động chuyển sang tab Đăng nhập và điền sẵn thông tin
+        // Trường hợp backend cấp token ngay
+        const userId = data.userId ?? data.id ?? 1001;
+        const role = data.role || 'ROLE_BUYER';
+        login({ ...data, userId, role });
+        try {
+          await syncCartOnLogin(userId);
+        } catch {}
+
+        setSuccessMsg('Đăng ký tài khoản thành công! Đang chuyển hướng...');
         setTimeout(() => {
-          setActiveTab('login');
-          setUsername(registeredUser);
-          setPassword(registeredPass);
-          setSuccessMsg('Tài khoản đã sẵn sàng! Nhấn "ĐĂNG NHẬP NGAY" để tiếp tục.');
-        }, 1500);
+          onClose();
+          if (onLoginSuccess) onLoginSuccess('storefront');
+        }, 800);
         return;
       }
 
@@ -533,10 +587,10 @@ export default function AuthModal({
           {/* TAB 2: FORM ĐĂNG KÝ MỚI */}
           {activeTab === 'register' && (
             <form onSubmit={handleRegisterSubmit} className="space-y-3" noValidate>
-              {/* Banner kích hoạt ngay không cần mail */}
-              <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-[11px] flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                <span>Kích hoạt tài khoản trực tiếp, <strong>không cần xác nhận email</strong>.</span>
+              {/* Banner bảo mật xác thực email OTP */}
+              <div className="p-2.5 bg-orange-50 border border-orange-200 text-orange-950 rounded-xl text-[11px] flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                <span>Bảo vệ tài khoản bằng <strong>mã OTP 6 số gửi qua email</strong>.</span>
               </div>
 
               {/* Họ và tên */}
@@ -618,14 +672,18 @@ export default function AuthModal({
                       setFieldErrors(prev => ({ ...prev, email: '' }));
                       setErrorMsg('');
                     }}
+                    onBlur={() => checkEmailDuplicate()}
                     placeholder="buyer@example.com"
-                    className={`w-full pl-9 pr-3.5 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
+                    className={`w-full pl-9 pr-9 py-2 rounded-xl text-xs text-slate-900 transition focus:outline-none ${
                       fieldErrors.email
                         ? 'bg-red-50/30 border-2 border-red-500 text-red-900 focus:border-red-600 focus:ring-4 focus:ring-red-500/10'
                         : 'bg-slate-50 border border-slate-300 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
                     }`}
                   />
                   <Mail className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${fieldErrors.email ? 'text-red-500' : 'text-slate-400'}`} />
+                  {emailChecking && (
+                    <div className="w-3.5 h-3.5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin absolute right-3 top-2.5" />
+                  )}
                 </div>
                 {fieldErrors.email && (
                   <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-red-600 animate-in fade-in">
@@ -876,6 +934,33 @@ export default function AuthModal({
         onClose();
         if (userData && onLoginSuccess) {
           const role = userData.role || 'ROLE_BUYER';
+          const r = String(role).toUpperCase();
+          if (r.includes('ADMIN')) onLoginSuccess('admin');
+          else if (r.includes('SELLER')) onLoginSuccess('seller');
+          else if (r.includes('SHIPPER')) onLoginSuccess('shipper');
+          else onLoginSuccess('storefront');
+        }
+      }}
+    />
+
+    {/* Register OTP Verification Modal */}
+    <RegisterOtpModal
+      isOpen={isOtpModalOpen}
+      onClose={() => setIsOtpModalOpen(false)}
+      email={pendingRegData?.email || regEmail.trim()}
+      fullName={pendingRegData?.fullName || regFullName.trim()}
+      username={pendingRegData?.username || regUsername.trim()}
+      onBackToEdit={() => setIsOtpModalOpen(false)}
+      onVerificationSuccess={async (authData) => {
+        setIsOtpModalOpen(false);
+        onClose();
+        const userId = authData.userId ?? authData.id ?? 1001;
+        const role = authData.role || 'ROLE_BUYER';
+        login({ ...authData, userId, role });
+        try {
+          await syncCartOnLogin(userId);
+        } catch {}
+        if (onLoginSuccess) {
           const r = String(role).toUpperCase();
           if (r.includes('ADMIN')) onLoginSuccess('admin');
           else if (r.includes('SELLER')) onLoginSuccess('seller');
