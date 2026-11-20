@@ -353,9 +353,9 @@ export default function AuthModal({
 
       setErrorMsg(res?.message || 'Đăng ký tài khoản không thành công. Vui lòng thử lại.');
     } catch (err) {
-      const serverData = err?.response?.data;
-      const serverMsg = serverData?.message;
-      const validationMap = serverData?.data;
+      const serverData = err?.response?.data || (err?.message ? err : null);
+      const serverMsg = serverData?.message || err?.message;
+      const validationMap = serverData?.data || err?.data;
 
       if (validationMap && typeof validationMap === 'object' && Object.keys(validationMap).length > 0) {
         setFieldErrors(prev => ({

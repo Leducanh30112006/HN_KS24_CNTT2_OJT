@@ -2,8 +2,14 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/useAuthStore';
 import { generateValidSignedToken } from '../utils/tokenHelper';
 
-// Sử dụng VITE_API_GATEWAY_URL nếu cấu hình, mặc định dùng relative path '' để tận dụng Nginx reverse proxy / Vite proxy
-const BASE_URL = import.meta.env.VITE_API_GATEWAY_URL ?? '';
+// Nếu đang chạy trên production (hoặc domain https thật), luôn dùng relative path ''
+// để tận dụng Nginx reverse proxy /api/ tránh lỗi Mixed Content (HTTPS -> HTTP) và chặn CSP.
+// Chỉ dùng VITE_API_GATEWAY_URL khi đang chạy Vite dev server local (localhost/127.0.0.1).
+const isLocalhost = typeof window !== 'undefined' && (
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1'
+);
+const BASE_URL = isLocalhost ? (import.meta.env.VITE_API_GATEWAY_URL || '') : '';
 
 const axiosClient = axios.create({
   baseURL: BASE_URL,
