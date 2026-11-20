@@ -122,6 +122,7 @@ public class AuthServiceImpl implements AuthService {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
+                .phoneNumber(user.getPhoneNumber())
                 .role(user.getRole())
                 .status(user.getStatus())
                 .build();
@@ -233,7 +234,7 @@ public class AuthServiceImpl implements AuthService {
 
         // 2. Đăng nhập / Đăng ký bằng Google
         if (user != null) {
-            // Người dùng đã tồn tại -> Đăng nhập
+            // Người dùng đã tồn tại
             if (user.getStatus() == UserStatus.PENDING_VERIFICATION) {
                 user.setStatus(UserStatus.ACTIVE);
                 user.setActive(true);
@@ -245,12 +246,18 @@ public class AuthServiceImpl implements AuthService {
                 throw new BadRequestException("Tài khoản của bạn đã bị khóa");
             }
 
-            auditLogService.logSuccess(user.getId(), user.getUsername(), "LOGIN_GOOGLE_SUCCESS", "User", user.getId(),
+            String auditAction = "REGISTER".equalsIgnoreCase(action) ? "REGISTER_GOOGLE_ALREADY_EXISTS" : "LOGIN_GOOGLE_SUCCESS";
+            auditLogService.logSuccess(user.getId(), user.getUsername(), auditAction, "User", user.getId(),
                     "Đăng nhập qua Google thành công [" + email + "]");
 
             return buildAuthResponse(user);
         } else {
-            // Người dùng chưa tồn tại -> Tự động đăng ký tài khoản mới
+            // Người dùng chưa tồn tại
+            if ("LOGIN".equalsIgnoreCase(action)) {
+                throw new BadRequestException("Tài khoản Google (" + email + ") chưa được đăng ký trên QuickShop. Vui lòng chuyển sang đăng ký tài khoản!");
+            }
+
+            // Đăng ký tài khoản mới khi action là REGISTER
             String baseUsername = email.split("@")[0].replaceAll("[^a-zA-Z0-9_]", "");
             if (baseUsername.length() < 3) baseUsername = "user_" + baseUsername;
             if (baseUsername.length() > 30) baseUsername = baseUsername.substring(0, 30);
@@ -344,6 +351,7 @@ public class AuthServiceImpl implements AuthService {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
+                .phoneNumber(user.getPhoneNumber())
                 .role(user.getRole())
                 .status(user.getStatus())
                 .build();

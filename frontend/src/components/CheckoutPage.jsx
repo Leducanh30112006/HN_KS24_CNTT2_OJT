@@ -82,7 +82,7 @@ export default function CheckoutPage({
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [address, setAddress] = useState({
     name: user?.fullName || user?.username || 'Khách hàng QuickShop',
-    phone: user?.phone || '0988 123 456',
+    phone: user?.phoneNumber || user?.phone || '',
     addressLine: 'Số 18, Phố Nguyễn Trãi, Phường Mộ Lao, Quận Hà Đông',
     ward: 'Phường Mộ Lao',
     district: 'Quận Hà Đông',
@@ -101,7 +101,7 @@ export default function CheckoutPage({
           setAddress({
             id: def.id,
             name: def.recipientName || user.fullName || user.username,
-            phone: def.phoneNumber || user.phone || '0988 123 456',
+            phone: def.phoneNumber || user?.phoneNumber || user?.phone || '',
             addressLine: def.streetAddress || '',
             ward: def.ward || '',
             district: def.district || '',
@@ -606,7 +606,7 @@ export default function CheckoutPage({
             paymentStatus: isBankTransfer ? 'PENDING' : 'PAID',
             shippingInfo: {
               fullName: address?.name || 'Khách Hàng',
-              phone: address?.phone || '0988 123 456',
+              phone: address?.phone || user?.phoneNumber || user?.phone || '',
               address: address?.street || 'Số 18, Ngõ 45 Cầu Giấy',
               ward: address?.ward || 'Quan Hoa',
               district: address?.district || 'Cầu Giấy',
@@ -642,7 +642,7 @@ export default function CheckoutPage({
           paymentStatus: isBankTransfer ? 'PENDING' : 'PAID',
           shippingInfo: {
             fullName: address?.name || 'Khách Hàng',
-            phone: address?.phone || '0988 123 456',
+            phone: address?.phone || user?.phoneNumber || user?.phone || '',
             address: address?.street || 'Số 18, Ngõ 45 Cầu Giấy',
             ward: address?.ward || 'Quan Hoa',
             district: address?.district || 'Cầu Giấy',

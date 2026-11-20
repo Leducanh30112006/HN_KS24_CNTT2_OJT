@@ -10,6 +10,7 @@ export default function GoogleAuthButton({
   newPassword = '',
   onSuccess,
   onError,
+  onNotRegistered,
   className = '',
   buttonText,
 }) {
@@ -30,8 +31,16 @@ export default function GoogleAuthButton({
 
     try {
       const result = await triggerGoogleAuth({ action, newPassword });
+      if (result && result.notRegistered) {
+        if (onNotRegistered) {
+          onNotRegistered(result.googleUser, result.message);
+        } else if (onError) {
+          onError(result.message);
+        }
+        return;
+      }
       if (result && result.success) {
-        if (onSuccess) onSuccess(result.data, result.message);
+        if (onSuccess) onSuccess(result.data, result.message, result.isNewRegistration);
       } else {
         throw new Error(result?.message || 'Xác thực Google không thành công');
       }

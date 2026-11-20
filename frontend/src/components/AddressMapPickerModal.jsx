@@ -594,7 +594,7 @@ export default function AddressMapPickerModal({
                   required
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="VD: 0988 123 456"
+                  placeholder="VD: 0912345678"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-orange-500 focus:bg-white text-xs"
                 />
               </div>

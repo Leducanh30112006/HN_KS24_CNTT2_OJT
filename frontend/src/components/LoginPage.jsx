@@ -47,6 +47,7 @@ export default function LoginPage({
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [pendingRegData, setPendingRegData] = useState(null);
   const [emailChecking, setEmailChecking] = useState(false);
+  const [googleNotice, setGoogleNotice] = useState('');
 
   const checkEmailDuplicate = async (emailToCheck) => {
     const email = (emailToCheck !== undefined ? emailToCheck : regEmail).trim();
@@ -651,6 +652,20 @@ export default function LoginPage({
 
                     <GoogleAuthButton
                       action="LOGIN"
+                      onNotRegistered={(googleUser) => {
+                        setActiveTab('register');
+                        if (googleUser?.email) setRegEmail(googleUser.email);
+                        if (googleUser?.name) setRegFullName(googleUser.name);
+                        if (googleUser?.email) {
+                          const suggested = googleUser.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').slice(0, 30);
+                          setRegUsername(suggested);
+                        }
+                        setRegPhone('');
+                        setErrorMsg('');
+                        setFieldErrors({});
+                        setSuccessMsg('');
+                        setGoogleNotice(`Tài khoản Google (${googleUser?.email || ''}) chưa được đăng ký trên QuickShop. Vui lòng tạo mật khẩu và nhấn "ĐĂNG KÝ TÀI KHOẢN NGAY"!`);
+                      }}
                       onSuccess={async (userData) => {
                         const userId = userData.userId ?? userData.id ?? 1001;
                         const role = userData.role || 'ROLE_BUYER';
@@ -674,6 +689,15 @@ export default function LoginPage({
                 {/* TAB 2: REGISTER FORM - ĐẦY ĐỦ VALIDATE & THÔNG BÁO ĐỎ & BỎ XÁC NHẬN MAIL */}
                 {activeTab === 'register' && (
                   <form onSubmit={handleRegisterSubmit} className="space-y-3.5 pt-1" noValidate>
+                    {googleNotice && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 text-amber-950 rounded-xl text-xs flex items-start gap-2.5 shadow-2xs">
+                        <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div className="text-[11px] leading-relaxed font-medium">
+                          {googleNotice}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Banner thông báo trực quan: Xác thực email OTP */}
                     <div className="p-3 bg-orange-50/80 border border-orange-200 text-orange-950 rounded-xl text-xs flex items-center gap-2.5">
                       <ShieldCheck className="w-4 h-4 text-orange-600 flex-shrink-0" />
@@ -986,7 +1010,11 @@ export default function LoginPage({
                         } catch {}
                         setSuccessMsg(`Đăng ký Google thành công! Chào mừng ${userData.fullName || userData.username || 'Quý khách'}`);
                         setTimeout(() => {
-                          onLoginSuccess('storefront');
+                          if (!userData.phoneNumber && !userData.phone) {
+                            onLoginSuccess('profile');
+                          } else {
+                            onLoginSuccess('storefront');
+                          }
                         }, 800);
                       }}
                       onError={(err) => setErrorMsg(err)}

@@ -50,6 +50,7 @@ export default function AuthModal({
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [pendingRegData, setPendingRegData] = useState(null);
   const [emailChecking, setEmailChecking] = useState(false);
+  const [googleNotice, setGoogleNotice] = useState('');
 
   const checkEmailDuplicate = async (emailToCheck) => {
     const email = (emailToCheck !== undefined ? emailToCheck : regEmail).trim();
@@ -560,6 +561,20 @@ export default function AuthModal({
 
               <GoogleAuthButton
                 action="LOGIN"
+                onNotRegistered={(googleUser) => {
+                  setActiveTab('register');
+                  if (googleUser?.email) setRegEmail(googleUser.email);
+                  if (googleUser?.name) setRegFullName(googleUser.name);
+                  if (googleUser?.email) {
+                    const suggested = googleUser.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').slice(0, 30);
+                    setRegUsername(suggested);
+                  }
+                  setRegPhone('');
+                  setErrorMsg('');
+                  setFieldErrors({});
+                  setSuccessMsg('');
+                  setGoogleNotice(`Tài khoản Google (${googleUser?.email || ''}) chưa được đăng ký trên QuickShop. Vui lòng tạo mật khẩu và nhấn "ĐĂNG KÝ TÀI KHOẢN NGAY"!`);
+                }}
                 onSuccess={async (userData) => {
                   const userId = userData.userId ?? userData.id ?? 1001;
                   const role = userData.role || 'ROLE_BUYER';
@@ -587,6 +602,15 @@ export default function AuthModal({
           {/* TAB 2: FORM ĐĂNG KÝ MỚI */}
           {activeTab === 'register' && (
             <form onSubmit={handleRegisterSubmit} className="space-y-3" noValidate>
+              {googleNotice && (
+                <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-950 rounded-xl text-[11px] flex items-start gap-2 shadow-2xs">
+                  <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="leading-relaxed font-medium">
+                    {googleNotice}
+                  </div>
+                </div>
+              )}
+
               {/* Banner bảo mật xác thực email OTP */}
               <div className="p-2.5 bg-orange-50 border border-orange-200 text-orange-950 rounded-xl text-[11px] flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-orange-600 flex-shrink-0" />
@@ -882,7 +906,13 @@ export default function AuthModal({
                   setSuccessMsg(`Đăng ký Google thành công! Chào mừng ${userData.fullName || userData.username}`);
                   setTimeout(() => {
                     onClose();
-                    if (onLoginSuccess) onLoginSuccess('storefront');
+                    if (onLoginSuccess) {
+                      if (!userData.phoneNumber && !userData.phone) {
+                        onLoginSuccess('profile');
+                      } else {
+                        onLoginSuccess('storefront');
+                      }
+                    }
                   }, 800);
                 }}
                 onError={(err) => setErrorMsg(err)}

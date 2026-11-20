@@ -23,11 +23,22 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
 
   // Profile Form States
   const [fullName, setFullName] = useState(user?.fullName || '');
-  const [phone, setPhone] = useState(user?.phoneNumber || user?.phone || '0988 123 456');
-  const [email, setEmail] = useState(user?.email || 'buyer@quickshop.vn');
+  const [phone, setPhone] = useState(user?.phoneNumber || user?.phone || '');
+  const [email, setEmail] = useState(user?.email || '');
   const [bio, setBio] = useState('Khách hàng thân thiết của QuickShop Mall. Ưa chuộng công nghệ và đồ gia dụng.');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState(null);
+
+  useEffect(() => {
+    if (user) {
+      if (user.fullName !== undefined) setFullName(user.fullName || '');
+      setPhone(user.phoneNumber || user.phone || '');
+      if (user.email !== undefined) setEmail(user.email || '');
+      if (user.avatar || user.avatarUrl) {
+        setAvatar(user.avatar || user.avatarUrl);
+      }
+    }
+  }, [user]);
 
   // Avatar States
   const [avatar, setAvatar] = useState(user?.avatar || user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200');
@@ -401,6 +412,18 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                   </div>
                 )}
 
+                {(!phone || !phone.trim()) && (
+                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex items-start gap-3 shadow-2xs">
+                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <div className="font-bold text-amber-950">Chưa cập nhật số điện thoại nhận hàng</div>
+                      <div className="text-[11px] text-amber-800 leading-relaxed">
+                        Tài khoản của bạn chưa có số điện thoại. Vui lòng nhập số điện thoại chính xác bên dưới và bấm <strong>"Lưu Thay Đổi"</strong> để bưu tá có thể liên hệ giao hàng khi bạn đặt mua đơn hàng!
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <form onSubmit={handleSaveProfile} className="space-y-4">
                   {/* Khung đổi ảnh đại diện trực tiếp trong tab Hồ Sơ */}
                   <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
@@ -432,7 +455,7 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                         id="profile-username"
                         type="text"
                         disabled
-                        value={user?.username || 'buyer'}
+                        value={user?.username || ''}
                         className="w-full px-3.5 py-2.5 bg-slate-100 text-slate-500 rounded-xl border border-slate-200 text-xs font-mono cursor-not-allowed"
                       />
                       <span className="text-[10px] text-slate-400">Tên đăng nhập không thể thay đổi</span>
@@ -470,7 +493,7 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
                         required
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        placeholder="VD: 0988 123 456"
+                        placeholder="VD: 0912345678 (Chưa có số điện thoại)"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition"
                       />
                     </div>
