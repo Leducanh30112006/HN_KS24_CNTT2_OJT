@@ -4,13 +4,15 @@ import {
   ShoppingBag, ArrowLeft, Trash2, Store, Tag, CheckCircle2, ShieldCheck, 
   MapPin, Phone, User, Truck, CreditCard, ChevronRight, AlertCircle, 
   Clock, Sparkles, Check, Edit3, Plus, RefreshCw, DollarSign, QrCode, Ticket, ExternalLink, Copy,
-  X, ArrowRight, Volume2, Package
+  X, ArrowRight, Volume2, Package, Compass
 } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { recordNewOrder, markOrderAsPaid } from '../data/sampleOrders';
 import VoucherModal from './VoucherModal';
 import axiosClient from '../api/axiosClient';
+import AddressMapPickerModal from './AddressMapPickerModal';
+import { fetchDefaultAddress, createUserAddress } from '../api/addressApi';
 import { AnimatedNumber } from './motion/MotionPrimitives';
 import { fixMojibakeText } from '../utils/vietnameseEncoding';
 import { LucianButton, SpotlightCard } from './ui/LucianPrimitives';
@@ -75,25 +77,62 @@ export default function CheckoutPage({
     }));
   };
 
-  // Shipping Address State
+  // Shipping Address State & Leaflet Map Modal
   const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [address, setAddress] = useState({
     name: user?.fullName || user?.username || 'Khách hàng QuickShop',
     phone: user?.phone || '0988 123 456',
     addressLine: 'Số 18, Phố Nguyễn Trãi, Phường Mộ Lao, Quận Hà Đông',
+    ward: 'Phường Mộ Lao',
+    district: 'Quận Hà Đông',
     city: 'Hà Nội',
+    fullAddress: 'Số 18, Phố Nguyễn Trãi, Phường Mộ Lao, Quận Hà Đông, Hà Nội',
+    latitude: 20.980182,
+    longitude: 105.787123,
     label: 'Nhà riêng (Mặc định)',
   });
 
+  // Tự động nạp địa chỉ mặc định từ backend khi user đăng nhập
   useEffect(() => {
     if (user?.userId) {
-      setAddress((prev) => ({
-        ...prev,
-        name: user.fullName || user.username || prev.name,
-        phone: user.phone || prev.phone,
-      }));
+      fetchDefaultAddress(user.userId).then((def) => {
+        if (def) {
+          setAddress({
+            id: def.id,
+            name: def.recipientName || user.fullName || user.username,
+            phone: def.phoneNumber || user.phone || '0988 123 456',
+            addressLine: def.streetAddress || '',
+            ward: def.ward || '',
+            district: def.district || '',
+            city: def.city || 'Hà Nội',
+            fullAddress: def.fullAddress || '',
+            latitude: def.latitude,
+            longitude: def.longitude,
+            label: `${def.tag || 'Nhà riêng'} (Mặc định)`,
+          });
+        }
+      });
     }
   }, [user?.userId]);
+
+  const handleSaveAddressFromMap = async (payload) => {
+    const saved = await createUserAddress(user?.userId, payload);
+    setAddress({
+      id: saved.id,
+      name: saved.recipientName,
+      phone: saved.phoneNumber,
+      addressLine: saved.streetAddress,
+      ward: saved.ward || '',
+      district: saved.district || '',
+      city: saved.city || 'Hà Nội',
+      fullAddress: saved.fullAddress || '',
+      latitude: saved.latitude,
+      longitude: saved.longitude,
+      label: saved.tag || 'Nhà riêng',
+    });
+    setIsEditingAddress(false);
+  };
 
   // Voucher states (Phân chia rõ ràng Voucher Sàn & Voucher Shop chuẩn Shopee)
   // Mặc định KHÔNG áp dụng voucher tự động, chỉ áp dụng khi người dùng bấm chọn hoặc nhập mã
@@ -1270,18 +1309,30 @@ export default function CheckoutPage({
 
           {/* Section A: Shipping Address Card */}
           <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100 flex-wrap gap-2">
               <div className="flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wide">
                 <MapPin className="w-4 h-4 text-orange-600" />
                 <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">Địa Chỉ Nhận Hàng</h2>
               </div>
-              <button
-                onClick={() => setIsEditingAddress(!isEditingAddress)}
-                className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 transition"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>{isEditingAddress ? 'Xong' : 'Thay đổi'}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsMapModalOpen(true)}
+                  className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200/90 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                  title="Chọn vị trí chính xác trên bản đồ OpenStreetMap"
+                >
+                  <Compass className="w-3.5 h-3.5 text-orange-600" />
+                  <span>Chọn trên bản đồ</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingAddress(!isEditingAddress)}
+                  className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 transition px-2 py-1.5 rounded-lg hover:bg-orange-50/50 cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>{isEditingAddress ? 'Xong' : 'Sửa nhanh'}</span>
+                </button>
+              </div>
             </div>
 
             {isEditingAddress ? (
@@ -1320,22 +1371,48 @@ export default function CheckoutPage({
             ) : (
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-orange-50/40 p-4 rounded-2xl border border-orange-100">
                 <div className="space-y-1 text-xs">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-black text-slate-900 text-sm">{address.name}</span>
-                    <span className="font-bold text-slate-600">({address.phone})</span>
+                    <span className="font-bold text-slate-600 font-mono">({address.phone})</span>
                     <span className="bg-orange-100 text-orange-700 font-bold text-[10px] px-2 py-0.5 rounded-md">
                       {address.label}
                     </span>
                   </div>
                   <div className="text-slate-600">
-                    {address.addressLine}, {address.city}
+                    {address.fullAddress || `${address.addressLine}, ${address.city}`}
                   </div>
+                  {address.latitude && address.longitude && (
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 mt-1">
+                      <Compass className="w-3 h-3 text-emerald-600" />
+                      <span>GPS: {Number(address.latitude).toFixed(6)}, {Number(address.longitude).toFixed(6)}</span>
+                    </div>
+                  )}
                 </div>
-                <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">
                   ✓ Giao tận cửa
                 </span>
               </div>
             )}
+
+            {/* Modal Bản Đồ Leaflet OpenStreetMap */}
+            <AddressMapPickerModal
+              isOpen={isMapModalOpen}
+              onClose={() => setIsMapModalOpen(false)}
+              onSave={handleSaveAddressFromMap}
+              initialData={{
+                recipientName: address.name,
+                phoneNumber: address.phone,
+                streetAddress: address.addressLine,
+                ward: address.ward,
+                district: address.district,
+                city: address.city,
+                fullAddress: address.fullAddress,
+                latitude: address.latitude,
+                longitude: address.longitude,
+                tag: address.label?.replace(' (Mặc định)', ''),
+              }}
+              title="Định Vị Vị Trí Giao Hàng Trên Bản Đồ"
+            />
           </div>
 
           {/* Section B: Cart Items Grouped by Shop */}

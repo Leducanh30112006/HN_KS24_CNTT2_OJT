@@ -3,11 +3,19 @@ import {
   User, Mail, Phone, MapPin, Lock, ShieldCheck, Award, 
   ShoppingBag, CreditCard, ChevronRight, CheckCircle2, AlertCircle, 
   ArrowLeft, Edit3, Save, Key, Plus, Trash2, Check, Sparkles, Building,
-  Camera, Upload, Image as ImageIcon, X
+  Camera, Upload, Image as ImageIcon, X, Edit2, Compass
 } from 'lucide-react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { getStoredOrders } from '../data/sampleOrders';
 import axiosClient from '../api/axiosClient';
+import AddressMapPickerModal from './AddressMapPickerModal';
+import { 
+  fetchUserAddresses, 
+  createUserAddress, 
+  updateUserAddress, 
+  deleteUserAddress, 
+  setDefaultUserAddress 
+} from '../api/addressApi';
 
 export default function UserProfilePage({ onBackToHome, onViewOrders }) {
   const { user, updateUser } = useAuthStore();
@@ -73,50 +81,82 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
     setTimeout(() => setProfileMessage(null), 3500);
   };
 
-  // Address Management States
-  const DEFAULT_ADDRESSES = [
-    {
-      id: 1,
-      recipientName: user?.fullName || 'Lê Đức Anh',
-      phone: user?.phoneNumber || '0988 123 456',
-      address: 'Số 18, Ngõ 45 Cầu Giấy',
-      ward: 'Phường Quan Hoa',
-      district: 'Quận Cầu Giấy',
-      city: 'Hà Nội',
-      isDefault: true,
-      tag: 'Nhà riêng',
-    },
-    {
-      id: 2,
-      recipientName: user?.fullName || 'Lê Đức Anh',
-      phone: '0988 123 456',
-      address: 'Tầng 8, Tòa nhà FPT Tower, Số 10 Phạm Văn Bạch',
-      ward: 'Phường Dịch Vọng',
-      district: 'Quận Cầu Giấy',
-      city: 'Hà Nội',
-      isDefault: false,
-      tag: 'Văn phòng',
-    },
-  ];
+  // Address Management States (Tích hợp Leaflet + OpenStreetMap + Nominatim)
+  const [addresses, setAddresses] = useState([]);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+  const [editingAddressData, setEditingAddressData] = useState(null);
+  const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
 
-  const [addresses, setAddresses] = useState(() => {
-    if (typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem(`quickshop_addresses_${user?.userId || 'guest'}`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch {}
+  // Load danh sách địa chỉ từ backend (có fallback local)
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingAddresses(true);
+    fetchUserAddresses(user?.userId).then((list) => {
+      if (isMounted && Array.isArray(list)) {
+        setAddresses(list);
       }
-    }
-    return DEFAULT_ADDRESSES;
-  });
+      if (isMounted) setIsLoadingAddresses(false);
+    });
+    return () => { isMounted = false; };
+  }, [user?.userId]);
 
-  const [isAddingAddress, setIsAddingAddress] = useState(false);
-  const [newRecipient, setNewRecipient] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newStreet, setNewStreet] = useState('');
-  const [newWard, setNewWard] = useState('');
-  const [newDistrict, setNewDistrict] = useState('');
-  const [newCity, setNewCity] = useState('Hà Nội');
-  const [newTag, setNewTag] = useState('Nhà riêng');
+  // Mở modal thêm địa chỉ mới
+  const handleOpenAddModal = () => {
+    setEditingAddressData(null);
+    setIsMapModalOpen(true);
+  };
+
+  // Mở modal sửa địa chỉ
+  const handleOpenEditModal = (addr) => {
+    setEditingAddressData(addr);
+    setIsMapModalOpen(true);
+  };
+
+  // Lưu địa chỉ từ modal bản đồ
+  const handleSaveAddressFromMap = async (payload, id) => {
+    if (id) {
+      const updated = await updateUserAddress(user?.userId, id, payload);
+      setAddresses((prev) =>
+        prev.map((a) => (a.id === id ? updated : (updated.isDefault ? { ...a, isDefault: false } : a)))
+      );
+      setProfileMessage({ type: 'success', text: 'Cập nhật địa chỉ và tọa độ bản đồ thành công!' });
+    } else {
+      const created = await createUserAddress(user?.userId, payload);
+      setAddresses((prev) => [
+        created,
+        ...(created.isDefault ? prev.map((a) => ({ ...a, isDefault: false })) : prev),
+      ]);
+      setProfileMessage({ type: 'success', text: 'Đã thêm địa chỉ mới có ghim vị trí bản đồ thành công!' });
+    }
+    setTimeout(() => setProfileMessage(null), 3500);
+  };
+
+  // Đặt làm địa chỉ mặc định
+  const handleSetDefaultAddress = async (id) => {
+    await setDefaultUserAddress(user?.userId, id);
+    setAddresses((prev) =>
+      prev.map((addr) => ({
+        ...addr,
+        isDefault: addr.id === id,
+      }))
+    );
+    setProfileMessage({ type: 'success', text: 'Đã thay đổi địa chỉ nhận hàng mặc định!' });
+    setTimeout(() => setProfileMessage(null), 3000);
+  };
+
+  // Xóa địa chỉ
+  const handleDeleteAddress = async (id) => {
+    if (addresses.length <= 1) {
+      alert('Bạn phải giữ ít nhất 1 địa chỉ nhận hàng!');
+      return;
+    }
+    if (window.confirm('Bạn có chắc chắn muốn xóa địa chỉ này?')) {
+      await deleteUserAddress(user?.userId, id);
+      setAddresses((prev) => prev.filter((addr) => addr.id !== id));
+      setProfileMessage({ type: 'info', text: 'Đã xóa địa chỉ thành công.' });
+      setTimeout(() => setProfileMessage(null), 3000);
+    }
+  };
 
   // Password / Security States
   const [currentPassword, setCurrentPassword] = useState('');
@@ -160,65 +200,6 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
     setIsSavingProfile(false);
     setProfileMessage({ type: 'success', text: 'Cập nhật thông tin hồ sơ thành công!' });
     setTimeout(() => setProfileMessage(null), 3500);
-  };
-
-  // Thêm địa chỉ nhận hàng mới
-  const handleAddNewAddress = (e) => {
-    e.preventDefault();
-    if (!newRecipient || !newPhone || !newStreet) {
-      alert('Vui lòng điền đầy đủ họ tên, số điện thoại và địa chỉ nhà!');
-      return;
-    }
-    const newAddrObj = {
-      id: Date.now(),
-      recipientName: newRecipient,
-      phone: newPhone,
-      address: newStreet,
-      ward: newWard || 'Phường Trung Tâm',
-      district: newDistrict || 'Quận Trung Tâm',
-      city: newCity || 'Hà Nội',
-      isDefault: addresses.length === 0,
-      tag: newTag,
-    };
-    const nextList = [...addresses, newAddrObj];
-    setAddresses(nextList);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(`quickshop_addresses_${user?.userId || 'guest'}`, JSON.stringify(nextList));
-    }
-    setIsAddingAddress(false);
-    setNewRecipient('');
-    setNewPhone('');
-    setNewStreet('');
-    setNewWard('');
-    setNewDistrict('');
-  };
-
-  // Đặt làm địa chỉ mặc định
-  const handleSetDefaultAddress = (id) => {
-    const nextList = addresses.map((addr) => ({
-      ...addr,
-      isDefault: addr.id === id,
-    }));
-    setAddresses(nextList);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(`quickshop_addresses_${user?.userId || 'guest'}`, JSON.stringify(nextList));
-    }
-  };
-
-  // Xóa địa chỉ
-  const handleDeleteAddress = (id) => {
-    if (addresses.length <= 1) {
-      alert('Bạn phải giữ ít nhất 1 địa chỉ nhận hàng!');
-      return;
-    }
-    const nextList = addresses.filter((addr) => addr.id !== id);
-    if (nextList.length > 0 && !nextList.some((a) => a.isDefault)) {
-      nextList[0].isDefault = true;
-    }
-    setAddresses(nextList);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(`quickshop_addresses_${user?.userId || 'guest'}`, JSON.stringify(nextList));
-    }
   };
 
   // Đổi mật khẩu
@@ -524,157 +505,131 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
             {/* 2. Addresses Panel */}
             {activeTab === 'address' && (
               <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                   <div>
-                    <h2 className="text-base font-bold text-slate-900">Sổ Địa Chỉ Giao Hàng</h2>
-                    <p className="text-xs text-slate-500">Địa chỉ được dùng để tự động điền khi thanh toán đơn hàng</p>
+                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                      <MapPin className="w-5 h-5 text-orange-600" />
+                      <span>Sổ Địa Chỉ Giao Hàng & Định Vị Bản Đồ</span>
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      Tích hợp OpenStreetMap & GPS giúp bưu tá giao hàng chính xác tận cửa
+                    </p>
                   </div>
                   <button
-                    onClick={() => setIsAddingAddress(!isAddingAddress)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                    onClick={handleOpenAddModal}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-orange-500/20 active:scale-95 cursor-pointer"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Thêm địa chỉ mới</span>
+                    <Plus className="w-4 h-4" />
+                    <span>Thêm địa chỉ mới trên bản đồ</span>
                   </button>
                 </div>
 
-                {/* Add new address popup / drawer */}
-                {isAddingAddress && (
-                  <form onSubmit={handleAddNewAddress} className="p-4 bg-orange-50/50 rounded-2xl border border-orange-200 space-y-3">
-                    <div className="font-bold text-xs text-orange-900 flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4 text-orange-600" />
-                      <span>Thêm địa chỉ nhận hàng mới</span>
-                    </div>
+                {isLoadingAddresses ? (
+                  <div className="p-8 text-center text-slate-400 text-xs">
+                    Đang tải danh sách địa chỉ giao hàng...
+                  </div>
+                ) : addresses.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 space-y-2 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                    <MapPin className="w-8 h-8 text-slate-300 mx-auto" />
+                    <p className="text-xs">Bạn chưa lưu địa chỉ nhận hàng nào.</p>
+                    <button
+                      onClick={handleOpenAddModal}
+                      className="px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 transition"
+                    >
+                      Chọn vị trí & Thêm ngay
+                    </button>
+                  </div>
+                ) : (
+                  /* Address Cards List */
+                  <div className="space-y-3">
+                    {addresses.map((addr) => {
+                      const displayStreet = addr.streetAddress || addr.address || '';
+                      const displayFull = addr.fullAddress || 
+                        `${displayStreet}${addr.ward ? ', ' + addr.ward : ''}${addr.district ? ', ' + addr.district : ''}${addr.city ? ', ' + addr.city : ''}`;
+                      const phone = addr.phoneNumber || addr.phone || '';
+                      const name = addr.recipientName || addr.name || '';
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label htmlFor="profile-new-recipient" className="text-[11px] font-semibold text-slate-700">Tên người nhận</label>
-                        <input
-                          id="profile-new-recipient"
-                          type="text"
-                          required
-                          value={newRecipient}
-                          onChange={(e) => setNewRecipient(e.target.value)}
-                          placeholder="Họ và tên"
-                          className="w-full mt-1 px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="profile-new-phone" className="text-[11px] font-semibold text-slate-700">Số điện thoại</label>
-                        <input
-                          id="profile-new-phone"
-                          type="tel"
-                          required
-                          value={newPhone}
-                          onChange={(e) => setNewPhone(e.target.value)}
-                          placeholder="09xx xxx xxx"
-                          className="w-full mt-1 px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs"
-                        />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label htmlFor="profile-new-street" className="text-[11px] font-semibold text-slate-700">Địa chỉ chi tiết (Số nhà, Tên đường/Tòa nhà)</label>
-                        <input
-                          id="profile-new-street"
-                          type="text"
-                          required
-                          value={newStreet}
-                          onChange={(e) => setNewStreet(e.target.value)}
-                          placeholder="VD: Số 20, Ngõ 123 Hoàng Quốc Việt"
-                          className="w-full mt-1 px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="profile-new-ward" className="text-[11px] font-semibold text-slate-700">Phường / Xã</label>
-                        <input
-                          id="profile-new-ward"
-                          type="text"
-                          value={newWard}
-                          onChange={(e) => setNewWard(e.target.value)}
-                          placeholder="Phường Nghĩa Đô"
-                          className="w-full mt-1 px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="profile-new-district" className="text-[11px] font-semibold text-slate-700">Quận / Huyện & Thành phố</label>
-                        <input
-                          id="profile-new-district"
-                          type="text"
-                          value={newDistrict}
-                          onChange={(e) => setNewDistrict(e.target.value)}
-                          placeholder="Cầu Giấy, Hà Nội"
-                          className="w-full mt-1 px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs"
-                        />
-                      </div>
-                    </div>
+                      return (
+                        <div
+                          key={addr.id}
+                          className={`p-4 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                            addr.isDefault
+                              ? 'bg-orange-50/30 border-orange-300 ring-2 ring-orange-500/10'
+                              : 'bg-white border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="space-y-1.5 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-xs text-slate-900">{name}</span>
+                              <span className="text-slate-300">|</span>
+                              <span className="text-xs text-slate-600 font-mono font-bold">{phone}</span>
+                              {addr.isDefault && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-100 text-orange-700 border border-orange-200">
+                                  Mặc định
+                                </span>
+                              )}
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700">
+                                {addr.tag || 'Nhà riêng'}
+                              </span>
+                            </div>
 
-                    <div className="flex justify-end gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsAddingAddress(false)}
-                        className="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold"
-                      >
-                        Hủy
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-orange-600 text-white rounded-xl text-xs font-bold"
-                      >
-                        Lưu địa chỉ
-                      </button>
-                    </div>
-                  </form>
+                            <div className="text-xs text-slate-600 leading-relaxed">
+                              {displayFull}
+                            </div>
+
+                            {/* Badge Tọa độ GPS từ OpenStreetMap */}
+                            {addr.latitude && addr.longitude && (
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-xs">
+                                <Compass className="w-3 h-3 text-emerald-600" />
+                                <span>GPS: {Number(addr.latitude).toFixed(6)}, {Number(addr.longitude).toFixed(6)}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(addr)}
+                              className="px-3 py-1.5 bg-slate-100 hover:bg-orange-50 hover:text-orange-600 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                              title="Sửa và điều chỉnh vị trí trên bản đồ"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                              <span>Sửa bản đồ</span>
+                            </button>
+
+                            {!addr.isDefault && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetDefaultAddress(addr.id)}
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+                              >
+                                Đặt mặc định
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAddress(addr.id)}
+                              className="p-2 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition cursor-pointer"
+                              title="Xóa địa chỉ"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
 
-                {/* Address Cards List */}
-                <div className="space-y-3">
-                  {addresses.map((addr) => (
-                    <div
-                      key={addr.id}
-                      className={`p-4 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                        addr.isDefault
-                          ? 'bg-orange-50/30 border-orange-300 ring-2 ring-orange-500/10'
-                          : 'bg-white border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-xs text-slate-900">{addr.recipientName}</span>
-                          <span className="text-slate-300">|</span>
-                          <span className="text-xs text-slate-600 font-mono">{addr.phone}</span>
-                          {addr.isDefault && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">
-                              Mặc định
-                            </span>
-                          )}
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600">
-                            {addr.tag || 'Nhà riêng'}
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-600">
-                          {addr.address}, {addr.ward}, {addr.district}, {addr.city}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end sm:self-auto">
-                        {!addr.isDefault && (
-                          <button
-                            onClick={() => handleSetDefaultAddress(addr.id)}
-                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition"
-                          >
-                            Thiết lập mặc định
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDeleteAddress(addr.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
-                          title="Xóa địa chỉ"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                {/* Modal Bản Đồ Leaflet OpenStreetMap Thêm/Sửa Địa Chỉ */}
+                <AddressMapPickerModal
+                  isOpen={isMapModalOpen}
+                  onClose={() => setIsMapModalOpen(false)}
+                  onSave={handleSaveAddressFromMap}
+                  initialData={editingAddressData}
+                  title={editingAddressData ? 'Chỉnh Sửa Vị Trí Địa Chỉ Trên Bản Đồ' : 'Thêm Địa Chỉ Mới Có Định Vị Bản Đồ'}
+                />
               </div>
             )}
 

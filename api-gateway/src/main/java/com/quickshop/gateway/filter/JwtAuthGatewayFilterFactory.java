@@ -133,7 +133,10 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Jw
 
                 // Kiểm tra phân quyền RBAC (Hỗ trợ requiredRole, allowedRoles và chuẩn hóa ROLE_ prefix)
                 if (!isAuthorized(userRoleStr, config)) {
-                    log.warn("Access denied: user role '{}' does not have permission. Required/Allowed: [requiredRole={}, allowedRoles={}]",
+                    org.springframework.cloud.gateway.route.Route matchedRoute = exchange.getAttribute(org.springframework.cloud.gateway.support.ServerWebExchangeUtils.GATEWAY_ROUTE_ATTR);
+                    String routeId = matchedRoute != null ? matchedRoute.getId() : "unknown";
+                    log.warn("Access denied on route '{}' [{} {}]: user role '{}' does not have permission. Required/Allowed: [requiredRole={}, allowedRoles={}]",
+                            routeId, exchange.getRequest().getMethod(), exchange.getRequest().getURI().getPath(),
                             userRoleStr, config.getRequiredRole(), config.getAllowedRoles());
                     return onError(exchange, "Bạn không có quyền truy cập tài nguyên này (Yêu cầu vai trò phù hợp)", HttpStatus.FORBIDDEN);
                 }
