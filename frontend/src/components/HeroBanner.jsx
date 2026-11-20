@@ -143,18 +143,13 @@ export default function HeroBanner({
               <Zap className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
               <span>QUICKSHOP FLAGSHIP 2026</span>
             </div>
-
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>7/7 Microservices Up</span>
-            </div>
           </div>
 
           {/* Core Display Typography */}
-          <div className="relative z-10 space-y-3 py-6 sm:py-8">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-[1.08]">
-              KỶ NGUYÊN MUA SẮM <br />
-              <span className="text-amber-400">
+          <div className="relative z-10 space-y-3.5 py-6 sm:py-8">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight sm:leading-tight">
+              <span className="block">KỶ NGUYÊN MUA SẮM</span>
+              <span className="block text-amber-400 mt-1 sm:mt-2">
                 TỐC ĐỘ & ĐẲNG CẤP
               </span>
             </h1>
