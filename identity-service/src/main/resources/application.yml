@@ -34,6 +34,7 @@ jwt:
   refresh-expiration-ms: 604800000 # 7 days
 
 google:
+  # Google OAuth 2.0 Credentials (populated from environment variables)
   client-id: ${GOOGLE_CLIENT_ID:}
   client-secret: ${GOOGLE_CLIENT_SECRET:}
 

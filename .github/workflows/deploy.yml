@@ -5,6 +5,7 @@ on:
     branches: [ main, dev/**, quocbinh ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
