@@ -1,19 +1,263 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Bot, X, Send, Sparkles, AlertCircle, Move } from 'lucide-react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { X, Send, Sparkles, AlertCircle, Move } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
-import { AnimatedPresence, useMagneticHover } from './motion/MotionPrimitives';
+import { gsap, useGSAP } from '../lib/gsap';
 import ProductChatCard from './ProductChatCard';
 import { defaultProducts } from '../data/sampleProducts';
+
+/**
+ * Expressive Blinking Robot Mascot SVG Component
+ * Driven purely by GSAP:
+ * - Natural Blinking Loop (single & double blinks with randomized interval 2.8s-5.2s)
+ * - Cursor Tracking via gsap.quickTo
+ * - Hover Delight (antenna tilt)
+ * - AI Thinking Expression (eyes pulse/scan, antenna wiggle)
+ */
+function RobotAvatar({
+  size = 28,
+  className = '',
+  isThinking = false,
+  isHovered = false,
+  cursorOffset = { x: 0, y: 0 },
+}) {
+  const containerRef = useRef(null);
+  const antennaRef = useRef(null);
+  const eyeGroupRef = useRef(null);
+  const leftEyeRef = useRef(null);
+  const rightEyeRef = useRef(null);
+
+  // 1. Natural Blinking Loop
+  useEffect(() => {
+    let blinkTimer = null;
+    let isCancelled = false;
+
+    const runBlink = () => {
+      if (isCancelled || !leftEyeRef.current || !rightEyeRef.current) return;
+      if (isThinking) {
+        blinkTimer = setTimeout(runBlink, 3000);
+        return;
+      }
+
+      const isDouble = Math.random() > 0.65;
+      const tl = gsap.timeline({
+        onComplete: () => {
+          if (!isCancelled) {
+            const nextDelay = gsap.utils.random(2.8, 5.2);
+            blinkTimer = setTimeout(runBlink, nextDelay * 1000);
+          }
+        },
+      });
+
+      // Primary Blink: scaleY 1 -> 0.08 -> 1
+      tl.to([leftEyeRef.current, rightEyeRef.current], {
+        scaleY: 0.08,
+        transformOrigin: '50% 50%',
+        duration: 0.14,
+        ease: 'power2.inOut',
+      }).to([leftEyeRef.current, rightEyeRef.current], {
+        scaleY: 1,
+        transformOrigin: '50% 50%',
+        duration: 0.14,
+        ease: 'power2.inOut',
+      });
+
+      // Occasional Double Blink
+      if (isDouble) {
+        tl.to([leftEyeRef.current, rightEyeRef.current], {
+          scaleY: 0.08,
+          transformOrigin: '50% 50%',
+          duration: 0.1,
+          delay: 0.08,
+          ease: 'power2.inOut',
+        }).to([leftEyeRef.current, rightEyeRef.current], {
+          scaleY: 1,
+          transformOrigin: '50% 50%',
+          duration: 0.12,
+          ease: 'power2.inOut',
+        });
+      }
+    };
+
+    blinkTimer = setTimeout(runBlink, 2000);
+
+    return () => {
+      isCancelled = true;
+      if (blinkTimer) clearTimeout(blinkTimer);
+    };
+  }, [isThinking]);
+
+  // 2. Cursor Tracking via gsap.quickTo
+  const quickX = useRef(null);
+  const quickY = useRef(null);
+
+  useEffect(() => {
+    if (eyeGroupRef.current) {
+      quickX.current = gsap.quickTo(eyeGroupRef.current, 'x', { duration: 0.28, ease: 'power2.out' });
+      quickY.current = gsap.quickTo(eyeGroupRef.current, 'y', { duration: 0.28, ease: 'power2.out' });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isThinking) return;
+    if (quickX.current && quickY.current) {
+      const clampedX = Math.max(-2.5, Math.min(2.5, cursorOffset.x));
+      const clampedY = Math.max(-2, Math.min(2, cursorOffset.y));
+      quickX.current(clampedX);
+      quickY.current(clampedY);
+    }
+  }, [cursorOffset, isThinking]);
+
+  // 3. Hover Delight: Subtle antenna tilt (-12deg -> 8deg -> 0)
+  useEffect(() => {
+    if (isThinking || !antennaRef.current) return;
+    if (isHovered) {
+      gsap
+        .timeline()
+        .to(antennaRef.current, { rotate: -12, duration: 0.16, ease: 'power2.out', transformOrigin: '18px 9px' })
+        .to(antennaRef.current, { rotate: 8, duration: 0.14, ease: 'power2.inOut', transformOrigin: '18px 9px' })
+        .to(antennaRef.current, { rotate: 0, duration: 0.18, ease: 'back.out(2)', transformOrigin: '18px 9px' });
+    }
+  }, [isHovered, isThinking]);
+
+  // 4. AI Thinking Expression: Alternating pulse/scan and subtle antenna wiggle
+  useEffect(() => {
+    if (!isThinking) {
+      if (antennaRef.current) gsap.to(antennaRef.current, { rotate: 0, duration: 0.2 });
+      if (eyeGroupRef.current) gsap.to(eyeGroupRef.current, { x: 0, y: 0, duration: 0.2 });
+      if (leftEyeRef.current && rightEyeRef.current) {
+        gsap.to([leftEyeRef.current, rightEyeRef.current], {
+          opacity: 1,
+          scaleY: 1,
+          fill: '#38BDF8',
+          duration: 0.2,
+        });
+      }
+      return;
+    }
+
+    const thinkTl = gsap.timeline({ repeat: -1, yoyo: true });
+
+    // Antenna wiggle
+    if (antennaRef.current) {
+      thinkTl.to(
+        antennaRef.current,
+        { rotate: -10, duration: 0.32, ease: 'sine.inOut', transformOrigin: '18px 9px' },
+        0
+      ).to(
+        antennaRef.current,
+        { rotate: 10, duration: 0.32, ease: 'sine.inOut', transformOrigin: '18px 9px' }
+      );
+    }
+
+    // Eyes scan left-right
+    if (eyeGroupRef.current) {
+      thinkTl.to(eyeGroupRef.current, { x: 2.2, duration: 0.45, ease: 'sine.inOut' }, 0).to(
+        eyeGroupRef.current,
+        { x: -2.2, duration: 0.45, ease: 'sine.inOut' }
+      );
+    }
+
+    // Eyes warm amber pulse
+    if (leftEyeRef.current && rightEyeRef.current) {
+      thinkTl.to(
+        [leftEyeRef.current, rightEyeRef.current],
+        {
+          fill: '#F59E0B',
+          opacity: 0.7,
+          scaleY: 0.85,
+          duration: 0.45,
+          transformOrigin: '50% 50%',
+          ease: 'sine.inOut',
+        },
+        0
+      );
+    }
+
+    return () => {
+      thinkTl.kill();
+    };
+  }, [isThinking]);
+
+  return (
+    <svg
+      ref={containerRef}
+      width={size}
+      height={size}
+      viewBox="0 0 36 36"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={`overflow-visible select-none pointer-events-none ${className}`}
+    >
+      <defs>
+        <linearGradient id="robotHeadGrad" x1="6" y1="9" x2="30" y2="29" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#FFFFFF" />
+          <stop offset="1" stopColor="#E2E8F0" />
+        </linearGradient>
+        <filter id="eyeGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="0.7" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+      </defs>
+
+      {/* Antenna */}
+      <g ref={antennaRef} style={{ transformOrigin: '18px 9px' }}>
+        <line x1="18" y1="9" x2="18" y2="3.8" stroke="white" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="18" cy="3" r="2.2" fill="#F97316" stroke="white" strokeWidth="1" />
+      </g>
+
+      {/* Side Ears */}
+      <rect x="3.2" y="15" width="2.4" height="6" rx="1.2" fill="white" opacity="0.9" />
+      <rect x="30.4" y="15" width="2.4" height="6" rx="1.2" fill="white" opacity="0.9" />
+
+      {/* Rounded Head Frame */}
+      <rect
+        x="5.5"
+        y="9"
+        width="25"
+        height="19"
+        rx="7"
+        fill="url(#robotHeadGrad)"
+        stroke="#CBD5E1"
+        strokeWidth="1.2"
+      />
+
+      {/* Visor Screen */}
+      <rect x="8.5" y="12" width="19" height="13" rx="4.5" fill="#0B0F19" />
+
+      {/* Vertical Pill Eyes Group */}
+      <g ref={eyeGroupRef}>
+        <rect
+          ref={leftEyeRef}
+          x="12"
+          y="15"
+          width="3.4"
+          height="7"
+          rx="1.7"
+          fill="#38BDF8"
+          filter="url(#eyeGlow)"
+        />
+        <rect
+          ref={rightEyeRef}
+          x="20.6"
+          y="15"
+          width="3.4"
+          height="7"
+          rx="1.7"
+          fill="#38BDF8"
+          filter="url(#eyeGlow)"
+        />
+      </g>
+    </svg>
+  );
+}
 
 function formatAiText(text, hasCards) {
   if (!text) return '';
   if (!hasCards) return text;
 
-  // Split lines
   const lines = text.split('\n');
   const filtered = lines.filter((line) => {
     const trimmed = line.trim();
-    // Loại bỏ các dòng gạch đầu dòng liệt kê sản phẩm thô vì đã có thẻ ProductChatCard trực quan bên dưới
     if (/^[-*]\s*\*\*/.test(trimmed)) {
       return false;
     }
@@ -25,7 +269,6 @@ function formatAiText(text, hasCards) {
 }
 
 function findRelevantProducts(queryText = '', replyText = '', allProducts = []) {
-  // 1. Gộp toàn bộ sản phẩm từ catalog và defaultProducts, deduplicate theo ID
   const poolMap = new Map();
   if (Array.isArray(allProducts)) {
     allProducts.forEach((p) => {
@@ -46,7 +289,7 @@ function findRelevantProducts(queryText = '', replyText = '', allProducts = []) 
   const r = (replyText || '').toLowerCase();
   const combined = `${q} ${r}`;
 
-  // 2. Ưu tiên 1: Trích xuất các tên sản phẩm cụ thể từ gạch đầu dòng in đậm của AI (vd: "- **QuickPhone Pro Max 256GB**:")
+  // 1. Trích xuất tên sản phẩm từ gạch đầu dòng in đậm của AI
   const bulletMatches = [...(replyText || '').matchAll(/[-*]\s*\*\*([^*]+)\*\*/g)].map((m) => m[1].trim());
   if (bulletMatches.length > 0) {
     const matched = [];
@@ -67,19 +310,14 @@ function findRelevantProducts(queryText = '', replyText = '', allProducts = []) 
         const pName = (prod.name || '').toLowerCase();
         let score = 0;
 
-        // Trùng khớp trực tiếp
-        if (pName.includes(bLower) || bLower.includes(pName)) {
-          score += 12;
-        }
+        if (pName.includes(bLower) || bLower.includes(pName)) score += 12;
 
-        // Khớp theo tokens
         for (const token of bTokens) {
           if (pName.includes(token)) {
             score += token.length >= 5 ? 3 : 1;
           }
         }
 
-        // Tăng trọng số cho các dòng sản phẩm đặc trưng
         if (bLower.includes('quickphone') && pName.includes('quickphone')) score += 20;
         if (bLower.includes('quickpods') && pName.includes('quickpods')) score += 20;
         if (bLower.includes('quickbook') && pName.includes('quickbook')) score += 20;
@@ -108,7 +346,7 @@ function findRelevantProducts(queryText = '', replyText = '', allProducts = []) 
     }
   }
 
-  // 3. Ưu tiên 2: Phân loại theo ngành hàng / danh mục từ khóa
+  // 2. Phân loại theo ngành hàng / danh mục từ khóa
   const categoryRules = [
     {
       triggers: ['điện thoại', 'smartphone', 'di động', 'iphone', 'samsung', 'galaxy', 'quickphone'],
@@ -198,7 +436,7 @@ function findRelevantProducts(queryText = '', replyText = '', allProducts = []) 
     }
   }
 
-  // 4. Fallback khi người dùng hỏi chung chung về mua sắm / deal
+  // 3. Fallback khi người dùng hỏi chung chung
   if (
     combined.includes('gợi ý') ||
     combined.includes('sản phẩm') ||
@@ -212,26 +450,116 @@ function findRelevantProducts(queryText = '', replyText = '', allProducts = []) 
   return [];
 }
 
+/**
+ * MessageRow with GSAP Choreography on New Messages
+ * (y: 16 -> 0, scale: 0.96 -> 1, opacity: 0 -> 1, duration: 0.32, ease: "power3.out")
+ */
+function MessageRow({
+  message,
+  index,
+  isInitialWelcome,
+  onSelectProduct,
+  onBuyNow,
+  onToast,
+  onSendMessage,
+}) {
+  const rowRef = useRef(null);
+
+  useGSAP(() => {
+    if (!isInitialWelcome && rowRef.current) {
+      gsap.fromTo(
+        rowRef.current,
+        { y: 16, scale: 0.96, opacity: 0 },
+        { y: 0, scale: 1, opacity: 1, duration: 0.32, ease: 'power3.out' }
+      );
+    }
+  }, { scope: rowRef });
+
+  const hasCards = Array.isArray(message.matchedProducts) && message.matchedProducts.length > 0;
+  const displayText = message.sender === 'ai' ? formatAiText(message.text, hasCards) : message.text;
+
+  return (
+    <div
+      ref={rowRef}
+      className={`flex flex-col ${message.sender === 'user' ? 'items-end' : 'items-start'}`}
+    >
+      {displayText && (
+        <div
+          className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed whitespace-pre-line shadow-sm ${
+            message.sender === 'user'
+              ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-tr-none'
+              : 'bg-white dark:bg-[#1A1B25] border border-slate-200 dark:border-white/10 text-slate-800 dark:text-[#F4F0E8] rounded-tl-none'
+          } ${isInitialWelcome ? 'chat-cascade-item' : ''}`}
+        >
+          {displayText}
+        </div>
+      )}
+
+      {/* Danh sách thẻ sản phẩm trực quan */}
+      {hasCards && (
+        <div className="w-full space-y-2 mt-2">
+          {message.matchedProducts.map((prod) => (
+            <ProductChatCard
+              key={prod.id}
+              product={prod}
+              onSelectProduct={onSelectProduct}
+              onBuyNow={onBuyNow}
+              onToast={onToast}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Quick-Prompt Suggestions Chips */}
+      {message.suggestions && message.suggestions.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {message.suggestions.map((sug, sIdx) => (
+            <button
+              key={sIdx}
+              type="button"
+              onClick={() => onSendMessage(sug)}
+              className={`text-[11px] px-2.5 py-1 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900/60 text-orange-700 dark:text-amber-300 border border-orange-200/80 dark:border-orange-500/30 rounded-full font-medium transition active:scale-95 shadow-sm cursor-pointer ${
+                isInitialWelcome ? 'chat-cascade-item' : ''
+              }`}
+            >
+              {sug}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow, onToast }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const triggerBtnRef = useRef(null);
-  useMagneticHover(triggerBtnRef, { maxDistance: 4 });
 
   // Position of the circular button (when closed)
   const [buttonPos, setButtonPos] = useState(() => {
     try {
-      // Clear legacy offset if previously saved
       localStorage.removeItem('quickshop_chatbot_pos');
       const saved = localStorage.getItem('quickshop_chat_btn_pos');
       if (saved) return JSON.parse(saved);
     } catch (e) {}
-    return null; // null defaults to CSS bottom-right: 24px
+    return null;
   });
 
   // Position of the chat window (when open)
   const [chatPos, setChatPos] = useState(null);
+
+  // Radial origin coordinates relative to chat window for spill-out animation
+  const [radialOrigin, setRadialOrigin] = useState({ x: 340, y: 470 });
+
+  // Hover & Cursor tracking states for launcher button
+  const [isLauncherHovered, setIsLauncherHovered] = useState(false);
+  const [cursorOffset, setCursorOffset] = useState({ x: 0, y: 0 });
+
+  const triggerBtnRef = useRef(null);
+  const chatWindowRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef({
@@ -255,29 +583,138 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
     },
   ]);
 
-  // Open chat: keep buttonPos untouched, calculate initial chatPos if button was dragged
-  const handleOpenChat = () => {
-    if (buttonPos) {
-      const chatW = Math.min(390, window.innerWidth - 32);
-      const chatH = Math.min(520, window.innerHeight - 48);
-      // Align bottom-right of chat window with bottom-right of the 60px button
-      let cx = buttonPos.x + 60 - chatW;
-      let cy = buttonPos.y + 60 - chatH;
-      // Ensure it stays safely within viewport
-      cx = Math.max(16, Math.min(window.innerWidth - chatW - 16, cx));
-      cy = Math.max(16, Math.min(window.innerHeight - chatH - 16, cy));
-      setChatPos({ x: cx, y: cy });
-    } else {
-      setChatPos(null); // Defaults to bottom-right: 24px
+  // Liquid Radial "Spill-Out" Open Animation
+  useGSAP(() => {
+    if (!isOpen || isClosing || !chatWindowRef.current) return;
+
+    const { x: ox, y: oy } = radialOrigin;
+
+    // 1. Expand chat container with GSAP clipPath
+    gsap.fromTo(
+      chatWindowRef.current,
+      {
+        clipPath: `circle(28px at ${ox}px ${oy}px)`,
+        scale: 0.92,
+        opacity: 1,
+        transformOrigin: `${ox}px ${oy}px`,
+      },
+      {
+        clipPath: `circle(150% at ${ox}px ${oy}px)`,
+        scale: 1,
+        duration: 0.55,
+        ease: 'expo.out',
+      }
+    );
+
+    // 2. Cascade header elements, welcome message bubble, and 4 quick chips
+    const cascadeItems = chatWindowRef.current.querySelectorAll('.chat-cascade-item');
+    if (cascadeItems.length > 0) {
+      gsap.fromTo(
+        cascadeItems,
+        { y: 14, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          stagger: 0.045,
+          duration: 0.35,
+          ease: 'power2.out',
+          delay: 0.1,
+        }
+      );
     }
+  }, [isOpen, isClosing, radialOrigin]);
+
+  // Open chat: compute exact center of launcher button relative to chat window
+  const handleOpenChat = () => {
+    const btnEl = triggerBtnRef.current;
+    const btnRect = btnEl?.getBoundingClientRect();
+    const btnCenterX = btnRect ? btnRect.left + btnRect.width / 2 : window.innerWidth - 54;
+    const btnCenterY = btnRect ? btnRect.top + btnRect.height / 2 : window.innerHeight - 54;
+
+    const chatW = Math.min(390, window.innerWidth - 32);
+    const chatH = Math.min(520, window.innerHeight - 48);
+
+    let targetChatPos = chatPos;
+    if (!targetChatPos) {
+      if (buttonPos) {
+        let cx = buttonPos.x + 60 - chatW;
+        let cy = buttonPos.y + 60 - chatH;
+        cx = Math.max(16, Math.min(window.innerWidth - chatW - 16, cx));
+        cy = Math.max(16, Math.min(window.innerHeight - chatH - 16, cy));
+        targetChatPos = { x: cx, y: cy };
+      } else {
+        targetChatPos = {
+          x: window.innerWidth - 24 - chatW,
+          y: window.innerHeight - 24 - chatH,
+        };
+      }
+      setChatPos(targetChatPos);
+    }
+
+    const ox = Math.round(btnCenterX - targetChatPos.x);
+    const oy = Math.round(btnCenterY - targetChatPos.y);
+    setRadialOrigin({ x: ox, y: oy });
+
+    // Animate button out
+    if (btnEl) {
+      gsap.to(btnEl, {
+        scale: 0.5,
+        opacity: 0,
+        duration: 0.18,
+        ease: 'power2.in',
+      });
+    }
+
     setIsOpen(true);
+    setIsClosing(false);
   };
 
+  // Reverse Contraction on Close: clipPath contracts into launcher center, then unmounts & springs launcher back
   const handleCloseChat = () => {
-    setIsOpen(false);
+    if (!isOpen || isClosing) return;
+    setIsClosing(true);
+
+    const chatRect = chatWindowRef.current?.getBoundingClientRect();
+    const btnRect = triggerBtnRef.current?.getBoundingClientRect();
+
+    let ox = radialOrigin.x;
+    let oy = radialOrigin.y;
+
+    if (chatRect && btnRect) {
+      const btnCenterX = btnRect.left + btnRect.width / 2;
+      const btnCenterY = btnRect.top + btnRect.height / 2;
+      ox = Math.round(btnCenterX - chatRect.left);
+      oy = Math.round(btnCenterY - chatRect.top);
+    }
+
+    if (chatWindowRef.current) {
+      gsap.to(chatWindowRef.current, {
+        clipPath: `circle(28px at ${ox}px ${oy}px)`,
+        scale: 0.92,
+        duration: 0.38,
+        ease: 'power3.inOut',
+        transformOrigin: `${ox}px ${oy}px`,
+        onComplete: () => {
+          setIsOpen(false);
+          setIsClosing(false);
+
+          // Re-reveal the blinking robot launcher with a spring pop
+          if (triggerBtnRef.current) {
+            gsap.fromTo(
+              triggerBtnRef.current,
+              { scale: 0.8, opacity: 0 },
+              { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(1.7)' }
+            );
+          }
+        },
+      });
+    } else {
+      setIsOpen(false);
+      setIsClosing(false);
+    }
   };
 
-  // Đóng cửa sổ Chat AI khi nhấn phím Escape
+  // Close on Escape key
   useEffect(() => {
     if (!isOpen) return;
     const handleEscape = (e) => {
@@ -285,9 +722,36 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen]);
+  }, [isOpen, isClosing]);
 
-  // Drag logic for the circular button (when closed)
+  // Auto-scroll messages
+  useEffect(() => {
+    if (isOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isOpen]);
+
+  // Launcher cursor tracking & hover handlers
+  const handleLauncherPointerMove = (e) => {
+    if (isDragging) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const dx = (e.clientX - centerX) / (rect.width / 2);
+    const dy = (e.clientY - centerY) / (rect.height / 2);
+    setCursorOffset({ x: dx * 2.5, y: dy * 2 });
+  };
+
+  const handleLauncherPointerEnter = () => {
+    setIsLauncherHovered(true);
+  };
+
+  const handleLauncherPointerLeave = () => {
+    setIsLauncherHovered(false);
+    setCursorOffset({ x: 0, y: 0 });
+  };
+
+  // Drag logic for circular launcher button
   const handleButtonPointerDown = (e) => {
     if (e.button !== undefined && e.button !== 0) return;
 
@@ -336,7 +800,6 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
           return cur;
         });
       } else {
-        // Simple click without drag -> open chat
         handleOpenChat();
       }
     };
@@ -345,12 +808,13 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
     window.addEventListener('pointerup', handlePointerUp);
   };
 
-  // Drag logic for the chat window header (when open)
+  // Drag logic for chat window header
   const handleHeaderPointerDown = (e) => {
     if (e.target.closest('button')) return;
     if (e.button !== undefined && e.button !== 0) return;
 
-    const chatEl = e.currentTarget.closest('.chat-window-container') || e.currentTarget.parentElement;
+    const chatEl = chatWindowRef.current;
+    if (!chatEl) return;
     const rect = chatEl.getBoundingClientRect();
 
     dragRef.current = {
@@ -426,10 +890,11 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
         ...newThread,
         {
           sender: 'ai',
-          text: matched.length > 0 
-            ? 'Dưới đây là một số sản phẩm phù hợp nhất trong kho hàng mà bạn có thể tham khảo ngay:'
-            : 'Rất tiếc, kết nối đến dịch vụ AI đang bị quá tải hoặc phản hồi chậm. Bạn có thể tham khảo các deal hot hôm nay nhé!',
-          matchedProducts: matched.length > 0 ? matched : (products && products.slice(0, 2)),
+          text:
+            matched.length > 0
+              ? 'Dưới đây là một số sản phẩm phù hợp nhất trong kho hàng mà bạn có thể tham khảo ngay:'
+              : 'Rất tiếc, kết nối đến dịch vụ AI đang bị quá tải hoặc phản hồi chậm. Bạn có thể tham khảo các deal hot hôm nay nhé!',
+          matchedProducts: matched.length > 0 ? matched : products && products.slice(0, 2),
           suggestions: ['Xem sản phẩm hot', 'Thử lại câu hỏi', 'Deal Flash Sale'],
         },
       ]);
@@ -448,16 +913,19 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
 
   return (
     <>
-      {/* 1. Floating Draggable Circular Button (When Closed) */}
-      {!isOpen && (
+      {/* 1. Floating Draggable Circular Button (When Closed or Re-popping) */}
+      {(!isOpen || isClosing) && (
         <div
           ref={triggerBtnRef}
           style={buttonStyle}
+          onPointerMove={handleLauncherPointerMove}
+          onPointerEnter={handleLauncherPointerEnter}
+          onPointerLeave={handleLauncherPointerLeave}
           className={`fixed z-50 select-none touch-none ${isDragging ? 'cursor-grabbing' : ''}`}
         >
           <div
             onPointerDown={handleButtonPointerDown}
-            className={`btn-shimmer relative group p-4 rounded-full bg-gradient-to-tr from-orange-500 via-rose-500 to-amber-500 text-white shadow-2xl shadow-orange-500/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center cursor-grab ${
+            className={`btn-shimmer relative group p-3.5 rounded-full bg-gradient-to-tr from-orange-500 via-rose-500 to-amber-500 text-white shadow-2xl shadow-orange-500/40 hover:scale-105 active:scale-95 flex items-center justify-center cursor-grab ${
               isDragging ? 'scale-110 shadow-2xl ring-4 ring-orange-400/40' : ''
             }`}
             title="Kéo thả để di chuyển vị trí • Bấm để chat AI"
@@ -465,16 +933,27 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
             role="button"
             tabIndex={0}
           >
-            <Bot className="w-7 h-7 pointer-events-none" />
+            {/* Soft Warm-Orange Ambient Glow Ring on Hover (do NOT use animate-bounce) */}
+            <div className="absolute inset-0 -m-1.5 rounded-full bg-orange-500/25 blur-md pointer-events-none transition-opacity duration-300 opacity-0 group-hover:opacity-100 ring-2 ring-orange-400/50" />
+
+            {/* Expressive Blinking Robot Avatar */}
+            <RobotAvatar
+              size={32}
+              isThinking={loading}
+              isHovered={isLauncherHovered}
+              cursorOffset={cursorOffset}
+            />
+
+            {/* Online Indicator Badge */}
             <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 border-2 border-white rounded-full"></span>
 
             {/* Drag Handle Indicator */}
-            <div className="absolute -top-2 -left-2 bg-slate-900/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition shadow">
+            <div className="absolute -top-2 -left-2 bg-slate-900/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow">
               <Move className="w-2.5 h-2.5" />
             </div>
 
             {/* Hover Tooltip */}
-            <div className="absolute right-full mr-3 bg-slate-900/95 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition shadow-xl pointer-events-none flex items-center gap-1.5">
+            <div className="absolute right-full mr-3 bg-slate-900/95 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-xl pointer-events-none flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               <span>Kéo thả di chuyển • Bấm để chat AI</span>
             </div>
@@ -482,24 +961,26 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
         </div>
       )}
 
-      {/* 2. Draggable Chat Window (When Open) */}
-      <AnimatedPresence
-        show={isOpen}
-        mode="dropdown"
-        style={chatStyle}
-        className={`fixed z-50 select-none chat-window-container ${isDragging ? 'cursor-grabbing' : ''}`}
-        dataLenisPrevent={true}
-      >
-        <div className="w-[calc(100vw-32px)] sm:w-[390px] h-[520px] max-h-[calc(100vh-48px)] bg-white dark:bg-[#13141C] rounded-3xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden transition-colors">
+      {/* 2. Chat Window with GSAP Radial Spill-Out & Reverse Contraction */}
+      {(isOpen || isClosing) && (
+        <div
+          ref={chatWindowRef}
+          style={chatStyle}
+          className={`fixed z-50 select-none chat-window-container will-change-[clip-path,transform] ${
+            isDragging ? 'cursor-grabbing' : ''
+          }`}
+          data-lenis-prevent="true"
+        >
+          <div className="w-[calc(100vw-32px)] sm:w-[390px] h-[520px] max-h-[calc(100vh-48px)] bg-white dark:bg-[#13141C] rounded-3xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden">
             {/* Header - Drag Handle */}
             <div
               onPointerDown={handleHeaderPointerDown}
               className="p-4 bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 text-white flex justify-between items-center shadow-md cursor-grab active:cursor-grabbing touch-none"
               title="Kéo giữ để di chuyển cửa sổ chat"
             >
-              <div className="flex items-center space-x-2.5 pointer-events-none">
-                <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
-                  <Bot className="w-5 h-5 text-white" />
+              <div className="flex items-center space-x-2.5 pointer-events-none chat-cascade-item">
+                <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center p-0.5">
+                  <RobotAvatar size={24} isThinking={loading} />
                 </div>
                 <div>
                   <h3 className="font-bold text-xs sm:text-sm flex items-center gap-1.5">
@@ -513,14 +994,14 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
                 </div>
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 chat-cascade-item">
                 <div className="text-white/60 p-1" title="Kéo để di chuyển">
                   <Move className="w-3.5 h-3.5" />
                 </div>
                 <button
                   type="button"
                   onClick={handleCloseChat}
-                  className="p-1 rounded-full hover:bg-white/20 transition text-white cursor-pointer"
+                  className="p-1 rounded-full hover:bg-white/20 transition-colors text-white active:scale-90 cursor-pointer"
                   title="Đóng cửa sổ chat"
                   aria-label="Đóng cửa sổ chat AI"
                 >
@@ -530,61 +1011,24 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
             </div>
 
             {/* Messages Body */}
-            <div data-lenis-prevent className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/50 dark:bg-[#07080D]/50" role="log" aria-live="polite">
-              {messages.map((m, i) => {
-                const hasCards = Array.isArray(m.matchedProducts) && m.matchedProducts.length > 0;
-                const displayText = m.sender === 'ai' ? formatAiText(m.text, hasCards) : m.text;
-
-                return (
-                  <div
-                    key={i}
-                    className={`flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-200 ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
-                  >
-                    {displayText && (
-                      <div
-                        className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed whitespace-pre-line shadow-sm ${
-                          m.sender === 'user'
-                            ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-tr-none'
-                            : 'bg-white dark:bg-[#1A1B25] border border-slate-200 dark:border-white/10 text-slate-800 dark:text-[#F4F0E8] rounded-tl-none'
-                        }`}
-                      >
-                        {displayText}
-                      </div>
-                    )}
-
-                    {/* Danh sách thẻ sản phẩm trực quan trực tiếp trong câu trả lời */}
-                    {hasCards && (
-                      <div className="w-full space-y-2 mt-2">
-                        {m.matchedProducts.map((prod) => (
-                          <ProductChatCard
-                            key={prod.id}
-                            product={prod}
-                            onSelectProduct={onSelectProduct}
-                            onBuyNow={onBuyNow}
-                            onToast={onToast}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                  {/* Suggestions Chips from AI */}
-                  {m.suggestions && m.suggestions.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {m.suggestions.map((sug, sIdx) => (
-                        <button
-                          key={sIdx}
-                          type="button"
-                          onClick={() => handleSendMessage(sug)}
-                          className="text-[11px] px-2.5 py-1 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900/60 text-orange-700 dark:text-amber-300 border border-orange-200/80 dark:border-orange-500/30 rounded-full font-medium transition text-left active:scale-95 shadow-sm cursor-pointer"
-                        >
-                          {sug}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            <div
+              data-lenis-prevent
+              className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/50 dark:bg-[#07080D]/50"
+              role="log"
+              aria-live="polite"
+            >
+              {messages.map((m, i) => (
+                <MessageRow
+                  key={i}
+                  message={m}
+                  index={i}
+                  isInitialWelcome={i === 0}
+                  onSelectProduct={onSelectProduct}
+                  onBuyNow={onBuyNow}
+                  onToast={onToast}
+                  onSendMessage={handleSendMessage}
+                />
+              ))}
 
               {loading && (
                 <div className="flex items-center space-x-2 text-xs text-slate-400 p-2">
@@ -594,6 +1038,7 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
                   <span>AI đang suy nghĩ câu trả lời...</span>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Input Footer */}
@@ -617,7 +1062,7 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
                   type="submit"
                   disabled={loading || !inputMessage.trim()}
                   aria-label="Gửi câu hỏi cho trợ lý AI"
-                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white rounded-xl text-xs font-semibold transition disabled:opacity-40 flex items-center justify-center shadow-md shadow-orange-500/20 active:scale-95 cursor-pointer"
+                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white rounded-xl text-xs font-semibold disabled:opacity-40 flex items-center justify-center shadow-md shadow-orange-500/20 active:scale-95 transition-transform duration-100 cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />
                 </button>
@@ -628,7 +1073,8 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
               </div>
             </div>
           </div>
-        </AnimatedPresence>
+        </div>
+      )}
     </>
   );
 }
