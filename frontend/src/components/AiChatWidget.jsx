@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
-import { X, Send, Sparkles, AlertCircle, Move } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Send, Sparkles, AlertCircle } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { gsap, useGSAP } from '../lib/gsap';
 import ProductChatCard from './ProductChatCard';
@@ -537,38 +537,21 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Position of the circular button (when closed)
-  const [buttonPos, setButtonPos] = useState(() => {
+  // Xóa các tọa độ kéo thả cũ trong localStorage để cố định vĩnh viễn ở góc dưới bên trái
+  useEffect(() => {
     try {
       localStorage.removeItem('quickshop_chatbot_pos');
-      const saved = localStorage.getItem('quickshop_chat_btn_pos');
-      if (saved) return JSON.parse(saved);
+      localStorage.removeItem('quickshop_chat_btn_pos');
     } catch (e) {}
-    return null;
-  });
+  }, []);
 
-  // Position of the chat window (when open)
-  const [chatPos, setChatPos] = useState(null);
-
-  // Radial origin coordinates relative to chat window for spill-out animation
-  const [radialOrigin, setRadialOrigin] = useState({ x: 340, y: 470 });
-
-  // Hover & Cursor tracking states for launcher button
+  // Hover & Cursor tracking states cho logo robot
   const [isLauncherHovered, setIsLauncherHovered] = useState(false);
   const [cursorOffset, setCursorOffset] = useState({ x: 0, y: 0 });
 
   const triggerBtnRef = useRef(null);
   const chatWindowRef = useRef(null);
   const messagesEndRef = useRef(null);
-
-  const [isDragging, setIsDragging] = useState(false);
-  const dragRef = useRef({
-    startX: 0,
-    startY: 0,
-    initialX: 0,
-    initialY: 0,
-    hasMoved: false,
-  });
 
   const [messages, setMessages] = useState([
     {
@@ -583,11 +566,17 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
     },
   ]);
 
-  // Liquid Radial "Spill-Out" Open Animation
+  // Tọa độ tâm xuất phát hiệu ứng radial spill-out từ nút tròn ở góc dưới bên trái
+  const getRadialOrigin = () => {
+    const chatH = Math.min(520, typeof window !== 'undefined' ? window.innerHeight - 48 : 520);
+    return { x: 30, y: Math.max(30, chatH - 30) };
+  };
+
+  // Liquid Radial "Spill-Out" Open Animation từ góc dưới bên trái
   useGSAP(() => {
     if (!isOpen || isClosing || !chatWindowRef.current) return;
 
-    const { x: ox, y: oy } = radialOrigin;
+    const { x: ox, y: oy } = getRadialOrigin();
 
     // 1. Expand chat container with GSAP clipPath
     gsap.fromTo(
@@ -622,40 +611,11 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
         }
       );
     }
-  }, [isOpen, isClosing, radialOrigin]);
+  }, [isOpen, isClosing]);
 
-  // Open chat: compute exact center of launcher button relative to chat window
+  // Open chat: Mở khung chat bung tỏa từ logo ở góc dưới bên trái
   const handleOpenChat = () => {
     const btnEl = triggerBtnRef.current;
-    const btnRect = btnEl?.getBoundingClientRect();
-    const btnCenterX = btnRect ? btnRect.left + btnRect.width / 2 : window.innerWidth - 54;
-    const btnCenterY = btnRect ? btnRect.top + btnRect.height / 2 : window.innerHeight - 54;
-
-    const chatW = Math.min(390, window.innerWidth - 32);
-    const chatH = Math.min(520, window.innerHeight - 48);
-
-    let targetChatPos = chatPos;
-    if (!targetChatPos) {
-      if (buttonPos) {
-        let cx = buttonPos.x + 60 - chatW;
-        let cy = buttonPos.y + 60 - chatH;
-        cx = Math.max(16, Math.min(window.innerWidth - chatW - 16, cx));
-        cy = Math.max(16, Math.min(window.innerHeight - chatH - 16, cy));
-        targetChatPos = { x: cx, y: cy };
-      } else {
-        targetChatPos = {
-          x: window.innerWidth - 24 - chatW,
-          y: window.innerHeight - 24 - chatH,
-        };
-      }
-      setChatPos(targetChatPos);
-    }
-
-    const ox = Math.round(btnCenterX - targetChatPos.x);
-    const oy = Math.round(btnCenterY - targetChatPos.y);
-    setRadialOrigin({ x: ox, y: oy });
-
-    // Animate button out
     if (btnEl) {
       gsap.to(btnEl, {
         scale: 0.5,
@@ -669,23 +629,12 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
     setIsClosing(false);
   };
 
-  // Reverse Contraction on Close: clipPath contracts into launcher center, then unmounts & springs launcher back
+  // Reverse Contraction on Close: clipPath thu nhỏ ngược về tâm logo góc trái
   const handleCloseChat = () => {
     if (!isOpen || isClosing) return;
     setIsClosing(true);
 
-    const chatRect = chatWindowRef.current?.getBoundingClientRect();
-    const btnRect = triggerBtnRef.current?.getBoundingClientRect();
-
-    let ox = radialOrigin.x;
-    let oy = radialOrigin.y;
-
-    if (chatRect && btnRect) {
-      const btnCenterX = btnRect.left + btnRect.width / 2;
-      const btnCenterY = btnRect.top + btnRect.height / 2;
-      ox = Math.round(btnCenterX - chatRect.left);
-      oy = Math.round(btnCenterY - chatRect.top);
-    }
+    const { x: ox, y: oy } = getRadialOrigin();
 
     if (chatWindowRef.current) {
       gsap.to(chatWindowRef.current, {
@@ -698,7 +647,7 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
           setIsOpen(false);
           setIsClosing(false);
 
-          // Re-reveal the blinking robot launcher with a spring pop
+          // Nảy logo robot trở lại với hiệu ứng spring pop
           if (triggerBtnRef.current) {
             gsap.fromTo(
               triggerBtnRef.current,
@@ -714,7 +663,7 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
     }
   };
 
-  // Close on Escape key
+  // Đóng khi nhấn phím Escape
   useEffect(() => {
     if (!isOpen) return;
     const handleEscape = (e) => {
@@ -724,7 +673,7 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, isClosing]);
 
-  // Auto-scroll messages
+  // Tự động cuộn xuống tin nhắn mới nhất
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -733,7 +682,6 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
 
   // Launcher cursor tracking & hover handlers
   const handleLauncherPointerMove = (e) => {
-    if (isDragging) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
@@ -749,111 +697,6 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
   const handleLauncherPointerLeave = () => {
     setIsLauncherHovered(false);
     setCursorOffset({ x: 0, y: 0 });
-  };
-
-  // Drag logic for circular launcher button
-  const handleButtonPointerDown = (e) => {
-    if (e.button !== undefined && e.button !== 0) return;
-
-    const btnEl = e.currentTarget;
-    const rect = btnEl.getBoundingClientRect();
-
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      initialX: rect.left,
-      initialY: rect.top,
-      hasMoved: false,
-    };
-
-    setIsDragging(true);
-
-    const handlePointerMove = (moveEvent) => {
-      const dx = moveEvent.clientX - dragRef.current.startX;
-      const dy = moveEvent.clientY - dragRef.current.startY;
-
-      if (!dragRef.current.hasMoved && Math.hypot(dx, dy) > 5) {
-        dragRef.current.hasMoved = true;
-      }
-
-      if (dragRef.current.hasMoved) {
-        const maxX = window.innerWidth - 68;
-        const maxY = window.innerHeight - 68;
-        const newX = Math.max(8, Math.min(maxX, dragRef.current.initialX + dx));
-        const newY = Math.max(8, Math.min(maxY, dragRef.current.initialY + dy));
-        setButtonPos({ x: newX, y: newY });
-      }
-    };
-
-    const handlePointerUp = () => {
-      setIsDragging(false);
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-
-      if (dragRef.current.hasMoved) {
-        setButtonPos((cur) => {
-          if (cur) {
-            try {
-              localStorage.setItem('quickshop_chat_btn_pos', JSON.stringify(cur));
-            } catch (err) {}
-          }
-          return cur;
-        });
-      } else {
-        handleOpenChat();
-      }
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-  };
-
-  // Drag logic for chat window header
-  const handleHeaderPointerDown = (e) => {
-    if (e.target.closest('button')) return;
-    if (e.button !== undefined && e.button !== 0) return;
-
-    const chatEl = chatWindowRef.current;
-    if (!chatEl) return;
-    const rect = chatEl.getBoundingClientRect();
-
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      initialX: rect.left,
-      initialY: rect.top,
-      hasMoved: false,
-    };
-
-    setIsDragging(true);
-
-    const handlePointerMove = (moveEvent) => {
-      const dx = moveEvent.clientX - dragRef.current.startX;
-      const dy = moveEvent.clientY - dragRef.current.startY;
-
-      if (!dragRef.current.hasMoved && Math.hypot(dx, dy) > 5) {
-        dragRef.current.hasMoved = true;
-      }
-
-      if (dragRef.current.hasMoved) {
-        const chatW = Math.min(390, window.innerWidth - 32);
-        const chatH = Math.min(520, window.innerHeight - 48);
-        const maxX = window.innerWidth - chatW - 8;
-        const maxY = window.innerHeight - chatH - 8;
-        const newX = Math.max(8, Math.min(maxX, dragRef.current.initialX + dx));
-        const newY = Math.max(8, Math.min(maxY, dragRef.current.initialY + dy));
-        setChatPos({ x: newX, y: newY });
-      }
-    };
-
-    const handlePointerUp = () => {
-      setIsDragging(false);
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
   };
 
   const handleSendMessage = async (textToSend) => {
@@ -903,40 +746,29 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
     }
   };
 
-  const buttonStyle = buttonPos
-    ? { left: `${buttonPos.x}px`, top: `${buttonPos.y}px` }
-    : { right: '24px', bottom: '24px' };
-
-  const chatStyle = chatPos
-    ? { left: `${chatPos.x}px`, top: `${chatPos.y}px` }
-    : { right: '24px', bottom: '24px' };
-
   return (
     <>
-      {/* 1. Floating Draggable Circular Button (When Closed or Re-popping) */}
+      {/* 1. Nút tròn Logo AI - CỐ ĐỊNH Ở GÓC DƯỚI BÊN TRÁI (Fixed left-6 bottom-6) */}
       {(!isOpen || isClosing) && (
         <div
           ref={triggerBtnRef}
-          style={buttonStyle}
           onPointerMove={handleLauncherPointerMove}
           onPointerEnter={handleLauncherPointerEnter}
           onPointerLeave={handleLauncherPointerLeave}
-          className={`fixed z-50 select-none touch-none ${isDragging ? 'cursor-grabbing' : ''}`}
+          className="fixed left-6 bottom-6 z-50 select-none"
         >
           <div
-            onPointerDown={handleButtonPointerDown}
-            className={`btn-shimmer relative group p-3.5 rounded-full bg-gradient-to-tr from-orange-500 via-rose-500 to-amber-500 text-white shadow-2xl shadow-orange-500/40 hover:scale-105 active:scale-95 flex items-center justify-center cursor-grab ${
-              isDragging ? 'scale-110 shadow-2xl ring-4 ring-orange-400/40' : ''
-            }`}
-            title="Kéo thả để di chuyển vị trí • Bấm để chat AI"
+            onClick={handleOpenChat}
+            className="btn-shimmer relative group p-3.5 rounded-full bg-gradient-to-tr from-orange-500 via-rose-500 to-amber-500 text-white shadow-2xl shadow-orange-500/40 hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer transition-transform duration-150"
+            title="Bấm để trò chuyện cùng QuickShop AI"
             aria-label="Mở trợ lý ảo QuickShop AI"
             role="button"
             tabIndex={0}
           >
-            {/* Soft Warm-Orange Ambient Glow Ring on Hover (do NOT use animate-bounce) */}
+            {/* Vòng hào quang màu cam ấm khi hover */}
             <div className="absolute inset-0 -m-1.5 rounded-full bg-orange-500/25 blur-md pointer-events-none transition-opacity duration-300 opacity-0 group-hover:opacity-100 ring-2 ring-orange-400/50" />
 
-            {/* Expressive Blinking Robot Avatar */}
+            {/* Mascot Robot vector chớp mắt */}
             <RobotAvatar
               size={32}
               isThinking={loading}
@@ -944,39 +776,30 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
               cursorOffset={cursorOffset}
             />
 
-            {/* Online Indicator Badge */}
+            {/* Chấm tròn trạng thái trực tuyến */}
             <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 border-2 border-white rounded-full"></span>
 
-            {/* Drag Handle Indicator */}
-            <div className="absolute -top-2 -left-2 bg-slate-900/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow">
-              <Move className="w-2.5 h-2.5" />
-            </div>
-
-            {/* Hover Tooltip */}
-            <div className="absolute right-full mr-3 bg-slate-900/95 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-xl pointer-events-none flex items-center gap-1.5">
+            {/* Tooltip xuất hiện bên phải logo (vì nút ở góc dưới bên trái màn hình) */}
+            <div className="absolute left-full ml-3 bg-slate-900/95 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-xl pointer-events-none flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Kéo thả di chuyển • Bấm để chat AI</span>
+              <span>Bấm để chat cùng QuickShop AI</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* 2. Chat Window with GSAP Radial Spill-Out & Reverse Contraction */}
+      {/* 2. Cửa sổ chat AI - CỐ ĐỊNH Ở GÓC DƯỚI BÊN TRÁI (Fixed left-4 sm:left-6 bottom-4 sm:bottom-6) */}
       {(isOpen || isClosing) && (
         <div
           ref={chatWindowRef}
-          style={chatStyle}
-          className={`fixed z-50 select-none chat-window-container will-change-[clip-path,transform] ${
-            isDragging ? 'cursor-grabbing' : ''
-          }`}
+          className="fixed left-4 sm:left-6 bottom-4 sm:bottom-6 z-50 select-none chat-window-container will-change-[clip-path,transform]"
           data-lenis-prevent="true"
         >
           <div className="w-[calc(100vw-32px)] sm:w-[390px] h-[520px] max-h-[calc(100vh-48px)] bg-white dark:bg-[#13141C] rounded-3xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col overflow-hidden">
-            {/* Header - Drag Handle */}
+            {/* Header Cố Định Không Di Chuyển */}
             <div
-              onPointerDown={handleHeaderPointerDown}
-              className="p-4 bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 text-white flex justify-between items-center shadow-md cursor-grab active:cursor-grabbing touch-none"
-              title="Kéo giữ để di chuyển cửa sổ chat"
+              className="p-4 bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 text-white flex justify-between items-center shadow-md select-none"
+              title="Trợ lý mua sắm QuickShop AI"
             >
               <div className="flex items-center space-x-2.5 pointer-events-none chat-cascade-item">
                 <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center p-0.5">
@@ -989,15 +812,12 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
                   </h3>
                   <div className="text-[10px] text-white/80 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-ping"></span>
-                    Trực tuyến 24/7 • Kéo thả tự do
+                    Trực tuyến 24/7 • Trợ lý AI
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-1 chat-cascade-item">
-                <div className="text-white/60 p-1" title="Kéo để di chuyển">
-                  <Move className="w-3.5 h-3.5" />
-                </div>
                 <button
                   type="button"
                   onClick={handleCloseChat}
