@@ -8,6 +8,11 @@ export default function ProductChatCard({ product, onSelectProduct, onBuyNow, on
 
   if (!product) return null;
 
+  const currentPrice = product.price ?? product.minPrice ?? product.variants?.[0]?.price ?? 0;
+  const originalPrice = product.originalPrice ?? product.maxPrice ?? (currentPrice > 0 ? Math.round(currentPrice * 1.15) : 0);
+  const displayImage = product.imageUrl || product.mainImage || product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200';
+  const shopName = product.shopName || 'Shop Chính Hãng QuickShop';
+
   const formatVND = (amount) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
   };
@@ -19,15 +24,15 @@ export default function ProductChatCard({ product, onSelectProduct, onBuyNow, on
         {
           id: product.id,
           name: product.name,
-          price: product.price,
-          mainImage: product.imageUrl || product.mainImage,
+          price: currentPrice,
+          mainImage: displayImage,
           shopId: product.shopId || 1,
-          shopName: product.shopName || 'TechWorld Official Store',
+          shopName: shopName,
         },
         product.variants?.[0] || {
           variantId: product.id * 10 + 1,
           variantName: 'Mặc định',
-          price: product.price,
+          price: currentPrice,
         },
         1
       );
@@ -55,21 +60,21 @@ export default function ProductChatCard({ product, onSelectProduct, onBuyNow, on
       onBuyNow({
         productId: product.id,
         productName: product.name,
-        price: product.price,
-        imageUrl: product.imageUrl || product.mainImage,
+        price: currentPrice,
+        imageUrl: displayImage,
         shopId: product.shopId || 1,
-        shopName: product.shopName || 'TechWorld Official Store',
+        shopName: shopName,
         quantity: 1,
       });
     }
   };
 
   return (
-    <div className="mt-2.5 p-3 rounded-2xl bg-white dark:bg-[#1A1B25] border border-slate-200/90 dark:border-white/10 shadow-sm hover:border-orange-300 dark:hover:border-amber-500/40 transition-all text-left max-w-xs sm:max-w-sm">
+    <div className="p-3 rounded-2xl bg-white dark:bg-[#1A1B25] border border-slate-200/90 dark:border-white/10 shadow-sm hover:border-orange-300 dark:hover:border-amber-500/40 transition-all text-left w-full">
       <div className="flex gap-3 items-start">
         <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-100 dark:bg-[#252632] flex-shrink-0 border border-slate-200/80 dark:border-white/10">
           <img
-            src={product.imageUrl || product.mainImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'}
+            src={displayImage}
             alt={product.name}
             className="w-full h-full object-cover"
           />
@@ -82,7 +87,7 @@ export default function ProductChatCard({ product, onSelectProduct, onBuyNow, on
 
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center gap-1.5 text-[10px] text-orange-600 dark:text-amber-400 font-bold uppercase tracking-wider">
-            <span>{product.shopName || 'Shop Chính Hãng'}</span>
+            <span>{shopName}</span>
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
           </div>
           <h4
@@ -94,11 +99,11 @@ export default function ProductChatCard({ product, onSelectProduct, onBuyNow, on
           </h4>
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="text-sm font-black text-orange-600 dark:text-amber-400 font-mono">
-              {formatVND(product.price)}
+              {formatVND(currentPrice)}
             </span>
-            {product.originalPrice && product.originalPrice > product.price && (
+            {originalPrice > currentPrice && (
               <span className="text-[10px] text-slate-400 line-through font-mono">
-                {formatVND(product.originalPrice)}
+                {formatVND(originalPrice)}
               </span>
             )}
           </div>

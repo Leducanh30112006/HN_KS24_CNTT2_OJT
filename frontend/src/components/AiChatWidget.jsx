@@ -1,63 +1,212 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, X, Send, Sparkles, AlertCircle, Move, ShoppingBag } from 'lucide-react';
+import { Bot, X, Send, Sparkles, AlertCircle, Move } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { AnimatedPresence, useMagneticHover } from './motion/MotionPrimitives';
 import ProductChatCard from './ProductChatCard';
+import { defaultProducts } from '../data/sampleProducts';
 
-function findRelevantProducts(queryText, replyText, allProducts = []) {
-  if (!Array.isArray(allProducts) || allProducts.length === 0) return [];
+function formatAiText(text, hasCards) {
+  if (!text) return '';
+  if (!hasCards) return text;
 
-  const combined = `${queryText || ''} ${replyText || ''}`.toLowerCase();
-
-  const keywords = [
-    { keys: ['điện thoại', 'iphone', 'smartphone', 'samsung', 'xiaomi', 'oppo', 'di động'], catKeys: ['điện thoại', 'phụ kiện'] },
-    { keys: ['laptop', 'macbook', 'máy tính', 'dell', 'asus', 'thinkpad', 'gaming'], catKeys: ['laptop', 'máy tính'] },
-    { keys: ['đồng hồ', 'watch', 'smartwatch', 'quickwatch', 'garmin', 'apple watch'], catKeys: ['đồng hồ', 'phụ kiện'] },
-    { keys: ['tai nghe', 'headphone', 'airpods', 'loa', 'âm thanh', 'earphone'], catKeys: ['âm thanh', 'phụ kiện', 'điện tử'] },
-    { keys: ['kính thực tế ảo', 'vr', 'vision', 'meta quest'], catKeys: ['điện tử', 'thiết bị'] },
-    { keys: ['giày', 'sneaker', 'thời trang', 'áo', 'quần', 'jacket', 'túi'], catKeys: ['thời trang', 'giày'] },
-  ];
-
-  // 1. Match theo tên sản phẩm cụ thể
-  const nameMatches = allProducts.filter((p) => {
-    if (!p.name) return false;
-    const nameLower = p.name.toLowerCase();
-    const words = combined.split(/\s+/).filter((w) => w.length >= 3);
-    return words.some((w) => nameLower.includes(w));
+  // Split lines
+  const lines = text.split('\n');
+  const filtered = lines.filter((line) => {
+    const trimmed = line.trim();
+    // Loại bỏ các dòng gạch đầu dòng liệt kê sản phẩm thô vì đã có thẻ ProductChatCard trực quan bên dưới
+    if (/^[-*]\s*\*\*/.test(trimmed)) {
+      return false;
+    }
+    return true;
   });
 
-  if (nameMatches.length > 0) {
-    return nameMatches.slice(0, 2);
+  const result = filtered.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return result || 'Dưới đây là các sản phẩm phù hợp nhất dành cho bạn:';
+}
+
+function findRelevantProducts(queryText = '', replyText = '', allProducts = []) {
+  // 1. Gộp toàn bộ sản phẩm từ catalog và defaultProducts, deduplicate theo ID
+  const poolMap = new Map();
+  if (Array.isArray(allProducts)) {
+    allProducts.forEach((p) => {
+      if (p && p.id) poolMap.set(p.id, p);
+    });
+  }
+  if (Array.isArray(defaultProducts)) {
+    defaultProducts.forEach((p) => {
+      if (p && p.id && !poolMap.has(p.id)) {
+        poolMap.set(p.id, p);
+      }
+    });
+  }
+  const pool = Array.from(poolMap.values());
+  if (pool.length === 0) return [];
+
+  const q = (queryText || '').toLowerCase();
+  const r = (replyText || '').toLowerCase();
+  const combined = `${q} ${r}`;
+
+  // 2. Ưu tiên 1: Trích xuất các tên sản phẩm cụ thể từ gạch đầu dòng in đậm của AI (vd: "- **QuickPhone Pro Max 256GB**:")
+  const bulletMatches = [...(replyText || '').matchAll(/[-*]\s*\*\*([^*]+)\*\*/g)].map((m) => m[1].trim());
+  if (bulletMatches.length > 0) {
+    const matched = [];
+    const matchedIds = new Set();
+
+    for (const bulletTitle of bulletMatches) {
+      const bLower = bulletTitle.toLowerCase();
+      const bTokens = bLower
+        .replace(/[^a-z0-9à-ỹ\s]/gi, ' ')
+        .split(/\s+/)
+        .filter((w) => w.length >= 4 || ['ai', 'mac', 'pro', 'max', 'm3', 's24', 'anc', 'rgb', 'gan', 'omni'].includes(w));
+
+      let bestProd = null;
+      let maxScore = 0;
+
+      for (const prod of pool) {
+        if (matchedIds.has(prod.id)) continue;
+        const pName = (prod.name || '').toLowerCase();
+        let score = 0;
+
+        // Trùng khớp trực tiếp
+        if (pName.includes(bLower) || bLower.includes(pName)) {
+          score += 12;
+        }
+
+        // Khớp theo tokens
+        for (const token of bTokens) {
+          if (pName.includes(token)) {
+            score += token.length >= 5 ? 3 : 1;
+          }
+        }
+
+        // Tăng trọng số cho các dòng sản phẩm đặc trưng
+        if (bLower.includes('quickphone') && pName.includes('quickphone')) score += 20;
+        if (bLower.includes('quickpods') && pName.includes('quickpods')) score += 20;
+        if (bLower.includes('quickbook') && pName.includes('quickbook')) score += 20;
+        if (bLower.includes('quickwatch') && pName.includes('quickwatch')) score += 20;
+        if (bLower.includes('quickbot') && pName.includes('quickbot')) score += 20;
+        if (bLower.includes('quickrunner') && pName.includes('quickrunner')) score += 20;
+        if (bLower.includes('quickstyle') && pName.includes('quickstyle')) score += 20;
+        if (bLower.includes('galaxy') && pName.includes('galaxy')) score += 20;
+        if (bLower.includes('polo') && pName.includes('polo')) score += 15;
+        if (bLower.includes('serum') && pName.includes('serum')) score += 15;
+
+        if (score > maxScore && score >= 3) {
+          maxScore = score;
+          bestProd = prod;
+        }
+      }
+
+      if (bestProd) {
+        matched.push(bestProd);
+        matchedIds.add(bestProd.id);
+      }
+    }
+
+    if (matched.length > 0) {
+      return matched.slice(0, 3);
+    }
   }
 
-  // 2. Match theo danh mục / từ khóa ngành hàng
-  for (const group of keywords) {
-    if (group.keys.some((k) => combined.includes(k))) {
-      const catMatches = allProducts.filter((p) => {
-        const cat = (p.categoryName || '').toLowerCase();
-        const desc = (p.description || '').toLowerCase();
+  // 3. Ưu tiên 2: Phân loại theo ngành hàng / danh mục từ khóa
+  const categoryRules = [
+    {
+      triggers: ['điện thoại', 'smartphone', 'di động', 'iphone', 'samsung', 'galaxy', 'quickphone'],
+      matchFilter: (p) => {
         const name = (p.name || '').toLowerCase();
+        const cat = (p.categoryName || '').toLowerCase();
         return (
-          group.catKeys.some((ck) => cat.includes(ck)) ||
-          group.keys.some((k) => name.includes(k) || desc.includes(k))
+          cat.includes('điện thoại') ||
+          name.includes('quickphone') ||
+          name.includes('galaxy s24') ||
+          name.includes('điện thoại')
         );
-      });
-      if (catMatches.length > 0) {
-        return catMatches.slice(0, 2);
+      },
+    },
+    {
+      triggers: ['tai nghe', 'headphone', 'airpods', 'quickpods', 'earphone', 'âm thanh'],
+      matchFilter: (p) => {
+        const name = (p.name || '').toLowerCase();
+        return name.includes('tai nghe') || name.includes('quickpods') || name.includes('airpods');
+      },
+    },
+    {
+      triggers: ['laptop', 'máy tính', 'macbook', 'pc', 'quickbook', 'asus rog', 'gaming'],
+      matchFilter: (p) => {
+        const name = (p.name || '').toLowerCase();
+        const cat = (p.categoryName || '').toLowerCase();
+        return (
+          cat.includes('laptop') ||
+          name.includes('quickbook') ||
+          name.includes('macbook') ||
+          name.includes('rog')
+        );
+      },
+    },
+    {
+      triggers: ['đồng hồ', 'watch', 'smartwatch', 'quickwatch'],
+      matchFilter: (p) => {
+        const name = (p.name || '').toLowerCase();
+        return name.includes('đồng hồ') || name.includes('quickwatch') || name.includes('watch');
+      },
+    },
+    {
+      triggers: ['áo', 'quần', 'thời trang', 'polo', 'jean', 'quickstyle'],
+      matchFilter: (p) => {
+        const name = (p.name || '').toLowerCase();
+        const cat = (p.categoryName || '').toLowerCase();
+        return cat.includes('thời trang') || name.includes('polo') || name.includes('quần') || name.includes('áo');
+      },
+    },
+    {
+      triggers: ['giày', 'sneaker', 'dép', 'quickrunner', 'giày thể thao'],
+      matchFilter: (p) => {
+        const name = (p.name || '').toLowerCase();
+        return name.includes('giày') || name.includes('sneaker') || name.includes('quickrunner');
+      },
+    },
+    {
+      triggers: ['mỹ phẩm', 'serum', 'skincare', 'da', 'làm đẹp'],
+      matchFilter: (p) => {
+        const name = (p.name || '').toLowerCase();
+        const cat = (p.categoryName || '').toLowerCase();
+        return cat.includes('mỹ phẩm') || name.includes('serum') || name.includes('niacinamide');
+      },
+    },
+    {
+      triggers: ['robot', 'hút bụi', 'nhà cửa', 'quickbot'],
+      matchFilter: (p) => {
+        const name = (p.name || '').toLowerCase();
+        return name.includes('robot') || name.includes('hút bụi') || name.includes('quickbot');
+      },
+    },
+    {
+      triggers: ['bàn phím', 'bàn phím cơ', 'keyboard', 'chuột', 'keychron'],
+      matchFilter: (p) => {
+        const name = (p.name || '').toLowerCase();
+        return name.includes('bàn phím') || name.includes('keychron') || name.includes('chuột');
+      },
+    },
+  ];
+
+  for (const rule of categoryRules) {
+    if (rule.triggers.some((t) => combined.includes(t))) {
+      const prods = pool.filter(rule.matchFilter);
+      if (prods.length > 0) {
+        return prods.slice(0, 2);
       }
     }
   }
 
-  // 3. Match khi hỏi mua sắm, gợi ý chung
+  // 4. Fallback khi người dùng hỏi chung chung về mua sắm / deal
   if (
+    combined.includes('gợi ý') ||
     combined.includes('sản phẩm') ||
     combined.includes('mua') ||
-    combined.includes('deal') ||
-    combined.includes('gợi ý') ||
-    combined.includes('tư vấn') ||
-    combined.includes('giá')
+    combined.includes('hot') ||
+    combined.includes('deal')
   ) {
-    return allProducts.slice(0, 2);
+    return pool.slice(0, 2);
   }
 
   return [];
@@ -105,23 +254,6 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
       ],
     },
   ]);
-
-  // Cập nhật sản phẩm tiêu biểu vào tin nhắn đầu tiên khi có products
-  useEffect(() => {
-    if (products && products.length > 0) {
-      setMessages((prev) => {
-        if (prev.length > 0 && prev[0].sender === 'ai' && (!prev[0].matchedProducts || prev[0].matchedProducts.length === 0)) {
-          const updated = [...prev];
-          updated[0] = {
-            ...updated[0],
-            matchedProducts: [products[0]],
-          };
-          return updated;
-        }
-        return prev;
-      });
-    }
-  }, [products]);
 
   // Open chat: keep buttonPos untouched, calculate initial chatPos if button was dragged
   const handleOpenChat = () => {
@@ -399,29 +531,30 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
 
             {/* Messages Body */}
             <div data-lenis-prevent className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/50 dark:bg-[#07080D]/50" role="log" aria-live="polite">
-              {messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={`flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-200 ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
-                >
-                  <div
-                    className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed whitespace-pre-line shadow-sm ${
-                      m.sender === 'user'
-                        ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-tr-none'
-                        : 'bg-white dark:bg-[#1A1B25] border border-slate-200 dark:border-white/10 text-slate-800 dark:text-[#F4F0E8] rounded-tl-none'
-                    }`}
-                  >
-                    {m.text}
-                  </div>
+              {messages.map((m, i) => {
+                const hasCards = Array.isArray(m.matchedProducts) && m.matchedProducts.length > 0;
+                const displayText = m.sender === 'ai' ? formatAiText(m.text, hasCards) : m.text;
 
-                  {/* Khung sản phẩm thông minh trực tiếp trong chat (Thêm Giỏ, Mua Ngay, Xem Chi Tiết) */}
-                  {m.matchedProducts && m.matchedProducts.length > 0 && (
-                    <div className="w-full space-y-2 mt-2">
-                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 px-0.5">
-                        <ShoppingBag className="w-3.5 h-3.5 text-orange-500" />
-                        <span>Sản phẩm gợi ý mua sắm:</span>
+                return (
+                  <div
+                    key={i}
+                    className={`flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-200 ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
+                  >
+                    {displayText && (
+                      <div
+                        className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed whitespace-pre-line shadow-sm ${
+                          m.sender === 'user'
+                            ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-tr-none'
+                            : 'bg-white dark:bg-[#1A1B25] border border-slate-200 dark:border-white/10 text-slate-800 dark:text-[#F4F0E8] rounded-tl-none'
+                        }`}
+                      >
+                        {displayText}
                       </div>
-                      <div className="space-y-2">
+                    )}
+
+                    {/* Danh sách thẻ sản phẩm trực quan trực tiếp trong câu trả lời */}
+                    {hasCards && (
+                      <div className="w-full space-y-2 mt-2">
                         {m.matchedProducts.map((prod) => (
                           <ProductChatCard
                             key={prod.id}
@@ -432,8 +565,7 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
                           />
                         ))}
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {/* Suggestions Chips from AI */}
                   {m.suggestions && m.suggestions.length > 0 && (
@@ -451,7 +583,8 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
                     </div>
                   )}
                 </div>
-              ))}
+              );
+            })}
 
               {loading && (
                 <div className="flex items-center space-x-2 text-xs text-slate-400 p-2">
