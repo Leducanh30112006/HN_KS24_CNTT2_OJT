@@ -104,7 +104,33 @@ export function fixMojibakeText(str) {
   if (!str || typeof str !== 'string') return str;
   if (!isMojibake(str)) return str;
 
-  // 1. Direct dictionary pass for known corrupt patterns
+  // 1. Direct byte reconstruction on raw input (handles UTF-8 double-encoding from MySQL/API)
+  try {
+    const bytes = [];
+    for (let i = 0; i < str.length; i++) {
+      const ch = str[i];
+      if (cp1252Map[ch] !== undefined) {
+        bytes.push(cp1252Map[ch]);
+      } else {
+        const code = str.charCodeAt(i);
+        if (code <= 0xFF) {
+          bytes.push(code);
+        } else {
+          const enc = new TextEncoder().encode(ch);
+          for (let j = 0; j < enc.length; j++) {
+            bytes.push(enc[j]);
+          }
+        }
+      }
+    }
+    const decoder = new TextDecoder('utf-8', { fatal: false });
+    const decoded = decoder.decode(new Uint8Array(bytes));
+    if (decoded && !decoded.includes('\uFFFD') && decoded.length > 0 && !isMojibake(decoded)) {
+      return decoded;
+    }
+  } catch (e) {}
+
+  // 2. Direct dictionary pass for known corrupt patterns
   let s = str;
   for (const [pattern, replacement] of directDictionary) {
     if (pattern.test(s)) {
@@ -115,13 +141,13 @@ export function fixMojibakeText(str) {
   // If no mojibake left after dictionary, return immediately
   if (!isMojibake(s)) return s;
 
-  // 2. Pre-process surrogate markers like degree symbol '°' (0xB0) mistakenly replacing 'º' (0xBA)
+  // 3. Pre-process surrogate markers like degree symbol '°' (0xB0) mistakenly replacing 'º' (0xBA)
   const prepared = s
     .replace(/á[°o]/g, 'áº')
     .replace(/á[±]/g, 'á»')
     .replace(/Ä[\s\u0090]/g, 'Đ');
 
-  // 3. Algorithmic CP1252 / ISO-8859-1 byte array reconstruction to UTF-8
+  // 4. Algorithmic CP1252 / ISO-8859-1 byte array reconstruction to UTF-8
   try {
     const bytes = [];
     for (let i = 0; i < prepared.length; i++) {

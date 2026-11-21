@@ -21,6 +21,7 @@ export default function ProductDetailModal({ product: rawProduct, onClose, onBuy
 
   // Reviews state
   const [reviews, setReviews] = useState([]);
+  const [reviewFilter, setReviewFilter] = useState('ALL');
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
@@ -108,7 +109,13 @@ export default function ProductDetailModal({ product: rawProduct, onClose, onBuy
       axiosClient.get(`/api/catalog/products/${product.id}/reviews`)
         .then((res) => {
           if (res.success && Array.isArray(res.data)) {
-            setReviews(res.data);
+            const cleanList = res.data.map((r) => ({
+              ...r,
+              userName: fixMojibakeText(r.userName || 'Khách hàng QuickShop'),
+              comment: fixMojibakeText(r.comment || ''),
+              variant: fixMojibakeText(r.variant || ''),
+            }));
+            setReviews(cleanList);
           }
         })
         .catch(() => {
@@ -500,29 +507,78 @@ export default function ProductDetailModal({ product: rawProduct, onClose, onBuy
               </div>
             </div>
 
+            {/* Review Filter Chips */}
+            <div className="flex flex-wrap gap-1.5 text-xs">
+              {[
+                { key: 'ALL', label: 'Tất cả', count: reviews.length },
+                { key: '5_STAR', label: '5 Sao', count: reviews.filter((r) => r.rating === 5).length },
+                { key: '4_STAR', label: '4 Sao', count: reviews.filter((r) => r.rating === 4).length },
+                { key: '3_STAR', label: '3 Sao', count: reviews.filter((r) => r.rating === 3).length },
+                { key: '2_STAR', label: '2 Sao', count: reviews.filter((r) => r.rating === 2).length },
+                { key: '1_STAR', label: '1 Sao', count: reviews.filter((r) => r.rating === 1).length },
+                { key: 'WITH_COMMENT', label: 'Có Bình luận', count: reviews.filter((r) => r.comment && r.comment.trim().length > 0).length },
+              ].map((opt) => {
+                const isActive = reviewFilter === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setReviewFilter(opt.key)}
+                    className={`px-2.5 py-1 rounded-xl border text-xs font-medium transition active:scale-95 cursor-pointer ${
+                      isActive
+                        ? 'border-orange-500 bg-orange-50 text-orange-600 font-bold shadow-sm ring-1 ring-orange-500/20'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-orange-300'
+                    }`}
+                  >
+                    {opt.label} ({opt.count})
+                  </button>
+                );
+              })}
+            </div>
+
             {/* List of Customer Reviews */}
             <div data-lenis-prevent className="space-y-3 max-h-64 overflow-y-auto pr-1">
-              {reviews.map((r) => (
-                <div key={r.id} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/70 space-y-1.5">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold text-slate-900">{r.userName}</span>
-                    <span className="text-[11px] text-slate-400">
-                      {new Date(r.createdAt || Date.now()).toLocaleDateString('vi-VN')}
-                    </span>
+              {(() => {
+                const filteredReviews = reviews.filter((r) => {
+                  if (reviewFilter === '5_STAR') return r.rating === 5;
+                  if (reviewFilter === '4_STAR') return r.rating === 4;
+                  if (reviewFilter === '3_STAR') return r.rating === 3;
+                  if (reviewFilter === '2_STAR') return r.rating === 2;
+                  if (reviewFilter === '1_STAR') return r.rating === 1;
+                  if (reviewFilter === 'WITH_COMMENT') return r.comment && r.comment.trim().length > 0;
+                  return true;
+                });
+
+                if (filteredReviews.length === 0) {
+                  return (
+                    <div className="py-6 text-center text-xs text-slate-400">
+                      Chưa có đánh giá nào phù hợp với bộ lọc này
+                    </div>
+                  );
+                }
+
+                return filteredReviews.map((r) => (
+                  <div key={r.id} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/70 space-y-1.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-slate-900">{fixMojibakeText(r.userName || 'Khách hàng QuickShop')}</span>
+                      <span className="text-[11px] text-slate-400">
+                        {new Date(r.createdAt || Date.now()).toLocaleDateString('vi-VN')}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-3.5 h-3.5 ${
+                            star <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-700 leading-relaxed">{fixMojibakeText(r.comment)}</p>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className={`w-3.5 h-3.5 ${
-                          star <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-xs text-slate-700 leading-relaxed">{r.comment}</p>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
 
             {/* Write a Review Form */}

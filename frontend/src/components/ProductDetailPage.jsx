@@ -46,6 +46,7 @@ export default function ProductDetailPage({
 
   // Reviews state
   const [reviews, setReviews] = useState([]);
+  const [reviewFilter, setReviewFilter] = useState('ALL');
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
@@ -181,7 +182,13 @@ export default function ProductDetailPage({
       catalogApi.getProductReviews(product.id)
         .then((res) => {
           if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
-            setReviews(res.data);
+            const cleanList = res.data.map((r) => ({
+              ...r,
+              userName: fixMojibakeText(r.userName || 'Khách hàng QuickShop'),
+              comment: fixMojibakeText(r.comment || ''),
+              variant: fixMojibakeText(r.variant || ''),
+            }));
+            setReviews(cleanList);
           } else {
             setDefaultReviews();
           }
@@ -305,18 +312,24 @@ export default function ProductDetailPage({
       });
 
       if (res.success && res.data) {
-        setReviews([res.data, ...reviews]);
+        const cleanItem = {
+          ...res.data,
+          userName: fixMojibakeText(res.data.userName || user?.fullName || 'Khách hàng QuickShop'),
+          comment: fixMojibakeText(res.data.comment || newComment),
+          variant: fixMojibakeText(res.data.variant || selectedVariant?.sku || 'Bản Tiêu Chuẩn'),
+        };
+        setReviews([cleanItem, ...reviews]);
         setNewComment('');
         setReviewMsg('Cảm ơn bạn đã gửi đánh giá sản phẩm!');
       }
     } catch (err) {
       const localReview = {
         id: Date.now(),
-        userName: user?.fullName || user?.username || 'Khách hàng QuickShop',
+        userName: fixMojibakeText(user?.fullName || user?.username || 'Khách hàng QuickShop'),
         rating: newRating,
-        comment: newComment,
+        comment: fixMojibakeText(newComment),
         createdAt: new Date().toISOString(),
-        variant: selectedVariant?.sku || 'Bản Tiêu Chuẩn',
+        variant: fixMojibakeText(selectedVariant?.sku || 'Bản Tiêu Chuẩn'),
       };
       setReviews([localReview, ...reviews]);
       setNewComment('');
@@ -944,71 +957,134 @@ export default function ProductDetailPage({
         </div>
 
         {/* Ratings Overview Card */}
-        <div className="bg-orange-50/60 border border-orange-200/80 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-6">
-          <div className="text-center sm:text-left sm:pr-8 sm:border-r border-orange-200">
-            <div className="text-4xl font-black text-orange-600">
-              {product.averageRating || 5.0} <span className="text-lg font-bold text-slate-600">/ 5</span>
+        <div className="bg-orange-50/60 dark:bg-orange-950/20 border border-orange-200/80 dark:border-orange-500/20 rounded-2xl p-5 flex flex-col md:flex-row items-center gap-6">
+          <div className="text-center sm:text-left sm:pr-8 sm:border-r border-orange-200/80 dark:border-orange-500/20 flex-shrink-0">
+            <div className="text-4xl font-black text-orange-600 dark:text-amber-400">
+              {product.averageRating || 5.0} <span className="text-lg font-bold text-slate-600 dark:text-slate-400">/ 5</span>
             </div>
             <div className="flex text-amber-400 my-1 justify-center sm:justify-start">
               {[1, 2, 3, 4, 5].map((s) => (
                 <Star key={s} className="w-4 h-4 fill-amber-400" />
               ))}
             </div>
-            <div className="text-xs text-slate-500 font-medium">{reviews.length} đánh giá đã xác thực</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">{reviews.length} đánh giá đã xác thực</div>
           </div>
 
-          <div className="flex flex-wrap gap-2 text-xs">
-            <button className="px-3 py-1.5 rounded-xl border border-orange-500 bg-white text-orange-600 font-bold shadow-sm">
-              Tất cả ({reviews.length})
-            </button>
-            <button className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-orange-300">
-              5 Sao ({reviews.filter(r => r.rating === 5).length || reviews.length})
-            </button>
-            <button className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-orange-300">
-              Có Bình luận ({reviews.length})
-            </button>
+          {/* Review Filter Chips */}
+          <div className="flex flex-wrap gap-2 text-xs flex-1">
+            {[
+              { key: 'ALL', label: 'Tất cả', count: reviews.length },
+              { key: '5_STAR', label: '5 Sao', count: reviews.filter((r) => r.rating === 5).length },
+              { key: '4_STAR', label: '4 Sao', count: reviews.filter((r) => r.rating === 4).length },
+              { key: '3_STAR', label: '3 Sao', count: reviews.filter((r) => r.rating === 3).length },
+              { key: '2_STAR', label: '2 Sao', count: reviews.filter((r) => r.rating === 2).length },
+              { key: '1_STAR', label: '1 Sao', count: reviews.filter((r) => r.rating === 1).length },
+              { key: 'WITH_COMMENT', label: 'Có Bình luận', count: reviews.filter((r) => r.comment && r.comment.trim().length > 0).length },
+              { key: 'WITH_MEDIA', label: 'Có Hình ảnh / Video', count: reviews.filter((r) => (r.images && r.images.length > 0) || (r.media && r.media.length > 0)).length },
+            ].map((opt) => {
+              const isActive = reviewFilter === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setReviewFilter(opt.key)}
+                  className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer font-medium text-xs flex items-center gap-1 active:scale-95 ${
+                    isActive
+                      ? 'border-orange-500 bg-white dark:bg-[#1A1B25] text-orange-600 dark:text-amber-400 font-bold shadow-sm ring-2 ring-orange-500/25'
+                      : 'border-slate-200 dark:border-white/10 bg-white/80 dark:bg-[#1A1B25]/80 text-slate-700 dark:text-slate-300 hover:border-orange-300 hover:text-orange-600 dark:hover:text-amber-400'
+                  }`}
+                >
+                  <span>{opt.label}</span>
+                  <span className={`text-[11px] ${isActive ? 'text-orange-600 dark:text-amber-400 font-bold' : 'text-slate-400'}`}>
+                    ({opt.count})
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Review Items List */}
-        <div className="space-y-4 divide-y divide-slate-100">
-          {reviews.map((r) => (
-            <div key={r.id} className="pt-4 first:pt-0 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-400 to-rose-400 text-white font-bold flex items-center justify-center text-xs shadow-inner">
-                    {r.userName?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
-                  <div>
-                    <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                      <span>{r.userName}</span>
-                      <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 rounded font-normal">
-                        ✓ Đã mua hàng
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      {new Date(r.createdAt || Date.now()).toLocaleDateString('vi-VN')} • Biến thể: {r.variant || selectedVariant?.sku || 'Tiêu chuẩn'}
-                    </div>
-                  </div>
-                </div>
+        <div className="space-y-4 divide-y divide-slate-100 dark:divide-white/5">
+          {(() => {
+            const filteredReviews = reviews.filter((r) => {
+              if (reviewFilter === '5_STAR') return r.rating === 5;
+              if (reviewFilter === '4_STAR') return r.rating === 4;
+              if (reviewFilter === '3_STAR') return r.rating === 3;
+              if (reviewFilter === '2_STAR') return r.rating === 2;
+              if (reviewFilter === '1_STAR') return r.rating === 1;
+              if (reviewFilter === 'WITH_COMMENT') return r.comment && r.comment.trim().length > 0;
+              if (reviewFilter === 'WITH_MEDIA') return (r.images && r.images.length > 0) || (r.media && r.media.length > 0);
+              return true;
+            });
 
-                <div className="flex text-amber-400">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`w-3.5 h-3.5 ${
-                        star <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'
-                      }`}
-                    />
-                  ))}
+            if (filteredReviews.length === 0) {
+              return (
+                <div className="py-12 text-center text-slate-400 dark:text-slate-500 space-y-2.5">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-orange-50 dark:bg-orange-950/40 flex items-center justify-center text-orange-500">
+                    <MessageSquare className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Chưa có đánh giá nào phù hợp với bộ lọc này
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Hãy thử chọn bộ lọc khác hoặc xem tất cả đánh giá của sản phẩm.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setReviewFilter('ALL')}
+                    className="mt-2 px-4 py-1.5 text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-sm transition active:scale-95 cursor-pointer"
+                  >
+                    Xem tất cả ({reviews.length})
+                  </button>
                 </div>
-              </div>
+              );
+            }
 
-              <p className="text-xs sm:text-sm text-slate-700 leading-relaxed pl-10">
-                {r.comment}
-              </p>
-            </div>
-          ))}
+            return filteredReviews.map((r) => {
+              const cleanUserName = fixMojibakeText(r.userName || 'Khách hàng QuickShop');
+              const cleanComment = fixMojibakeText(r.comment || '');
+              const cleanVariant = fixMojibakeText(r.variant || selectedVariant?.sku || 'Tiêu chuẩn');
+
+              return (
+                <div key={r.id} className="pt-4 first:pt-0 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2.5">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-400 to-rose-400 text-white font-bold flex items-center justify-center text-xs shadow-inner">
+                        {cleanUserName?.charAt(0)?.toUpperCase() || 'U'}
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-900 dark:text-[#F4F0E8] flex items-center gap-1.5">
+                          <span>{cleanUserName}</span>
+                          <span className="text-[10px] text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 px-1.5 rounded font-normal">
+                            ✓ Đã mua hàng
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          {new Date(r.createdAt || Date.now()).toLocaleDateString('vi-VN')} • Biến thể: {cleanVariant}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex text-amber-400">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-3.5 h-3.5 ${
+                            star <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200 dark:text-slate-700'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-10">
+                    {cleanComment}
+                  </p>
+                </div>
+              );
+            });
+          })()}
         </div>
 
         {/* Add Review Form */}
