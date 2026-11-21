@@ -133,6 +133,62 @@ public class AiCatalogSearchServiceImpl implements AiCatalogSearchService {
                     .reviewCount(0L)
                     .status("ACTIVE")
                     .description("Hệ thống laser LDS 360 độ lập bản đồ 3D cực chuẩn, lực hút 3000Pa gom sạch lông thú cưng, tự giặt sấy giẻ lau.")
+                    .build(),
+            AiCatalogItemDto.builder()
+                    .id(51L)
+                    .name("Cáp Sạc Nhanh Type-C to Type-C 60W Bọc Dù Chống Đứt QuickCharge Pro")
+                    .categoryId(4L)
+                    .categoryName("Điện thoại & Phụ kiện")
+                    .shopName("Gian Hàng Chính Hãng QuickShop")
+                    .minPrice(new BigDecimal("49000"))
+                    .maxPrice(new BigDecimal("69000"))
+                    .totalStock(350)
+                    .averageRating(4.9)
+                    .reviewCount(420L)
+                    .status("ACTIVE")
+                    .description("Hỗ trợ sạc nhanh chuẩn PD 60W, truyền dữ liệu tốc độ cao 480Mbps, bọc dù nylon siêu bền chịu lực 20.000 lần gập.")
+                    .build(),
+            AiCatalogItemDto.builder()
+                    .id(52L)
+                    .name("Bộ 5 Đôi Tất Cổ Ngắn Cotton Khử Mùi Thoáng Khí QuickStep")
+                    .categoryId(6L)
+                    .categoryName("Thời trang nam nữ")
+                    .shopName("Gian Hàng Thời Trang QuickStyle")
+                    .minPrice(new BigDecimal("59000"))
+                    .maxPrice(new BigDecimal("59000"))
+                    .totalStock(400)
+                    .averageRating(4.9)
+                    .reviewCount(290L)
+                    .status("ACTIVE")
+                    .description("Chất liệu 100% cotton chải kỹ mềm mịn, dệt thoáng khí Micro-mesh khử mùi chân hiệu quả, co giãn 4 chiều.")
+                    .build(),
+            AiCatalogItemDto.builder()
+                    .id(53L)
+                    .name("Sổ Tay Bìa Da A5 QuickNote 200 Trang Chống Lóa Kẻ Ngang")
+                    .categoryId(9L)
+                    .categoryName("Nhà cửa & Đời sống")
+                    .shopName("Gian Hàng Chính Hãng QuickShop")
+                    .minPrice(new BigDecimal("75000"))
+                    .maxPrice(new BigDecimal("75000"))
+                    .totalStock(220)
+                    .averageRating(5.0)
+                    .reviewCount(110L)
+                    .status("ACTIVE")
+                    .description("Bìa da PU dập vân cao cấp chống nước, định lượng giấy 100gsm dầy dặn chống thấm mực khi viết bút gel.")
+                    .build(),
+            AiCatalogItemDto.builder()
+                    .id(54L)
+                    .name("Bình Nước Thể Thao 800ml Nhựa Tritan Chống Tràn Có Vạch Đo")
+                    .categoryId(7L)
+                    .categoryName("Giày dép & Túi xách")
+                    .shopName("Gian Hàng Thể Thao QuickRunner")
+                    .minPrice(new BigDecimal("89000"))
+                    .maxPrice(new BigDecimal("89000"))
+                    .totalStock(180)
+                    .averageRating(4.8)
+                    .reviewCount(85L)
+                    .status("ACTIVE")
+                    .description("Nhựa Tritan BPA Free chịu nhiệt cao an toàn, nắp khóa chống tràn 2 lớp, vạch chia định mức uống nước theo giờ.")
                     .build()
     );
 
@@ -269,6 +325,14 @@ public class AiCatalogSearchServiceImpl implements AiCatalogSearchService {
         }
 
         String lower = keyword.toLowerCase();
+
+        // Nhận diện ngân sách tiết kiệm dưới 100k
+        if (lower.contains("100k") || lower.contains("100.000") || (lower.contains("dưới") && lower.contains("100"))) {
+            return CURATED_FALLBACK_CATALOG.stream()
+                    .filter(p -> p.getMinPrice() != null && p.getMinPrice().compareTo(new BigDecimal("100000")) <= 0)
+                    .collect(Collectors.toList());
+        }
+
         List<AiCatalogItemDto> matched = CURATED_FALLBACK_CATALOG.stream()
                 .filter(p -> p.getName().toLowerCase().contains(lower) ||
                         (p.getDescription() != null && p.getDescription().toLowerCase().contains(lower)) ||

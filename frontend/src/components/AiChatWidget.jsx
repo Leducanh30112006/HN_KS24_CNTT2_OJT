@@ -268,6 +268,32 @@ function formatAiText(text, hasCards) {
   return result || 'Dưới đây là các sản phẩm phù hợp nhất dành cho bạn:';
 }
 
+function extractBudgetCeiling(text = '') {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+
+  // 1. "dưới 100k", "< 100k", "tầm 100k", "khoảng 100k", "100k", "500k"
+  const matchK = lower.match(/(?:dưới|<|nhỏ hơn|tầm|khoảng|tối đa|giá)?\s*(\d+)\s*(?:k|nghìn|ngàn)\b/);
+  if (matchK && (lower.includes('dưới') || lower.includes('<') || lower.includes('lọc') || lower.includes('tìm') || lower.includes('giá') || lower.includes('ngân sách') || lower.includes('k') || lower.includes('rẻ') || lower.includes('đơn hàng'))) {
+    return parseInt(matchK[1], 10) * 1000;
+  }
+
+  // 2. "dưới 30 triệu", "dưới 30tr", "10 triệu"
+  const matchTr = lower.match(/(?:dưới|<|nhỏ hơn|tầm|khoảng|tối đa|giá)?\s*(\d+(?:[.,]\d+)?)\s*(?:tr|triệu)\b/);
+  if (matchTr && (lower.includes('dưới') || lower.includes('<') || lower.includes('lọc') || lower.includes('tìm') || lower.includes('giá') || lower.includes('ngân sách') || lower.includes('tr') || lower.includes('triệu') || lower.includes('đơn hàng'))) {
+    return parseFloat(matchTr[1].replace(',', '.')) * 1000000;
+  }
+
+  // 3. "dưới 100.000", "dưới 100000đ"
+  const matchDong = lower.match(/(?:dưới|<|nhỏ hơn|tầm|khoảng|tối đa)\s*(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:đ|vnd|đồng)?/);
+  if (matchDong) {
+    const val = parseInt(matchDong[1].replace(/\./g, ''), 10);
+    if (val >= 1000) return val;
+  }
+
+  return null;
+}
+
 function findRelevantProducts(queryText = '', replyText = '', allProducts = []) {
   const poolMap = new Map();
   if (Array.isArray(allProducts)) {
@@ -289,6 +315,19 @@ function findRelevantProducts(queryText = '', replyText = '', allProducts = []) 
   const r = (replyText || '').toLowerCase();
   const combined = `${q} ${r}`;
 
+  // Kiểm tra hạn mức ngân sách từ truy vấn của người dùng (ví dụ: "dưới 100k", "dưới 30 triệu")
+  const budgetCeiling = extractBudgetCeiling(queryText) ?? extractBudgetCeiling(replyText);
+
+  // Bộ lọc theo giá: Nếu người dùng yêu cầu ngân sách, chỉ xét các sản phẩm trong tầm giá đó
+  const eligiblePool = budgetCeiling !== null
+    ? pool.filter((p) => {
+        const price = p.minPrice ?? p.price ?? p.variants?.[0]?.price ?? Infinity;
+        return price <= budgetCeiling;
+      })
+    : pool;
+
+  const targetPool = eligiblePool.length > 0 ? eligiblePool : pool;
+
   // 1. Trích xuất tên sản phẩm từ gạch đầu dòng in đậm của AI
   const bulletMatches = [...(replyText || '').matchAll(/[-*]\s*\*\*([^*]+)\*\*/g)].map((m) => m[1].trim());
   if (bulletMatches.length > 0) {
@@ -300,12 +339,12 @@ function findRelevantProducts(queryText = '', replyText = '', allProducts = []) 
       const bTokens = bLower
         .replace(/[^a-z0-9à-ỹ\s]/gi, ' ')
         .split(/\s+/)
-        .filter((w) => w.length >= 4 || ['ai', 'mac', 'pro', 'max', 'm3', 's24', 'anc', 'rgb', 'gan', 'omni'].includes(w));
+        .filter((w) => w.length >= 4 || ['ai', 'mac', 'pro', 'max', 'm3', 's24', 'anc', 'rgb', 'gan', 'omni', '60w', 'a5'].includes(w));
 
       let bestProd = null;
       let maxScore = 0;
 
-      for (const prod of pool) {
+      for (const prod of targetPool) {
         if (matchedIds.has(prod.id)) continue;
         const pName = (prod.name || '').toLowerCase();
         let score = 0;
@@ -318,6 +357,10 @@ function findRelevantProducts(queryText = '', replyText = '', allProducts = []) 
           }
         }
 
+        if (bLower.includes('cáp sạc') && pName.includes('cáp sạc')) score += 25;
+        if (bLower.includes('tất') && pName.includes('tất')) score += 25;
+        if (bLower.includes('sổ tay') && pName.includes('sổ tay')) score += 25;
+        if (bLower.includes('bình nước') && pName.includes('bình nước')) score += 25;
         if (bLower.includes('quickphone') && pName.includes('quickphone')) score += 20;
         if (bLower.includes('quickpods') && pName.includes('quickpods')) score += 20;
         if (bLower.includes('quickbook') && pName.includes('quickbook')) score += 20;
@@ -348,6 +391,20 @@ function findRelevantProducts(queryText = '', replyText = '', allProducts = []) 
 
   // 2. Phân loại theo ngành hàng / danh mục từ khóa
   const categoryRules = [
+    {
+      triggers: ['cáp', 'sạc', 'dây sạc', 'tất', 'vớ', 'sổ', 'bình nước', 'phụ kiện', 'dưới 100k', '100k', 'giá rẻ'],
+      matchFilter: (p) => {
+        const name = (p.name || '').toLowerCase();
+        return (
+          name.includes('cáp sạc') ||
+          name.includes('tất') ||
+          name.includes('sổ tay') ||
+          name.includes('bình nước') ||
+          name.includes('anker') ||
+          (p.minPrice && p.minPrice <= 100000)
+        );
+      },
+    },
     {
       triggers: ['điện thoại', 'smartphone', 'di động', 'iphone', 'samsung', 'galaxy', 'quickphone'],
       matchFilter: (p) => {
@@ -429,22 +486,28 @@ function findRelevantProducts(queryText = '', replyText = '', allProducts = []) 
 
   for (const rule of categoryRules) {
     if (rule.triggers.some((t) => combined.includes(t))) {
-      const prods = pool.filter(rule.matchFilter);
+      const prods = targetPool.filter(rule.matchFilter);
       if (prods.length > 0) {
         return prods.slice(0, 2);
       }
     }
   }
 
-  // 3. Fallback khi người dùng hỏi chung chung
+  // 3. Nếu có ràng buộc ngân sách, ưu tiên trả về sản phẩm trong tầm giá
+  if (budgetCeiling !== null && eligiblePool.length > 0) {
+    return eligiblePool.slice(0, 2);
+  }
+
+  // 4. Fallback khi người dùng hỏi chung chung
   if (
     combined.includes('gợi ý') ||
     combined.includes('sản phẩm') ||
     combined.includes('mua') ||
     combined.includes('hot') ||
-    combined.includes('deal')
+    combined.includes('deal') ||
+    combined.includes('lọc')
   ) {
-    return pool.slice(0, 2);
+    return targetPool.slice(0, 2);
   }
 
   return [];

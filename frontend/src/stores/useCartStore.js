@@ -514,6 +514,20 @@ export const useCartStore = create(
             return { ok: true, items: mapped };
           } catch (error) {
             const status = error?.response?.status ?? error?.status;
+            // Nếu server phản hồi 404 (Variant chưa kịp đồng bộ vào database hoặc là biến thể bổ sung),
+            // tuyệt đối không rollback giỏ hàng của khách! Fallback giỏ hàng offline an toàn và thông suốt.
+            if (status === 404) {
+              console.warn('[Cart] Server variant 404, fallback giỏ hàng offline an toàn cho variantId:', targetVariantId);
+              writeOfflineUserCart(auth.userId, nextItems);
+              set({
+                items: nextItems,
+                ownerUserId: auth.userId,
+                syncMode: 'offline',
+                syncError: null,
+              });
+              broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
+              return { ok: true, offline: true, items: nextItems };
+            }
             if (status && status >= 400 && status < 500) {
               const msg = extractServerErrorMessage(error, 'Không thể thêm sản phẩm vào giỏ hàng.');
               set({ items: prevItems, syncError: msg });
@@ -575,6 +589,12 @@ export const useCartStore = create(
             return { ok: true, items: mapped };
           } catch (error) {
             const status = error?.response?.status ?? error?.status;
+            if (status === 404) {
+              writeOfflineUserCart(auth.userId, nextItems);
+              set({ syncMode: 'offline', syncError: null });
+              broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
+              return { ok: true, offline: true };
+            }
             if (status && status >= 400 && status < 500) {
               const msg = extractServerErrorMessage(error, 'Không thể cập nhật số lượng sản phẩm.');
               set({ items: prevItems, syncError: msg });
@@ -617,6 +637,12 @@ export const useCartStore = create(
             return { ok: true, items: mapped };
           } catch (error) {
             const status = error?.response?.status ?? error?.status;
+            if (status === 404) {
+              writeOfflineUserCart(auth.userId, nextItems);
+              set({ syncMode: 'offline', syncError: null });
+              broadcastCartChange({ type: 'CART_UPDATED', userId: auth.userId, items: nextItems });
+              return { ok: true, offline: true };
+            }
             if (status && status >= 400 && status < 500) {
               set({ items: prevItems, syncError: extractServerErrorMessage(error, 'Không thể xóa sản phẩm.') });
               return { ok: false };

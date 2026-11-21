@@ -20,7 +20,20 @@ export default function ProductChatCard({ product, onSelectProduct, onBuyNow, on
   const handleAddToCart = async (e) => {
     e.stopPropagation();
     try {
-      await addToCart(
+      const firstVariant = product.variants?.[0];
+      const defaultVariant = firstVariant
+        ? {
+            ...firstVariant,
+            variantId: firstVariant.id || firstVariant.variantId || (product.id * 10 + 1),
+            price: firstVariant.price || currentPrice,
+          }
+        : {
+            variantId: product.id * 10 + 1,
+            variantName: 'Mặc định',
+            price: currentPrice,
+          };
+
+      const res = await addToCart(
         {
           id: product.id,
           name: product.name,
@@ -29,18 +42,16 @@ export default function ProductChatCard({ product, onSelectProduct, onBuyNow, on
           shopId: product.shopId || 1,
           shopName: shopName,
         },
-        product.variants?.[0] || {
-          variantId: product.id * 10 + 1,
-          variantName: 'Mặc định',
-          price: currentPrice,
-        },
+        defaultVariant,
         1
       );
-      setIsAdded(true);
-      if (typeof onToast === 'function') {
-        onToast(`Đã thêm "${product.name}" vào giỏ hàng thành công!`);
+      if (res && res.ok !== false) {
+        setIsAdded(true);
+        if (typeof onToast === 'function') {
+          onToast(`Đã thêm "${product.name}" vào giỏ hàng thành công!`);
+        }
+        setTimeout(() => setIsAdded(false), 2000);
       }
-      setTimeout(() => setIsAdded(false), 2000);
     } catch (err) {
       console.warn('Lỗi thêm sản phẩm vào giỏ từ chat:', err);
     }

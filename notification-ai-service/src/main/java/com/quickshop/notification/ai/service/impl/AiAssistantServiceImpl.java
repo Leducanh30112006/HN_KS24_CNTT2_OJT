@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -136,8 +137,10 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         List<String> catalogSnippets = Collections.emptyList();
         if (aiCatalogSearchService != null && (intent == AiShoppingIntent.PRODUCT_RECOMMENDATION || isCatalogQuery(sanitizedPrompt))) {
             try {
+                BigDecimal budgetMax = extractMaxPrice(sanitizedPrompt);
                 AiCatalogSearchRequest searchReq = AiCatalogSearchRequest.builder()
                         .keyword(sanitizedPrompt)
+                        .maxPrice(budgetMax)
                         .limit(5)
                         .userRole("ROLE_BUYER")
                         .build();
@@ -444,12 +447,32 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
     private AiShoppingIntent detectIntent(String input) {
         String lower = input.toLowerCase();
+
+        // 1. Nhận diện các yêu cầu tìm kiếm, lọc sản phẩm theo ngân sách hoặc mức giá
+        // Ví dụ: "hãy lọc cho tôi đơn hàng dưới 100k", "sản phẩm dưới 100k", "tìm đồ dưới 500k", "gợi ý hàng dưới 30 triệu"
+        boolean hasPriceFilter = lower.matches(".*(dưới|nhỏ hơn|<|tầm|khoảng|giá|ngân sách)\\s*\\d+.*")
+                || lower.matches(".*\\d+\\s*(k|tr|triệu|nghìn|ngàn|đ|vnd|đồng).*");
+        boolean hasProductQuery = lower.contains("lọc") || lower.contains("tìm") || lower.contains("sản phẩm")
+                || lower.contains("mặt hàng") || lower.contains("món đồ") || lower.contains("đồ") || lower.contains("hàng")
+                || lower.contains("gợi ý") || lower.contains("tư vấn") || lower.contains("mua") || lower.contains("xem");
+
+        if (hasPriceFilter && (hasProductQuery || lower.contains("đơn hàng"))) {
+            return AiShoppingIntent.PRODUCT_RECOMMENDATION;
+        }
+
         if (lower.contains("voucher") || lower.contains("giảm giá") || lower.contains("khuyến mãi") || lower.contains("freeship") || lower.contains("ưu đãi")) {
             return AiShoppingIntent.PROMOTION_DISCOUNT;
         }
-        if (lower.contains("đơn hàng") || lower.contains("giao hàng") || lower.contains("vận chuyển") || lower.contains("bao giờ nhận") || lower.contains("tracking")) {
+
+        // 2. Tra cứu đơn hàng đã đặt (chỉ khi hỏi về tình trạng đơn hàng mua của mình)
+        if (lower.contains("tra cứu đơn") || lower.contains("kiểm tra đơn") || lower.contains("tình trạng đơn")
+                || lower.contains("đơn hàng của tôi") || lower.contains("mã vận đơn") || lower.contains("tracking")
+                || lower.contains("bao giờ nhận") || lower.contains("giao đến đâu") || lower.contains("hủy đơn")
+                || (lower.contains("vận chuyển") && !lower.contains("giá") && !lower.contains("phí"))
+                || (lower.contains("đơn hàng") && (lower.contains("của tôi") || lower.contains("đã đặt") || lower.contains("ở đâu") || lower.contains("chưa nhận")))) {
             return AiShoppingIntent.ORDER_INQUIRY;
         }
+
         if (lower.contains("phí ship") || lower.contains("đổi trả") || lower.contains("hoàn tiền") || lower.contains("bảo hành") || lower.contains("chính sách")) {
             return AiShoppingIntent.SHIPPING_POLICY;
         }
@@ -474,15 +497,86 @@ public class AiAssistantServiceImpl implements AiAssistantService {
                 lower.contains("shop") || lower.contains("gợi ý") || lower.contains("tư vấn") ||
                 lower.contains("điện thoại") || lower.contains("laptop") || lower.contains("quần") ||
                 lower.contains("áo") || lower.contains("giày") || lower.contains("tai nghe") ||
-                lower.contains("mỹ phẩm") || lower.contains("robot");
+                lower.contains("mỹ phẩm") || lower.contains("robot") || lower.contains("lọc") ||
+                lower.contains("dưới") || lower.contains("khoảng") || lower.contains("tầm") ||
+                lower.contains("k") || lower.contains("triệu");
     }
 
     private String generateSmartResponse(String sanitizedPrompt, AiShoppingIntent intent) {
         return generateSmartResponse(sanitizedPrompt, intent, Collections.emptyList());
     }
 
+    private BigDecimal extractMaxPrice(String text) {
+        if (text == null) return null;
+        String lower = text.toLowerCase();
+
+        // 1. Pattern k / nghìn / ngàn: e.g. "dưới 100k", "< 100k", "100k", "500 nghìn"
+        java.util.regex.Matcher mK = java.util.regex.Pattern.compile("(?:dưới|<|nhỏ hơn|tầm|khoảng|giá)?\\s*(\\d+)\\s*(?:k|nghìn|ngàn)").matcher(lower);
+        if (mK.find()) {
+            try {
+                long val = Long.parseLong(mK.group(1));
+                return BigDecimal.valueOf(val * 1000L);
+            } catch (Exception ignored) {}
+        }
+
+        // 2. Pattern tr / triệu: e.g. "dưới 30 triệu", "dưới 30tr", "10 triệu"
+        java.util.regex.Matcher mTr = java.util.regex.Pattern.compile("(?:dưới|<|nhỏ hơn|tầm|khoảng|giá)?\\s*(\\d+(?:[.,]\\d+)?)\\s*(?:tr|triệu)").matcher(lower);
+        if (mTr.find()) {
+            try {
+                double val = Double.parseDouble(mTr.group(1).replace(",", "."));
+                return BigDecimal.valueOf((long) (val * 1000000L));
+            } catch (Exception ignored) {}
+        }
+
+        // 3. Pattern đồng / đ / vnd: e.g. "dưới 100.000", "dưới 100000đ"
+        java.util.regex.Matcher mDong = java.util.regex.Pattern.compile("(?:dưới|<|nhỏ hơn|tầm|khoảng|giá)?\\s*(\\d{1,3}(?:\\.\\d{3})+|\\d+)\\s*(?:đ|vnd|đồng)?").matcher(lower);
+        if (mDong.find()) {
+            try {
+                String numStr = mDong.group(1).replace(".", "");
+                long val = Long.parseLong(numStr);
+                if (val >= 1000) {
+                    return BigDecimal.valueOf(val);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        return null;
+    }
+
+    private String formatVnd(BigDecimal amount) {
+        if (amount == null) return "100.000đ";
+        java.text.NumberFormat nf = java.text.NumberFormat.getInstance(new java.util.Locale("vi", "VN"));
+        return nf.format(amount) + "đ";
+    }
+
     private String generateSmartResponse(String sanitizedPrompt, AiShoppingIntent intent, List<String> catalogSnippets) {
         String lower = sanitizedPrompt.toLowerCase();
+
+        // 0. Tư vấn sản phẩm theo ngân sách / Giá rẻ / Dưới 100k / Dưới 500k
+        BigDecimal maxPrice = extractMaxPrice(lower);
+        if (maxPrice != null && maxPrice.compareTo(new BigDecimal("150000")) <= 0) {
+            return "Dưới đây là các sản phẩm và phụ kiện tiện ích giá tốt nhất dưới " + formatVnd(maxPrice) + " trên QuickShop:\n" +
+                    "- **Cáp Sạc Nhanh Type-C to Type-C 60W Bọc Dù Chống Đứt**: Hỗ trợ sạc nhanh PD 60W, truyền dữ liệu tốc độ cao, bọc sợi nylon bện siêu bền - Giá chỉ **49.000đ**.\n" +
+                    "- **Bộ 5 Đôi Tất Cổ Ngắn Cotton Khử Mùi Thoáng Khí**: Chất liệu cotton tự nhiên co giãn 4 chiều, kháng khuẩn khử mùi chân - Giá ưu đãi **59.000đ**.\n" +
+                    "- **Sổ Tay Bìa Da A5 QuickNote 200 Trang Chống Lóa**: Giấy dầy dặn chống thấm mực, bìa dập vân sang trọng - Giá chỉ **75.000đ**.\n" +
+                    "- **Bình Nước Thể Thao 800ml Nhựa Tritan Chống Tràn**: Nhựa an toàn BPA Free chịu nhiệt, có vạch đo lượng nước tiện lợi - Giá chỉ **89.000đ**.\n" +
+                    "Bạn có thể bấm trực tiếp vào thẻ sản phẩm bên dưới để xem chi tiết hoặc thêm vào giỏ hàng ngay!";
+        }
+
+        if (maxPrice != null && maxPrice.compareTo(new BigDecimal("500000")) <= 0) {
+            return "Dưới đây là các sản phẩm chất lượng trong tầm giá dưới " + formatVnd(maxPrice) + " tại QuickShop:\n" +
+                    "- **Áo Thun Cotton Compact 100%**: Mát nhẹ thấm hút mồ hôi tối đa - Giá **189.000đ**.\n" +
+                    "- **Tinh Chất Serum Niacinamide 10% + Zinc 1% Dưỡng Sáng Đều Màu Da**: Làm mờ vết thâm mụn, kiềm dầu dịu nhẹ - Giá **199.000đ**.\n" +
+                    "- **Áo Polo Nam QuickStyle Premium Vải Cafe Khử Mùi Thoáng Khí**: Co giãn 4 chiều, chống nhăn chống tia UV - Giá chỉ **289.000đ**.\n" +
+                    "- **Sách Tâm Lý Học Về Tiền (The Psychology of Money)**: Tái bản mới nhất - Giá chỉ **165.000đ**.";
+        }
+
+        if (maxPrice != null && maxPrice.compareTo(new BigDecimal("35000000")) <= 0 && (lower.contains("điện thoại") || lower.contains("phone") || lower.contains("smartphone"))) {
+            return "Gợi ý điện thoại hàng đầu phân khúc dưới " + formatVnd(maxPrice) + " tại QuickShop:\n" +
+                    "- **Điện thoại thông minh QuickPhone Pro Max 256GB - Bản Quốc Tế**: Flagship chip AI 3nm, màn hình OLED 120Hz, camera zoom 5x - Giá từ **29.990.000đ**.\n" +
+                    "- **Samsung Galaxy S24 Ultra 256GB**: Khung titan, bút S-Pen quyền năng, camera 200MP - Giá từ **28.490.000đ**.\n" +
+                    "Nhập mã **QUICKPHONE** để giảm ngay 500.000đ khi thanh toán!";
+        }
 
         // 1. Tư vấn Quần áo & Thời trang
         if (lower.contains("quần") || lower.contains("áo") || lower.contains("thời trang") || lower.contains("mặc") || lower.contains("polo") || lower.contains("sơ mi") || lower.contains("váy") || lower.contains("jean")) {
