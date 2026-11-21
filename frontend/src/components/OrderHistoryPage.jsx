@@ -98,21 +98,14 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       if (Array.isArray(backendData) && backendData.length > 0) {
         const orderMap = new Map();
 
-        // 1. Thêm local orders của chính tài khoản này
-        localOrders.forEach((o) => {
-          const key = String(o.orderCode || o.id);
-          orderMap.set(key, o);
-        });
-
-        // 2. Merge và chuẩn hóa với backend orders (chỉ lấy đơn của user hiện tại)
+        // 1. Chuẩn hóa và thêm backend orders của chính user hiện tại
         backendData
           .filter((bo) => !bo.userId || String(bo.userId) === String(currentUserId))
           .forEach((bo) => {
             const key = String(bo.orderCode || bo.id);
-            const existing = orderMap.get(key) || {};
 
             // SubOrders với snapshot sản phẩm và mức giảm voucher
-            let subOrders = bo.subOrders && bo.subOrders.length > 0 ? bo.subOrders : existing.subOrders;
+            let subOrders = bo.subOrders && bo.subOrders.length > 0 ? bo.subOrders : [];
             if (!subOrders || subOrders.length === 0) {
               const bSubTotal = bo.subTotal || bo.subtotalAmount || bo.totalAmount || 1000000;
               const bShipFee = bo.shippingFee || bo.shippingFeeTotal || 25000;
@@ -162,38 +155,46 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
               });
             }
 
-            const rawDiscount = bo.discountAmount || bo.voucherDiscount || existing.discountAmount || 0;
-            const rawShipping = bo.shippingFee || bo.shippingFeeTotal || existing.shippingFee || 25000;
-            const rawSubtotal = bo.subTotal || bo.subtotalAmount || existing.totalAmount || (subOrders.reduce((s, it) => s + (it.subTotal || 0), 0));
-            const rawFinal = bo.finalAmount || bo.totalAmount || existing.finalAmount || Math.max(0, rawSubtotal + rawShipping - rawDiscount);
+            const rawDiscount = bo.discountAmount || bo.voucherDiscount || 0;
+            const rawShipping = bo.shippingFee || bo.shippingFeeTotal || 25000;
+            const rawSubtotal = bo.subTotal || bo.subtotalAmount || (subOrders.reduce((s, it) => s + (it.subTotal || 0), 0));
+            const rawFinal = bo.finalAmount || bo.totalAmount || Math.max(0, rawSubtotal + rawShipping - rawDiscount);
 
             const merged = {
-              ...existing,
               ...bo,
-              id: bo.id || existing.id,
-              orderCode: bo.orderCode || existing.orderCode || `QS-${100000 + (bo.id || 1)}`,
+              id: bo.id,
+              orderCode: bo.orderCode || `QS-${100000 + (bo.id || 1)}`,
               userId: currentUserId,
-              createdAt: bo.createdAt || existing.createdAt || new Date().toISOString(),
-              status: bo.status || existing.status || 'PROCESSING',
-              cancelReason: bo.cancelReason || existing.cancelReason || '',
+              createdAt: bo.createdAt || new Date().toISOString(),
+              status: bo.status || 'PROCESSING',
+              cancelReason: bo.cancelReason || '',
               totalAmount: rawSubtotal,
               subtotalAmount: rawSubtotal,
               discountAmount: rawDiscount,
               voucherDiscount: rawDiscount,
               shippingFee: rawShipping,
               finalAmount: rawFinal,
-              paymentMethod: bo.paymentMethod || existing.paymentMethod || 'PAYOS',
-              paymentStatus: bo.status === 'CANCELLED' ? 'CANCELLED' : (bo.paymentStatus || existing.paymentStatus || 'PAID'),
-              recipientName: bo.recipientName || existing.recipientName || user?.fullName || 'Khách Hàng',
-              recipientPhone: bo.recipientPhone || existing.recipientPhone || '0988 123 456',
-              deliveryAddress: bo.deliveryAddress || bo.shippingAddress || existing.deliveryAddress || 'Số 18, Ngõ 45 Cầu Giấy, Hà Nội',
+              paymentMethod: bo.paymentMethod || 'PAYOS',
+              paymentStatus: bo.status === 'CANCELLED' ? 'CANCELLED' : (bo.paymentStatus || 'PAID'),
+              recipientName: bo.recipientName || user?.fullName || 'Khách Hàng',
+              recipientPhone: bo.recipientPhone || '0988 123 456',
+              deliveryAddress: bo.deliveryAddress || bo.shippingAddress || 'Số 18, Ngõ 45 Cầu Giấy, Hà Nội',
               subOrders,
             };
 
             orderMap.set(key, merged);
           });
 
+        // 2. Chỉ bổ sung local orders NẾU đơn đó thuộc về user hiện tại và CHƯA có trên backend và KHÔNG PHẢI đơn mock (MO-202611...)
+        localOrders
+          .filter((lo) => String(lo.userId) === String(currentUserId) && !lo.orderCode?.startsWith('MO-202611') && !orderMap.has(String(lo.orderCode || lo.id)))
+          .forEach((lo) => {
+            orderMap.set(String(lo.orderCode || lo.id), lo);
+          });
+
         combinedOrders = Array.from(orderMap.values());
+      } else {
+        combinedOrders = localOrders.filter((lo) => String(lo.userId) === String(currentUserId) && !lo.orderCode?.startsWith('MO-202611'));
       }
     } catch (err) {
       console.warn('Lỗi load backend orders, fallback hiển thị kho dữ liệu mẫu:', err);

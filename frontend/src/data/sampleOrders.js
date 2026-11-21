@@ -281,281 +281,32 @@ export const initialShipments = [
   },
 ];
 
-export const initialOrders = [
-  {
-    id: 1,
-    orderCode: 'MO-20261113-001',
-    userId: 2,
-    createdAt: '2026-11-13T09:15:00',
-    status: 'DELIVERING', // PENDING, PAID, PROCESSING, DELIVERING, COMPLETED, CANCELLED
-    totalAmount: 34990000,
-    discountAmount: 100000,
-    shippingFee: 25000,
-    finalAmount: 34915000,
-    paymentMethod: 'MB_BANK_QR',
-    paymentStatus: 'PAID',
-    recipientName: 'Lê Đức Anh',
-    recipientPhone: '0988 123 456',
-    deliveryAddress: 'Số 18, Ngõ 45 Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy, Hà Nội',
-    note: 'Giao giờ hành chính, gọi trước 15 phút khi đến.',
-    subOrders: [
-      {
-        id: 201,
-        masterOrderId: 1,
-        shopId: 1,
-        shopName: 'TechWorld Official Store',
-        shopAvatar: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=100&auto=format&fit=crop&q=80',
-        status: 'DELIVERING',
-        subTotal: 34990000,
-        shippingFee: 25000,
-        shopVoucherDiscount: 100000,
-        discountAmount: 100000,
-        finalAmount: 34915000,
-        trackingCode: 'GHN-VNM-892134',
-        carrierName: 'Giao Hàng Nhanh (GHN)',
-        items: [
-          {
-            id: 1001,
-            productId: 1,
-            variantId: 12,
-            sku: 'QP-PRO-BLACK-512',
-            productName: 'Điện thoại thông minh QuickPhone Pro Max 256GB - Bản Quốc Tế',
-            variantName: 'Đen Không Gian - 512GB',
-            color: 'Đen Không Gian',
-            size: '512GB',
-            price: 34990000,
-            quantity: 1,
-            imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&auto=format&fit=crop&q=80',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 2,
-    orderCode: 'MO-20261112-004',
-    userId: 2,
-    createdAt: '2026-11-12T08:00:00',
-    status: 'COMPLETED',
-    totalAmount: 516000,
-    discountAmount: 0,
-    shippingFee: 22000,
-    finalAmount: 538000,
-    paymentMethod: 'COD',
-    paymentStatus: 'PAID',
-    recipientName: 'Lê Đức Anh',
-    recipientPhone: '0988 123 456',
-    deliveryAddress: 'Số 18, Ngõ 45 Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy, Hà Nội',
-    note: 'Kiểm tra hàng trước khi nhận',
-    subOrders: [
-      {
-        id: 202,
-        masterOrderId: 2,
-        shopId: 2,
-        shopName: 'Thời Trang Coolmate Official',
-        shopAvatar: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=100&auto=format&fit=crop&q=80',
-        status: 'COMPLETED',
-        subTotal: 516000,
-        shippingFee: 22000,
-        shopVoucherDiscount: 0,
-        discountAmount: 0,
-        finalAmount: 538000,
-        trackingCode: 'GHTK-VNM-481923',
-        carrierName: 'Giao Hàng Tiết Kiệm (GHTK)',
-        items: [
-          {
-            id: 1002,
-            productId: 4,
-            variantId: 41,
-            sku: 'POLO-CAFE-BLACK-L',
-            productName: 'Áo Polo Nam Sợi Cafe Khử Mùi Thoáng Khí Tự Nhiên Coolmate',
-            variantName: 'Đen Huyền Bí - L',
-            color: 'Đen Huyền Bí',
-            size: 'L',
-            price: 258000,
-            quantity: 2,
-            imageUrl: 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=300&auto=format&fit=crop&q=80',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 3,
-    orderCode: 'MO-20261114-012',
-    userId: 2,
-    createdAt: '2026-11-14T08:10:00',
-    status: 'PROCESSING',
-    totalAmount: 495000,
-    discountAmount: 50000,
-    shippingFee: 22000,
-    finalAmount: 467000,
-    paymentMethod: 'VNPAY',
-    paymentStatus: 'PAID',
-    recipientName: 'Lê Đức Anh',
-    recipientPhone: '0988 123 456',
-    deliveryAddress: 'Số 18, Ngõ 45 Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy, Hà Nội',
-    note: 'Đóng gói cẩn thận giúp mình bìa sách không bị quăn mép',
-    subOrders: [
-      {
-        id: 204,
-        masterOrderId: 3,
-        shopId: 4,
-        shopName: 'Nhà Sách Nhã Nam Official',
-        shopAvatar: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=100&auto=format&fit=crop&q=80',
-        status: 'PICKED',
-        subTotal: 495000,
-        shippingFee: 22000,
-        shopVoucherDiscount: 50000,
-        discountAmount: 50000,
-        finalAmount: 467000,
-        trackingCode: 'GHTK-VNM-662910',
-        carrierName: 'Giao Hàng Tiết Kiệm (GHTK)',
-        items: [
-          {
-            id: 1003,
-            productId: 10,
-            variantId: 101,
-            sku: 'BOOK-ATOMIC-HABITS',
-            productName: 'Sách Atomic Habits - Thay Đổi Tí Hon Hiệu Quả Bất Ngờ (Bìa Cứng)',
-            variantName: 'Bản Bìa Cứng - Giới Hạn',
-            color: 'Bìa Cứng',
-            size: 'Tiêu chuẩn',
-            price: 245000,
-            quantity: 1,
-            imageUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&auto=format&fit=crop&q=80',
-          },
-          {
-            id: 1004,
-            productId: 11,
-            variantId: 111,
-            sku: 'BOOK-PSYCH-MONEY',
-            productName: 'Sách Tâm Lý Học Về Tiền - The Psychology of Money',
-            variantName: 'Tái bản mới nhất',
-            color: 'Tiêu chuẩn',
-            size: 'Tiêu chuẩn',
-            price: 250000,
-            quantity: 1,
-            imageUrl: 'https://images.unsplash.com/photo-1592496431122-2349e0fbc666?w=300&auto=format&fit=crop&q=80',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 4,
-    orderCode: 'MO-20261114-025',
-    userId: 2,
-    createdAt: '2026-11-14T11:45:00',
-    status: 'PENDING',
-    totalAmount: 1890000,
-    discountAmount: 50000,
-    shippingFee: 35000,
-    finalAmount: 1875000,
-    paymentMethod: 'COD',
-    paymentStatus: 'PENDING',
-    recipientName: 'Lê Đức Anh',
-    recipientPhone: '0988 123 456',
-    deliveryAddress: 'Số 18, Ngõ 45 Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy, Hà Nội',
-    note: 'Chờ shop gọi xác nhận đơn trước khi đóng hàng',
-    subOrders: [
-      {
-        id: 206,
-        masterOrderId: 4,
-        shopId: 3,
-        shopName: 'Gia Dụng Sunhouse Mall',
-        shopAvatar: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=100&auto=format&fit=crop&q=80',
-        status: 'PENDING',
-        subTotal: 1890000,
-        shippingFee: 35000,
-        shopVoucherDiscount: 50000,
-        discountAmount: 50000,
-        finalAmount: 1875000,
-        trackingCode: 'GHN-VNM-PENDING1',
-        carrierName: 'Giao Hàng Nhanh (GHN)',
-        items: [
-          {
-            id: 1005,
-            productId: 7,
-            variantId: 71,
-            sku: 'AIRFRYER-9L-TOUCH',
-            productName: 'Nồi Chiên Không Dầu Điện Tử Dung Tích Lớn 9.2L Cảm Ứng Đa Năng',
-            variantName: 'Mặt Kính Cảm Ứng Đen - 9.2L',
-            color: 'Đen Titan',
-            size: '9.2L',
-            price: 1890000,
-            quantity: 1,
-            imageUrl: 'https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=300&auto=format&fit=crop&q=80',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 5,
-    orderCode: 'MO-20261108-011',
-    userId: 2,
-    createdAt: '2026-11-08T15:20:00',
-    status: 'CANCELLED',
-    cancelReason: 'Đổi ý muốn chọn màu khác của sản phẩm',
-    totalAmount: 4990000,
-    discountAmount: 100000,
-    shippingFee: 0,
-    finalAmount: 4890000,
-    paymentMethod: 'COD',
-    paymentStatus: 'CANCELLED',
-    recipientName: 'Lê Đức Anh',
-    recipientPhone: '0988 123 456',
-    deliveryAddress: 'Số 18, Ngõ 45 Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy, Hà Nội',
-    note: '',
-    subOrders: [
-      {
-        id: 207,
-        masterOrderId: 5,
-        shopId: 1,
-        shopName: 'TechWorld Official Store',
-        shopAvatar: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=100&auto=format&fit=crop&q=80',
-        status: 'CANCELLED',
-        subTotal: 4990000,
-        shippingFee: 0,
-        shopVoucherDiscount: 100000,
-        discountAmount: 100000,
-        finalAmount: 4890000,
-        trackingCode: 'CANCELLED-001',
-        carrierName: 'Giao Hàng Nhanh (GHN)',
-        items: [
-          {
-            id: 1006,
-            productId: 3,
-            variantId: 31,
-            sku: 'QPODS-PRO-WHITE',
-            productName: 'Tai nghe Bluetooth True Wireless QuickPods Pro 2 Chống Ồn ANC',
-            variantName: 'Trắng Tinh Khôi - Tiêu chuẩn',
-            color: 'Trắng Tinh Khôi',
-            size: 'Tiêu chuẩn',
-            price: 4990000,
-            quantity: 1,
-            imageUrl: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=300&auto=format&fit=crop&q=80',
-          },
-        ],
-      },
-    ],
-  },
-];
+export const initialOrders = [];
 
 // Helper đọc và ghi dữ liệu mock từ localStorage
 export const getStoredOrders = () => {
-  if (typeof localStorage === 'undefined') return initialOrders;
+  if (typeof localStorage === 'undefined') return [];
   try {
     const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(initialOrders));
-      return initialOrders;
-    }
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : initialOrders;
+    if (!Array.isArray(parsed)) return [];
+    // Tự động làm sạch các đơn hàng mẫu demo (MO-202611...) để tránh rò rỉ đơn hàng sang tài khoản khác
+    const cleaned = parsed.filter(
+      (o) =>
+        o &&
+        o.orderCode &&
+        !o.orderCode.startsWith('MO-20261113') &&
+        !o.orderCode.startsWith('MO-20261112') &&
+        !o.orderCode.startsWith('MO-20261114') &&
+        !o.orderCode.startsWith('MO-20261108')
+    );
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch {
-    return initialOrders;
+    return [];
   }
 };
 
