@@ -4,6 +4,7 @@ import { gsap, useGSAP } from '../lib/gsap';
 import { fixMojibakeText } from '../utils/vietnameseEncoding';
 import { LucianButton } from './ui/LucianPrimitives';
 import { calculateSlotRemainingTime, getEffectiveFlashSaleProducts } from '../utils/flashSaleStore';
+import { defaultProducts } from '../data/sampleProducts';
 
 export default function FlashSaleSection({ products = [], onSelectProduct, onViewAllDeals }) {
   // Countdown Timer đồng bộ chuẩn thời gian thực
@@ -24,23 +25,22 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
     }
   }, [timeLeft.seconds]);
 
-  // Responsive items per view: mobile: 2, tablet: 3, desktop: 4
-  const [itemsPerView, setItemsPerView] = useState(() => {
-    if (typeof window === 'undefined') return 4;
-    if (window.innerWidth < 640) return 2;
-    if (window.innerWidth < 1024) return 3;
-    return 4;
-  });
+  // Responsive items per view: mobile: 2, tablet: 3-4, desktop: 5, wide: 6
+  const calculateItemsPerView = () => {
+    if (typeof window === 'undefined') return 5;
+    const w = window.innerWidth;
+    if (w < 480) return 2;
+    if (w < 768) return 3;
+    if (w < 1024) return 4;
+    if (w < 1280) return 5;
+    return 6;
+  };
+
+  const [itemsPerView, setItemsPerView] = useState(calculateItemsPerView);
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 640) {
-        setItemsPerView(2);
-      } else if (window.innerWidth < 1024) {
-        setItemsPerView(3);
-      } else {
-        setItemsPerView(4);
-      }
+      setItemsPerView(calculateItemsPerView());
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -66,15 +66,37 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
     return getEffectiveFlashSaleProducts(products);
   }, [products, flashSaleVersion]);
 
-  // Ensure baseList has enough items (at least 8) for seamless infinite scrolling
+  // Đảm bảo baseList luôn có ít nhất 8 sản phẩm ĐỘC LẬP KHÔNG TRÙNG LẶP cho slider vô tận mượt mà
   const baseList = useMemo(() => {
-    const source = flashSaleItems.length > 0 ? flashSaleItems : products;
+    const source = flashSaleItems.length > 0 ? flashSaleItems : (products.length > 0 ? products : defaultProducts);
     if (!source || source.length === 0) return [];
-    let list = [...source];
-    while (list.length < 8) {
-      list = [...list, ...source];
+    
+    // Khử trùng lặp theo ID
+    const seenIds = new Set();
+    const unique = [];
+    for (const item of source) {
+      if (item && item.id && !seenIds.has(String(item.id))) {
+        seenIds.add(String(item.id));
+        unique.push(item);
+      }
     }
-    return list;
+
+    // Tự động bổ sung các sản phẩm nổi bật từ catalog nếu danh sách ít hơn 8 sản phẩm
+    if (unique.length < 8) {
+      for (const dp of defaultProducts) {
+        if (!seenIds.has(String(dp.id))) {
+          seenIds.add(String(dp.id));
+          unique.push({
+            ...dp,
+            discountPercent: dp.discountPercent || 25,
+            isFlashSale: true,
+          });
+          if (unique.length >= 8) break;
+        }
+      }
+    }
+
+    return unique;
   }, [flashSaleItems, products]);
 
   // Infinite loop buffer: [Copy 0 (Head), Copy 1 (Middle - Main viewport), Copy 2 (Tail)]
@@ -336,26 +358,27 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
           onTransitionEnd={handleTransitionEnd}
         >
           {displayList.map((p, idx) => {
-            const discountPercent = 25;
-            const originalPrice = p.minPrice ? Math.round(p.minPrice * 1.33) : 1000000;
+            const discountPercent = p.discountPercent || 25;
+            const currentPrice = Number(p.minPrice || p.price || 0);
+            const originalPrice = currentPrice > 0 ? Math.round(currentPrice * (1 + discountPercent / 100)) : 1000000;
             const soldPercent = 70 + ((idx * 7) % 25);
 
             return (
               <div
                 key={`flash-${p.id}-${idx}`}
-                className="flex-shrink-0 px-1.5"
+                className="flex-shrink-0 px-1 sm:px-1.5"
                 style={{ width: `${100 / itemsPerView}%` }}
               >
                 <button
                   type="button"
                   onClick={() => onSelectProduct && onSelectProduct(p)}
-                  className="flash-sale-card w-full text-left border-0 bg-white dark:bg-[#13141C] rounded-2xl p-3 text-slate-900 dark:text-[#F4F0E8] shadow-sm hover:shadow-xl border border-transparent dark:border-white/10 transition-shadow cursor-pointer group/card flex flex-col justify-between h-full"
+                  className="flash-sale-card w-full text-left border-0 bg-white dark:bg-[#13141C] rounded-2xl p-2.5 sm:p-3 text-slate-900 dark:text-[#F4F0E8] shadow-sm hover:shadow-xl border border-transparent dark:border-white/10 transition-shadow cursor-pointer group/card flex flex-col justify-between h-full"
                 >
-                  <div className="relative aspect-square overflow-hidden rounded-xl mb-2 bg-slate-100 dark:bg-slate-900">
+                  <div className="relative aspect-square max-h-40 sm:max-h-44 md:max-h-48 overflow-hidden rounded-xl mb-2 bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-1.5">
                     <img
                       src={p.mainImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'}
                       alt={p.name}
-                      className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-contain group-hover/card:scale-105 transition-transform duration-300"
                       onError={(e) => {
                         e.currentTarget.onerror = null;
                         e.currentTarget.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80';
@@ -371,19 +394,21 @@ export default function FlashSaleSection({ products = [], onSelectProduct, onVie
                     </div>
                   </div>
 
-                  <div>
-                    <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-100 line-clamp-1 group-hover/card:text-orange-600 dark:group-hover/card:text-amber-400 transition" title={fixMojibakeText(p.name)}>
-                      {fixMojibakeText(p.name)}
-                    </h4>
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                      <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-100 line-clamp-2 h-8 leading-snug group-hover/card:text-orange-600 dark:group-hover/card:text-amber-400 transition" title={fixMojibakeText(p.name)}>
+                        {fixMojibakeText(p.name)}
+                      </h4>
 
-                    {/* Price Display in JetBrains Mono */}
-                    <div className="mt-1.5 flex items-baseline gap-1.5">
-                      <span className="text-sm font-black font-mono text-rose-600 dark:text-rose-400">
-                        {formatVND(p.minPrice || 0)}
-                      </span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono line-through">
-                        {formatVND(originalPrice)}
-                      </span>
+                      {/* Price Display in JetBrains Mono */}
+                      <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
+                        <span className="text-xs sm:text-sm font-black font-mono text-rose-600 dark:text-rose-400">
+                          {formatVND(currentPrice)}
+                        </span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono line-through">
+                          {formatVND(originalPrice)}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Progress Bar (Đã bán) */}

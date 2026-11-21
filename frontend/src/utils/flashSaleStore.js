@@ -1,3 +1,5 @@
+import { defaultProducts } from '../data/sampleProducts';
+
 /**
  * QuickShop Flash Sale Store & Utilities
  * Quản lý cấu hình Flash Sale toàn sàn: Tự chọn sản phẩm hoặc AI tự động chọn
@@ -14,6 +16,16 @@ export const DEFAULT_FLASH_SALE_CONFIG = {
   aiSelectedProductIds: [], // Dùng khi mode === 'AI'
   lastAiAnalyzedAt: null,
 };
+
+/**
+ * Tạo kho sản phẩm hợp nhất (server + catalog mẫu) để Flash Sale luôn dồi dào ít nhất 50+ deal
+ */
+function getUnifiedCatalogPool(allProducts = []) {
+  const serverList = Array.isArray(allProducts) ? allProducts : [];
+  const serverIds = new Set(serverList.map((p) => String(p.id)));
+  const additional = (defaultProducts || []).filter((dp) => !serverIds.has(String(dp.id)));
+  return [...serverList, ...additional];
+}
 
 /**
  * Lấy cấu hình Flash Sale hiện tại từ localStorage
@@ -49,28 +61,36 @@ export function saveFlashSaleConfig(newConfig) {
  * Dựa trên: Điểm đánh giá (>= 4.2), tồn kho dồi dào, mức độ quan tâm
  */
 export function analyzeAndSelectFlashSaleWithAI(allProducts = []) {
-  if (!Array.isArray(allProducts) || allProducts.length === 0) return [];
+  const pool = getUnifiedCatalogPool(allProducts);
+  if (pool.length === 0) return [];
 
-  // Lọc sản phẩm hợp lệ đã được duyệt APPROVED
-  const candidates = allProducts.filter((p) => {
+  // Lọc sản phẩm hợp lệ đang mở bán (ACTIVE, APPROVED hoặc không có status)
+  const candidates = pool.filter((p) => {
     const status = String(p.status || '').toUpperCase();
-    return status === 'APPROVED' || !p.status;
+    const isLive = status === 'ACTIVE' || status === 'APPROVED' || !p.status;
+    const isNotDraft = status !== 'DRAFT' && status !== 'PENDING' && status !== 'REJECTED';
+    const hasName = p.name && p.name.trim().length > 3;
+    return isLive && isNotDraft && hasName;
   });
 
   // Chấm điểm tiềm năng Flash Sale của từng sản phẩm
   const scored = candidates.map((p) => {
     let score = 50;
-    const rating = Number(p.rating || 4.5);
-    const sold = Number(p.sold || p.totalSold || 10);
-    const price = Number(p.price || 0);
+    const rating = Number(p.rating || p.averageRating || 4.5);
+    const sold = Number(p.sold || p.totalSold || p.soldCount || 10);
+    const price = Number(p.minPrice || p.price || 0);
 
     // Ưu tiên sản phẩm rating cao
     if (rating >= 4.8) score += 30;
     else if (rating >= 4.5) score += 20;
 
     // Ưu tiên sản phẩm bán chạy
-    if (sold > 50) score += 20;
-    else if (sold > 10) score += 10;
+    if (sold > 50) score += 25;
+    else if (sold > 10) score += 15;
+
+    // Ưu tiên sản phẩm thương mại thật có thương hiệu hoặc giá trị hợp lý
+    if (p.brand) score += 10;
+    if (price >= 50000) score += 15;
 
     // Đề xuất mức giảm giá thông minh từ 15% đến 40% tùy theo phân khúc giá
     let recommendedDiscount = 25;
@@ -89,50 +109,74 @@ export function analyzeAndSelectFlashSaleWithAI(allProducts = []) {
   // Sắp xếp theo điểm tiềm năng cao nhất
   scored.sort((a, b) => b.score - a.score);
 
-  // Chọn top 6 - 8 sản phẩm hàng đầu cho khung giờ vàng
-  return scored.slice(0, 8);
+  // Chọn top 10 - 15 sản phẩm hàng đầu cho khung giờ vàng
+  return scored.slice(0, 15);
 }
 
 /**
  * Lấy danh sách sản phẩm Flash Sale hiệu lực dựa trên cấu hình (Thủ công hoặc AI)
+ * Đảm bảo luôn trả về ít nhất 8 - 12 sản phẩm KHÔNG TRÙNG LẶP
  */
 export function getEffectiveFlashSaleProducts(allProducts = []) {
-  if (!Array.isArray(allProducts) || allProducts.length === 0) return [];
+  const pool = getUnifiedCatalogPool(allProducts);
+  if (pool.length === 0) return [];
   const config = getFlashSaleConfig();
 
   if (!config.isEnabled) {
     return [];
   }
 
+  // Dùng Map theo ID sản phẩm để đảm bảo TUYỆT ĐỐI KHÔNG TRÙNG LẶP SẢN PHẨM
+  const resultMap = new Map();
+
+  // 1. Chế độ Admin chọn thủ công (MANUAL): Ưu tiên hiển thị trước các sản phẩm Admin chỉ định
   if (config.mode === 'MANUAL' && Array.isArray(config.selectedProductIds) && config.selectedProductIds.length > 0) {
     const selectedSet = new Set(config.selectedProductIds.map(String));
-    const matched = allProducts.filter((p) => selectedSet.has(String(p.id)));
-    if (matched.length > 0) {
-      return matched.map((p) => ({
-        ...p,
-        discountPercent: config.discountPercent || 30,
-        isFlashSale: true,
-      }));
+    pool.forEach((p) => {
+      const pid = String(p.id);
+      if (selectedSet.has(pid) && !resultMap.has(pid)) {
+        resultMap.set(pid, {
+          ...p,
+          discountPercent: config.discountPercent || 30,
+          isFlashSale: true,
+        });
+      }
+    });
+  }
+
+  // 2. Chế độ AI (hoặc tự động backfill bổ sung nếu danh sách thủ công có dưới 8 sản phẩm)
+  if (resultMap.size < 8) {
+    const aiResults = analyzeAndSelectFlashSaleWithAI(pool);
+    for (const item of aiResults) {
+      const pid = String(item.product.id);
+      if (!resultMap.has(pid)) {
+        resultMap.set(pid, {
+          ...item.product,
+          discountPercent: item.recommendedDiscount || config.discountPercent || 30,
+          isFlashSale: true,
+          aiReason: item.aiReason,
+        });
+        if (resultMap.size >= 12) break;
+      }
     }
   }
 
-  // Chế độ AI (hoặc fallback khi thủ công chưa chọn sản phẩm nào)
-  const aiResults = analyzeAndSelectFlashSaleWithAI(allProducts);
-  if (aiResults.length > 0) {
-    return aiResults.map((item) => ({
-      ...item.product,
-      discountPercent: item.recommendedDiscount || config.discountPercent || 30,
-      isFlashSale: true,
-      aiReason: item.aiReason,
-    }));
+  // 3. Fallback dự phòng cuối cùng nếu vẫn thiếu sản phẩm (lấy tiếp từ pool sản phẩm hợp nhất)
+  if (resultMap.size < 8) {
+    for (const p of pool) {
+      const pid = String(p.id);
+      if (!resultMap.has(pid)) {
+        resultMap.set(pid, {
+          ...p,
+          discountPercent: config.discountPercent || 25,
+          isFlashSale: true,
+        });
+        if (resultMap.size >= 12) break;
+      }
+    }
   }
 
-  // Fallback tối thiểu: lấy 6 sản phẩm đầu tiên
-  return allProducts.slice(0, 6).map((p) => ({
-    ...p,
-    discountPercent: config.discountPercent || 25,
-    isFlashSale: true,
-  }));
+  return Array.from(resultMap.values());
 }
 
 /**
