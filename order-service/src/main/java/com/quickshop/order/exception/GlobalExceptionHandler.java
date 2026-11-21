@@ -76,11 +76,18 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Tham số hoặc định dạng dữ liệu đầu vào không hợp lệ"));
     }
 
-    @ExceptionHandler({RedisConnectionFailureException.class, DataAccessException.class})
+    @ExceptionHandler(RedisConnectionFailureException.class)
     public ResponseEntity<ApiResponse<Void>> handleRedisException(Exception ex) {
         log.error("Lỗi kết nối hoặc thao tác Redis: {}", ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(ApiResponse.error("Dịch vụ lưu trữ giỏ hàng (Redis) tạm thời không khả dụng. Vui lòng thử lại sau."));
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(org.springframework.dao.DataIntegrityViolationException ex) {
+        log.warn("Lỗi toàn vẹn dữ liệu trong Order Service: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Dữ liệu đầu vào không hợp lệ hoặc vi phạm ràng buộc dữ liệu"));
     }
 
     @ExceptionHandler(Exception.class)

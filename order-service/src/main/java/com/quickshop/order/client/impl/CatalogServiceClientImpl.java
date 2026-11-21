@@ -57,21 +57,33 @@ public class CatalogServiceClientImpl implements CatalogServiceClient {
             if (response != null && response.isSuccess() && response.getData() != null) {
                 return Optional.of(response.getData());
             }
-            log.info("[CATALOG_FALLBACK] Variant {} không có trên Catalog Service, tạo Fallback Variant để giỏ hàng không bị lỗi 404", variantId);
-            return Optional.of(createMockVariant(variantId));
+            log.info("Không tìm thấy biến thể {} trên Catalog Service (404/Not Found)", variantId);
+            return Optional.empty();
 
         } catch (HttpClientErrorException.NotFound notFoundEx) {
-            log.info("Không tìm thấy biến thể {} trên Catalog Service, chuyển sang Fallback Variant", variantId);
-            return Optional.of(createMockVariant(variantId));
+            log.info("Không tìm thấy biến thể {} trên Catalog Service", variantId);
+            return Optional.empty();
 
         } catch (Exception ex) {
-            log.warn("[CATALOG_CONTRACT_MISSING] Không thể kết nối hoặc Catalog Service chưa cung cấp API: "
-                            + "GET {}/api/catalog/variants/{}/validation. Chi tiết: {}",
-                    catalogServiceUrl, variantId, ex.getMessage());
+            log.warn("[CATALOG_CONTRACT_ERROR] Lỗi khi kết nối hoặc truy vấn Catalog Service cho variantId {}: {}",
+                    variantId, ex.getMessage());
 
-            log.info("[FALLBACK] Sử dụng Fallback Data cho variantId {} để phục vụ Cart độc lập", variantId);
-            return Optional.of(createMockVariant(variantId));
+            // Chỉ dùng Fallback mock nếu Catalog Service tạm thời offline VÀ variantId nằm trong danh mục mẫu hợp lệ (511-542)
+            if (isKnownFallbackVariant(variantId)) {
+                log.info("[FALLBACK] Sử dụng Fallback Data cho variantId {} để phục vụ Cart độc lập", variantId);
+                return Optional.of(createMockVariant(variantId));
+            }
+            return Optional.empty();
         }
+    }
+
+    private boolean isKnownFallbackVariant(Long variantId) {
+        return variantId != null && (
+                variantId == 511L || variantId == 512L ||
+                variantId == 521L ||
+                variantId == 531L || variantId == 532L ||
+                variantId == 541L || variantId == 542L
+        );
     }
 
     private CatalogVariantValidationDto createMockVariant(Long variantId) {
