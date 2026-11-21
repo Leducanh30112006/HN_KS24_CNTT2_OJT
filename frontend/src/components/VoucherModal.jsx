@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, Ticket, Truck, Store, Check, AlertCircle, Sparkles, 
   ChevronRight, Tag, Info, ShieldCheck, Clock 
@@ -23,9 +23,20 @@ export default function VoucherModal({
   const [inputFeedback, setInputFeedback] = useState('');
 
   // Local selection states inside modal before clicking "Đồng ý"
-  const [selectedShipping, setSelectedShipping] = useState(appliedVouchers.shippingVoucher);
-  const [selectedPlatform, setSelectedPlatform] = useState(appliedVouchers.platformVoucher);
-  const [selectedShopVouchers, setSelectedShopVouchers] = useState(appliedVouchers.shopVouchers || {});
+  const [selectedShipping, setSelectedShipping] = useState(appliedVouchers?.shippingVoucher || null);
+  const [selectedPlatform, setSelectedPlatform] = useState(appliedVouchers?.platformVoucher || null);
+  const [selectedShopVouchers, setSelectedShopVouchers] = useState(appliedVouchers?.shopVouchers || {});
+
+  // Đồng bộ hóa trạng thái chọn khi modal mở ra hoặc khi appliedVouchers thay đổi
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedShipping(appliedVouchers?.shippingVoucher || null);
+      setSelectedPlatform(appliedVouchers?.platformVoucher || null);
+      setSelectedShopVouchers(appliedVouchers?.shopVouchers || {});
+      setInputCode('');
+      setInputFeedback('');
+    }
+  }, [isOpen, appliedVouchers]);
 
   const formatVND = (price) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);

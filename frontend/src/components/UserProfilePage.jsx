@@ -189,10 +189,13 @@ export default function UserProfilePage({ onBackToHome, onViewOrders }) {
   // Order stats calculation
   const [userOrders, setUserOrders] = useState([]);
   useEffect(() => {
+    const currentUserId = user?.userId ?? user?.id;
+    if (!currentUserId) {
+      setUserOrders([]);
+      return;
+    }
     const orders = getStoredOrders();
-    const filtered = orders.filter(
-      (o) => String(o.userId) === String(user?.userId) || o.userId === 2 || o.userId === 1001
-    );
+    const filtered = orders.filter((o) => String(o.userId) === String(currentUserId));
     setUserOrders(filtered);
   }, [user]);
 

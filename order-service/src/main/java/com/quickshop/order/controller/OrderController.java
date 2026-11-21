@@ -113,7 +113,9 @@ public class OrderController {
                 subMap.put("status", sub.getStatus() != null ? sub.getStatus().name() : "CONFIRMED");
                 subMap.put("subTotal", sub.getSubtotalAmount());
                 subMap.put("shippingFee", sub.getShippingFee());
-                subMap.put("finalAmount", sub.getFinalAmount());
+                subMap.put("shopVoucherDiscount", sub.getShopVoucherDiscount() != null ? sub.getShopVoucherDiscount() : java.math.BigDecimal.ZERO);
+                subMap.put("discountAmount", sub.getShopVoucherDiscount() != null ? sub.getShopVoucherDiscount() : java.math.BigDecimal.ZERO);
+                subMap.put("finalAmount", sub.getFinalAmount() != null ? sub.getFinalAmount() : sub.getSubtotalAmount().add(sub.getShippingFee()));
                 subMap.put("carrierName", "Giao Hàng Nhanh (GHN)");
                 subMap.put("trackingCode", "GHN-VNM-" + (100000 + sub.getId()));
 

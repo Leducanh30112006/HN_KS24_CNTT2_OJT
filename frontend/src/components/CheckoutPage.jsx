@@ -520,12 +520,27 @@ export default function CheckoutPage({
     } else if (code === 'FREESHIPMAX') {
       setAppliedShippingVoucher({ code: 'FREESHIPMAX', discount: 25000, title: 'Miễn Phí Vận Chuyển' });
       setVoucherApplied('✓ Đã áp dụng mã Freeship FREESHIPMAX (-25.000₫)!');
+    } else if (code === 'FREESHIP50K') {
+      if (subTotal >= 300000) {
+        setAppliedShippingVoucher({ code: 'FREESHIP50K', discount: 50000, title: 'Giảm 50k Vận Chuyển Hỏa Tốc' });
+        setVoucherApplied('✓ Đã áp dụng mã Freeship FREESHIP50K (-50.000₫)!');
+      } else {
+        setVoucherApplied('Mã FREESHIP50K yêu cầu đơn hàng từ 300.000₫.');
+      }
     } else if (code === 'MALL100K') {
       if (subTotal >= 1000000) {
         setAppliedPlatformVoucher({ code: 'MALL100K', discount: 100000, title: 'Giảm 100.000₫ Đơn Mall' });
         setVoucherApplied('✓ Đã áp dụng mã Sàn MALL100K (-100.000₫)!');
       } else {
         setVoucherApplied('Mã MALL100K yêu cầu đơn hàng từ 1.000.000₫.');
+      }
+    } else if (code === 'SUPERDEAL15') {
+      if (subTotal >= 500000) {
+        const disc = Math.min(150000, Math.round(subTotal * 0.15));
+        setAppliedPlatformVoucher({ code: 'SUPERDEAL15', discount: disc, isPercentage: true, title: 'Giảm 15% Đơn Hàng Sàn' });
+        setVoucherApplied(`✓ Đã áp dụng mã Sàn SUPERDEAL15 (-${formatVND(disc)})!`);
+      } else {
+        setVoucherApplied('Mã SUPERDEAL15 yêu cầu đơn hàng từ 500.000₫.');
       }
     } else if (code.includes('SHOP') || code.includes('TECH') || code.includes('SMART')) {
       setAppliedShopVouchers((prev) => ({
@@ -550,7 +565,7 @@ export default function CheckoutPage({
 
     setOrderError('');
     setIsSubmitting(true);
-    const userId = user?.userId || user?.id || 1001;
+    const userId = user?.userId ?? user?.id ?? 1001;
 
     try {
       const payload = {
@@ -559,7 +574,10 @@ export default function CheckoutPage({
         recipientPhone: address.phone || '0987654321',
         shippingAddress: `${address.addressLine || ''}, ${address.city || 'TP. Hồ Chí Minh'}`.trim(),
         note: orderNote || '',
-        voucherCode: appliedPlatformVoucher?.code || '',
+        voucherCode: appliedPlatformVoucher?.code || appliedShippingVoucher?.code || '',
+        shopVouchers: Object.fromEntries(
+          Object.entries(appliedShopVouchers).map(([sId, v]) => [sId, v?.code || ''])
+        ),
         items: displayItems.map((item) => ({
           variantId: Number(item.variantId || item.id),
           quantity: Number(item.quantity) || 1,
@@ -568,7 +586,7 @@ export default function CheckoutPage({
 
       const res = await axiosClient.post('/api/orders/checkout', payload, {
         headers: {
-          'X-User-Id': userId,
+          'X-User-Id': String(userId),
         },
         timeout: 60000,
       });
@@ -594,7 +612,7 @@ export default function CheckoutPage({
         // Lưu đơn hàng vào kho dữ liệu mẫu & tracking
         try {
           recordNewOrder({
-            userId: user?.userId || 2,
+            userId,
             orderCode: displayOrderId,
             shopGroups,
             subTotal,
@@ -630,7 +648,7 @@ export default function CheckoutPage({
       const fallbackOrderId = `QS-${Date.now().toString().slice(-6)}`;
       try {
         recordNewOrder({
-          userId: user?.userId || 2,
+          userId,
           orderCode: fallbackOrderId,
           shopGroups,
           subTotal,

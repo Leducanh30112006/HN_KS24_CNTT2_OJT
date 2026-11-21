@@ -308,6 +308,9 @@ export const initialOrders = [
         status: 'DELIVERING',
         subTotal: 34990000,
         shippingFee: 25000,
+        shopVoucherDiscount: 100000,
+        discountAmount: 100000,
+        finalAmount: 34915000,
         trackingCode: 'GHN-VNM-892134',
         carrierName: 'Giao Hàng Nhanh (GHN)',
         items: [
@@ -354,6 +357,9 @@ export const initialOrders = [
         status: 'COMPLETED',
         subTotal: 516000,
         shippingFee: 22000,
+        shopVoucherDiscount: 0,
+        discountAmount: 0,
+        finalAmount: 538000,
         trackingCode: 'GHTK-VNM-481923',
         carrierName: 'Giao Hàng Tiết Kiệm (GHTK)',
         items: [
@@ -400,6 +406,9 @@ export const initialOrders = [
         status: 'PICKED',
         subTotal: 495000,
         shippingFee: 22000,
+        shopVoucherDiscount: 50000,
+        discountAmount: 50000,
+        finalAmount: 467000,
         trackingCode: 'GHTK-VNM-662910',
         carrierName: 'Giao Hàng Tiết Kiệm (GHTK)',
         items: [
@@ -459,6 +468,9 @@ export const initialOrders = [
         status: 'PENDING',
         subTotal: 1890000,
         shippingFee: 35000,
+        shopVoucherDiscount: 50000,
+        discountAmount: 50000,
+        finalAmount: 1875000,
         trackingCode: 'GHN-VNM-PENDING1',
         carrierName: 'Giao Hàng Nhanh (GHN)',
         items: [
@@ -506,6 +518,9 @@ export const initialOrders = [
         status: 'CANCELLED',
         subTotal: 4990000,
         shippingFee: 0,
+        shopVoucherDiscount: 100000,
+        discountAmount: 100000,
+        finalAmount: 4890000,
         trackingCode: 'CANCELLED-001',
         carrierName: 'Giao Hàng Nhanh (GHN)',
         items: [
@@ -577,12 +592,11 @@ export const saveStoredShipments = (shipments) => {
   }
 };
 
-// Tra cứu danh sách đơn hàng theo userId
+// Tra cứu danh sách đơn hàng theo userId (cô lập tài khoản tuyệt đối, không rò rỉ đơn hàng sang tài khoản khác)
 export const getOrdersByUserId = (userId) => {
   const all = getStoredOrders();
-  if (!userId) return all;
-  // Hỗ trợ hiển thị các đơn mẫu cho user demo hoặc chính user đang login
-  return all.filter((o) => String(o.userId) === String(userId) || o.userId === 2 || o.userId === 1001);
+  if (!userId) return [];
+  return all.filter((o) => String(o.userId) === String(userId));
 };
 
 // Hủy đơn hàng
@@ -697,45 +711,60 @@ export const recordNewOrder = (orderData) => {
   const currentShipments = getStoredShipments();
 
   const newId = Date.now();
-  const newOrderCode = `MO-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(100 + Math.random() * 900)}`;
+  const newOrderCode = orderData.orderCode || `MO-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(100 + Math.random() * 900)}`;
   const trackingCode = `GHN-VNM-${Math.floor(100000 + Math.random() * 900000)}`;
 
-  const subOrders = (orderData.shopGroups || []).map((sg, idx) => ({
-    id: newId + idx + 1,
-    masterOrderId: newId,
-    shopId: sg.shopId || 1,
-    shopName: sg.shopName || 'QuickShop Partner',
-    shopAvatar: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=100&auto=format&fit=crop&q=80',
-    status: orderData.paymentStatus === 'PAID' ? 'PROCESSING' : 'PENDING',
-    subTotal: sg.items.reduce((s, it) => s + it.price * it.quantity, 0),
-    shippingFee: 25000,
-    trackingCode,
-    carrierName: 'Giao Hàng Nhanh (GHN)',
-    items: sg.items.map((it, itemIdx) => ({
-      id: newId + 100 + itemIdx,
-      productId: it.productId,
-      variantId: it.variantId,
-      sku: it.sku || `SKU-${it.variantId}`,
-      productName: it.productName,
-      variantName: it.variantName || 'Mặc định',
-      color: it.color || '',
-      size: it.size || '',
-      price: it.price,
-      quantity: it.quantity,
-      imageUrl: it.mainImage || '',
-    })),
-  }));
+  const totalGroups = (orderData.shopGroups || []).length;
+  const totalDisc = Number(orderData.totalDiscount || 0);
+
+  const subOrders = (orderData.shopGroups || []).map((sg, idx) => {
+    const sSubTotal = sg.items.reduce((s, it) => s + (it.price || 0) * (it.quantity || 1), 0);
+    const sShip = sg.shippingFee || 25000;
+    const sDisc = totalGroups === 1 ? totalDisc : Math.round(totalDisc / totalGroups);
+    const sFinal = totalGroups === 1 && orderData.finalTotal != null
+      ? Number(orderData.finalTotal)
+      : Math.max(0, sSubTotal + sShip - sDisc);
+
+    return {
+      id: newId + idx + 1,
+      masterOrderId: newId,
+      shopId: sg.shopId || 1,
+      shopName: sg.shopName || 'QuickShop Partner',
+      shopAvatar: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=100&auto=format&fit=crop&q=80',
+      status: orderData.paymentStatus === 'PAID' ? 'PROCESSING' : 'PENDING',
+      subTotal: sSubTotal,
+      shippingFee: sShip,
+      shopVoucherDiscount: sDisc,
+      discountAmount: sDisc,
+      finalAmount: sFinal,
+      trackingCode,
+      carrierName: sg.carrierName || 'Giao Hàng Nhanh (GHN)',
+      items: sg.items.map((it, itemIdx) => ({
+        id: newId + 100 + itemIdx,
+        productId: it.productId,
+        variantId: it.variantId,
+        sku: it.sku || `SKU-${it.variantId}`,
+        productName: it.productName,
+        variantName: it.variantName || 'Mặc định',
+        color: it.color || '',
+        size: it.size || '',
+        price: it.price,
+        quantity: it.quantity,
+        imageUrl: it.mainImage || '',
+      })),
+    };
+  });
 
   const newMasterOrder = {
     id: newId,
     orderCode: newOrderCode,
-    userId: orderData.userId || 2,
+    userId: orderData.userId,
     createdAt: new Date().toISOString(),
     status: orderData.paymentStatus === 'PAID' ? 'PROCESSING' : 'PENDING',
     totalAmount: orderData.subTotal || 0,
-    discountAmount: orderData.totalDiscount || 0,
+    discountAmount: totalDisc,
     shippingFee: orderData.actualShippingFee || 25000,
-    finalAmount: orderData.finalTotal || 0,
+    finalAmount: orderData.finalTotal != null ? Number(orderData.finalTotal) : Math.max(0, (orderData.subTotal || 0) + (orderData.actualShippingFee || 25000) - totalDisc),
     paymentMethod: orderData.paymentMethod || 'COD',
     paymentStatus: orderData.paymentStatus || 'PENDING',
     recipientName: orderData.shippingInfo?.fullName || 'Khách Hàng',

@@ -69,17 +69,28 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
   /**
    * Load dữ liệu đơn hàng: Tích hợp thông minh và đồng bộ 2 chiều giữa Backend API và LocalStorage
    * Đảm bảo MỌI đơn hàng đã đặt, đang chờ duyệt, đang giao hoặc đã hủy đều hiển thị trọn vẹn
+   * Cô lập dữ liệu tuyệt đối theo tài khoản người dùng đăng nhập hiện tại
    */
   const loadData = async () => {
     setLoading(true);
-    const localOrders = getStoredOrders();
+    const currentUserId = user?.userId ?? user?.id;
+
+    if (!currentUserId) {
+      setOrders([]);
+      setShipments([]);
+      setLoading(false);
+      return;
+    }
+
+    const localOrders = getStoredOrders().filter((o) => o.userId && String(o.userId) === String(currentUserId));
     const localShipments = getStoredShipments();
 
     let combinedOrders = [...localOrders];
 
     try {
       const res = await axiosClient.get('/api/orders', {
-        params: { userId: user?.userId || 2 },
+        headers: { 'X-User-Id': String(currentUserId) },
+        params: { userId: currentUserId },
       });
 
       // res.data hoặc res là array
@@ -87,69 +98,100 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       if (Array.isArray(backendData) && backendData.length > 0) {
         const orderMap = new Map();
 
-        // 1. Thêm local orders trước
+        // 1. Thêm local orders của chính tài khoản này
         localOrders.forEach((o) => {
           const key = String(o.orderCode || o.id);
           orderMap.set(key, o);
         });
 
-        // 2. Merge và chuẩn hóa với backend orders
-        backendData.forEach((bo) => {
-          const key = String(bo.orderCode || bo.id);
-          const existing = orderMap.get(key) || {};
+        // 2. Merge và chuẩn hóa với backend orders (chỉ lấy đơn của user hiện tại)
+        backendData
+          .filter((bo) => !bo.userId || String(bo.userId) === String(currentUserId))
+          .forEach((bo) => {
+            const key = String(bo.orderCode || bo.id);
+            const existing = orderMap.get(key) || {};
 
-          // SubOrders với snapshot sản phẩm
-          let subOrders = bo.subOrders && bo.subOrders.length > 0 ? bo.subOrders : existing.subOrders;
-          if (!subOrders || subOrders.length === 0) {
-            subOrders = [
-              {
-                id: (bo.id || 100) * 10,
-                shopId: 1,
-                shopName: 'TechWorld Official Store',
-                shopAvatar: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=100&auto=format&fit=crop&q=80',
-                status: bo.status || 'CONFIRMED',
-                subTotal: bo.totalAmount,
-                shippingFee: bo.shippingFee || 25000,
-                carrierName: 'Giao Hàng Nhanh (GHN)',
-                trackingCode: `GHN-VNM-${100000 + (bo.id || 1)}`,
-                items: [
-                  {
-                    id: (bo.id || 100) * 100 + 1,
-                    productId: 1,
-                    productName: 'Sản phẩm QuickShop Mall chính hãng',
-                    variantName: 'Bản Tiêu Chuẩn',
-                    price: bo.totalAmount || 1000000,
-                    quantity: 1,
-                    imageUrl: 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=300&auto=format&fit=crop&q=80',
-                  },
-                ],
-              },
-            ];
-          }
+            // SubOrders với snapshot sản phẩm và mức giảm voucher
+            let subOrders = bo.subOrders && bo.subOrders.length > 0 ? bo.subOrders : existing.subOrders;
+            if (!subOrders || subOrders.length === 0) {
+              const bSubTotal = bo.subTotal || bo.subtotalAmount || bo.totalAmount || 1000000;
+              const bShipFee = bo.shippingFee || bo.shippingFeeTotal || 25000;
+              const bDisc = bo.discountAmount || bo.voucherDiscount || 0;
+              const bFinal = bo.finalAmount || bo.totalAmount || Math.max(0, bSubTotal + bShipFee - bDisc);
+              subOrders = [
+                {
+                  id: (bo.id || 100) * 10,
+                  shopId: 1,
+                  shopName: 'TechWorld Official Store',
+                  shopAvatar: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=100&auto=format&fit=crop&q=80',
+                  status: bo.status || 'CONFIRMED',
+                  subTotal: bSubTotal,
+                  shippingFee: bShipFee,
+                  shopVoucherDiscount: bDisc,
+                  discountAmount: bDisc,
+                  finalAmount: bFinal,
+                  carrierName: 'Giao Hàng Nhanh (GHN)',
+                  trackingCode: `GHN-VNM-${100000 + (bo.id || 1)}`,
+                  items: [
+                    {
+                      id: (bo.id || 100) * 100 + 1,
+                      productId: 1,
+                      productName: 'Sản phẩm QuickShop Mall chính hãng',
+                      variantName: 'Bản Tiêu Chuẩn',
+                      price: bSubTotal,
+                      quantity: 1,
+                      imageUrl: 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=300&auto=format&fit=crop&q=80',
+                    },
+                  ],
+                },
+              ];
+            } else {
+              subOrders = subOrders.map((sub) => {
+                const sSub = sub.subTotal || sub.subtotalAmount || (sub.items || []).reduce((s, it) => s + (it.price || 0) * (it.quantity || 1), 0);
+                const sShip = sub.shippingFee != null ? sub.shippingFee : 25000;
+                const sDisc = sub.shopVoucherDiscount || sub.discountAmount || 0;
+                const sFin = sub.finalAmount != null ? sub.finalAmount : Math.max(0, sSub + sShip - sDisc);
+                return {
+                  ...sub,
+                  subTotal: sSub,
+                  shippingFee: sShip,
+                  shopVoucherDiscount: sDisc,
+                  discountAmount: sDisc,
+                  finalAmount: sFin,
+                };
+              });
+            }
 
-          const merged = {
-            ...existing,
-            ...bo,
-            id: bo.id || existing.id,
-            orderCode: bo.orderCode || existing.orderCode || `QS-${100000 + (bo.id || 1)}`,
-            userId: bo.userId || existing.userId || 2,
-            createdAt: bo.createdAt || existing.createdAt || new Date().toISOString(),
-            status: bo.status || existing.status || 'PROCESSING',
-            cancelReason: bo.cancelReason || existing.cancelReason || '',
-            totalAmount: bo.totalAmount || existing.totalAmount || 0,
-            discountAmount: bo.discountAmount || bo.voucherDiscount || existing.discountAmount || 0,
-            shippingFee: bo.shippingFee || bo.shippingFeeTotal || existing.shippingFee || 25000,
-            finalAmount: bo.finalAmount || bo.totalAmount || existing.finalAmount || 0,
-            paymentMethod: bo.paymentMethod || existing.paymentMethod || 'PAYOS',
-            paymentStatus: bo.status === 'CANCELLED' ? 'CANCELLED' : (bo.paymentStatus || existing.paymentStatus || 'PAID'),
-            recipientName: bo.recipientName || existing.recipientName || user?.fullName || 'Lê Đức Anh',
-            recipientPhone: bo.recipientPhone || existing.recipientPhone || '0988 123 456',
-            deliveryAddress: bo.deliveryAddress || bo.shippingAddress || existing.deliveryAddress || 'Số 18, Ngõ 45 Cầu Giấy, Hà Nội',
-            subOrders,
-          };
+            const rawDiscount = bo.discountAmount || bo.voucherDiscount || existing.discountAmount || 0;
+            const rawShipping = bo.shippingFee || bo.shippingFeeTotal || existing.shippingFee || 25000;
+            const rawSubtotal = bo.subTotal || bo.subtotalAmount || existing.totalAmount || (subOrders.reduce((s, it) => s + (it.subTotal || 0), 0));
+            const rawFinal = bo.finalAmount || bo.totalAmount || existing.finalAmount || Math.max(0, rawSubtotal + rawShipping - rawDiscount);
 
-          orderMap.set(key, merged);
-        });
+            const merged = {
+              ...existing,
+              ...bo,
+              id: bo.id || existing.id,
+              orderCode: bo.orderCode || existing.orderCode || `QS-${100000 + (bo.id || 1)}`,
+              userId: currentUserId,
+              createdAt: bo.createdAt || existing.createdAt || new Date().toISOString(),
+              status: bo.status || existing.status || 'PROCESSING',
+              cancelReason: bo.cancelReason || existing.cancelReason || '',
+              totalAmount: rawSubtotal,
+              subtotalAmount: rawSubtotal,
+              discountAmount: rawDiscount,
+              voucherDiscount: rawDiscount,
+              shippingFee: rawShipping,
+              finalAmount: rawFinal,
+              paymentMethod: bo.paymentMethod || existing.paymentMethod || 'PAYOS',
+              paymentStatus: bo.status === 'CANCELLED' ? 'CANCELLED' : (bo.paymentStatus || existing.paymentStatus || 'PAID'),
+              recipientName: bo.recipientName || existing.recipientName || user?.fullName || 'Khách Hàng',
+              recipientPhone: bo.recipientPhone || existing.recipientPhone || '0988 123 456',
+              deliveryAddress: bo.deliveryAddress || bo.shippingAddress || existing.deliveryAddress || 'Số 18, Ngõ 45 Cầu Giấy, Hà Nội',
+              subOrders,
+            };
+
+            orderMap.set(key, merged);
+          });
 
         combinedOrders = Array.from(orderMap.values());
       }
@@ -157,29 +199,45 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       console.warn('Lỗi load backend orders, fallback hiển thị kho dữ liệu mẫu:', err);
     }
 
-    // Sắp xếp đơn hàng mới nhất lên trên
-    combinedOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    setOrders(combinedOrders);
-    saveStoredOrders(combinedOrders);
+    // Lọc lại chắc chắn chỉ chứa đơn của chính user này
+    const strictlyUserOrders = combinedOrders.filter((o) => String(o.userId) === String(currentUserId));
+    strictlyUserOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    setOrders(strictlyUserOrders);
+
+    // Lưu lại vào localStorage mà KHÔNG ghi đè / xóa đơn của các user khác
+    try {
+      const allStored = getStoredOrders();
+      const otherOrders = allStored.filter((o) => !o.userId || String(o.userId) !== String(currentUserId));
+      saveStoredOrders([...strictlyUserOrders, ...otherOrders]);
+    } catch (e) {
+      console.warn('Không thể lưu localStorage orders:', e);
+    }
+
     setShipments(localShipments);
     setLoading(false);
   };
 
   useEffect(() => {
     void loadData();
-  }, [user]);
+  }, [user?.userId, user?.id]);
 
   /**
    * TÁCH ĐƠN HÀNG THEO TỪNG SHOP ĐỘC LẬP:
    * "ở giỏ hàng là 2 đơn nhưng vào đơn phải tách ra là 2 đơn chứ"
    * Nếu đơn thanh toán gồm nhiều shop (như Gian Hàng 2 và Gian Hàng 5),
    * tách thành các đơn độc lập với mã vận đơn riêng, tiến trình riêng và nút hủy riêng cho từng shop.
+   * Tính toán chính xác giá sau khi trừ tiền Voucher Sàn & Voucher Shop.
    */
   const splitOrders = useMemo(() => {
     const list = [];
     orders.forEach((order) => {
       const subOrders = order.subOrders || [];
       if (subOrders.length === 0) {
+        const oSubTotal = order.subtotalAmount || order.totalAmount || order.finalAmount || 0;
+        const oShipFee = order.shippingFee || 0;
+        const oDiscount = order.discountAmount || order.voucherDiscount || 0;
+        const oFinal = order.finalAmount || Math.max(0, oSubTotal + oShipFee - oDiscount);
+
         list.push({
           ...order,
           cardKey: String(order.id || order.orderCode),
@@ -190,21 +248,41 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
           shopTrackingCode: `GHN-VNM-${100000 + (order.id || 1)}`,
           shopStatus: order.status,
           shopItems: order.items || [],
-          shopSubTotal: order.totalAmount || order.finalAmount || 0,
-          shopShippingFee: order.shippingFee || 0,
-          shopTotal: order.finalAmount || order.totalAmount || 0,
+          shopSubTotal: oSubTotal,
+          shopShippingFee: oShipFee,
+          shopDiscount: oDiscount,
+          shopTotal: oFinal,
           parentOrder: order,
           subOrder: null,
           isSplit: false,
         });
       } else {
+        const totalSubOrders = subOrders.length;
+        const parentDiscount = Number(order.discountAmount || order.voucherDiscount || 0);
+
         subOrders.forEach((sub, idx) => {
-          const shopCode = subOrders.length > 1
+          const shopCode = totalSubOrders > 1
             ? `${order.orderCode}-GH${sub.shopId || idx + 1}`
             : (sub.orderCode || order.orderCode || `QS-${order.id}`);
 
-          const sSubTotal = sub.subTotal || (sub.items || []).reduce((sum, it) => sum + (it.price || 0) * (it.quantity || 1), 0);
+          const sSubTotal = sub.subTotal || sub.subtotalAmount || (sub.items || []).reduce((sum, it) => sum + (it.price || 0) * (it.quantity || 1), 0);
           const sShipFee = sub.shippingFee ?? 25000;
+
+          // Tính toán voucher giảm giá chính xác cho từng kiện hàng:
+          // Nếu sub-order có shopVoucherDiscount riêng thì dùng, nếu không thì phân bổ voucher sàn của đơn cha
+          let sDiscount = Number(sub.shopVoucherDiscount || sub.discountAmount || 0);
+          if (sDiscount === 0 && parentDiscount > 0) {
+            if (totalSubOrders === 1) {
+              sDiscount = parentDiscount;
+            } else {
+              const allSubTotal = subOrders.reduce((sum, s) => sum + (s.subTotal || s.subtotalAmount || 0), 0) || sSubTotal;
+              sDiscount = Math.round((sSubTotal / allSubTotal) * parentDiscount);
+            }
+          }
+
+          const sFinal = sub.finalAmount != null
+            ? Number(sub.finalAmount)
+            : Math.max(0, sSubTotal + sShipFee - sDiscount);
 
           list.push({
             ...order,
@@ -219,10 +297,11 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
             shopItems: sub.items || [],
             shopSubTotal: sSubTotal,
             shopShippingFee: sShipFee,
-            shopTotal: sSubTotal + sShipFee,
+            shopDiscount: sDiscount,
+            shopTotal: sFinal,
             parentOrder: order,
             subOrder: sub,
-            isSplit: subOrders.length > 1,
+            isSplit: totalSubOrders > 1,
           });
         });
       }
@@ -296,8 +375,14 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       return o;
     });
 
-    setOrders(updated);
-    saveStoredOrders(updated);
+    const currentUserId = user?.userId ?? user?.id;
+    const allStored = getStoredOrders();
+    const mergedAll = allStored.map((o) => {
+      const match = updated.find((u) => String(u.id) === String(o.id) || u.orderCode === o.orderCode);
+      return match || o;
+    });
+    saveStoredOrders(mergedAll);
+    setOrders(updated.filter((o) => String(o.userId) === String(currentUserId)));
 
     if (selectedOrderDetails && (selectedOrderDetails.displayOrderCode === displayCode || selectedOrderDetails.orderCode === parentOrder.orderCode)) {
       setSelectedOrderDetails({
@@ -390,7 +475,8 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
     const updatedShipments = getStoredShipments();
     const updated = updatedShipments.find((s) => s.trackingCode === selectedShipment.trackingCode);
     if (updated) setSelectedShipment(updated);
-    setOrders(getStoredOrders());
+    const currentUserId = user?.userId ?? user?.id;
+    setOrders(getStoredOrders().filter((o) => String(o.userId) === String(currentUserId)));
     setIsSimulating(false);
   };
 
@@ -408,8 +494,14 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
       }
       return o;
     });
-    setOrders(updated);
-    saveStoredOrders(updated);
+    const currentUserId = user?.userId ?? user?.id;
+    const allStored = getStoredOrders();
+    const mergedAll = allStored.map((o) => {
+      const match = updated.find((u) => String(u.id) === String(o.id) || u.orderCode === o.orderCode);
+      return match || o;
+    });
+    saveStoredOrders(mergedAll);
+    setOrders(updated.filter((o) => String(o.userId) === String(currentUserId)));
     setNotificationAlert({
       type: 'success',
       title: 'Đã xác nhận nhận hàng thành công!',
@@ -855,6 +947,11 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                         <div className="text-base sm:text-lg font-black text-orange-600 font-mono">
                           {formatVND(order.shopTotal)}
                         </div>
+                        {order.shopDiscount > 0 && (
+                          <div className="text-[10px] text-emerald-600 font-bold">
+                            Đã giảm voucher: -{formatVND(order.shopDiscount)}
+                          </div>
+                        )}
                       </div>
 
                       {/* Nút Xem Chi Tiết Đơn Hàng (YÊU CẦU ĐỀ BÀI) */}
@@ -1106,7 +1203,9 @@ export default function OrderHistoryPage({ onBackToHome, onNavigateToProduct, on
                 : (selectedOrderDetails.shopShippingFee ?? selectedOrderDetails.shippingFee ?? 25000);
 
               const discount = selectedOrderDetails.shopDiscount || selectedOrderDetails.discountAmount || selectedOrderDetails.voucherDiscount || 0;
-              const grandTotal = selectedOrderDetails.shopTotal || selectedOrderDetails.finalAmount || Math.max(0, subTotal + shippingFee - discount);
+              const grandTotal = selectedOrderDetails.shopTotal != null
+                ? selectedOrderDetails.shopTotal
+                : (selectedOrderDetails.finalAmount != null ? selectedOrderDetails.finalAmount : Math.max(0, subTotal + shippingFee - discount));
 
               return (
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
