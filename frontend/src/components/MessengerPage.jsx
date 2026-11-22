@@ -56,7 +56,7 @@ export default function MessengerPage({
   const messagesEndRef = useRef(null);
   const chatInputRef = useRef(null);
 
-  const userId = user?.userId || 2;
+  const userId = user?.userId ?? (user?.id ?? 'guest');
   const userName = user?.fullName || user?.username || 'Khách Hàng QuickShop';
 
   const showToast = (msg) => {
@@ -68,7 +68,7 @@ export default function MessengerPage({
   const loadThreads = () => {
     let all = getStoredThreads();
     
-    // Nếu có initialShopId, đảm bảo thread đó tồn tại
+    // Nếu có initialShopId, đảm bảo thread đó tồn tại cho user này
     if (initialShopId) {
       const targetShop = defaultProducts.find((p) => p.shopId === initialShopId) || {
         shopId: initialShopId,
@@ -81,23 +81,32 @@ export default function MessengerPage({
       all = getStoredThreads();
     }
 
-    setThreads(all);
+    // CÔ LẬP TUYỆT ĐỐI THEO USER: Chỉ lấy các đoạn chat của đúng tài khoản đang đăng nhập
+    const userThreads = all.filter((t) => String(t.userId) === String(userId));
+    setThreads(userThreads);
 
     // Xác định activeThreadId
+    let nextActiveId = '';
     if (initialShopId) {
       const targetId = `buyer_${userId}_shop_${initialShopId}`;
-      const found = all.find((t) => t.threadId === targetId);
+      const found = userThreads.find((t) => t.threadId === targetId);
       if (found) {
-        setActiveThreadId(found.threadId);
-        markChatThreadAsRead(found.threadId, 'BUYER');
-        setMobileView('chat');
-        return;
+        nextActiveId = found.threadId;
       }
     }
 
-    if (!activeThreadId && all.length > 0) {
-      setActiveThreadId(all[0].threadId);
-      markChatThreadAsRead(all[0].threadId, 'BUYER');
+    if (!nextActiveId && userThreads.length > 0) {
+      if (activeThreadId && userThreads.some((t) => t.threadId === activeThreadId)) {
+        nextActiveId = activeThreadId;
+      } else {
+        nextActiveId = userThreads[0].threadId;
+      }
+    }
+
+    setActiveThreadId(nextActiveId);
+    if (nextActiveId) {
+      markChatThreadAsRead(nextActiveId, 'BUYER');
+      setMobileView('chat');
     }
   };
 
@@ -109,14 +118,15 @@ export default function MessengerPage({
   useEffect(() => {
     const handleSync = () => {
       const all = getStoredThreads();
-      setThreads(all);
-      if (activeThreadId) {
+      const userThreads = all.filter((t) => String(t.userId) === String(userId));
+      setThreads(userThreads);
+      if (activeThreadId && userThreads.some((t) => t.threadId === activeThreadId)) {
         markChatThreadAsRead(activeThreadId, 'BUYER');
       }
     };
     window.addEventListener('quickshop_chat_update', handleSync);
     return () => window.removeEventListener('quickshop_chat_update', handleSync);
-  }, [activeThreadId]);
+  }, [activeThreadId, userId]);
 
   // Cuộn xuống tin nhắn mới nhất
   const scrollToBottom = (behavior = 'smooth') => {
@@ -315,7 +325,7 @@ export default function MessengerPage({
               </div>
 
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
-                {threads.length} hội thoại
+                {filteredThreads.length} hội thoại
               </span>
             </div>
 

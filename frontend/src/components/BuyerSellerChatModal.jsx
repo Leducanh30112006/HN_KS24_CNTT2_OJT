@@ -44,7 +44,7 @@ export default function BuyerSellerChatModal({
     return () => window.removeEventListener('keydown', handleEscape, true);
   }, [showProductPicker]);
 
-  const userId = user?.userId || 2;
+  const userId = user?.userId ?? (user?.id ?? 'guest');
   const userName = user?.fullName || user?.username || 'Khách Hàng QuickShop';
 
   // Load hoặc tạo thread khi modal mở
@@ -71,7 +71,7 @@ export default function BuyerSellerChatModal({
     const handleSync = () => {
       if (isOpen && currentThreadId) {
         const threads = getStoredThreads();
-        const found = threads.find((t) => t.threadId === currentThreadId);
+        const found = threads.find((t) => t.threadId === currentThreadId && String(t.userId) === String(userId));
         if (found) {
           setMessages(found.messages || []);
           markChatThreadAsRead(currentThreadId, 'BUYER');
@@ -80,7 +80,7 @@ export default function BuyerSellerChatModal({
     };
     window.addEventListener('quickshop_chat_update', handleSync);
     return () => window.removeEventListener('quickshop_chat_update', handleSync);
-  }, [isOpen, currentThreadId]);
+  }, [isOpen, currentThreadId, userId]);
 
   // Tự động cuộn xuống tin nhắn cuối
   useEffect(() => {

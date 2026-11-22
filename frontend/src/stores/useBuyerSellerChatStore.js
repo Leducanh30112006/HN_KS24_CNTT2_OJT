@@ -98,6 +98,15 @@ export const getStoredThreads = () => {
   }
 };
 
+/**
+ * Lấy danh sách đoạn chat chỉ thuộc về userId cụ thể (cô lập dữ liệu giữa các tài khoản)
+ */
+export const getUserThreads = (userId) => {
+  const all = getStoredThreads();
+  if (userId === undefined || userId === null) return [];
+  return all.filter((t) => String(t.userId) === String(userId));
+};
+
 export const saveStoredThreads = (threads) => {
   if (typeof window === 'undefined') return;
   try {
@@ -113,16 +122,18 @@ export const saveStoredThreads = (threads) => {
  */
 export const getOrCreateThread = (userId, shopId, customMeta = {}) => {
   const threads = getStoredThreads();
-  const threadId = `buyer_${userId || 2}_shop_${shopId || 1}`;
+  const currentUserId = userId !== undefined && userId !== null ? userId : 'guest';
+  const currentShopId = shopId || 1;
+  const threadId = `buyer_${currentUserId}_shop_${currentShopId}`;
   let thread = threads.find((t) => t.threadId === threadId);
 
   if (!thread) {
     thread = {
       threadId,
-      userId: userId || 2,
+      userId: currentUserId,
       userName: customMeta.userName || 'Khách Hàng',
       userAvatar: customMeta.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-      shopId: shopId || 1,
+      shopId: currentShopId,
       shopName: customMeta.shopName || 'TechWorld Official Store',
       shopAvatar: customMeta.shopAvatar || 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=100&auto=format&fit=crop&q=80',
       unreadByBuyer: 0,
@@ -139,6 +150,9 @@ export const getOrCreateThread = (userId, shopId, customMeta = {}) => {
       ]
     };
     threads.unshift(thread);
+    saveStoredThreads(threads);
+  } else if (customMeta.userName && thread.userName !== customMeta.userName) {
+    thread.userName = customMeta.userName;
     saveStoredThreads(threads);
   }
 

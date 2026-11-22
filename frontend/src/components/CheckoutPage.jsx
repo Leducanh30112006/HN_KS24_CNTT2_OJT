@@ -52,7 +52,8 @@ export default function CheckoutPage({
   onBack, 
   onSelectProduct,
   onRequireAuth,
-  onViewOrders
+  onViewOrders,
+  onClearCheckoutItems,
 }) {
   const { items, removeMultipleFromCart, updateQuantity, removeFromCart } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
@@ -237,7 +238,12 @@ export default function CheckoutPage({
 
     // Đã thanh toán thành công -> Xóa các sản phẩm đã thanh toán khỏi giỏ hàng
     try {
-      removeMultipleFromCart(displayItems.map((i) => i.variantId || i.id));
+      const variantIdsToRemove = displayItems.flatMap((i) => [i.variantId, i.id].filter(Boolean));
+      removeMultipleFromCart(variantIdsToRemove);
+      onClearCheckoutItems?.();
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('quickshop_checkout_items');
+      }
     } catch (e) {
       console.warn('Lỗi dọn giỏ hàng sau thanh toán:', e);
     }
@@ -603,10 +609,12 @@ export default function CheckoutPage({
         setOrderId(displayOrderId);
         setOrderSuccess(true);
 
-        // NẾU LÀ THANH TOÁN COD: Xóa ngay các món đã đặt khỏi giỏ hàng
-        // NẾU LÀ CHUYỂN KHOẢN (PayOS/MB Bank): Giữ nguyên trong giỏ hàng và chuyển sang mục "Chờ thanh toán"
-        if (!isBankTransfer) {
-          removeMultipleFromCart(displayItems.map((i) => i.variantId || i.id));
+        // Đặt hàng thành công: Xóa ngay các món đã đặt khỏi giỏ hàng (cả COD và Chuyển khoản VietQR/PayOS)
+        const variantIdsToRemove = displayItems.flatMap((i) => [i.variantId, i.id].filter(Boolean));
+        removeMultipleFromCart(variantIdsToRemove);
+        onClearCheckoutItems?.();
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem('quickshop_checkout_items');
         }
 
         // Lưu đơn hàng vào kho dữ liệu mẫu & tracking
@@ -673,8 +681,11 @@ export default function CheckoutPage({
       }
       setOrderId(fallbackOrderId);
       setOrderSuccess(true);
-      if (!isBankTransfer) {
-        removeMultipleFromCart(displayItems.map((i) => i.variantId || i.id));
+      const variantIdsToRemove = displayItems.flatMap((i) => [i.variantId, i.id].filter(Boolean));
+      removeMultipleFromCart(variantIdsToRemove);
+      onClearCheckoutItems?.();
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('quickshop_checkout_items');
       }
       if (isBankTransfer) {
         void handleCreatePayOsPayment(fallbackOrderId, finalTotal);

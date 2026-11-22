@@ -39,17 +39,24 @@ export default function Navbar({
     const updateUnread = () => {
       try {
         const raw = localStorage.getItem('quickshop_buyer_seller_chat_v2');
-        if (raw) {
+        const currentUserId = user?.userId ?? user?.id;
+        if (raw && currentUserId) {
           const threads = JSON.parse(raw);
-          const count = (threads || []).reduce((acc, t) => acc + (t.unreadByBuyer || 0), 0);
+          const count = (threads || [])
+            .filter((t) => String(t.userId) === String(currentUserId))
+            .reduce((acc, t) => acc + (t.unreadByBuyer || 0), 0);
           setUnreadChatCount(count);
+        } else {
+          setUnreadChatCount(0);
         }
-      } catch (e) {}
+      } catch (e) {
+        setUnreadChatCount(0);
+      }
     };
     updateUnread();
     window.addEventListener('quickshop_chat_update', updateUnread);
     return () => window.removeEventListener('quickshop_chat_update', updateUnread);
-  }, []);
+  }, [user?.userId, user?.id]);
   const searchInputRef = useRef(null);
   const cartBadgeRef = useRef(null);
   const cartButtonRef = useRef(null);

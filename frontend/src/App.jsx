@@ -1086,6 +1086,7 @@ export default function App() {
             onViewOrders={() => {
               handleNavigateView('orders');
             }}
+            onClearCheckoutItems={() => setCheckoutItems([])}
           />
         )}
 

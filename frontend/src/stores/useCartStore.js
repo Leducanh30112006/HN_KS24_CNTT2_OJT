@@ -668,7 +668,9 @@ export const useCartStore = create(
 
         const auth = getAuthContext();
         const prevItems = get().items;
-        const nextItems = prevItems.filter((item) => !idSet.has(String(item.variantId)));
+        const nextItems = prevItems.filter(
+          (item) => !idSet.has(String(item.variantId)) && !idSet.has(String(item.id))
+        );
 
         set({ items: nextItems, syncError: null });
 
@@ -679,8 +681,17 @@ export const useCartStore = create(
 
         if (auth.canUseServer) {
           try {
-            // Backend Checkout đã tự động dọn dẹp các mặt hàng này trong Redis Cart;
-            // Gọi fetchCart để đồng bộ trạng thái sạch nhất mà không kích hoạt 404 riêng lẻ
+            const numericIds = (variantIds || []).filter((vId) => isNumericId(vId));
+            if (numericIds.length > 0) {
+              await Promise.allSettled(
+                numericIds.map((vId) =>
+                  axiosClient.delete(`/api/cart/items/${Number(vId)}`, {
+                    params: { userId: auth.userId },
+                    headers: { 'X-User-Id': String(auth.userId) },
+                  })
+                )
+              );
+            }
             await get().fetchCart(auth.userId);
           } catch {
             // Giữ state client mượt mà
