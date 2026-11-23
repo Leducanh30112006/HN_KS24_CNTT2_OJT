@@ -22,6 +22,7 @@ export default function BuyerSellerChatModal({
   targetProduct = null,
   onSelectProduct,
   onBuyNow,
+  onRequireAuth,
 }) {
   const { user } = useAuthStore();
   const [messages, setMessages] = useState([]);
@@ -106,16 +107,21 @@ export default function BuyerSellerChatModal({
         const pId = Number.parseInt(match[1], 10);
         const found = defaultProducts.find((p) => p.id === pId);
         if (found) {
+          const pr = Number(found.price ?? found.minPrice ?? found.variants?.[0]?.price ?? 0);
+          const origPr = Number(found.originalPrice ?? found.maxPrice ?? (pr > 0 ? Math.round(pr * 1.15) : 0)) || 0;
           extractedProduct = {
             id: found.id,
             name: found.name,
-            price: found.price,
-            originalPrice: found.originalPrice,
+            price: pr,
+            minPrice: pr,
+            originalPrice: origPr,
+            maxPrice: origPr,
             imageUrl: found.mainImage || found.imageUrl,
             category: found.categoryName,
             rating: found.rating,
             shopId: found.shopId || targetShopId,
             shopName: found.shopName || targetShopName,
+            variants: found.variants || [],
           };
         }
       }
@@ -292,6 +298,7 @@ export default function BuyerSellerChatModal({
                           onClose();
                         }}
                         onToast={showToast}
+                        onRequireAuth={onRequireAuth}
                       />
                     )}
                   </div>

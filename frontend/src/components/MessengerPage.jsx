@@ -22,10 +22,12 @@ import { fixMojibakeText } from '../utils/vietnameseEncoding';
 export default function MessengerPage({
   initialShopId = 1,
   initialProduct = null,
+  allProducts = [],
   onBackToHome,
   onSelectProduct,
   onSelectShop,
   onBuyNow,
+  onRequireAuth,
 }) {
   const { user } = useAuthStore();
   const addToCart = useCartStore((state) => state.addToCart);
@@ -64,13 +66,106 @@ export default function MessengerPage({
     setTimeout(() => setToastMessage(''), 3000);
   };
 
+  const resolvePrice = (p) => {
+    if (!p) return 0;
+    const direct = Number(p.price ?? p.minPrice ?? p.variants?.[0]?.price);
+    if (Number.isFinite(direct) && direct > 0) return direct;
+    if (p.id) {
+      const match = (allProducts || []).find((x) => x.id === p.id) || defaultProducts.find((dp) => dp.id === p.id);
+      if (match) {
+        const val = Number(match.minPrice ?? match.price ?? match.variants?.[0]?.price);
+        if (Number.isFinite(val) && val > 0) return val;
+      }
+    }
+    if (p.name) {
+      const lk = p.name.toLowerCase().trim();
+      const match =
+        (allProducts || []).find((x) => x.name?.toLowerCase().includes(lk) || lk.includes(x.name?.toLowerCase())) ||
+        defaultProducts.find((dp) => dp.name?.toLowerCase().includes(lk) || lk.includes(dp.name?.toLowerCase()));
+      if (match) {
+        const val = Number(match.minPrice ?? match.price ?? match.variants?.[0]?.price);
+        if (Number.isFinite(val) && val > 0) return val;
+      }
+    }
+    return 0;
+  };
+
+  const formatVND = (amount, prod = null) => {
+    let num = Number(amount);
+    if (!Number.isFinite(num) || num <= 0) {
+      if (prod) {
+        num = resolvePrice(prod);
+      }
+    }
+    if (!Number.isFinite(num) || num <= 0) num = 0;
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
+  };
+
+  const normalizeProductForChat = (p) => {
+    if (!p) return null;
+    const pr = resolvePrice(p);
+    const origPr = Number(p.originalPrice ?? p.maxPrice ?? (pr > 0 ? Math.round(pr * 1.15) : 0)) || 0;
+    return {
+      id: p.id,
+      name: p.name,
+      price: pr,
+      minPrice: pr,
+      originalPrice: origPr,
+      maxPrice: origPr,
+      imageUrl: p.mainImage || p.imageUrl || p.images?.[0] || '',
+      category: p.categoryName || p.category || '',
+      rating: p.rating || p.averageRating || 5,
+      sold: p.sold || p.reviewCount || 0,
+      shopId: p.shopId || activeThread?.shopId || 1,
+      shopName: p.shopName || activeThread?.shopName || 'TechWorld Official Store',
+      variants: p.variants || [],
+    };
+  };
+
   // Load threads và khởi tạo thread mục tiêu nếu có
   const loadThreads = () => {
     let all = getStoredThreads();
     
+    // Tự động chuẩn hóa & cập nhật giá cho các thẻ sản phẩm đã lưu trong tin nhắn cũ nếu bị thiếu giá
+    let hasUpdatedStored = false;
+    const updatedAll = all.map((th) => {
+      let thChanged = false;
+      const msgs = (th.messages || []).map((m) => {
+        if (m.productData) {
+          const currentP = Number(m.productData.price ?? m.productData.minPrice ?? 0);
+          if (!currentP || currentP <= 0) {
+            const resolved = resolvePrice(m.productData);
+            if (resolved > 0) {
+              thChanged = true;
+              return {
+                ...m,
+                productData: {
+                  ...m.productData,
+                  price: resolved,
+                  minPrice: resolved,
+                  originalPrice: m.productData.originalPrice || Math.round(resolved * 1.15),
+                },
+              };
+            }
+          }
+        }
+        return m;
+      });
+      if (thChanged) {
+        hasUpdatedStored = true;
+        return { ...th, messages: msgs };
+      }
+      return th;
+    });
+
+    if (hasUpdatedStored) {
+      saveStoredThreads(updatedAll);
+      all = updatedAll;
+    }
+
     // Nếu có initialShopId, đảm bảo thread đó tồn tại cho user này
     if (initialShopId) {
-      const targetShop = defaultProducts.find((p) => p.shopId === initialShopId) || {
+      const targetShop = (allProducts || []).find((p) => p.shopId === initialShopId) || defaultProducts.find((p) => p.shopId === initialShopId) || {
         shopId: initialShopId,
         shopName: initialShopId === 2 ? 'Thời Trang Coolmate Official' : initialShopId === 3 ? 'Gia Dụng Sunhouse Mall' : 'TechWorld Official Store',
       };
@@ -154,57 +249,34 @@ export default function MessengerPage({
     if (!trimmed && !productToSend) return;
     if (!activeThread) return;
 
-    let extractedProduct = productToSend;
+    let extractedProduct = productToSend ? normalizeProductForChat(productToSend) : null;
     if (!extractedProduct && pinnedProduct) {
       // Nếu có sản phẩm đang xem/hỏi mua, tự động đính kèm thẻ sản phẩm
-      extractedProduct = {
-        id: pinnedProduct.id,
-        name: pinnedProduct.name,
-        price: pinnedProduct.price,
-        originalPrice: pinnedProduct.originalPrice,
-        imageUrl: pinnedProduct.mainImage || pinnedProduct.imageUrl,
-        category: pinnedProduct.categoryName,
-        rating: pinnedProduct.rating,
-        shopId: pinnedProduct.shopId || activeThread.shopId,
-        shopName: pinnedProduct.shopName || activeThread.shopName,
-      };
+      extractedProduct = normalizeProductForChat(pinnedProduct);
     } else if (!extractedProduct && trimmed) {
       const match = trimmed.match(/\[PRODUCT:(\d+)\]/i) || trimmed.match(/SP[-_]?(\d+)/i) || trimmed.match(/#(\d+)/);
       if (match && match[1]) {
         const pId = Number.parseInt(match[1], 10);
-        const found = defaultProducts.find((p) => p.id === pId);
+        const found = (allProducts || []).find((p) => p.id === pId) || defaultProducts.find((p) => p.id === pId);
         if (found) {
-          extractedProduct = {
-            id: found.id,
-            name: found.name,
-            price: found.price,
-            originalPrice: found.originalPrice,
-            imageUrl: found.mainImage || found.imageUrl,
-            category: found.categoryName,
-            rating: found.rating,
-            shopId: found.shopId || activeThread.shopId,
-            shopName: found.shopName || activeThread.shopName,
-          };
+          extractedProduct = normalizeProductForChat(found);
         }
       } else {
         // Tự động tìm kiếm sản phẩm của shop nếu câu chat nhắc tới tên sản phẩm
         const lkw = trimmed.toLowerCase();
-        const found = defaultProducts.find((p) =>
-          (p.shopId === activeThread.shopId || p.shopId === 1) &&
-          (lkw.includes(p.name.toLowerCase()) || p.name.toLowerCase().includes(lkw))
-        );
+        const found =
+          (allProducts || []).find(
+            (p) =>
+              (p.shopId === activeThread.shopId || p.shopId === 1) &&
+              (lkw.includes(p.name.toLowerCase()) || p.name.toLowerCase().includes(lkw))
+          ) ||
+          defaultProducts.find(
+            (p) =>
+              (p.shopId === activeThread.shopId || p.shopId === 1) &&
+              (lkw.includes(p.name.toLowerCase()) || p.name.toLowerCase().includes(lkw))
+          );
         if (found) {
-          extractedProduct = {
-            id: found.id,
-            name: found.name,
-            price: found.price,
-            originalPrice: found.originalPrice,
-            imageUrl: found.mainImage || found.imageUrl,
-            category: found.categoryName,
-            rating: found.rating,
-            shopId: found.shopId || activeThread.shopId,
-            shopName: found.shopName || activeThread.shopName,
-          };
+          extractedProduct = normalizeProductForChat(found);
         }
       }
     }
@@ -227,33 +299,13 @@ export default function MessengerPage({
   // Gửi sản phẩm đang xem
   const handleSendPinnedProduct = () => {
     if (!pinnedProduct || !activeThread) return;
-    const prodData = {
-      id: pinnedProduct.id,
-      name: pinnedProduct.name,
-      price: pinnedProduct.price,
-      originalPrice: pinnedProduct.originalPrice,
-      imageUrl: pinnedProduct.mainImage || pinnedProduct.imageUrl,
-      category: pinnedProduct.categoryName,
-      rating: pinnedProduct.rating,
-      shopId: pinnedProduct.shopId || activeThread.shopId,
-      shopName: pinnedProduct.shopName || activeThread.shopName,
-    };
+    const prodData = normalizeProductForChat(pinnedProduct);
     handleSendMessage('Shop ơi, mình đang quan tâm sản phẩm này, tư vấn thêm giúp mình nhé!', prodData);
   };
 
   // Chọn sản phẩm từ picker để gửi
   const handleSelectProductFromPicker = (p) => {
-    const prodData = {
-      id: p.id,
-      name: p.name,
-      price: p.price,
-      originalPrice: p.originalPrice,
-      imageUrl: p.mainImage || p.imageUrl,
-      category: p.categoryName,
-      rating: p.rating,
-      shopId: p.shopId || activeThread.shopId,
-      shopName: p.shopName || activeThread.shopName,
-    };
+    const prodData = normalizeProductForChat(p);
     handleSendMessage(`Mình muốn hỏi về sản phẩm "${p.name}"`, prodData);
   };
 
@@ -539,7 +591,7 @@ export default function MessengerPage({
                     <p className="text-[10px] uppercase font-bold text-orange-700 tracking-wider">Sản phẩm bạn đang xem:</p>
                     <p className="text-xs font-bold text-slate-900 truncate">{pinnedProduct.name}</p>
                     <p className="text-xs font-black text-orange-600 font-mono">
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(pinnedProduct.price)}
+                      {formatVND(pinnedProduct.price, pinnedProduct)}
                     </p>
                   </div>
                 </div>
@@ -606,6 +658,7 @@ export default function MessengerPage({
                             onSelectProduct={onSelectProduct}
                             onBuyNow={onBuyNow}
                             onToast={showToast}
+                            onRequireAuth={onRequireAuth}
                           />
                         )}
                       </div>
@@ -656,7 +709,7 @@ export default function MessengerPage({
                           {prod.name}
                         </p>
                         <p className="text-[11px] font-black text-orange-600 font-mono">
-                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(prod.price)}
+                          {formatVND(prod.price, prod)}
                         </p>
                       </div>
                     </button>
@@ -837,7 +890,7 @@ export default function MessengerPage({
                           {sp.name}
                         </p>
                         <p className="text-[10px] font-black text-orange-600 font-mono">
-                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(sp.price)}
+                          {formatVND(sp.price, sp)}
                         </p>
                       </div>
                     </button>

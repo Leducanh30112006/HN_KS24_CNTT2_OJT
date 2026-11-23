@@ -525,6 +525,7 @@ function MessageRow({
   onBuyNow,
   onToast,
   onSendMessage,
+  onRequireAuth,
 }) {
   const rowRef = useRef(null);
 
@@ -568,6 +569,7 @@ function MessageRow({
               onSelectProduct={onSelectProduct}
               onBuyNow={onBuyNow}
               onToast={onToast}
+              onRequireAuth={onRequireAuth}
             />
           ))}
         </div>
@@ -594,7 +596,7 @@ function MessageRow({
   );
 }
 
-export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow, onToast }) {
+export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow, onToast, onRequireAuth }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
@@ -910,6 +912,7 @@ export default function AiChatWidget({ products = [], onSelectProduct, onBuyNow,
                   onBuyNow={onBuyNow}
                   onToast={onToast}
                   onSendMessage={handleSendMessage}
+                  onRequireAuth={onRequireAuth}
                 />
               ))}
 

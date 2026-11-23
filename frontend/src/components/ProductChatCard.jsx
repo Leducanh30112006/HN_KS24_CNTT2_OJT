@@ -1,24 +1,82 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Eye, Zap, Check, Star } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
+import { useAuthStore } from '../stores/useAuthStore';
+import { defaultProducts } from '../data/sampleProducts';
+import axiosClient from '../api/axiosClient';
 
-export default function ProductChatCard({ product, onSelectProduct, onBuyNow, onToast }) {
+const resolveProductPrice = (prod) => {
+  if (!prod) return 0;
+  const direct = Number(prod.price ?? prod.minPrice ?? prod.variants?.[0]?.price);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+
+  if (prod.id) {
+    const found = defaultProducts.find((dp) => dp.id === prod.id);
+    if (found) {
+      const p = Number(found.minPrice ?? found.price ?? found.variants?.[0]?.price);
+      if (Number.isFinite(p) && p > 0) return p;
+    }
+  }
+  if (prod.name) {
+    const lk = prod.name.toLowerCase().trim();
+    const found = defaultProducts.find((dp) => dp.name?.toLowerCase().includes(lk) || lk.includes(dp.name?.toLowerCase()));
+    if (found) {
+      const p = Number(found.minPrice ?? found.price ?? found.variants?.[0]?.price);
+      if (Number.isFinite(p) && p > 0) return p;
+    }
+  }
+  return 0;
+};
+
+export default function ProductChatCard({ product, onSelectProduct, onBuyNow, onToast, onRequireAuth }) {
   const addToCart = useCartStore((state) => state.addToCart);
+  const { isAuthenticated } = useAuthStore();
   const [isAdded, setIsAdded] = useState(false);
+
+  const initialPrice = resolveProductPrice(product);
+  const [currentPrice, setCurrentPrice] = useState(initialPrice);
+
+  useEffect(() => {
+    const p = resolveProductPrice(product);
+    if (p > 0) {
+      setCurrentPrice(p);
+      return;
+    }
+    if (product?.id) {
+      axiosClient.get(`/api/catalog/products/${product.id}`)
+        .then((res) => {
+          const data = res?.data?.data || res?.data;
+          const fetchedPrice = Number(data?.minPrice ?? data?.price ?? data?.variants?.[0]?.price ?? 0);
+          if (fetchedPrice > 0) {
+            setCurrentPrice(fetchedPrice);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [product?.id, product?.price, product?.minPrice]);
 
   if (!product) return null;
 
-  const currentPrice = product.price ?? product.minPrice ?? product.variants?.[0]?.price ?? 0;
   const originalPrice = product.originalPrice ?? product.maxPrice ?? (currentPrice > 0 ? Math.round(currentPrice * 1.15) : 0);
   const displayImage = product.imageUrl || product.mainImage || product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200';
   const shopName = product.shopName || 'Shop Chính Hãng QuickShop';
 
   const formatVND = (amount) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
+    const validAmount = Number.isFinite(Number(amount)) && Number(amount) > 0 ? Number(amount) : (currentPrice > 0 ? currentPrice : 0);
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(validAmount);
   };
 
   const handleAddToCart = async (e) => {
     e.stopPropagation();
+    if (!isAuthenticated) {
+      if (typeof onRequireAuth === 'function') {
+        onRequireAuth('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!');
+      } else if (typeof onToast === 'function') {
+        onToast('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!');
+      }
+      return;
+    }
+
     try {
       const firstVariant = product.variants?.[0];
       const defaultVariant = firstVariant
@@ -66,6 +124,15 @@ export default function ProductChatCard({ product, onSelectProduct, onBuyNow, on
 
   const handleBuyNow = async (e) => {
     e.stopPropagation();
+    if (!isAuthenticated) {
+      if (typeof onRequireAuth === 'function') {
+        onRequireAuth('Vui lòng đăng nhập để mua hàng ngay!');
+      } else if (typeof onToast === 'function') {
+        onToast('Vui lòng đăng nhập để mua hàng ngay!');
+      }
+      return;
+    }
+
     await handleAddToCart(e);
     if (onBuyNow) {
       onBuyNow({

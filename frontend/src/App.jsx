@@ -1119,15 +1119,21 @@ export default function App() {
           <MessengerPage
             initialShopId={chatInitialShopId}
             initialProduct={chatInitialProduct}
+            allProducts={products}
             onBackToHome={() => handleNavigateView('home')}
             onSelectProduct={(pId) => handleSelectProduct({ id: pId })}
             onSelectShop={handleSelectShop}
             onBuyNow={(item) => {
+              if (!isAuthenticated) {
+                handleRequireAuth('checkout');
+                return;
+              }
               if (item) {
                 setCheckoutItems([item]);
                 handleNavigateView('checkout');
               }
             }}
+            onRequireAuth={() => handleRequireAuth('chat')}
           />
         )}
 
@@ -1943,11 +1949,16 @@ export default function App() {
         products={products}
         onSelectProduct={(pId) => handleSelectProduct({ id: pId })}
         onBuyNow={(item) => {
+          if (!isAuthenticated) {
+            handleRequireAuth('checkout');
+            return;
+          }
           if (item) {
             setCheckoutItems([item]);
             handleNavigateView('checkout');
           }
         }}
+        onRequireAuth={() => handleRequireAuth('storefront')}
         onToast={showToast}
       />
 
@@ -1959,11 +1970,16 @@ export default function App() {
         targetShopName="TechWorld Official Store"
         onSelectProduct={(pId) => handleSelectProduct({ id: pId })}
         onBuyNow={(item) => {
+          if (!isAuthenticated) {
+            handleRequireAuth('checkout');
+            return;
+          }
           if (item) {
             setCheckoutItems([item]);
             handleNavigateView('checkout');
           }
         }}
+        onRequireAuth={() => handleRequireAuth('chat')}
       />
 
       {/* Global Toast Notification */}

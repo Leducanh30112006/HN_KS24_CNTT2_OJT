@@ -117,16 +117,21 @@ export default function SellerCustomerChat({
   };
 
   const handleSendProduct = (product) => {
+    const pr = Number(product.price ?? product.minPrice ?? product.variants?.[0]?.price ?? 0);
+    const origPr = Number(product.originalPrice ?? product.maxPrice ?? (pr > 0 ? Math.round(pr * 1.15) : 0)) || 0;
     const prodData = {
       id: product.id,
       name: product.name,
-      price: product.price,
-      originalPrice: product.originalPrice,
-      imageUrl: product.mainImage || product.imageUrl,
-      category: product.categoryName,
-      rating: product.rating,
+      price: pr,
+      minPrice: pr,
+      originalPrice: origPr,
+      maxPrice: origPr,
+      imageUrl: product.mainImage || product.imageUrl || product.images?.[0] || '',
+      category: product.categoryName || product.category || '',
+      rating: product.rating || product.averageRating || 5,
       shopId,
       shopName,
+      variants: product.variants || [],
     };
     handleSendMessage(`Dạ shop gửi bạn thông tin chi tiết sản phẩm "${product.name}" đang có ưu đãi nhé:`, prodData);
   };
