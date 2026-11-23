@@ -307,34 +307,16 @@ export default function Navbar({
               )}
 
               {isAuthenticated && (
-                <>
-                  <button
-                    onClick={() => setCurrentView('orders')}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-semibold transition active:scale-95 ${
-                      currentView === 'orders' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
-                    title="Tra cứu Lịch sử Đơn Mua"
-                  >
-                    <Package className="w-3 h-3 text-slate-500" />
-                    <span>Đơn Mua</span>
-                  </button>
-
-                  <button
-                    onClick={onOpenChatWithShop}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold transition active:scale-95 ${
-                      currentView === 'chat' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
-                    title="Trò chuyện với Người bán trên Messenger"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5 text-orange-600" />
-                    <span>Messenger</span>
-                    {unreadChatCount > 0 && (
-                      <span className="w-4 h-4 rounded-full bg-orange-600 text-white text-[9px] font-black flex items-center justify-center">
-                        {unreadChatCount}
-                      </span>
-                    )}
-                  </button>
-                </>
+                <button
+                  onClick={() => setCurrentView('orders')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-semibold transition active:scale-95 ${
+                    currentView === 'orders' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                  title="Tra cứu Lịch sử Đơn Mua"
+                >
+                  <Package className="w-3 h-3 text-slate-500" />
+                  <span>Đơn Mua</span>
+                </button>
               )}
             </div>
           </div>
